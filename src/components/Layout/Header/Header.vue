@@ -1,15 +1,19 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import { Search,MoreFilled } from '@element-plus/icons-vue';
+import { Search } from '@element-plus/icons-vue';
 import { useToolsStore } from '@/store/modules/tools'
+import { useComponentStore } from '@/store/modules/component'
 import { ElMessageBox } from 'element-plus'
 import 'element-plus/theme-chalk/display.css'
+import { ToolsInfo } from '@/api/tools/type';
+import router from '@/router';
 
-const appName = ref(import.meta.env.VITE_APP_TITLE || '工具坊')
-const appNet = ref(import.meta.env.VITE_APP_WEBSITE || '')
 const isNavDrawer = ref(false)
+const loading = ref(false)
+const options = ref<ToolsInfo[]>([])
 //store
 const toolsStore = useToolsStore()
+const componentStore = useComponentStore()
 //查询参数
 const searchParam = reactive({
   cateId: 0,
@@ -41,6 +45,22 @@ const chooseCate = (cateId: number) => {
   search()
 }
 
+//搜索工具
+const searchTools = async (query: string) => {
+  loading.value = true
+  if (query) {
+    searchParam.title = query
+    await toolsStore.getTools(searchParam)
+  } else {
+    options.value = []
+  }
+  loading.value = false
+}
+
+const optionClick = (url: string) => {
+  router.push(url)
+}
+
 //收藏
 const collect = () => {
   ElMessageBox({
@@ -55,120 +75,83 @@ onMounted(() => {
 </script>
 
 <template>
-  <header class="">
-    <nav class="h-28 w-full leading-10 flex flex-col justify-between pt-2 pb-2 c-xs:h-16 c-xs:border-b-[1px]">
-      <el-row>
-        <el-col :xl="4" :lg="3" :sm="1"></el-col>
-        <el-col :xl="16" :lg="18" :sm="22">
-          <div class="flex items-center justify-between">
-            <!-- left -->
-            <router-link class="ml-4 flex flex-row" to="/">
-              <img class="h-10 w-auto rounded-lg lg:h-16 mr-2 mt-auto mb-auto" src="@/assets/logo.png" :alt="appNet">
-              <div class="flex flex-col  mt-auto mb-auto">
-                <div class="text-xl">{{ appName }}</div>
-                <div class="text-sm text-gray-500">{{ appNet }}</div>
-              </div>
-            </router-link>
+  <header class="h-20 w-full flex justify-between pt-2 pb-2 c-xs:h-16 c-xs:border-b-[1px] items-center">
+    <div class="flex items-center">
+      <Transition name="fold" class="hidden c-sm:block c-md:hidden c-xs:block">
+        <svg v-if="!componentStore.leftComDrawer" @click="componentStore.setleftComDrawerStatus(true)" t="1702978210636" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="7618" width="30" height="30">
+          <path fill="#444" fill-opacity=".9" d="M895.936 256l-768-0.896 0.128-64L896 192l-0.064 64zM179.2 689.152l202.688-152a32 32 0 0 0 0-51.2L179.2 333.952a32 32 0 0 0-51.2 25.6v304a32 32 0 0 0 51.2 25.6z m12.8-89.6v-176l117.312 88L192 599.552zM896 544H480v-64H896v64z m-0.064 288l-768-0.896 0.128-64L896 768l-0.064 64z" p-id="7619"></path>
+        </svg>
+        <svg v-else @click="componentStore.setleftComDrawerStatus(false)" t="1702978577170" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="1587" width="30" height="30">
+          <path fill="#444" fill-opacity=".9" d="M128.064 192l768 0.896-0.128 64L128 256l0.064-64z m514.048 294.848a32 32 0 0 0 0 51.2l202.688 152a32 32 0 0 0 51.2-25.6v-304a32 32 0 0 0-51.2-25.6l-202.688 152zM832 424.448v176l-117.312-88L832 424.448zM128 480h416v64H128v-64z m0.064 288l768 0.896-0.128 64L128 832l0.064-64z" p-id="1588"></path>
+        </svg>
+      </Transition>
 
-            <!-- right -->
-            <div class=" w-full md:w-auto flex c-xs:hidden md:block">
-              <ul class="flex mt-4 flex-col md:flex-row md:mt-0 justify-end items-center">
-                <li class="hover:text-blue-500">
-                  <el-button link size="large" @click="collect">收藏本站</el-button>
-                </li>
-                <li class="ml-3 hover:text-blue-500">
-                  <!-- <el-button round>登录/注册</el-button> -->
-                </li>
-              </ul>
-            </div>
+      <!-- c-md:block -->
+      <Transition name="fold" class="hidden c-md:block">
+        <svg v-if="!componentStore.leftCom" @click="componentStore.setLeftComStatus(true)" t="1702978577170" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="1587" width="30" height="30">
+          <path fill="#444" fill-opacity=".9" d="M128.064 192l768 0.896-0.128 64L128 256l0.064-64z m514.048 294.848a32 32 0 0 0 0 51.2l202.688 152a32 32 0 0 0 51.2-25.6v-304a32 32 0 0 0-51.2-25.6l-202.688 152zM832 424.448v176l-117.312-88L832 424.448zM128 480h416v64H128v-64z m0.064 288l768 0.896-0.128 64L128 832l0.064-64z" p-id="1588"></path>
+        </svg>
+        <svg v-else @click="componentStore.setLeftComStatus(false)" t="1702978210636" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="7618" width="30" height="30">
+          <path fill="#444" fill-opacity=".9" d="M895.936 256l-768-0.896 0.128-64L896 192l-0.064 64zM179.2 689.152l202.688-152a32 32 0 0 0 0-51.2L179.2 333.952a32 32 0 0 0-51.2 25.6v304a32 32 0 0 0 51.2 25.6z m12.8-89.6v-176l117.312 88L192 599.552zM896 544H480v-64H896v64z m-0.064 288l-768-0.896 0.128-64L896 768l-0.064 64z" p-id="7619"></path>
+        </svg>
+      </Transition>
+    
+      <div class="w-80">
+        <!-- <el-input 
+          v-model="searchParam.title" 
+          placeholder="搜索工具" 
+          class="h-10 ml-3" 
+          @keyup.enter.native="search">
+          <template #append>
+            <el-button :icon="Search" @click="search"/>
+          </template>
+        </el-input> -->
+        <el-select
+          v-model="searchParam.title"
+          filterable
+          remote
+          reserve-keyword
+          remote-show-suffix
+          :suffix-transition="false"
+          :suffix-icon="Search"
+          placeholder="输入关键词搜索，如文本、json、图片等"
+          :remote-method="searchTools"
+          :loading="loading"
+          class="ml-3 w-80"
+        >
+          <el-option
+            v-for="item in toolsStore.list"
+            :key="item.id"
+            :label="item.title"
+            :value="item.id"
+            @click="optionClick(item.url)"
+          >
+          </el-option>
+        </el-select>
+      </div>
+    </div>
 
-            <!-- h5: 搜索、导航 -->
-            <div class="c-lg:hidden c-sm:hidden">
-              <div class="mr-3 leading-3">
-                <!-- <el-icon size="25"><Search /></el-icon> -->
-                <el-icon size="25" class="ml-2" style="transform:rotate(90deg)" @click="isNavDrawer == false ? isNavDrawer = true : isNavDrawer = false"><MoreFilled /></el-icon>
-              </div>
-              <!-- 抽屉 -->
-              <el-drawer v-model="isNavDrawer" direction="rtl" class="" size="70%">
-                <div>
-                  <!-- search -->
-                  <div>
-                    <el-input 
-                      v-model="searchParam.title" 
-                      placeholder="搜索工具" 
-                      class="w-full max-w-xl h-10" 
-                      @keyup.enter.native="search">
-                      <template #append>
-                        <el-button :icon="Search" @click="search"/>
-                      </template>
-                    </el-input>
-                  </div>
-                  <!-- cates -->
-                  <div class="mt-3 text-center">
-                    <ul class="flex flex-col rounded items-center">
-                      <li class="flex items-center w-full text-center mb-2">
-                        <div 
-                          class="hover:text-blue-400 text-xl w-full hover:bg-gray-200 hover:rounded-md h-10 leading-10" :class="searchParam.cateId == 0 ? 'text-blue-400 bg-gray-200 rounded-md' : ''"
-                          @click="chooseCate(0)"
-                        >全部工具</div>
-                      </li>
-                      <li v-for="(item, index) in toolsStore.cates" :key="index" class="flex items-center mb-2 w-full">
-                        <!-- <el-text>{{ index != 0 ? '&nbsp;&nbsp;&nbsp;&nbsp;' : '' }} </el-text> -->
-                        <div 
-                          class="hover:text-blue-400 text-xl w-full hover:bg-gray-200 hover:rounded-md h-10 leading-10" :class="searchParam.cateId == item.id ? 'text-blue-400 bg-gray-200 rounded-md' : ''"
-                          @click="chooseCate(item.id)"
-                        >{{ item.title }}</div>
-                      </li>
-                    </ul>
-                  </div> 
-                </div>
-              </el-drawer>
-            </div>
-          </div>
-          
-          <!-- pc/pad:搜索、导航 -->
-          <el-row class="mt-3 hidden-xs-only">
-            <el-col :lg="19" :sm="19">
-              <!-- cates -->
-              <div class="mr-3">
-                <ul class="flex bg-gray-100  h-10 rounded leading-10 pl-3">
-                  <li class="flex items-center mr-3">
-                    <div 
-                      class="hover:text-blue-400 hover:underline hover:decoration-2 hover:underline-offset-[6px] text-sm" :class="searchParam.cateId == 0 ? 'text-blue-400 underline decoration-2 underline-offset-[6px]' : ''"
-                      @click="chooseCate(0)"
-                    >全部工具</div>
-                  </li>
-                  <li v-for="(item, index) in toolsStore.cates" :key="index" class="flex items-center">
-                    <el-text>{{ index != 0 ? '&nbsp;&nbsp;&nbsp;&nbsp;' : '' }} </el-text>
-                    <div 
-                      class="hover:text-blue-400 hover:underline hover:decoration-2 hover:underline-offset-[6px] text-sm" :class="searchParam.cateId == item.id ? 'text-blue-400 underline decoration-2 underline-offset-[6px]' : ''"
-                      @click="chooseCate(item.id)"
-                    >{{ item.title }}</div>
-                  </li>
-                </ul>
-              </div> 
-            </el-col>
-            <el-col :lg="5" :sm="5">
-              <!-- search -->
-              <div>
-                <el-input 
-                  v-model="searchParam.title" 
-                  placeholder="搜索工具" 
-                  class="w-full max-w-xl h-10" 
-                  @keyup.enter.native="search">
-                  <template #append>
-                    <el-button :icon="Search" @click="search"/>
-                  </template>
-                </el-input>
-              </div>
-            </el-col>
-          </el-row>
-        </el-col>
-        <el-col :xl="4" :lg="3" :sm="1" class="flex"></el-col>
-      </el-row>
-    </nav>
+    <div class=" w-full md:w-auto flex c-xs:hidden md:block">
+      <ul class="flex mt-4 flex-col md:flex-row md:mt-0 justify-end items-center">
+        <li class="hover:text-blue-500">
+          <el-button link size="large" @click="collect">收藏本站</el-button>
+        </li>
+        <!-- <li class="ml-3 hover:text-blue-500"> -->
+          <!-- <el-button round>登录/注册</el-button> -->
+        <!-- </li> -->
+      </ul>
+    </div>
   </header>
 </template>
 
 <style scoped>
+.fold-enter-active {
+  transition: all 1s ease-out;
+}
+
+.fold-enter-from,
+.fold-leave-to {
+  transform: translateX(20px);
+  opacity: 0;
+} 
 </style>
