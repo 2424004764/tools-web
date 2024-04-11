@@ -296,7 +296,7 @@ const updateDataFile = async (params) => {
       console.log(e)
     }
   }
-  fileReader.readAsBinaryString(_file)
+  fileReader.readAsArrayBuffer(_file)
 }
 
 //copy
