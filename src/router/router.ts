@@ -31,16 +31,16 @@ export const constantRoute = [
       description: '在线md5加密，一键生成md5加密字符串，可生成16位或32位md5加密字符串，md5双重加密',
     }
   },
-  {
-    path: '/json',
-    component: () => import('@/components/Tools/JsonTran/JsonTran.vue'),
-    name: 'json',
-    meta: {
-      title: "Json在线转换",
-      keywords: 'json编辑器，json格式化,json压缩,json转义,json去转义',
-      description: '提供实时编辑和预览JSON 数据，语法高亮、校验、格式化、转义，去转义、压缩等功能，可以提高阅读修改的效率和准确性',
-    }
-  },
+  // {
+  //   path: '/json',
+  //   component: () => import('@/components/Tools/JsonTran/JsonTran.vue'),
+  //   name: 'json',
+  //   meta: {
+  //     title: "Json在线转换",
+  //     keywords: 'json编辑器，json格式化,json压缩,json转义,json去转义',
+  //     description: '提供实时编辑和预览JSON 数据，语法高亮、校验、格式化、转义，去转义、压缩等功能，可以提高阅读修改的效率和准确性',
+  //   }
+  // },
   {
     path: '/reg',
     component: () => import('@/components/Tools/RegTest/RegTest.vue'),
@@ -381,46 +381,46 @@ export const constantRoute = [
       description: '颜色选择器、在各种颜色空间如十六进制、rgb、hsl、css等等之间转换颜色',
     }
   },
-  {
-    path: '/asciiwordpic',
-    component: () => import('@/components/Tools/ASCIIWordPic/ASCIIWordPic.vue'),
-    name: 'asciiWordPic',
-    meta: {
-      title: "ASCII字形生成器",
-      keywords: 'ASCII画,字形画,字形生成器',
-      description: '在线生成字形ASCII画',
-    }
-  },
-  {
-    path: '/jsforamt',
-    component: () => import('@/components/Tools/JSFormat/JSFormat.vue'),
-    name: 'JSForamt',
-    meta: {
-      title: "js代码格式化/压缩",
-      keywords: 'js代码格式化,js格式化,js压缩,javascript格式化',
-      description: 'JS格式化/压缩工具,提供在线JS格式化、JS压缩、JS混淆、JS解密',
-    }
-  },
-  {
-    path: '/htmlformat',
-    component: () => import('@/components/Tools/HtmlFormat/HtmlFormat.vue'),
-    name: 'HtmlFormat',
-    meta: {
-      title: "html代码格式化",
-      keywords: 'html格式化,xml格式化',
-      description: '提供在线html、xml格式化',
-    }
-  },
-  {
-    path: '/cssformat',
-    component: () => import('@/components/Tools/CssFormat/CssFormat.vue'),
-    name: 'CssFormat',
-    meta: {
-      title: "css代码格式化/压缩",
-      keywords: 'css格式化,css压缩',
-      description: '提供在线css格式化,在线css压缩工具',
-    }
-  },
+  // {
+  //   path: '/asciiwordpic',
+  //   component: () => import('@/components/Tools/ASCIIWordPic/ASCIIWordPic.vue'),
+  //   name: 'asciiWordPic',
+  //   meta: {
+  //     title: "ASCII字形生成器",
+  //     keywords: 'ASCII画,字形画,字形生成器',
+  //     description: '在线生成字形ASCII画',
+  //   }
+  // },
+  // {
+  //   path: '/jsforamt',
+  //   component: () => import('@/components/Tools/JSFormat/JSFormat.vue'),
+  //   name: 'JSForamt',
+  //   meta: {
+  //     title: "js代码格式化/压缩",
+  //     keywords: 'js代码格式化,js格式化,js压缩,javascript格式化',
+  //     description: 'JS格式化/压缩工具,提供在线JS格式化、JS压缩、JS混淆、JS解密',
+  //   }
+  // },
+  // {
+  //   path: '/htmlformat',
+  //   component: () => import('@/components/Tools/HtmlFormat/HtmlFormat.vue'),
+  //   name: 'HtmlFormat',
+  //   meta: {
+  //     title: "html代码格式化",
+  //     keywords: 'html格式化,xml格式化',
+  //     description: '提供在线html、xml格式化',
+  //   }
+  // },
+  // {
+  //   path: '/cssformat',
+  //   component: () => import('@/components/Tools/CssFormat/CssFormat.vue'),
+  //   name: 'CssFormat',
+  //   meta: {
+  //     title: "css代码格式化/压缩",
+  //     keywords: 'css格式化,css压缩',
+  //     description: '提供在线css格式化,在线css压缩工具',
+  //   }
+  // },
   {
     path: '/textedit',
     component: () => import('@/components/Tools/TextEdit/TextEdit.vue'),
