@@ -1,0 +1,1 @@
+function e(t){return!!/^((\d|[1-9]\d|1\d\d|2([0-4]\d|5[0-5]))(\.|$)){4}$/.test(t)}function s(t){return!!/^([0-1]+)$/g.test(t)}function a(t){return!!/^([0-7]+)$/g.test(t)}function r(t){return!!/^([0-9]+)$/g.test(t)}function n(t){return!!/^([0-9a-fA-F]+)$/g.test(t)}export{s as a,a as b,r as c,n as d,e as i};
