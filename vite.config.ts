@@ -23,7 +23,8 @@ export default defineConfig(({command, mode}) => {
     ],
     resolve: {
       alias: {
-        "@": path.resolve("./src")  //相对路径别名配置， 使用@替代src
+        "@": path.resolve("./src"),  //相对路径别名配置， 使用@替代src
+        'v-code-diff': path.resolve(__dirname, 'node_modules/v-code-diff/src/CodeDiff.vue'),
       }
     },
     server: {

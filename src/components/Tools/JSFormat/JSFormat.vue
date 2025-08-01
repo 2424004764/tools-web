@@ -9,7 +9,6 @@ import '@codemirror/state';
 import '@codemirror/commands';
 import * as prettier from "prettier/standalone";
 import * as parserBabel from 'prettier/parser-babel';
-import * as prettierPluginEstree from "prettier/plugins/estree";
 import { ElMessage } from 'element-plus'
 import { minify } from "terser"
 
@@ -30,7 +29,7 @@ interface Error {
 //格式化
 const formatCode = async () => {
   try {
-    info.code = await prettier.format(info.code, { parser: "babel", plugins: [parserBabel, prettierPluginEstree]})
+    info.code = await prettier.format(info.code, { parser: "babel", plugins: [parserBabel]})
   } catch (error) {
     ElMessage({
       showClose: true,
