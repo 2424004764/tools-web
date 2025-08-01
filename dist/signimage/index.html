@@ -1,0 +1,1465 @@
+<!DOCTYPE html><html lang="zh-CN"><head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="data:image/png;base64,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">
+    <link rel="shortcut icon" type="image/svg+xml" href="data:image/x-icon;base64,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">
+    <link rel="canonical" href="https://tools.ranblogs.com/">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="renderer" content="webkit">
+    <meta name="keywords" content="在线图片裁剪，图片标注，图片滤镜，图片画笔、图片旋转、图片文字，图片美,图片尺寸调整化">
+    <meta name="description" content="在线图片裁剪，图片标注，图片滤镜，图片画笔、图片旋转、图片文字,图片尺寸调整等操作">
+    <meta property="og:locale" content="zh_CN">
+    <meta property="og:title" content="在线编辑图片-undefined">
+    <meta property="og:site_name" content="在线编辑图片-undefined">
+    <meta property="og:description" content="在线图片裁剪，图片标注，图片滤镜，图片画笔、图片旋转、图片文字,图片尺寸调整等操作">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="/src/assets/logo.png">
+    <meta property="og:url" content=""><!-- 可选：这里填写自己的访问地址 -->
+    <title>在线编辑图片-undefined</title>
+    <script type="module" crossorigin="" src="/assets/index-bd778040.js"></script>
+    <link rel="stylesheet" href="/assets/index-a1b25511.css">
+  <link rel="modulepreload" as="script" crossorigin="" href="/assets/Home-84587001.js"><link rel="stylesheet" href="/assets/Home-c5905e5e.css"><link rel="modulepreload" as="script" crossorigin="" href="/assets/SignImage-dd07de87.js"><link rel="modulepreload" as="script" crossorigin="" href="/assets/file-9a076f23.js"><link rel="modulepreload" as="script" crossorigin="" href="/assets/DetailHeader.vue_vue_type_script_setup_true_lang-504c8539.js"><link rel="modulepreload" as="script" crossorigin="" href="/assets/ToolDetail.vue_vue_type_script_setup_true_lang-066fbc9d.js"><link rel="modulepreload" as="script" crossorigin="" href="/assets/time-bfbe2dc8.js"><link rel="stylesheet" href="/assets/SignImage-7fc992e4.css"><link rel="stylesheet" type="text/css" href="data:text/css;charset=UTF-8,%0A%20%20%20%20.tie-icon-add-button.icon-bubble%20.tui-image-editor-button%5Bdata-icontype%3D%22icon-bubble%22%5D%20label%2C%0A%20%20%20%20.tie-icon-add-button.icon-heart%20.tui-image-editor-button%5Bdata-icontype%3D%22icon-heart%22%5D%20label%2C%0A%20%20%20%20.tie-icon-add-button.icon-location%20.tui-image-editor-button%5Bdata-icontype%3D%22icon-location%22%5D%20label%2C%0A%20%20%20%20.tie-icon-add-button.icon-polygon%20.tui-image-editor-button%5Bdata-icontype%3D%22icon-polygon%22%5D%20label%2C%0A%20%20%20%20.tie-icon-add-button.icon-star%20.tui-image-editor-button%5Bdata-icontype%3D%22icon-star%22%5D%20label%2C%0A%20%20%20%20.tie-icon-add-button.icon-star-2%20.tui-image-editor-button%5Bdata-icontype%3D%22icon-star-2%22%5D%20label%2C%0A%20%20%20%20.tie-icon-add-button.icon-arrow-3%20.tui-image-editor-button%5Bdata-icontype%3D%22icon-arrow-3%22%5D%20label%2C%0A%20%20%20%20.tie-icon-add-button.icon-arrow-2%20.tui-image-editor-button%5Bdata-icontype%3D%22icon-arrow-2%22%5D%20label%2C%0A%20%20%20%20.tie-icon-add-button.icon-arrow%20.tui-image-editor-button%5Bdata-icontype%3D%22icon-arrow%22%5D%20label%2C%0A%20%20%20%20.tie-icon-add-button.icon-bubble%20.tui-image-editor-button%5Bdata-icontype%3D%22icon-bubble%22%5D%20label%2C%0A%20%20%20%20.tie-draw-line-select-button.line%20.tui-image-editor-button.line%20label%2C%0A%20%20%20%20.tie-draw-line-select-button.free%20.tui-image-editor-button.free%20label%2C%0A%20%20%20%20.tie-flip-button.flipX%20.tui-image-editor-button.flipX%20label%2C%0A%20%20%20%20.tie-flip-button.flipY%20.tui-image-editor-button.flipY%20label%2C%0A%20%20%20%20.tie-flip-button.resetFlip%20.tui-image-editor-button.resetFlip%20label%2C%0A%20%20%20%20.tie-crop-button%20.tui-image-editor-button.apply.active%20label%2C%0A%20%20%20%20.tie-crop-preset-button%20.tui-image-editor-button.preset.active%20label%2C%0A%20%20%20%20.tie-resize-button%20.tui-image-editor-button.apply.active%20label%2C%0A%20%20%20%20.tie-resize-preset-button%20.tui-image-editor-button.preset.active%20label%2C%0A%20%20%20%20.tie-shape-button.rect%20.tui-image-editor-button.rect%20label%2C%0A%20%20%20%20.tie-shape-button.circle%20.tui-image-editor-button.circle%20label%2C%0A%20%20%20%20.tie-shape-button.triangle%20.tui-image-editor-button.triangle%20label%2C%0A%20%20%20%20.tie-text-effect-button%20.tui-image-editor-button.active%20label%2C%0A%20%20%20%20.tie-text-align-button.tie-text-align-left%20.tui-image-editor-button.left%20label%2C%0A%20%20%20%20.tie-text-align-button.tie-text-align-center%20.tui-image-editor-button.center%20label%2C%0A%20%20%20%20.tie-text-align-button.tie-text-align-right%20.tui-image-editor-button.right%20label%2C%0A%20%20%20%20.tie-mask-apply.apply.active%20.tui-image-editor-button.apply%20label%2C%0A%20%20%20%20.tui-image-editor-container%20.tui-image-editor-submenu%20.tui-image-editor-button%3Ahover%20%3E%20label%2C%0A%20%20%20%20.tui-image-editor-container%20.tui-image-editor-checkbox%20label%20%3E%20span%20%7B%0A%20%20%20%20%20%20%20%20color%3A%20%23fff%3Bfont-weight%3A%20lighter%0A%20%20%20%20%7D%0A%20%20%20%20.tui-image-editor-container%20.tui-image-editor-submenu%20.tui-image-editor-button%20%3E%20label%2C%0A%20%20%20%20.tui-image-editor-container%20.tui-image-editor-range-wrap.tui-image-editor-newline.short%20label%2C%0A%20%20%20%20.tui-image-editor-container%20.tui-image-editor-range-wrap.tui-image-editor-newline.short%20label%20%3E%20span%20%7B%0A%20%20%20%20%20%20%20%20color%3A%20%23858585%3Bfont-weight%3A%20lighter%0A%20%20%20%20%7D%0A%20%20%20%20.tui-image-editor-container%20.tui-image-editor-range-wrap%20label%20%3E%20span%20%7B%0A%20%20%20%20%20%20%20%20color%3A%20%23fff%3Bfont-weight%3A%20lighter%0A%20%20%20%20%7D%0A%20%20%20%20.tui-image-editor-container%20.tui-image-editor-partition%20%3E%20div%20%7B%0A%20%20%20%20%20%20%20%20color%3A%20%23858585%3Bborder-left%3A%201px%20solid%20%23858585%0A%20%20%20%20%7D%0A%20%20%20%20.tui-image-editor-container.left%20.tui-image-editor-submenu%20.tui-image-editor-partition%20%3E%20div%2C%0A%20%20%20%20.tui-image-editor-container.right%20.tui-image-editor-submenu%20.tui-image-editor-partition%20%3E%20div%20%7B%0A%20%20%20%20%20%20%20%20color%3A%20%23858585%3Bborder-bottom%3A%201px%20solid%20%23858585%0A%20%20%20%20%7D%0A%20%20%20%20.tui-image-editor-container%20.tui-image-editor-checkbox%20label%20%3E%20span%3Abefore%20%7B%0A%20%20%20%20%20%20%20%20border%3A%201px%20solid%20%23ccc%3Bbackground-color%3A%20%23fff%0A%20%20%20%20%7D%0A%20%20%20%20.tui-image-editor-container%20.tui-image-editor-checkbox%20label%20%3E%20input%3Achecked%20%2B%20span%3Abefore%20%7B%0A%20%20%20%20%20%20%20%20border%3A%200%3B%0A%20%20%20%20%7D%0A%20%20%20%20.tui-image-editor-container%20.tui-image-editor-virtual-range-pointer%20%7B%0A%20%20%20%20%20%20%20%20color%3A%20%23fff%3Bbackground-color%3A%20%23fff%0A%20%20%20%20%7D%0A%20%20%20%20.tui-image-editor-container%20.tui-image-editor-virtual-range-bar%20%7B%0A%20%20%20%20%20%20%20%20color%3A%20%23666%3Bbackground-color%3A%20%23666%0A%20%20%20%20%7D%0A%20%20%20%20.tui-image-editor-container%20.tui-image-editor-virtual-range-subbar%20%7B%0A%20%20%20%20%20%20%20%20color%3A%20%23d1d1d1%3Bbackground-color%3A%20%23d1d1d1%0A%20%20%20%20%7D%0A%20%20%20%20.tui-image-editor-container%20.tui-image-editor-disabled%20.tui-image-editor-virtual-range-pointer%20%7B%0A%20%20%20%20%20%20%20%20color%3A%20%23414141%3Bbackground-color%3A%20%23414141%0A%20%20%20%20%7D%0A%20%20%20%20.tui-image-editor-container%20.tui-image-editor-disabled%20.tui-image-editor-virtual-range-subbar%20%7B%0A%20%20%20%20%20%20%20%20color%3A%20%23414141%3Bbackground-color%3A%20%23414141%0A%20%20%20%20%7D%0A%20%20%20%20.tui-image-editor-container%20.tui-image-editor-disabled%20.tui-image-editor-virtual-range-bar%20%7B%0A%20%20%20%20%20%20%20%20color%3A%20%23282828%3Bbackground-color%3A%20%23282828%0A%20%20%20%20%7D%0A%20%20%20%20.tui-image-editor-container%20.tui-image-editor-range-value%20%7B%0A%20%20%20%20%20%20%20%20color%3A%20%23fff%3Bfont-weight%3A%20lighter%3Bfont-size%3A%2011px%3Bborder%3A%201px%20solid%20%23353535%3Bbackground-color%3A%20%23151515%0A%20%20%20%20%7D%0A%20%20%20%20.tui-image-editor-container%20.tui-image-editor-submenu%20.tui-image-editor-button%20.color-picker-value%20%2B%20label%20%7B%0A%20%20%20%20%20%20%20%20color%3A%20%23fff%0A%20%20%20%20%7D%0A%20%20%20%20.tui-image-editor-container%20.tui-image-editor-submenu%20.tui-image-editor-button%20.color-picker-value%20%7B%0A%20%20%20%20%20%20%20%20border%3A%201px%20solid%20%231e1e1e%0A%20%20%20%20%7D%0A%20%20%20%20.tui-image-editor-container%20.svg_ic-menu%20%7B%0A%20%20%20%20%20%20%20%20width%3A%2024px%3Bheight%3A%2024px%0A%20%20%20%20%7D%0A%20%20%20%20.tui-image-editor-container%20.svg_ic-submenu%20%7B%0A%20%20%20%20%20%20%20%20width%3A%2032px%3Bheight%3A%2032px%0A%20%20%20%20%7D%0A%20%20%20%20.tui-image-editor-container%20.tui-image-editor-controls-logo%20%3E%20img%2C%0A%20%20%20%20.tui-image-editor-container%20.tui-image-editor-header-logo%20%3E%20img%20%7B%0A%20%20%20%20%20%20%20%20width%3A%200px%3Bheight%3A%200px%0A%20%20%20%20%7D%0A%20%20%20%20.tui-image-editor-menu%20use.normal.use-default%2C%0A%20%20%20%20.tui-image-editor-help-menu%20use.normal.use-default%20%7B%0A%20%20%20%20%20%20%20%20fill-rule%3A%20evenodd%3B%0A%20%20%20%20%20%20%20%20fill%3A%20%238a8a8a%3B%0A%20%20%20%20%20%20%20%20stroke%3A%20%238a8a8a%3B%0A%20%20%20%20%7D%0A%20%20%20%20.tui-image-editor-menu%20use.active.use-default%2C%0A%20%20%20%20.tui-image-editor-help-menu%20use.active.use-default%20%7B%0A%20%20%20%20%20%20%20%20fill-rule%3A%20evenodd%3B%0A%20%20%20%20%20%20%20%20fill%3A%20%23555555%3B%0A%20%20%20%20%20%20%20%20stroke%3A%20%23555555%3B%0A%20%20%20%20%7D%0A%20%20%20%20.tui-image-editor-menu%20use.hover.use-default%2C%0A%20%20%20%20.tui-image-editor-help-menu%20use.hover.use-default%20%7B%0A%20%20%20%20%20%20%20%20fill-rule%3A%20evenodd%3B%0A%20%20%20%20%20%20%20%20fill%3A%20%23e9e9e9%3B%0A%20%20%20%20%20%20%20%20stroke%3A%20%23e9e9e9%3B%0A%20%20%20%20%7D%0A%20%20%20%20.tui-image-editor-menu%20use.disabled.use-default%2C%0A%20%20%20%20.tui-image-editor-help-menu%20use.disabled.use-default%20%7B%0A%20%20%20%20%20%20%20%20fill-rule%3A%20evenodd%3B%0A%20%20%20%20%20%20%20%20fill%3A%20%23ccc%3B%0A%20%20%20%20%20%20%20%20stroke%3A%20%23ccc%3B%0A%20%20%20%20%7D%0A%20%20%20%20.tui-image-editor-submenu%20use.normal.use-default%20%7B%0A%20%20%20%20%20%20%20%20fill-rule%3A%20evenodd%3B%0A%20%20%20%20%20%20%20%20fill%3A%20%238a8a8a%3B%0A%20%20%20%20%20%20%20%20stroke%3A%20%238a8a8a%3B%0A%20%20%20%20%7D%0A%20%20%20%20.tui-image-editor-submenu%20use.active.use-default%20%7B%0A%20%20%20%20%20%20%20%20fill-rule%3A%20evenodd%3B%0A%20%20%20%20%20%20%20%20fill%3A%20%23e9e9e9%3B%0A%20%20%20%20%20%20%20%20stroke%3A%20%23e9e9e9%3B%0A%20%20%20%20%7D%0A"></head>
+  <body class="bg-[--base-gray]">
+    
+    <!--[if lt IE 9]>
+    <div class="notice chromeframe">您的浏览器版本<strong>很旧很旧</strong>，为了正常地访问网站，请升级您的浏览器</div>
+    <![endif]-->
+    <div id="app" data-v-app=""><section data-v-ccb21322="" class="el-container"><aside data-v-ccb21322="" class="el-aside fixed top-0 left-0 h-full z-10 c-md:block c-sm:hidden c-xs:hidden" style="--el-aside-width: 240px;"><div data-v-fb5689e2="" data-v-ccb21322="" class="el-scrollbar"><div class="el-scrollbar__wrap el-scrollbar__wrap--hidden-default"><div class="el-scrollbar__view" style=""><div data-v-fb5689e2="" class="flex justify-center"><a data-v-fb5689e2="" href="/" class="flex flex-row h-24"><img data-v-fb5689e2="" class="h-12 w-auto rounded-lg mr-2 mt-auto mb-auto" src="data:image/png;base64,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" alt=""><div data-v-fb5689e2="" class="flex flex-col mt-auto mb-auto"><div data-v-fb5689e2="" class="text-2xl">工具坊</div><div data-v-fb5689e2="" class="text-sm text-gray-500"></div></div></a></div><div data-v-fb5689e2="" class="flex justify-center pl-8 pr-8"><ul data-v-fb5689e2="" role="menubar" class="el-menu el-menu--vertical w-[200px]" style="--el-menu-bg-color: transparent; --el-menu-hover-bg-color: rgba(0, 0, 0, 0.2); --el-menu-level: 0;"><li data-v-fb5689e2="" class="el-sub-menu is-opened" role="menuitem" ariahaspopup="true" aria-expanded="true"><div class="el-sub-menu__title"><svg data-v-fb5689e2="" t="1702896224109" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="4239" width="20" height="20"><path data-v-fb5689e2="" fill="currentColor" d="M382.083 103.466c-63.464-1.533-127.026-1.561-190.487 0.056-53.88 1.372-85.947 33.283-87.526 87.481-1.798 61.735-1.627 123.592-0.105 185.34 1.405 57.042 33.666 88.862 89.987 91.055 30.847 1.2 61.778 0.214 92.673 0.214v0.084c29.177 0 58.354 0.006 87.532-0.01 3.43 0 6.875 0.043 10.292-0.216 48.928-3.716 81.464-31.602 83.804-80.677 3.181-66.767 3.15-133.886 0.34-200.68-2.194-52.18-34.273-81.385-86.51-82.647z m0.727 223.135c-1.853 39.629-13.76 53.399-51.558 55.395-30.725 1.622-61.703 1.765-92.399-0.15-32.22-2.01-46.292-15.941-48.33-48.552-2.025-32.392-2.108-65.126 0.084-97.498 2.219-32.758 16.121-45.288 49.214-46.935 29.033-1.446 58.217-1.13 87.29-0.204 42.456 1.353 53.884 13.188 55.727 55.78 0.592 13.67 0.092 27.387 0.092 41.083-0.02 13.695 0.518 27.415-0.12 41.081zM468.883 657.431c-4.914-60.1-41.873-98.957-102.147-102.763-52.991-3.346-106.533-3.413-159.516-0.013-61.945 3.977-100.908 45.842-103.178 107.37-1.834 49.716-1.806 99.605 0 149.324 2.232 61.528 42.13 104.63 102.68 108.128 53.034 3.063 106.506 2.894 159.565 0.06 58.998-3.15 97.39-42.913 102.53-102.565 2.2-25.551 0.367-51.451 0.367-77.191l0.08-0.001c0-27.46 1.85-55.071-0.381-82.349zM382.676 782.81c-2.191 34.758-12.473 47.623-45.629 49.797-34.02 2.23-68.343 1.291-102.466-0.024-25.612-0.987-42.22-15.758-43.434-41.638-1.677-35.784-2.509-71.85 0.088-107.519 2.16-29.666 15.98-40.487 47.82-41.924 30.705-1.386 61.557-1.324 92.274-0.118 37.12 1.456 48.88 13.204 51.308 49.153 1.033 15.313 0.173 30.753 0.173 46.135 0.027 15.382 0.832 30.817-0.134 46.138zM638.575 466.817c66.85 2.183 133.883 2.232 200.728-0.029 48.107-1.626 78.502-34.315 80.95-82.898 1.64-32.522 0.314-65.193 0.314-97.798h0.18c0-29.173 0.002-58.345-0.006-87.518 0-3.433 0.093-6.874-0.12-10.295-3.237-51.777-32.66-83.203-84.46-84.65-65.155-1.824-130.44-1.78-195.6 0.026-49.255 1.363-81.717 31.976-83.38 80.049-2.312 66.843-2.187 133.87-0.181 200.732 1.448 48.3 33.485 80.811 81.575 82.38zM741.2 188.405c93.184 0.015 94.452 1.293 94.464 95.22 0.013 96.831-1.987 98.873-96.789 98.868-94.393-0.003-95.62-3.049-97.83-98.688-2.4-103.803 20.564-97.124 100.155-95.4zM920.572 648.267c-1.48-60.79-30.968-91.401-92.039-94.662-29.17-1.558-58.49-0.269-87.743-0.269v0.082c-30.974 0-61.945-0.023-92.918 0.034-3.43 0.005-6.883 0.302-10.287 0.754-49.282 6.534-79.299 35.872-80.674 84.647a3477.609 3477.609 0 0 0 0.02 196.134c1.362 48.254 32.605 80.758 80.595 84.46 35.921 2.77 72.291 2.164 108.32 0.313 28.821-1.48 47.916-22.114 46.583-45.146-1.247-21.556-18.569-37.536-46.166-40.082-18.794-1.733-37.942 0.3-56.714-1.548-33.033-3.254-45.768-15.985-47.505-49.427a897.595 897.595 0 0 1 0.012-92.884c1.76-33.962 14.537-47.378 47.042-49.022 32.61-1.65 65.425-1.604 98.043-0.06 33.31 1.575 45.544 14.444 48.07 47.957 1.42 18.832-0.68 37.952 1.06 56.734 2.577 27.82 18.189 42.528 42.153 42.564 24.261 0.037 40.096-14.295 41.679-42.527 1.828-32.595 1.266-65.38 0.47-98.052z" p-id="4240"></path></svg><span data-v-fb5689e2="" class="ml-2">分类</span><i class="el-icon el-sub-menu__icon-arrow" style="transform: rotateZ(180deg);"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" d="M831.872 340.864 512 652.672 192.128 340.864a30.592 30.592 0 0 0-42.752 0 29.12 29.12 0 0 0 0 41.6L489.664 714.24a32 32 0 0 0 44.672 0l340.288-331.712a29.12 29.12 0 0 0 0-41.728 30.592 30.592 0 0 0-42.752 0z"></path></svg></i></div><ul role="menu" class="el-menu el-menu--inline" style="--el-menu-bg-color: transparent; --el-menu-hover-bg-color: rgba(0, 0, 0, 0.2); --el-menu-level: 1;"><li data-v-fb5689e2="" class="el-menu-item-group"><div class="el-menu-item-group__title"></div><ul><li data-v-fb5689e2="" class="el-menu-item" role="menuitem" tabindex="-1">开发运维</li><li data-v-fb5689e2="" class="el-menu-item" role="menuitem" tabindex="-1">文本处理</li><li data-v-fb5689e2="" class="el-menu-item" role="menuitem" tabindex="-1">教育学术</li><li data-v-fb5689e2="" class="el-menu-item" role="menuitem" tabindex="-1">图片处理</li><li data-v-fb5689e2="" class="el-menu-item" role="menuitem" tabindex="-1">数据图表</li><li data-v-fb5689e2="" class="el-menu-item" role="menuitem" tabindex="-1">选择随机</li><li data-v-fb5689e2="" class="el-menu-item" role="menuitem" tabindex="-1">其他工具</li></ul></li></ul></li><li data-v-fb5689e2="" class="el-menu-item" role="menuitem" tabindex="-1"><svg data-v-fb5689e2="" t="1702896616706" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="5262" width="20" height="20"><path data-v-fb5689e2="" fill="currentColor" d="M514.734921 246.750649C505.162698 257.386453 500.249969 270.276034 500.249969 285.16616 500.249969 297.397334 504.175087 308.083785 511.92403 316.364518 519.824913 324.771867 530.03022 329.102159 541.678957 329.102159 551.073917 329.102159 565.077726 326.189975 577.91666 311.780993 587.944704 300.891955 592.984049 287.774464 592.984049 273.162895 592.984049 261.210278 588.881668 250.726414 581.107402 242.622944 564.064792 224.896605 533.043698 226.795855 514.734921 246.750649ZM967.769518 511.708782C967.769518 765.87917 763.334174 972.618938 511.949353 972.618938 260.615179 972.618938 56.179835 765.87917 56.179835 511.708782 56.179835 257.411776 260.615179 50.722655 511.949353 50.722655 763.334174 50.722655 967.769518 257.411776 967.769518 511.708782ZM978.734525 312.084873C953.259243 251.080941 916.540396 196.230581 870.122709 149.382397 823.629053 102.331627 769.4371 65.38487 709.294161 39.529738 584.272819-13.851868 439.853797-13.851868 314.781809 39.529738 254.613547 65.38487 200.497564 102.35695 153.927937 149.382397 107.43428 196.331874 70.740757 251.258204 45.366768 312.084873 19.005169 375.418552 5.53315 442.37347 5.53315 511.607488 5.53315 580.79086 18.929199 647.771101 45.265475 711.02881 70.690111 771.906126 107.383634 826.705839 153.877291 873.857902 200.294977 920.832703 254.436284 957.855429 314.731162 983.634592 377.330465 1010.426688 443.626975 1023.84806 511.92403 1023.84806 580.322378 1023.84806 646.593565 1010.426688 709.218191 983.583945 769.487746 957.804783 823.629053 920.832703 870.072063 873.857902 916.540396 826.781809 953.183273 771.906126 978.633232 711.003487 1005.070801 647.771101 1018.416203 580.79086 1018.416203 511.607488 1018.46685 442.37347 1005.121448 375.418552 978.734525 312.084873ZM553.226402 633.311472C538.462893 647.568514 528.080322 656.457007 521.16705 662.104113 524.560378 643.618073 533.372901 607.000519 554.568539 534.904963 575.71353 463.493137 577.511487 451.00873 577.511487 444.880481 577.511487 434.19403 573.105225 424.7231 565.432253 418.164354 548.161733 403.780696 517.723075 406.61691 480.978905 427.635285 460.492321 439.258699 438.714247 458.200559 414.403838 485.144595L401.742167 499.401637 443.804239 532.144719 454.541336 521.407622C466.266043 509.936148 474.19225 502.440438 479.510152 497.45174 447.400153 604.164305 431.775651 670.511462 431.775651 700.19042 431.775651 713.662438 435.624799 724.855355 443.449712 733.313352 451.325271 742.024581 462.391572 746.582783 475.053243 746.582783 487.461681 746.582783 501.668076 741.746025 518.938596 731.844598 534.512451 722.905458 557.860573 703.406484 590.527685 672.334743L603.82244 659.521132 565.584193 621.890645 553.226402 633.311472Z" p-id="5263"></path></svg><span data-v-fb5689e2="" class="ml-2">关于本站</span></li></ul></div></div></div><div class="el-scrollbar__bar is-horizontal" style="display: none;"><div class="el-scrollbar__thumb" style="transform: translateX(0%);"></div></div><div class="el-scrollbar__bar is-vertical" style="display: none;"><div class="el-scrollbar__thumb" style="transform: translateY(0%);"></div></div></div></aside><div class="el-overlay" style="z-index: 2001; display: none;"><div aria-modal="true" aria-labelledby="el-id-9657-0" aria-describedby="el-id-9657-1" class="el-drawer ltr" role="dialog" style="width: 240px;"><span class="el-drawer__sr-focus" tabindex="-1"></span><!--v-if--><!--v-if--><!--v-if--></div></div><section data-v-ccb21322="" class="el-container is-vertical c-md:ml-[240px]"><header data-v-ccb21322="" class="el-header"><header data-v-b1f1c35e="" data-v-ccb21322="" class="h-24 w-full flex justify-between pt-2 pb-2 c-xs:h-16 c-xs:border-b-[1px] items-center"><div data-v-b1f1c35e="" class="flex items-center w-full"><svg data-v-b1f1c35e="" t="1702978210636" class="icon hidden c-sm:block c-md:hidden c-xs:block" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="7618" width="30" height="30"><path data-v-b1f1c35e="" fill="#444" fill-opacity=".9" d="M895.936 256l-768-0.896 0.128-64L896 192l-0.064 64zM179.2 689.152l202.688-152a32 32 0 0 0 0-51.2L179.2 333.952a32 32 0 0 0-51.2 25.6v304a32 32 0 0 0 51.2 25.6z m12.8-89.6v-176l117.312 88L192 599.552zM896 544H480v-64H896v64z m-0.064 288l-768-0.896 0.128-64L896 768l-0.064 64z" p-id="7619"></path></svg><svg data-v-b1f1c35e="" t="1702978577170" class="icon hidden c-md:block" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="1587" width="30" height="30"><path data-v-b1f1c35e="" fill="#444" fill-opacity=".9" d="M128.064 192l768 0.896-0.128 64L128 256l0.064-64z m514.048 294.848a32 32 0 0 0 0 51.2l202.688 152a32 32 0 0 0 51.2-25.6v-304a32 32 0 0 0-51.2-25.6l-202.688 152zM832 424.448v176l-117.312-88L832 424.448zM128 480h416v64H128v-64z m0.064 288l768 0.896-0.128 64L128 832l0.064-64z" p-id="1588"></path></svg><div data-v-b1f1c35e="" class="ml-3 mr-1"><a data-v-b1f1c35e="" href="/" class=""><svg data-v-b1f1c35e="" t="1715590310537" class="icon" viewBox="0 0 1053 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="4287" width="25" height="25"><path data-v-b1f1c35e="" d="M526.63454 58.067422a21.503527 21.503527 0 0 1-27.501109 0.175539l474.979265 381.50475a31.538506 31.538506 0 1 0 39.496274-49.150919L538.629705 9.004273a41.602742 41.602742 0 0 0-51.988799 0.234052L11.573871 398.671586a31.538506 31.538506 0 1 0 39.993635 48.79984L526.63454 58.067422z" fill="#2c2c2c" p-id="4288"></path><path data-v-b1f1c35e="" d="M1013.60897 564.087832L538.629705 182.583083a41.602742 41.602742 0 0 0-51.988799 0.204795L11.573871 572.191883a31.538506 31.538506 0 1 0 39.993635 48.79984l66.763331-54.709653v361.61033A94.644775 94.644775 0 0 0 213.004869 1022.537175H441.732179v-247.275931a15.79851 15.79851 0 0 1 15.739997-15.79851h110.472541c8.68918 0 15.769253 7.080073 15.769253 15.79851v247.275931H812.441281a94.615518 94.615518 0 0 0 94.644775-94.615518V559.465305l66.997383 53.831959a31.538506 31.538506 0 1 0 39.525531-49.209432z m-169.629183 363.804568c0 17.436874-14.101633 31.538506-31.567763 31.538506h-165.591785v-184.198919a78.875522 78.875522 0 0 0-78.875522-78.904778h-110.472541a78.875522 78.875522 0 0 0-78.846265 78.904778v184.198919h-165.591786c-17.46613 0-31.597019-14.130889-31.597019-31.538506V514.527323L512.883986 242.851471l331.095801 265.941578v419.128608z" fill="#2c2c2c" p-id="4289" stroke="black" stroke-width="10"></path></svg></a></div><div data-v-b1f1c35e="" class="c-xs:w-[85%] w-full mr-3"><div data-v-b1f1c35e="" class="el-select el-select--large ml-3" suffix-transition="false"><div class="el-select__wrapper is-filterable el-tooltip__trigger el-tooltip__trigger" tabindex="-1"><!--v-if--><div class="el-select__selection"><!--v-if--><div class="el-select__selected-item el-select__input-wrapper"><input type="text" class="el-select__input is-large" autocomplete="off" tabindex="0" role="combobox" spellcheck="false" aria-activedescendant="" aria-controls="el-id-9657-2" aria-expanded="false" aria-autocomplete="none" aria-haspopup="listbox" id="el-id-9657-6" style="min-width: 11px;"><span aria-hidden="true" class="el-select__input-calculator"></span></div><div class="el-select__selected-item el-select__placeholder is-transparent"><span>输入关键词搜索，如文本、json、图片等</span></div></div><div class="el-select__suffix"><i class="el-icon el-select__caret el-select__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" d="m795.904 750.72 124.992 124.928a32 32 0 0 1-45.248 45.248L750.656 795.904a416 416 0 1 1 45.248-45.248zM480 832a352 352 0 1 0 0-704 352 352 0 0 0 0 704"></path></svg></i><!--v-if--><!--v-if--></div></div></div></div></div><div data-v-b1f1c35e="" class="w-full md:w-auto flex md:block c-xs:w-auto"><ul data-v-b1f1c35e="" class="flex mt-4 flex-col md:flex-row md:mt-0 justify-end items-center c-xs:mt-0"><li data-v-b1f1c35e="" class="ml-3 c-xs:hidden"><a data-v-b1f1c35e="" href="/about" class=""><span class="el-only-child__content el-tooltip__trigger el-tooltip__trigger"><svg data-v-b1f1c35e="" t="1715594765484" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="5578" width="33" height="33"><path data-v-b1f1c35e="" d="M511.899716 948.506609c-241.310951 0-437.636339-196.318224-437.636339-437.636339 0-241.323231 196.325387-437.639408 437.636339-437.639408s437.636339 196.316178 437.636339 437.639408C949.536055 752.188384 753.210667 948.506609 511.899716 948.506609zM511.899716 113.944122c-218.866776 0-396.926148 178.064488-396.926148 396.926148 0 218.856543 178.059372 396.926148 396.926148 396.926148 218.868823 0 396.926148-178.069605 396.926148-396.926148C908.825864 292.00861 730.768539 113.944122 511.899716 113.944122zM561.15656 335.324138c-29.853935 0-54.03773-24.189935-54.03773-54.047963 0-29.855982 24.184819-54.047963 54.03773-54.047963 29.838585 0 54.0408 24.191982 54.0408 54.047963C615.19736 311.134203 590.995145 335.324138 561.15656 335.324138zM424.962691 430.321746c0-4.394077 0-8.806573 0-13.19758 42.878576-17.016559 108.943224-10.793834 153.201218-26.418696 1.75804 0 3.510964 0 5.27719 0-21.329794 108.134813-66.391083 206.496028-76.599585 316.955792 2.425236 1.850138 2.086521 1.473561 5.287423 2.623757 33.247218 11.155061 52.320623-66.110697 73.948199-60.727083 21.644973 5.38873-13.548574 43.733037-18.47784 50.193169-19.400862 25.362644-56.465013 68.439742-100.376105 68.657706-31.008224 0.181125-63.159482-19.378349-58.101279-71.301929 5.056156-51.981908 34.219359-124.319423 50.172703-182.263114C472.184179 468.050022 488.801648 429.049776 424.962691 430.321746z" fill="#515151" p-id="5579"></path></svg></span></a></li><li data-v-b1f1c35e="" class="ml-3"><a data-v-b1f1c35e="" href="https://github.com/naroat/tools-web" target="_blank" class="el-tooltip__trigger"><svg data-v-b1f1c35e="" t="1715594665374" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="4334" width="33" height="33"><path data-v-b1f1c35e="" d="M512 85.333333C276.266667 85.333333 85.333333 276.266667 85.333333 512a426.410667 426.410667 0 0 0 291.754667 404.821333c21.333333 3.712 29.312-9.088 29.312-20.309333 0-10.112-0.554667-43.690667-0.554667-79.445333-107.178667 19.754667-134.912-26.112-143.445333-50.133334-4.821333-12.288-25.6-50.133333-43.733333-60.288-14.933333-7.978667-36.266667-27.733333-0.554667-28.245333 33.621333-0.554667 57.6 30.933333 65.621333 43.733333 38.4 64.512 99.754667 46.378667 124.245334 35.2 3.754667-27.733333 14.933333-46.378667 27.221333-57.045333-94.933333-10.666667-194.133333-47.488-194.133333-210.688 0-46.421333 16.512-84.778667 43.733333-114.688-4.266667-10.666667-19.2-54.4 4.266667-113.066667 0 0 35.712-11.178667 117.333333 43.776a395.946667 395.946667 0 0 1 106.666667-14.421333c36.266667 0 72.533333 4.778667 106.666666 14.378667 81.578667-55.466667 117.333333-43.690667 117.333334-43.690667 23.466667 58.666667 8.533333 102.4 4.266666 113.066667 27.178667 29.866667 43.733333 67.712 43.733334 114.645333 0 163.754667-99.712 200.021333-194.645334 210.688 15.445333 13.312 28.8 38.912 28.8 78.933333 0 57.045333-0.554667 102.912-0.554666 117.333334 0 11.178667 8.021333 24.490667 29.354666 20.224A427.349333 427.349333 0 0 0 938.666667 512c0-235.733333-190.933333-426.666667-426.666667-426.666667z" fill="#000000" p-id="4335"></path></svg></a></li><li data-v-b1f1c35e="" class="hover:text-blue-500 c-xs:hidden"><button data-v-b1f1c35e="" aria-disabled="false" type="button" class="el-button el-button--primary ml-3 bg-gradient-to-r from-cyan-500 to-blue-500"><!--v-if--><span class="">保存到桌面</span></button></li></ul></div></header></header><main data-v-ccb21322="" class="el-main"><div data-v-ccb21322="" class="flex flex-col mt-3 flex-1 animation-enter-active animation-enter-to"><div class="flex justify-between rounded-2xl bg-white p-4 mt-5 mb-5"><div class="text-xl">在线编辑图片</div></div><div class="flex flex-col mb-3 h-[38rem] p-4 rounded-2xl bg-white"><div class="mb-3 flex flex-row-reverse"><button aria-disabled="false" type="button" class="el-button el-button--primary ml-2"><!--v-if--><span class="">保存</span></button><div><!--v-if--><div class="el-upload el-upload--text" tabindex="0"><button aria-disabled="false" type="button" class="el-button el-button--primary"><!--v-if--><span class="">选择图片</span></button><!--v-if--><input class="el-upload__input" name="file" accept="image/*" type="file"></div><!--v-if--></div></div><div id="tui-image-editor" class="tui-image-editor-container left" style="width: 100%; height: 100%;">
+    <ul class="tui-image-editor-help-menu right"><li tooltip-content="放大" class="tie-btn-zoomIn tui-image-editor-item help enabled"><svg class="svg_ic-menu"><use xlink:href="#ic-zoom-in" class="normal use-default"></use><use xlink:href="#ic-zoom-in" class="disabled use-default"></use><use xlink:href="#ic-zoom-in" class="hover use-default"></use></svg></li><li tooltip-content="缩小" class="tie-btn-zoomOut tui-image-editor-item help enabled"><svg class="svg_ic-menu"><use xlink:href="#ic-zoom-out" class="normal use-default"></use><use xlink:href="#ic-zoom-out" class="disabled use-default"></use><use xlink:href="#ic-zoom-out" class="hover use-default"></use></svg></li><li tooltip-content="手掌" class="tie-btn-hand tui-image-editor-item help enabled"><svg class="svg_ic-menu"><use xlink:href="#ic-hand" class="normal use-default"></use><use xlink:href="#ic-hand" class="disabled use-default"></use><use xlink:href="#ic-hand" class="hover use-default"></use></svg></li><li class="tui-image-editor-item"><div class="tui-image-editor-icpartition"></div></li><li tooltip-content="历史" class="tie-btn-history tui-image-editor-item help enabled"><svg class="svg_ic-menu"><use xlink:href="#ic-history" class="normal use-default"></use><use xlink:href="#ic-history" class="disabled use-default"></use><use xlink:href="#ic-history" class="hover use-default"></use></svg><div class="tie-panel-history"><ol class="history-list"><li class="history-item selected-item" data-index="0">
+    <div class="tui-image-editor-history-item history">
+        <div class="history-item-icon">
+            <svg class="svg_ic-submenu"><use xlink:href="#ic-history-load" class="normal use-default"></use><use xlink:href="#ic-history-load" class="active use-default"></use></svg>
+        </div>
+        <span>
+            Load
+            
+        </span>
+        <div class="history-item-checkbox">
+            <svg class="svg_ic-submenu"><use xlink:href="#ic-history-check" class="normal use-default"></use></svg>
+        </div>
+    </div>
+</li></ol></div></li><li tooltip-content="撤销" class="tie-btn-undo tui-image-editor-item help"><svg class="svg_ic-menu"><use xlink:href="#ic-undo" class="normal use-default"></use><use xlink:href="#ic-undo" class="disabled use-default"></use><use xlink:href="#ic-undo" class="hover use-default"></use></svg></li><li tooltip-content="反撤销" class="tie-btn-redo tui-image-editor-item help"><svg class="svg_ic-menu"><use xlink:href="#ic-redo" class="normal use-default"></use><use xlink:href="#ic-redo" class="disabled use-default"></use><use xlink:href="#ic-redo" class="hover use-default"></use></svg></li><li tooltip-content="重置" class="tie-btn-reset tui-image-editor-item help" style="display: none;"><svg class="svg_ic-menu"><use xlink:href="#ic-reset" class="normal use-default"></use><use xlink:href="#ic-reset" class="disabled use-default"></use><use xlink:href="#ic-reset" class="hover use-default"></use></svg></li><li class="tui-image-editor-item"><div class="tui-image-editor-icpartition"></div></li><li tooltip-content="删除" class="tie-btn-delete tui-image-editor-item help"><svg class="svg_ic-menu"><use xlink:href="#ic-delete" class="normal use-default"></use><use xlink:href="#ic-delete" class="disabled use-default"></use><use xlink:href="#ic-delete" class="hover use-default"></use></svg></li><li tooltip-content="全部删除" class="tie-btn-deleteAll tui-image-editor-item help"><svg class="svg_ic-menu"><use xlink:href="#ic-delete-all" class="normal use-default"></use><use xlink:href="#ic-delete-all" class="disabled use-default"></use><use xlink:href="#ic-delete-all" class="hover use-default"></use></svg></li></ul>
+    <div class="tui-image-editor-controls">
+        <div class="tui-image-editor-controls-logo">
+            <img src="">
+        </div>
+        <ul class="tui-image-editor-menu"><li tooltip-content="调整宽高" class="tie-btn-resize tui-image-editor-item normal"><svg class="svg_ic-menu"><use xlink:href="#ic-resize" class="normal use-default"></use><use xlink:href="#ic-resize" class="active use-default"></use><use xlink:href="#ic-resize" class="hover use-default"></use></svg></li><li tooltip-content="裁剪" class="tie-btn-crop tui-image-editor-item normal"><svg class="svg_ic-menu"><use xlink:href="#ic-crop" class="normal use-default"></use><use xlink:href="#ic-crop" class="active use-default"></use><use xlink:href="#ic-crop" class="hover use-default"></use></svg></li><li tooltip-content="旋转" class="tie-btn-rotate tui-image-editor-item normal"><svg class="svg_ic-menu"><use xlink:href="#ic-rotate" class="normal use-default"></use><use xlink:href="#ic-rotate" class="active use-default"></use><use xlink:href="#ic-rotate" class="hover use-default"></use></svg></li><li tooltip-content="画" class="tie-btn-draw tui-image-editor-item normal"><svg class="svg_ic-menu"><use xlink:href="#ic-draw" class="normal use-default"></use><use xlink:href="#ic-draw" class="active use-default"></use><use xlink:href="#ic-draw" class="hover use-default"></use></svg></li><li tooltip-content="形状标注" class="tie-btn-shape tui-image-editor-item normal"><svg class="svg_ic-menu"><use xlink:href="#ic-shape" class="normal use-default"></use><use xlink:href="#ic-shape" class="active use-default"></use><use xlink:href="#ic-shape" class="hover use-default"></use></svg></li><li tooltip-content="图标标注" class="tie-btn-icon tui-image-editor-item normal"><svg class="svg_ic-menu"><use xlink:href="#ic-icon" class="normal use-default"></use><use xlink:href="#ic-icon" class="active use-default"></use><use xlink:href="#ic-icon" class="hover use-default"></use></svg></li><li tooltip-content="文字标注" class="tie-btn-text tui-image-editor-item normal"><svg class="svg_ic-menu"><use xlink:href="#ic-text" class="normal use-default"></use><use xlink:href="#ic-text" class="active use-default"></use><use xlink:href="#ic-text" class="hover use-default"></use></svg></li><li tooltip-content="滤镜" class="tie-btn-filter tui-image-editor-item normal"><svg class="svg_ic-menu"><use xlink:href="#ic-filter" class="normal use-default"></use><use xlink:href="#ic-filter" class="active use-default"></use><use xlink:href="#ic-filter" class="hover use-default"></use></svg></li></ul>
+
+        <div class="tui-image-editor-controls-buttons">
+            <div style="background-color: #fff;border: 1px solid #ddd;color: #222;font-family: NotoSans, sans-serif;font-size: 12px;display: none">
+                Load
+                <input type="file" class="tui-image-editor-load-btn">
+            </div>
+            <button class="tui-image-editor-download-btn" style="background-color: #fdba3b;border: 1px solid #fdba3b;color: #fff;font-family: NotoSans, sans-serif;font-size: 12px;display: none">
+                Download
+            </button>
+        </div>
+    </div>
+
+    <div class="tui-image-editor-main-container" style="background-image: none;background-color: #f3f4f6;border: 1px solid #333">
+        <div class="tui-image-editor-header" style="background-image: none;background-color: #f3f4f6;border: 0px">
+            <div class="tui-image-editor-header-logo">
+                <img src="">
+            </div>
+            <div class="tui-image-editor-header-buttons">
+                <div style="background-color: #fff;border: 1px solid #ddd;color: #222;font-family: NotoSans, sans-serif;font-size: 12px;display: none">
+                    Load
+                    <input type="file" class="tui-image-editor-load-btn">
+                </div>
+                <button class="tui-image-editor-download-btn" style="background-color: #fdba3b;border: 1px solid #fdba3b;color: #fff;font-family: NotoSans, sans-serif;font-size: 12px;display: none">
+                    Download
+                </button>
+            </div>
+        </div>
+        <div class="tui-image-editor-main" style="top: 0px;">
+            <div class="tui-image-editor-submenu">
+                <div class="tui-image-editor-submenu-style" style="background-color: #1e1e1e"></div>
+            <div class="tui-image-editor-menu-resize">
+    <ul class="tui-image-editor-submenu-item">
+        <li class="tui-image-editor-submenu-align">
+            <div class="tui-image-editor-range-wrap tui-image-editor-newline">
+                <label class="range">宽度&nbsp;</label>
+                <div class="tie-width-range tui-image-editor-range"><div class="tui-image-editor-virtual-range-bar"><div class="tui-image-editor-virtual-range-subbar" style="right: 100.521px;"></div><div class="tui-image-editor-virtual-range-pointer" style="left: 23.4793px;"></div></div></div>
+                <input class="tie-width-range-value tui-image-editor-range-value" value="0"> <label>px</label>
+                <div class="tui-image-editor-partition tui-image-editor-newline"></div>
+                <label class="range">高度</label>
+                <div class="tie-height-range tui-image-editor-range"><div class="tui-image-editor-virtual-range-bar"><div class="tui-image-editor-virtual-range-subbar" style="right: 100.521px;"></div><div class="tui-image-editor-virtual-range-pointer" style="left: 23.4793px;"></div></div></div>
+                <input class="tie-height-range-value tui-image-editor-range-value" value="0"> <label>px</label>
+            </div>
+        </li>
+        <li class="tui-image-editor-partition tui-image-editor-newline"></li>
+        <li class="tui-image-editor-partition only-left-right">
+            <div></div>
+        </li>
+        <li class="tui-image-editor-submenu-align">
+            <div class="tui-image-editor-checkbox-wrap">
+                <div class="tui-image-editor-checkbox">
+                    <label>
+                        <input type="checkbox" class="tie-lock-aspect-ratio">
+                        <span>锁定宽高比例</span>
+                    </label>
+                </div>
+            </div>
+        </li>
+        <li class="tui-image-editor-partition tui-image-editor-newline"></li>
+        <li class="tui-image-editor-partition only-left-right">
+            <div></div>
+        </li>
+        <li class="tui-image-editor-partition tui-image-editor-newline"></li>
+        <li class="tie-resize-button action">
+            <div class="tui-image-editor-button apply">
+                <svg class="svg_ic-menu"><use xlink:href="#ic-apply" class="normal use-default"></use><use xlink:href="#ic-apply" class="active use-default"></use></svg>
+                <label>
+                    应用
+                </label>
+            </div>
+            <div class="tui-image-editor-button cancel">
+                <svg class="svg_ic-menu"><use xlink:href="#ic-cancel" class="normal use-default"></use><use xlink:href="#ic-cancel" class="active use-default"></use></svg>
+                <label>
+                    取消
+                </label>
+            </div>
+        </li>
+    </ul>
+</div><div class="tui-image-editor-menu-crop">
+    <ul class="tui-image-editor-submenu-item">
+        <li class="tie-crop-preset-button">
+            <div class="tui-image-editor-button preset preset-none active">
+                <div>
+                    <svg class="svg_ic-submenu"><use xlink:href="#ic-shape-rectangle" class="normal use-default"></use><use xlink:href="#ic-shape-rectangle" class="active use-default"></use></svg>
+                </div>
+                <label> 自定义 </label>
+            </div>
+            <div class="tui-image-editor-button preset preset-square">
+                <div>
+                    <svg class="svg_ic-submenu"><use xlink:href="#ic-crop" class="normal use-default"></use><use xlink:href="#ic-crop" class="active use-default"></use></svg>
+                </div>
+                <label> 正方形 </label>
+            </div>
+            <div class="tui-image-editor-button preset preset-3-2">
+                <div>
+                    <svg class="svg_ic-submenu"><use xlink:href="#ic-crop" class="normal use-default"></use><use xlink:href="#ic-crop" class="active use-default"></use></svg>
+                </div>
+                <label> 3:2 </label>
+            </div>
+            <div class="tui-image-editor-button preset preset-4-3">
+                <div>
+                    <svg class="svg_ic-submenu"><use xlink:href="#ic-crop" class="normal use-default"></use><use xlink:href="#ic-crop" class="active use-default"></use></svg>
+                </div>
+                <label> 4:3 </label>
+            </div>
+            <div class="tui-image-editor-button preset preset-5-4">
+                <div>
+                    <svg class="svg_ic-submenu"><use xlink:href="#ic-crop" class="normal use-default"></use><use xlink:href="#ic-crop" class="active use-default"></use></svg>
+                </div>
+                <label> 5:4 </label>
+            </div>
+            <div class="tui-image-editor-button preset preset-7-5">
+                <div>
+                    <svg class="svg_ic-submenu"><use xlink:href="#ic-crop" class="normal use-default"></use><use xlink:href="#ic-crop" class="active use-default"></use></svg>
+                </div>
+                <label> 7:5 </label>
+            </div>
+            <div class="tui-image-editor-button preset preset-16-9">
+                <div>
+                    <svg class="svg_ic-submenu"><use xlink:href="#ic-crop" class="normal use-default"></use><use xlink:href="#ic-crop" class="active use-default"></use></svg>
+                </div>
+                <label> 16:9 </label>
+            </div>
+        </li>
+        <li class="tui-image-editor-partition tui-image-editor-newline">
+        </li>
+        <li class="tui-image-editor-partition only-left-right">
+            <div></div>
+        </li>
+        <li class="tie-crop-button action">
+            <div class="tui-image-editor-button apply">
+                <svg class="svg_ic-menu"><use xlink:href="#ic-apply" class="normal use-default"></use><use xlink:href="#ic-apply" class="active use-default"></use></svg>
+                <label>
+                    应用
+                </label>
+            </div>
+            <div class="tui-image-editor-button cancel">
+                <svg class="svg_ic-menu"><use xlink:href="#ic-cancel" class="normal use-default"></use><use xlink:href="#ic-cancel" class="active use-default"></use></svg>
+                <label>
+                    取消
+                </label>
+            </div>
+        </li>
+    </ul>
+</div><div class="tui-image-editor-menu-rotate">
+    <ul class="tui-image-editor-submenu-item">
+        <li class="tie-rotate-button">
+            <div class="tui-image-editor-button clockwise">
+                <div>
+                    <svg class="svg_ic-submenu"><use xlink:href="#ic-rotate-clockwise" class="normal use-default"></use><use xlink:href="#ic-rotate-clockwise" class="active use-default"></use></svg>
+                </div>
+                <label> 30 </label>
+            </div>
+            <div class="tui-image-editor-button counterclockwise">
+                <div>
+                    <svg class="svg_ic-submenu"><use xlink:href="#ic-rotate-counterclockwise" class="normal use-default"></use><use xlink:href="#ic-rotate-counterclockwise" class="active use-default"></use></svg>
+                </div>
+                <label> -30 </label>
+            </div>
+        </li>
+        <li class="tui-image-editor-partition only-left-right">
+            <div></div>
+        </li>
+        <li class="tui-image-editor-newline tui-image-editor-range-wrap">
+            <label class="range">区间</label>
+            <div class="tie-rotate-range tui-image-editor-range"><div class="tui-image-editor-virtual-range-bar"><div class="tui-image-editor-virtual-range-subbar" style="right: 62px;"></div><div class="tui-image-editor-virtual-range-pointer" style="left: 62px;"></div></div></div>
+            <input class="tie-rotate-range-value tui-image-editor-range-value" value="0">
+        </li>
+    </ul>
+</div><div class="tui-image-editor-menu-draw">
+    <ul class="tui-image-editor-submenu-item">
+        <li class="tie-draw-line-select-button">
+            <div class="tui-image-editor-button free">
+                <div>
+                    <svg class="svg_ic-submenu"><use xlink:href="#ic-draw-free" class="normal use-default"></use><use xlink:href="#ic-draw-free" class="active use-default"></use></svg>
+                </div>
+                <label>
+                    曲线
+                </label>
+            </div>
+            <div class="tui-image-editor-button line">
+                <div>
+                    <svg class="svg_ic-submenu"><use xlink:href="#ic-draw-line" class="normal use-default"></use><use xlink:href="#ic-draw-line" class="active use-default"></use></svg>
+                </div>
+                <label>
+                    直线
+                </label>
+            </div>
+        </li>
+        <li class="tui-image-editor-partition">
+            <div></div>
+        </li>
+        <li>
+            <div class="tie-draw-color tui-image-editor-button" title="颜色"><div class="color-picker-control"><div class="color-picker"><div class="tui-colorpicker-container tui-view-1"><div class="tui-colorpicker-palette-container tui-view-2"><ul class="tui-colorpicker-clearfix">
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#000000;color:#000000" title="#000000" value="#000000"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#2a2a2a;color:#2a2a2a" title="#2a2a2a" value="#2a2a2a"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#545454;color:#545454" title="#545454" value="#545454"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#7e7e7e;color:#7e7e7e" title="#7e7e7e" value="#7e7e7e"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#a8a8a8;color:#a8a8a8" title="#a8a8a8" value="#a8a8a8"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#d2d2d2;color:#d2d2d2" title="#d2d2d2" value="#d2d2d2"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#ffffff;color:#ffffff" title="#ffffff" value="#ffffff"></li>
+
+<li><input class="tui-colorpicker-palette-button tui-colorpicker-color-transparent" type="button" title="" value=""></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#ff4040;color:#ff4040" title="#ff4040" value="#ff4040"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#ff6518;color:#ff6518" title="#ff6518" value="#ff6518"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#ffbb3b;color:#ffbb3b" title="#ffbb3b" value="#ffbb3b"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#03bd9e;color:#03bd9e" title="#03bd9e" value="#03bd9e"></li>
+
+<li><input class="tui-colorpicker-palette-button tui-colorpicker-selected" type="button" style="background-color:#00a9ff;color:#00a9ff" title="#00a9ff" value="#00a9ff"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#515ce6;color:#515ce6" title="#515ce6" value="#515ce6"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#9e5fff;color:#9e5fff" title="#9e5fff" value="#9e5fff"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#ff5583;color:#ff5583" title="#ff5583" value="#ff5583"></li>
+
+</ul>
+<div class="tui-colorpicker-clearfix" style="overflow:hidden">
+<input type="button" class="tui-colorpicker-palette-toggle-slider" value="Detail">
+<input type="text" class="tui-colorpicker-palette-hex" value="#00a9ff" maxlength="7">
+<span class="tui-colorpicker-palette-preview" style="background-color:#00a9ff;color:#00a9ff">#00a9ff</span>
+</div></div><div class="tui-colorpicker-slider-container tui-view-3" style="display: none;"><div class="tui-colorpicker-slider-left tui-colorpicker-slider-part"><svg class="tui-colorpicker-svg tui-colorpicker-svg-slider">
+<defs>
+<linearGradient id="tui-colorpicker-svg-fill-color-1" x1="0%" y1="0%" x2="100%" y2="0%">
+<stop offset="0%" stop-color="rgb(255,255,255)"></stop>
+<stop class="tui-colorpicker-slider-basecolor" offset="100%" stop-color="#00aaff"></stop>
+</linearGradient>
+<linearGradient id="tui-colorpicker-svn-fill-black-1" x1="0%" y1="0%" x2="0%" y2="100%">
+<stop offset="0%" style="stop-color:rgb(0,0,0);stop-opacity:0"></stop>
+<stop offset="100%" style="stop-color:rgb(0,0,0);stop-opacity:1"></stop>
+</linearGradient>
+</defs>
+<rect width="100%" height="100%" fill="url(#tui-colorpicker-svg-fill-color-1)"></rect>
+<rect width="100%" height="100%" fill="url(#tui-colorpicker-svn-fill-black-1)"></rect>
+<path transform="translate(105,-7)" class="tui-colorpicker-slider-handle" d="M0 7.5 L15 7.5 M7.5 15 L7.5 0 M2 7 a5.5 5.5 0 1 1 0 1 Z" stroke="black" stroke-width="0.75" fill="none"></path>
+</svg></div>
+<div class="tui-colorpicker-slider-right tui-colorpicker-slider-part"><svg class="tui-colorpicker-svg tui-colorpicker-svg-huebar">
+<defs>
+<linearGradient id="g-1" x1="0%" y1="0%" x2="0%" y2="100%">
+<stop offset="0%" stop-color="rgb(255,0,0)"></stop>
+<stop offset="16.666%" stop-color="rgb(255,255,0)"></stop>
+<stop offset="33.333%" stop-color="rgb(0,255,0)"></stop>
+<stop offset="50%" stop-color="rgb(0,255,255)"></stop>
+<stop offset="66.666%" stop-color="rgb(0,0,255)"></stop>
+<stop offset="83.333%" stop-color="rgb(255,0,255)"></stop>
+<stop offset="100%" stop-color="rgb(255,0,0)"></stop>
+</linearGradient>
+</defs>
+<rect width="18px" height="100%" fill="url(#g-1)"></rect>
+<path transform="translate(-6,62.557376593794274)" class="tui-colorpicker-huebar-handle" d="M0 0 L4 4 L0 8 L0 0 Z" fill="black" stroke="none"></path>
+</svg></div></div></div></div><div class="triangle"></div></div><div class="color-picker-value" style="background-color: rgb(0, 169, 255);"></div><label>颜色</label></div>
+        </li>
+        <li class="tui-image-editor-partition only-left-right">
+            <div></div>
+        </li>
+        <li class="tui-image-editor-newline tui-image-editor-range-wrap">
+            <label class="range">区间</label>
+            <div class="tie-draw-range tui-image-editor-range"><div class="tui-image-editor-virtual-range-bar"><div class="tui-image-editor-virtual-range-subbar" style="right: 89.28px;"></div><div class="tui-image-editor-virtual-range-pointer" style="left: 34.72px;"></div></div></div>
+            <input class="tie-draw-range-value tui-image-editor-range-value" value="0">
+        </li>
+    </ul>
+</div><div class="tui-image-editor-menu-shape">
+    <ul class="tui-image-editor-submenu-item">
+        <li class="tie-shape-button">
+            <div class="tui-image-editor-button rect">
+                <div>
+                    <svg class="svg_ic-submenu"><use xlink:href="#ic-shape-rectangle" class="normal use-default"></use><use xlink:href="#ic-shape-rectangle" class="active use-default"></use></svg>
+                </div>
+                <label> 矩形 </label>
+            </div>
+            <div class="tui-image-editor-button circle">
+                <div>
+                    <svg class="svg_ic-submenu"><use xlink:href="#ic-shape-circle" class="normal use-default"></use><use xlink:href="#ic-shape-circle" class="active use-default"></use></svg>
+                </div>
+                <label> 圆 </label>
+            </div>
+            <div class="tui-image-editor-button triangle">
+                <div>
+                    <svg class="svg_ic-submenu"><use xlink:href="#ic-shape-triangle" class="normal use-default"></use><use xlink:href="#ic-shape-triangle" class="active use-default"></use></svg>
+                </div>
+                <label> 三角 </label>
+            </div>
+        </li>
+        <li class="tui-image-editor-partition">
+            <div></div>
+        </li>
+        <li class="tie-shape-color-button">
+            <div class="tie-color-fill tui-image-editor-button" title="填充"><div class="color-picker-control"><div class="color-picker"><div class="tui-colorpicker-container tui-view-4"><div class="tui-colorpicker-palette-container tui-view-5"><ul class="tui-colorpicker-clearfix">
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#000000;color:#000000" title="#000000" value="#000000"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#2a2a2a;color:#2a2a2a" title="#2a2a2a" value="#2a2a2a"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#545454;color:#545454" title="#545454" value="#545454"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#7e7e7e;color:#7e7e7e" title="#7e7e7e" value="#7e7e7e"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#a8a8a8;color:#a8a8a8" title="#a8a8a8" value="#a8a8a8"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#d2d2d2;color:#d2d2d2" title="#d2d2d2" value="#d2d2d2"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#ffffff;color:#ffffff" title="#ffffff" value="#ffffff"></li>
+
+<li><input class="tui-colorpicker-palette-button tui-colorpicker-selected tui-colorpicker-color-transparent" type="button" title="" value=""></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#ff4040;color:#ff4040" title="#ff4040" value="#ff4040"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#ff6518;color:#ff6518" title="#ff6518" value="#ff6518"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#ffbb3b;color:#ffbb3b" title="#ffbb3b" value="#ffbb3b"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#03bd9e;color:#03bd9e" title="#03bd9e" value="#03bd9e"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#00a9ff;color:#00a9ff" title="#00a9ff" value="#00a9ff"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#515ce6;color:#515ce6" title="#515ce6" value="#515ce6"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#9e5fff;color:#9e5fff" title="#9e5fff" value="#9e5fff"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#ff5583;color:#ff5583" title="#ff5583" value="#ff5583"></li>
+
+</ul>
+<div class="tui-colorpicker-clearfix" style="overflow:hidden">
+<input type="button" class="tui-colorpicker-palette-toggle-slider" value="Detail">
+<input type="text" class="tui-colorpicker-palette-hex" value="" maxlength="7">
+<span class="tui-colorpicker-palette-preview" style="background-color:;color:"></span>
+</div></div><div class="tui-colorpicker-slider-container tui-view-6" style="display: none;"></div></div></div><div class="triangle"></div></div><div class="color-picker-value transparent"></div><label>填充</label></div>
+            <div class="tie-color-stroke tui-image-editor-button" title="描边"><div class="color-picker-control"><div class="color-picker"><div class="tui-colorpicker-container tui-view-7"><div class="tui-colorpicker-palette-container tui-view-8"><ul class="tui-colorpicker-clearfix">
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#000000;color:#000000" title="#000000" value="#000000"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#2a2a2a;color:#2a2a2a" title="#2a2a2a" value="#2a2a2a"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#545454;color:#545454" title="#545454" value="#545454"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#7e7e7e;color:#7e7e7e" title="#7e7e7e" value="#7e7e7e"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#a8a8a8;color:#a8a8a8" title="#a8a8a8" value="#a8a8a8"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#d2d2d2;color:#d2d2d2" title="#d2d2d2" value="#d2d2d2"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#ffffff;color:#ffffff" title="#ffffff" value="#ffffff"></li>
+
+<li><input class="tui-colorpicker-palette-button tui-colorpicker-color-transparent" type="button" title="" value=""></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#ff4040;color:#ff4040" title="#ff4040" value="#ff4040"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#ff6518;color:#ff6518" title="#ff6518" value="#ff6518"></li>
+
+<li><input class="tui-colorpicker-palette-button tui-colorpicker-selected" type="button" style="background-color:#ffbb3b;color:#ffbb3b" title="#ffbb3b" value="#ffbb3b"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#03bd9e;color:#03bd9e" title="#03bd9e" value="#03bd9e"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#00a9ff;color:#00a9ff" title="#00a9ff" value="#00a9ff"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#515ce6;color:#515ce6" title="#515ce6" value="#515ce6"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#9e5fff;color:#9e5fff" title="#9e5fff" value="#9e5fff"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#ff5583;color:#ff5583" title="#ff5583" value="#ff5583"></li>
+
+</ul>
+<div class="tui-colorpicker-clearfix" style="overflow:hidden">
+<input type="button" class="tui-colorpicker-palette-toggle-slider" value="Detail">
+<input type="text" class="tui-colorpicker-palette-hex" value="#ffbb3b" maxlength="7">
+<span class="tui-colorpicker-palette-preview" style="background-color:#ffbb3b;color:#ffbb3b">#ffbb3b</span>
+</div></div><div class="tui-colorpicker-slider-container tui-view-9" style="display: none;"><div class="tui-colorpicker-slider-left tui-colorpicker-slider-part"><svg class="tui-colorpicker-svg tui-colorpicker-svg-slider">
+<defs>
+<linearGradient id="tui-colorpicker-svg-fill-color-3" x1="0%" y1="0%" x2="100%" y2="0%">
+<stop offset="0%" stop-color="rgb(255,255,255)"></stop>
+<stop class="tui-colorpicker-slider-basecolor" offset="100%" stop-color="#ffa600"></stop>
+</linearGradient>
+<linearGradient id="tui-colorpicker-svn-fill-black-3" x1="0%" y1="0%" x2="0%" y2="100%">
+<stop offset="0%" style="stop-color:rgb(0,0,0);stop-opacity:0"></stop>
+<stop offset="100%" style="stop-color:rgb(0,0,0);stop-opacity:1"></stop>
+</linearGradient>
+</defs>
+<rect width="100%" height="100%" fill="url(#tui-colorpicker-svg-fill-color-3)"></rect>
+<rect width="100%" height="100%" fill="url(#tui-colorpicker-svn-fill-black-3)"></rect>
+<path transform="translate(79.24,-7)" class="tui-colorpicker-slider-handle" d="M0 7.5 L15 7.5 M7.5 15 L7.5 0 M2 7 a5.5 5.5 0 1 1 0 1 Z" stroke="black" stroke-width="0.75" fill="none"></path>
+</svg></div>
+<div class="tui-colorpicker-slider-right tui-colorpicker-slider-part"><svg class="tui-colorpicker-svg tui-colorpicker-svg-huebar">
+<defs>
+<linearGradient id="g-3" x1="0%" y1="0%" x2="0%" y2="100%">
+<stop offset="0%" stop-color="rgb(255,0,0)"></stop>
+<stop offset="16.666%" stop-color="rgb(255,255,0)"></stop>
+<stop offset="33.333%" stop-color="rgb(0,255,0)"></stop>
+<stop offset="50%" stop-color="rgb(0,255,255)"></stop>
+<stop offset="66.666%" stop-color="rgb(0,0,255)"></stop>
+<stop offset="83.333%" stop-color="rgb(255,0,255)"></stop>
+<stop offset="100%" stop-color="rgb(255,0,0)"></stop>
+</linearGradient>
+</defs>
+<rect width="18px" height="100%" fill="url(#g-3)"></rect>
+<path transform="translate(-6,9.783688435789882)" class="tui-colorpicker-huebar-handle" d="M0 0 L4 4 L0 8 L0 0 Z" fill="black" stroke="none"></path>
+</svg></div></div></div></div><div class="triangle"></div></div><div class="color-picker-value" style="background-color: rgb(255, 187, 59);"></div><label>描边</label></div>
+        </li>
+        <li class="tui-image-editor-partition only-left-right">
+            <div></div>
+        </li>
+        <li class="tui-image-editor-newline tui-image-editor-range-wrap">
+            <label class="range">描边</label>
+            <div class="tie-stroke-range tui-image-editor-range"><div class="tui-image-editor-virtual-range-bar"><div class="tui-image-editor-virtual-range-subbar" style="right: 123.584px;"></div><div class="tui-image-editor-virtual-range-pointer" style="left: 0.416107px;"></div></div></div>
+            <input class="tie-stroke-range-value tui-image-editor-range-value" value="0">
+        </li>
+    </ul>
+</div><div class="tui-image-editor-menu-icon">
+    <ul class="tui-image-editor-submenu-item">
+        <li class="tie-icon-add-button">
+            <div class="tui-image-editor-button" data-icontype="icon-arrow">
+                <div>
+                    <svg class="svg_ic-submenu"><use xlink:href="#ic-icon-arrow" class="normal use-default"></use><use xlink:href="#ic-icon-arrow" class="active use-default"></use></svg>
+                </div>
+                <label>
+                    箭头
+                </label>
+            </div>
+            <div class="tui-image-editor-button" data-icontype="icon-arrow-2">
+                <div>
+                    <svg class="svg_ic-submenu"><use xlink:href="#ic-icon-arrow-2" class="normal use-default"></use><use xlink:href="#ic-icon-arrow-2" class="active use-default"></use></svg>
+                </div>
+                <label>
+                    箭头2
+                </label>
+            </div>
+            <div class="tui-image-editor-button" data-icontype="icon-arrow-3">
+                <div>
+                    <svg class="svg_ic-submenu"><use xlink:href="#ic-icon-arrow-3" class="normal use-default"></use><use xlink:href="#ic-icon-arrow-3" class="active use-default"></use></svg>
+                </div>
+                <label>
+                    箭头3
+                </label>
+            </div>
+            <div class="tui-image-editor-button" data-icontype="icon-star">
+                <div>
+                    <svg class="svg_ic-submenu"><use xlink:href="#ic-icon-star" class="normal use-default"></use><use xlink:href="#ic-icon-star" class="active use-default"></use></svg>
+                </div>
+                <label>
+                    星星1
+                </label>
+            </div>
+            <div class="tui-image-editor-button" data-icontype="icon-star-2">
+                <div>
+                    <svg class="svg_ic-submenu"><use xlink:href="#ic-icon-star-2" class="normal use-default"></use><use xlink:href="#ic-icon-star-2" class="active use-default"></use></svg>
+                </div>
+                <label>
+                    星星2
+                </label>
+            </div>
+
+            <div class="tui-image-editor-button" data-icontype="icon-polygon">
+                <div>
+                    <svg class="svg_ic-submenu"><use xlink:href="#ic-icon-polygon" class="normal use-default"></use><use xlink:href="#ic-icon-polygon" class="active use-default"></use></svg>
+                </div>
+                <label>
+                    多边形
+                </label>
+            </div>
+
+            <div class="tui-image-editor-button" data-icontype="icon-location">
+                <div>
+                    <svg class="svg_ic-submenu"><use xlink:href="#ic-icon-location" class="normal use-default"></use><use xlink:href="#ic-icon-location" class="active use-default"></use></svg>
+                </div>
+                <label>
+                    定位
+                </label>
+            </div>
+
+            <div class="tui-image-editor-button" data-icontype="icon-heart">
+                <div>
+                    <svg class="svg_ic-submenu"><use xlink:href="#ic-icon-heart" class="normal use-default"></use><use xlink:href="#ic-icon-heart" class="active use-default"></use></svg>
+                </div>
+                <label>
+                    心形
+                </label>
+            </div>
+
+            <div class="tui-image-editor-button" data-icontype="icon-bubble">
+                <div>
+                    <svg class="svg_ic-submenu"><use xlink:href="#ic-icon-bubble" class="normal use-default"></use><use xlink:href="#ic-icon-bubble" class="active use-default"></use></svg>
+                </div>
+                <label>
+                    气泡
+                </label>
+            </div>
+        </li>
+        <li class="tui-image-editor-partition">
+            <div></div>
+        </li>
+        <li class="tie-icon-add-button">
+            <div class="tui-image-editor-button" style="margin:0">
+                <div>
+                    <input type="file" accept="image/*" class="tie-icon-image-file">
+                    <svg class="svg_ic-submenu"><use xlink:href="#ic-icon-load" class="normal use-default"></use><use xlink:href="#ic-icon-load" class="active use-default"></use></svg>
+                </div>
+                <label>
+                    自定义图标
+                </label>
+            </div>
+        </li>
+        <li class="tui-image-editor-partition">
+            <div></div>
+        </li>
+        <li>
+            <div class="tie-icon-color tui-image-editor-button" title="颜色"><div class="color-picker-control"><div class="color-picker"><div class="tui-colorpicker-container tui-view-10"><div class="tui-colorpicker-palette-container tui-view-11"><ul class="tui-colorpicker-clearfix">
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#000000;color:#000000" title="#000000" value="#000000"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#2a2a2a;color:#2a2a2a" title="#2a2a2a" value="#2a2a2a"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#545454;color:#545454" title="#545454" value="#545454"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#7e7e7e;color:#7e7e7e" title="#7e7e7e" value="#7e7e7e"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#a8a8a8;color:#a8a8a8" title="#a8a8a8" value="#a8a8a8"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#d2d2d2;color:#d2d2d2" title="#d2d2d2" value="#d2d2d2"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#ffffff;color:#ffffff" title="#ffffff" value="#ffffff"></li>
+
+<li><input class="tui-colorpicker-palette-button tui-colorpicker-color-transparent" type="button" title="" value=""></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#ff4040;color:#ff4040" title="#ff4040" value="#ff4040"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#ff6518;color:#ff6518" title="#ff6518" value="#ff6518"></li>
+
+<li><input class="tui-colorpicker-palette-button tui-colorpicker-selected" type="button" style="background-color:#ffbb3b;color:#ffbb3b" title="#ffbb3b" value="#ffbb3b"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#03bd9e;color:#03bd9e" title="#03bd9e" value="#03bd9e"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#00a9ff;color:#00a9ff" title="#00a9ff" value="#00a9ff"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#515ce6;color:#515ce6" title="#515ce6" value="#515ce6"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#9e5fff;color:#9e5fff" title="#9e5fff" value="#9e5fff"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#ff5583;color:#ff5583" title="#ff5583" value="#ff5583"></li>
+
+</ul>
+<div class="tui-colorpicker-clearfix" style="overflow:hidden">
+<input type="button" class="tui-colorpicker-palette-toggle-slider" value="Detail">
+<input type="text" class="tui-colorpicker-palette-hex" value="#ffbb3b" maxlength="7">
+<span class="tui-colorpicker-palette-preview" style="background-color:#ffbb3b;color:#ffbb3b">#ffbb3b</span>
+</div></div><div class="tui-colorpicker-slider-container tui-view-12" style="display: none;"><div class="tui-colorpicker-slider-left tui-colorpicker-slider-part"><svg class="tui-colorpicker-svg tui-colorpicker-svg-slider">
+<defs>
+<linearGradient id="tui-colorpicker-svg-fill-color-4" x1="0%" y1="0%" x2="100%" y2="0%">
+<stop offset="0%" stop-color="rgb(255,255,255)"></stop>
+<stop class="tui-colorpicker-slider-basecolor" offset="100%" stop-color="#ffa600"></stop>
+</linearGradient>
+<linearGradient id="tui-colorpicker-svn-fill-black-4" x1="0%" y1="0%" x2="0%" y2="100%">
+<stop offset="0%" style="stop-color:rgb(0,0,0);stop-opacity:0"></stop>
+<stop offset="100%" style="stop-color:rgb(0,0,0);stop-opacity:1"></stop>
+</linearGradient>
+</defs>
+<rect width="100%" height="100%" fill="url(#tui-colorpicker-svg-fill-color-4)"></rect>
+<rect width="100%" height="100%" fill="url(#tui-colorpicker-svn-fill-black-4)"></rect>
+<path transform="translate(79.24,-7)" class="tui-colorpicker-slider-handle" d="M0 7.5 L15 7.5 M7.5 15 L7.5 0 M2 7 a5.5 5.5 0 1 1 0 1 Z" stroke="black" stroke-width="0.75" fill="none"></path>
+</svg></div>
+<div class="tui-colorpicker-slider-right tui-colorpicker-slider-part"><svg class="tui-colorpicker-svg tui-colorpicker-svg-huebar">
+<defs>
+<linearGradient id="g-4" x1="0%" y1="0%" x2="0%" y2="100%">
+<stop offset="0%" stop-color="rgb(255,0,0)"></stop>
+<stop offset="16.666%" stop-color="rgb(255,255,0)"></stop>
+<stop offset="33.333%" stop-color="rgb(0,255,0)"></stop>
+<stop offset="50%" stop-color="rgb(0,255,255)"></stop>
+<stop offset="66.666%" stop-color="rgb(0,0,255)"></stop>
+<stop offset="83.333%" stop-color="rgb(255,0,255)"></stop>
+<stop offset="100%" stop-color="rgb(255,0,0)"></stop>
+</linearGradient>
+</defs>
+<rect width="18px" height="100%" fill="url(#g-4)"></rect>
+<path transform="translate(-6,9.783688435789882)" class="tui-colorpicker-huebar-handle" d="M0 0 L4 4 L0 8 L0 0 Z" fill="black" stroke="none"></path>
+</svg></div></div></div></div><div class="triangle"></div></div><div class="color-picker-value" style="background-color: rgb(255, 187, 59);"></div><label>颜色</label></div>
+        </li>
+    </ul>
+</div><div class="tui-image-editor-menu-text">
+    <ul class="tui-image-editor-submenu-item">
+        <li class="tie-text-effect-button">
+            <div class="tui-image-editor-button bold">
+                <div>
+                    <svg class="svg_ic-submenu"><use xlink:href="#ic-text-bold" class="normal use-default"></use><use xlink:href="#ic-text-bold" class="active use-default"></use></svg>
+                </div>
+                <label> 加粗 </label>
+            </div>
+            <div class="tui-image-editor-button italic">
+                <div>
+                    <svg class="svg_ic-submenu"><use xlink:href="#ic-text-italic" class="normal use-default"></use><use xlink:href="#ic-text-italic" class="active use-default"></use></svg>
+                </div>
+                <label> 斜体 </label>
+            </div>
+            <div class="tui-image-editor-button underline">
+                <div>
+                    <svg class="svg_ic-submenu"><use xlink:href="#ic-text-underline" class="normal use-default"></use><use xlink:href="#ic-text-underline" class="active use-default"></use></svg>
+                </div>
+                <label> 下划线 </label>
+            </div>
+        </li>
+        <li class="tui-image-editor-partition">
+            <div></div>
+        </li>
+        <li class="tie-text-align-button">
+            <div class="tui-image-editor-button left">
+                <div>
+                    <svg class="svg_ic-submenu"><use xlink:href="#ic-text-align-left" class="normal use-default"></use><use xlink:href="#ic-text-align-left" class="active use-default"></use></svg>
+                </div>
+                <label> 左对齐 </label>
+            </div>
+            <div class="tui-image-editor-button center">
+                <div>
+                    <svg class="svg_ic-submenu"><use xlink:href="#ic-text-align-center" class="normal use-default"></use><use xlink:href="#ic-text-align-center" class="active use-default"></use></svg>
+                </div>
+                <label> 居中 </label>
+            </div>
+            <div class="tui-image-editor-button right">
+                <div>
+                    <svg class="svg_ic-submenu"><use xlink:href="#ic-text-align-right" class="normal use-default"></use><use xlink:href="#ic-text-align-right" class="active use-default"></use></svg>
+                </div>
+                <label> 右对齐 </label>
+            </div>
+        </li>
+        <li class="tui-image-editor-partition">
+            <div></div>
+        </li>
+        <li>
+            <div class="tie-text-color tui-image-editor-button" title="颜色"><div class="color-picker-control"><div class="color-picker"><div class="tui-colorpicker-container tui-view-13"><div class="tui-colorpicker-palette-container tui-view-14"><ul class="tui-colorpicker-clearfix">
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#000000;color:#000000" title="#000000" value="#000000"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#2a2a2a;color:#2a2a2a" title="#2a2a2a" value="#2a2a2a"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#545454;color:#545454" title="#545454" value="#545454"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#7e7e7e;color:#7e7e7e" title="#7e7e7e" value="#7e7e7e"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#a8a8a8;color:#a8a8a8" title="#a8a8a8" value="#a8a8a8"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#d2d2d2;color:#d2d2d2" title="#d2d2d2" value="#d2d2d2"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#ffffff;color:#ffffff" title="#ffffff" value="#ffffff"></li>
+
+<li><input class="tui-colorpicker-palette-button tui-colorpicker-color-transparent" type="button" title="" value=""></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#ff4040;color:#ff4040" title="#ff4040" value="#ff4040"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#ff6518;color:#ff6518" title="#ff6518" value="#ff6518"></li>
+
+<li><input class="tui-colorpicker-palette-button tui-colorpicker-selected" type="button" style="background-color:#ffbb3b;color:#ffbb3b" title="#ffbb3b" value="#ffbb3b"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#03bd9e;color:#03bd9e" title="#03bd9e" value="#03bd9e"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#00a9ff;color:#00a9ff" title="#00a9ff" value="#00a9ff"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#515ce6;color:#515ce6" title="#515ce6" value="#515ce6"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#9e5fff;color:#9e5fff" title="#9e5fff" value="#9e5fff"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#ff5583;color:#ff5583" title="#ff5583" value="#ff5583"></li>
+
+</ul>
+<div class="tui-colorpicker-clearfix" style="overflow:hidden">
+<input type="button" class="tui-colorpicker-palette-toggle-slider" value="Detail">
+<input type="text" class="tui-colorpicker-palette-hex" value="#ffbb3b" maxlength="7">
+<span class="tui-colorpicker-palette-preview" style="background-color:#ffbb3b;color:#ffbb3b">#ffbb3b</span>
+</div></div><div class="tui-colorpicker-slider-container tui-view-15" style="display: none;"><div class="tui-colorpicker-slider-left tui-colorpicker-slider-part"><svg class="tui-colorpicker-svg tui-colorpicker-svg-slider">
+<defs>
+<linearGradient id="tui-colorpicker-svg-fill-color-5" x1="0%" y1="0%" x2="100%" y2="0%">
+<stop offset="0%" stop-color="rgb(255,255,255)"></stop>
+<stop class="tui-colorpicker-slider-basecolor" offset="100%" stop-color="#ffa600"></stop>
+</linearGradient>
+<linearGradient id="tui-colorpicker-svn-fill-black-5" x1="0%" y1="0%" x2="0%" y2="100%">
+<stop offset="0%" style="stop-color:rgb(0,0,0);stop-opacity:0"></stop>
+<stop offset="100%" style="stop-color:rgb(0,0,0);stop-opacity:1"></stop>
+</linearGradient>
+</defs>
+<rect width="100%" height="100%" fill="url(#tui-colorpicker-svg-fill-color-5)"></rect>
+<rect width="100%" height="100%" fill="url(#tui-colorpicker-svn-fill-black-5)"></rect>
+<path transform="translate(79.24,-7)" class="tui-colorpicker-slider-handle" d="M0 7.5 L15 7.5 M7.5 15 L7.5 0 M2 7 a5.5 5.5 0 1 1 0 1 Z" stroke="black" stroke-width="0.75" fill="none"></path>
+</svg></div>
+<div class="tui-colorpicker-slider-right tui-colorpicker-slider-part"><svg class="tui-colorpicker-svg tui-colorpicker-svg-huebar">
+<defs>
+<linearGradient id="g-5" x1="0%" y1="0%" x2="0%" y2="100%">
+<stop offset="0%" stop-color="rgb(255,0,0)"></stop>
+<stop offset="16.666%" stop-color="rgb(255,255,0)"></stop>
+<stop offset="33.333%" stop-color="rgb(0,255,0)"></stop>
+<stop offset="50%" stop-color="rgb(0,255,255)"></stop>
+<stop offset="66.666%" stop-color="rgb(0,0,255)"></stop>
+<stop offset="83.333%" stop-color="rgb(255,0,255)"></stop>
+<stop offset="100%" stop-color="rgb(255,0,0)"></stop>
+</linearGradient>
+</defs>
+<rect width="18px" height="100%" fill="url(#g-5)"></rect>
+<path transform="translate(-6,9.783688435789882)" class="tui-colorpicker-huebar-handle" d="M0 0 L4 4 L0 8 L0 0 Z" fill="black" stroke="none"></path>
+</svg></div></div></div></div><div class="triangle"></div></div><div class="color-picker-value" style="background-color: rgb(255, 187, 59);"></div><label>颜色</label></div>
+        </li>
+        <li class="tui-image-editor-partition only-left-right">
+            <div></div>
+        </li>
+        <li class="tui-image-editor-newline tui-image-editor-range-wrap">
+            <label class="range">字体大小</label>
+            <div class="tie-text-range tui-image-editor-range"><div class="tui-image-editor-virtual-range-bar"><div class="tui-image-editor-virtual-range-subbar" style="right: 68.8889px;"></div><div class="tui-image-editor-virtual-range-pointer" style="left: 55.1111px;"></div></div></div>
+            <input class="tie-text-range-value tui-image-editor-range-value" value="0">
+        </li>
+    </ul>
+</div><div class="tui-image-editor-menu-filter">
+    <ul class="tui-image-editor-submenu-item">
+        <li class="tui-image-editor-submenu-align">
+            <div class="tui-image-editor-checkbox-wrap fixed-width">
+                <div class="tui-image-editor-checkbox">
+                    <label>
+                        <input type="checkbox" class="tie-grayscale">
+                        <span>灰度</span>
+                    </label>
+                </div>
+                <div class="tui-image-editor-checkbox">
+                    <label>
+                        <input type="checkbox" class="tie-invert">
+                        <span>负片</span>
+                    </label>
+                </div>
+                <div class="tui-image-editor-checkbox">
+                    <label>
+                        <input type="checkbox" class="tie-sepia">
+                        <span>棕色</span>
+                    </label>
+                </div>
+                <div class="tui-image-editor-checkbox">
+                    <label>
+                        <input type="checkbox" class="tie-vintage">
+                        <span>棕色2</span>
+                    </label>
+                </div>
+                <div class="tui-image-editor-checkbox">
+                    <label>
+                        <input type="checkbox" class="tie-blur">
+                        <span>模糊</span>
+                    </label>
+                </div>
+                <div class="tui-image-editor-checkbox">
+                    <label>
+                        <input type="checkbox" class="tie-sharpen">
+                        <span>锐化</span>
+                    </label>
+                </div>
+                <div class="tui-image-editor-checkbox">
+                    <label>
+                        <input type="checkbox" class="tie-emboss">
+                        <span>浮雕</span>
+                    </label>
+                </div>
+            </div>
+        </li>
+        <li class="tui-image-editor-partition">
+            <div></div>
+        </li>
+        <li class="tui-image-editor-submenu-align">
+            <div class="tui-image-editor-checkbox-group tui-image-editor-disabled" style="margin-bottom: 7px;">
+                <div class="tui-image-editor-checkbox-wrap">
+                    <div class="tui-image-editor-checkbox">
+                        <label>
+                            <input type="checkbox" class="tie-remove-white">
+                            <span>除去白色</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="tui-image-editor-newline tui-image-editor-range-wrap short">
+                    <label>距离</label>
+                    <div class="tie-removewhite-distance-range tui-image-editor-range"><div class="tui-image-editor-virtual-range-bar"><div class="tui-image-editor-virtual-range-subbar" style="right: 70.4px;"></div><div class="tui-image-editor-virtual-range-pointer" style="left: 17.6px;"></div></div></div>
+                </div>
+            </div>
+            <div class="tui-image-editor-checkbox-group tui-image-editor-disabled">
+                <div class="tui-image-editor-checkbox">
+                    <label>
+                        <input type="checkbox" class="tie-brightness">
+                        <span>亮度</span>
+                    </label>
+                </div>
+                <div class="tui-image-editor-range-wrap short">
+                    <div class="tie-brightness-range tui-image-editor-range"><div class="tui-image-editor-virtual-range-bar"><div class="tui-image-editor-virtual-range-subbar" style="right: 44px;"></div><div class="tui-image-editor-virtual-range-pointer" style="left: 44px;"></div></div></div>
+                </div>
+            </div>
+            <div class="tui-image-editor-checkbox-group tui-image-editor-disabled">
+                <div class="tui-image-editor-checkbox">
+                    <label>
+                        <input type="checkbox" class="tie-noise">
+                        <span>噪音</span>
+                    </label>
+                </div>
+                <div class="tui-image-editor-range-wrap short">
+                    <div class="tie-noise-range tui-image-editor-range"><div class="tui-image-editor-virtual-range-bar"><div class="tui-image-editor-virtual-range-subbar" style="right: 79.2px;"></div><div class="tui-image-editor-virtual-range-pointer" style="left: 8.8px;"></div></div></div>
+                </div>
+            </div>
+        </li>
+        <li class="tui-image-editor-partition only-left-right">
+            <div></div>
+        </li>
+        <li class="tui-image-editor-submenu-align">
+            <div class="tui-image-editor-checkbox-group tui-image-editor-disabled">
+                <div class="tui-image-editor-checkbox">
+                    <label>
+                        <input type="checkbox" class="tie-pixelate">
+                        <span>像素化</span>
+                    </label>
+                </div>
+                <div class="tui-image-editor-range-wrap short">
+                    <div class="tie-pixelate-range tui-image-editor-range"><div class="tui-image-editor-virtual-range-bar"><div class="tui-image-editor-virtual-range-subbar" style="right: 78.2222px;"></div><div class="tui-image-editor-virtual-range-pointer" style="left: 9.77778px;"></div></div></div>
+                </div>
+            </div>
+            <div class="tui-image-editor-checkbox-group tui-image-editor-disabled">
+                <div class="tui-image-editor-newline tui-image-editor-checkbox-wrap">
+                    <div class="tui-image-editor-checkbox">
+                        <label>
+                            <input type="checkbox" class="tie-color-filter">
+                            <span>彩色滤镜</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="tui-image-editor-newline tui-image-editor-range-wrap short">
+                    <label>阈值</label>
+                    <div class="tie-colorfilter-threshold-range tui-image-editor-range"><div class="tui-image-editor-virtual-range-bar"><div class="tui-image-editor-virtual-range-subbar" style="right: 70.4px;"></div><div class="tui-image-editor-virtual-range-pointer" style="left: 17.6px;"></div></div></div>
+                </div>
+            </div>
+        </li>
+        <li class="tui-image-editor-partition">
+            <div></div>
+        </li>
+        <li>
+            <div class="filter-color-item">
+                <div class="tie-filter-tint-color tui-image-editor-button" title="色调"><div class="color-picker-control" style="height: 130px;"><div class="color-picker"><div class="tui-colorpicker-container tui-view-16"><div class="tui-colorpicker-palette-container tui-view-17"><ul class="tui-colorpicker-clearfix">
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#000000;color:#000000" title="#000000" value="#000000"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#2a2a2a;color:#2a2a2a" title="#2a2a2a" value="#2a2a2a"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#545454;color:#545454" title="#545454" value="#545454"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#7e7e7e;color:#7e7e7e" title="#7e7e7e" value="#7e7e7e"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#a8a8a8;color:#a8a8a8" title="#a8a8a8" value="#a8a8a8"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#d2d2d2;color:#d2d2d2" title="#d2d2d2" value="#d2d2d2"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#ffffff;color:#ffffff" title="#ffffff" value="#ffffff"></li>
+
+<li><input class="tui-colorpicker-palette-button tui-colorpicker-color-transparent" type="button" title="" value=""></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#ff4040;color:#ff4040" title="#ff4040" value="#ff4040"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#ff6518;color:#ff6518" title="#ff6518" value="#ff6518"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#ffbb3b;color:#ffbb3b" title="#ffbb3b" value="#ffbb3b"></li>
+
+<li><input class="tui-colorpicker-palette-button tui-colorpicker-selected" type="button" style="background-color:#03bd9e;color:#03bd9e" title="#03bd9e" value="#03bd9e"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#00a9ff;color:#00a9ff" title="#00a9ff" value="#00a9ff"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#515ce6;color:#515ce6" title="#515ce6" value="#515ce6"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#9e5fff;color:#9e5fff" title="#9e5fff" value="#9e5fff"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#ff5583;color:#ff5583" title="#ff5583" value="#ff5583"></li>
+
+</ul>
+<div class="tui-colorpicker-clearfix" style="overflow:hidden">
+<input type="button" class="tui-colorpicker-palette-toggle-slider" value="Detail">
+<input type="text" class="tui-colorpicker-palette-hex" value="#03bd9e" maxlength="7">
+<span class="tui-colorpicker-palette-preview" style="background-color:#03bd9e;color:#03bd9e">#03bd9e</span>
+</div></div><div class="tui-colorpicker-slider-container tui-view-18" style="display: none;"><div class="tui-colorpicker-slider-left tui-colorpicker-slider-part"><svg class="tui-colorpicker-svg tui-colorpicker-svg-slider">
+<defs>
+<linearGradient id="tui-colorpicker-svg-fill-color-6" x1="0%" y1="0%" x2="100%" y2="0%">
+<stop offset="0%" stop-color="rgb(255,255,255)"></stop>
+<stop class="tui-colorpicker-slider-basecolor" offset="100%" stop-color="#00ffd5"></stop>
+</linearGradient>
+<linearGradient id="tui-colorpicker-svn-fill-black-6" x1="0%" y1="0%" x2="0%" y2="100%">
+<stop offset="0%" style="stop-color:rgb(0,0,0);stop-opacity:0"></stop>
+<stop offset="100%" style="stop-color:rgb(0,0,0);stop-opacity:1"></stop>
+</linearGradient>
+</defs>
+<rect width="100%" height="100%" fill="url(#tui-colorpicker-svg-fill-color-6)"></rect>
+<rect width="100%" height="100%" fill="url(#tui-colorpicker-svn-fill-black-6)"></rect>
+<path transform="translate(102.76,22.120000000000005)" class="tui-colorpicker-slider-handle" d="M0 7.5 L15 7.5 M7.5 15 L7.5 0 M2 7 a5.5 5.5 0 1 1 0 1 Z" stroke="black" stroke-width="0.75" fill="none"></path>
+</svg></div>
+<div class="tui-colorpicker-slider-right tui-colorpicker-slider-part"><svg class="tui-colorpicker-svg tui-colorpicker-svg-huebar">
+<defs>
+<linearGradient id="g-6" x1="0%" y1="0%" x2="0%" y2="100%">
+<stop offset="0%" stop-color="rgb(255,0,0)"></stop>
+<stop offset="16.666%" stop-color="rgb(255,255,0)"></stop>
+<stop offset="33.333%" stop-color="rgb(0,255,0)"></stop>
+<stop offset="50%" stop-color="rgb(0,255,255)"></stop>
+<stop offset="66.666%" stop-color="rgb(0,0,255)"></stop>
+<stop offset="83.333%" stop-color="rgb(255,0,255)"></stop>
+<stop offset="100%" stop-color="rgb(255,0,0)"></stop>
+</linearGradient>
+</defs>
+<rect width="18px" height="100%" fill="url(#g-6)"></rect>
+<path transform="translate(-6,52.723770104725126)" class="tui-colorpicker-huebar-handle" d="M0 0 L4 4 L0 8 L0 0 Z" fill="black" stroke="none"></path>
+</svg></div></div></div></div><div class="triangle"></div><div><label>Opacity</label><div id="tie-filter-tint-opacity" class="tui-image-editor-range"><div class="tui-image-editor-virtual-range-bar"><div class="tui-image-editor-virtual-range-subbar" style="right: 37.2px;"></div><div class="tui-image-editor-virtual-range-pointer" style="left: 86.8px;"></div></div></div></div></div><div class="color-picker-value" style="background-color: rgb(3, 189, 158);"></div><label>色调</label></div>
+                <div class="tui-image-editor-checkbox">
+                    <label>
+                        <input type="checkbox" class="tie-tint">
+                        <span></span>
+                    </label>
+                </div>
+            </div>
+            <div class="filter-color-item">
+                <div class="tie-filter-multiply-color tui-image-editor-button" title="正片叠底"><div class="color-picker-control"><div class="color-picker"><div class="tui-colorpicker-container tui-view-19"><div class="tui-colorpicker-palette-container tui-view-20"><ul class="tui-colorpicker-clearfix">
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#000000;color:#000000" title="#000000" value="#000000"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#2a2a2a;color:#2a2a2a" title="#2a2a2a" value="#2a2a2a"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#545454;color:#545454" title="#545454" value="#545454"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#7e7e7e;color:#7e7e7e" title="#7e7e7e" value="#7e7e7e"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#a8a8a8;color:#a8a8a8" title="#a8a8a8" value="#a8a8a8"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#d2d2d2;color:#d2d2d2" title="#d2d2d2" value="#d2d2d2"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#ffffff;color:#ffffff" title="#ffffff" value="#ffffff"></li>
+
+<li><input class="tui-colorpicker-palette-button tui-colorpicker-color-transparent" type="button" title="" value=""></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#ff4040;color:#ff4040" title="#ff4040" value="#ff4040"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#ff6518;color:#ff6518" title="#ff6518" value="#ff6518"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#ffbb3b;color:#ffbb3b" title="#ffbb3b" value="#ffbb3b"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#03bd9e;color:#03bd9e" title="#03bd9e" value="#03bd9e"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#00a9ff;color:#00a9ff" title="#00a9ff" value="#00a9ff"></li>
+
+<li><input class="tui-colorpicker-palette-button tui-colorpicker-selected" type="button" style="background-color:#515ce6;color:#515ce6" title="#515ce6" value="#515ce6"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#9e5fff;color:#9e5fff" title="#9e5fff" value="#9e5fff"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#ff5583;color:#ff5583" title="#ff5583" value="#ff5583"></li>
+
+</ul>
+<div class="tui-colorpicker-clearfix" style="overflow:hidden">
+<input type="button" class="tui-colorpicker-palette-toggle-slider" value="Detail">
+<input type="text" class="tui-colorpicker-palette-hex" value="#515ce6" maxlength="7">
+<span class="tui-colorpicker-palette-preview" style="background-color:#515ce6;color:#515ce6">#515ce6</span>
+</div></div><div class="tui-colorpicker-slider-container tui-view-21" style="display: none;"><div class="tui-colorpicker-slider-left tui-colorpicker-slider-part"><svg class="tui-colorpicker-svg tui-colorpicker-svg-slider">
+<defs>
+<linearGradient id="tui-colorpicker-svg-fill-color-7" x1="0%" y1="0%" x2="100%" y2="0%">
+<stop offset="0%" stop-color="rgb(255,255,255)"></stop>
+<stop class="tui-colorpicker-slider-basecolor" offset="100%" stop-color="#0011ff"></stop>
+</linearGradient>
+<linearGradient id="tui-colorpicker-svn-fill-black-7" x1="0%" y1="0%" x2="0%" y2="100%">
+<stop offset="0%" style="stop-color:rgb(0,0,0);stop-opacity:0"></stop>
+<stop offset="100%" style="stop-color:rgb(0,0,0);stop-opacity:1"></stop>
+</linearGradient>
+</defs>
+<rect width="100%" height="100%" fill="url(#tui-colorpicker-svg-fill-color-7)"></rect>
+<rect width="100%" height="100%" fill="url(#tui-colorpicker-svn-fill-black-7)"></rect>
+<path transform="translate(65.8,4.200000000000003)" class="tui-colorpicker-slider-handle" d="M0 7.5 L15 7.5 M7.5 15 L7.5 0 M2 7 a5.5 5.5 0 1 1 0 1 Z" stroke="black" stroke-width="0.75" fill="none"></path>
+</svg></div>
+<div class="tui-colorpicker-slider-right tui-colorpicker-slider-part"><svg class="tui-colorpicker-svg tui-colorpicker-svg-huebar">
+<defs>
+<linearGradient id="g-7" x1="0%" y1="0%" x2="0%" y2="100%">
+<stop offset="0%" stop-color="rgb(255,0,0)"></stop>
+<stop offset="16.666%" stop-color="rgb(255,255,0)"></stop>
+<stop offset="33.333%" stop-color="rgb(0,255,0)"></stop>
+<stop offset="50%" stop-color="rgb(0,255,255)"></stop>
+<stop offset="66.666%" stop-color="rgb(0,0,255)"></stop>
+<stop offset="83.333%" stop-color="rgb(255,0,255)"></stop>
+<stop offset="100%" stop-color="rgb(255,0,0)"></stop>
+</linearGradient>
+</defs>
+<rect width="18px" height="100%" fill="url(#g-7)"></rect>
+<path transform="translate(-6,74.35770438067723)" class="tui-colorpicker-huebar-handle" d="M0 0 L4 4 L0 8 L0 0 Z" fill="black" stroke="none"></path>
+</svg></div></div></div></div><div class="triangle"></div></div><div class="color-picker-value" style="background-color: rgb(81, 92, 230);"></div><label>正片叠底</label></div>
+                <div class="tui-image-editor-checkbox">
+                    <label>
+                        <input type="checkbox" class="tie-multiply">
+                        <span></span>
+                    </label>
+                </div>
+            </div>
+            <div class="filter-color-item">
+                <div class="tie-filter-blend-color tui-image-editor-button" title="混合色"><div class="color-picker-control" style="height: 130px;"><div class="color-picker"><div class="tui-colorpicker-container tui-view-22"><div class="tui-colorpicker-palette-container tui-view-23"><ul class="tui-colorpicker-clearfix">
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#000000;color:#000000" title="#000000" value="#000000"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#2a2a2a;color:#2a2a2a" title="#2a2a2a" value="#2a2a2a"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#545454;color:#545454" title="#545454" value="#545454"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#7e7e7e;color:#7e7e7e" title="#7e7e7e" value="#7e7e7e"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#a8a8a8;color:#a8a8a8" title="#a8a8a8" value="#a8a8a8"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#d2d2d2;color:#d2d2d2" title="#d2d2d2" value="#d2d2d2"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#ffffff;color:#ffffff" title="#ffffff" value="#ffffff"></li>
+
+<li><input class="tui-colorpicker-palette-button tui-colorpicker-color-transparent" type="button" title="" value=""></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#ff4040;color:#ff4040" title="#ff4040" value="#ff4040"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#ff6518;color:#ff6518" title="#ff6518" value="#ff6518"></li>
+
+<li><input class="tui-colorpicker-palette-button tui-colorpicker-selected" type="button" style="background-color:#ffbb3b;color:#ffbb3b" title="#ffbb3b" value="#ffbb3b"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#03bd9e;color:#03bd9e" title="#03bd9e" value="#03bd9e"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#00a9ff;color:#00a9ff" title="#00a9ff" value="#00a9ff"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#515ce6;color:#515ce6" title="#515ce6" value="#515ce6"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#9e5fff;color:#9e5fff" title="#9e5fff" value="#9e5fff"></li>
+
+<li><input class="tui-colorpicker-palette-button" type="button" style="background-color:#ff5583;color:#ff5583" title="#ff5583" value="#ff5583"></li>
+
+</ul>
+<div class="tui-colorpicker-clearfix" style="overflow:hidden">
+<input type="button" class="tui-colorpicker-palette-toggle-slider" value="Detail">
+<input type="text" class="tui-colorpicker-palette-hex" value="#ffbb3b" maxlength="7">
+<span class="tui-colorpicker-palette-preview" style="background-color:#ffbb3b;color:#ffbb3b">#ffbb3b</span>
+</div></div><div class="tui-colorpicker-slider-container tui-view-24" style="display: none;"><div class="tui-colorpicker-slider-left tui-colorpicker-slider-part"><svg class="tui-colorpicker-svg tui-colorpicker-svg-slider">
+<defs>
+<linearGradient id="tui-colorpicker-svg-fill-color-8" x1="0%" y1="0%" x2="100%" y2="0%">
+<stop offset="0%" stop-color="rgb(255,255,255)"></stop>
+<stop class="tui-colorpicker-slider-basecolor" offset="100%" stop-color="#ffa600"></stop>
+</linearGradient>
+<linearGradient id="tui-colorpicker-svn-fill-black-8" x1="0%" y1="0%" x2="0%" y2="100%">
+<stop offset="0%" style="stop-color:rgb(0,0,0);stop-opacity:0"></stop>
+<stop offset="100%" style="stop-color:rgb(0,0,0);stop-opacity:1"></stop>
+</linearGradient>
+</defs>
+<rect width="100%" height="100%" fill="url(#tui-colorpicker-svg-fill-color-8)"></rect>
+<rect width="100%" height="100%" fill="url(#tui-colorpicker-svn-fill-black-8)"></rect>
+<path transform="translate(79.24,-7)" class="tui-colorpicker-slider-handle" d="M0 7.5 L15 7.5 M7.5 15 L7.5 0 M2 7 a5.5 5.5 0 1 1 0 1 Z" stroke="black" stroke-width="0.75" fill="none"></path>
+</svg></div>
+<div class="tui-colorpicker-slider-right tui-colorpicker-slider-part"><svg class="tui-colorpicker-svg tui-colorpicker-svg-huebar">
+<defs>
+<linearGradient id="g-8" x1="0%" y1="0%" x2="0%" y2="100%">
+<stop offset="0%" stop-color="rgb(255,0,0)"></stop>
+<stop offset="16.666%" stop-color="rgb(255,255,0)"></stop>
+<stop offset="33.333%" stop-color="rgb(0,255,0)"></stop>
+<stop offset="50%" stop-color="rgb(0,255,255)"></stop>
+<stop offset="66.666%" stop-color="rgb(0,0,255)"></stop>
+<stop offset="83.333%" stop-color="rgb(255,0,255)"></stop>
+<stop offset="100%" stop-color="rgb(255,0,0)"></stop>
+</linearGradient>
+</defs>
+<rect width="18px" height="100%" fill="url(#g-8)"></rect>
+<path transform="translate(-6,9.783688435789882)" class="tui-colorpicker-huebar-handle" d="M0 0 L4 4 L0 8 L0 0 Z" fill="black" stroke="none"></path>
+</svg></div></div></div></div><div class="triangle"></div><div class="tui-image-editor-selectlist-wrap"><select><option value="add">Add</option><option value="diff">Diff</option><option value="subtract">Subtract</option><option value="multiply">Multiply</option><option value="screen">Screen</option><option value="lighten">Lighten</option><option value="darken">Darken</option></select><ul class="tui-image-editor-selectlist"><li data-item="add">Add</li><li data-item="diff">Diff</li><li data-item="subtract">Subtract</li><li data-item="multiply">Multiply</li><li data-item="screen">Screen</li><li data-item="lighten">Lighten</li><li data-item="darken">Darken</li></ul></div></div><div class="color-picker-value" style="background-color: rgb(255, 187, 59);"></div><label>混合色</label></div>
+                <div class="tui-image-editor-checkbox">
+                    <label>
+                        <input type="checkbox" class="tie-blend">
+                        <span></span>
+                    </label>
+                </div>
+            </div>
+        </li>
+    </ul>
+</div></div>
+            <div class="tui-image-editor-wrap" style="bottom: 0px; top: 0px; left: 0px; width: 100%;">
+                <div class="tui-image-editor-size-wrap">
+                    <div class="tui-image-editor-align-wrap">
+                        <div class="tui-image-editor" style="height: 286px; width: 400px; top: 0px; left: 0px;"><div class="tui-image-editor-canvas-container" style="width: 100%; height: 100%; position: relative; user-select: none; max-width: 400px; max-height: 286px;"><canvas class="lower-canvas" width="800" height="572" style="position: absolute; width: 100%; height: 100%; left: 0px; top: 0px; touch-action: none; user-select: none; max-width: 400px; max-height: 286px;"></canvas><canvas class="upper-canvas " width="800" height="572" style="position: absolute; width: 100%; height: 100%; left: 0px; top: 0px; touch-action: none; user-select: none; max-width: 400px; max-height: 286px;"></canvas><div class="tui-image-editor-grid-visual"><table>
+           <tbody><tr><td class="dot left-top"></td><td></td><td class="dot right-top"></td></tr>
+           <tr><td></td><td></td><td></td></tr>
+           <tr><td class="dot left-bottom"></td><td></td><td class="dot right-bottom"></td></tr>
+         </tbody></table></div></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div></div><div class="mt-3 rounded-2xl bg-white p-4"><div class="el-divider el-divider--horizontal" role="separator" style="--el-border-style: solid;"><div class="el-divider__text is-left">描述</div></div><div class="m-4"><span class="el-text"> 在线图片裁剪，图片标注，图片滤镜，图片画笔、图片旋转、图片文字、图片尺寸调整等操作 </span></div></div></div></main><footer data-v-ccb21322="" class="el-footer md:mb-6 mt-12 c-xs:mb-12"><div data-v-ccb21322="" class="w-full rounded-2xl z-10 p-5 text-center"><span class="el-text"> © 2024 <a href="https://github.com/naroat/tools-web" target="_blank" class="text-blue-700">Tools-Web</a></span></div></footer></section></section></div>
+    
+  
+
+<svg id="__svg__icons__dom__" xmlns="http://www.w3.org/2000/svg" xmlns:link="http://www.w3.org/1999/xlink" style="position: absolute; width: 0px; height: 0px;"></svg><div id="el-popper-container-2184"><div class="el-popper is-pure is-light el-tooltip el-select__popper" tabindex="-1" aria-hidden="true" role="tooltip" id="el-id-2184-3" data-popper-reference-hidden="false" data-popper-escaped="false" data-popper-placement="bottom-start" style="z-index: 2002; position: absolute; inset: 80px auto auto 339px; display: none;"><div class="el-select-dropdown" style="min-width: 461px;"><!--v-if--><!--v-if--><div class="el-scrollbar is-empty" style="display: none;"><div class="el-select-dropdown__wrap el-scrollbar__wrap el-scrollbar__wrap--hidden-default"><ul id="el-id-2184-2" class="el-scrollbar__view el-select-dropdown__list" role="listbox" aria-orientation="vertical" style=""><!--v-if--></ul></div><div class="el-scrollbar__bar is-horizontal" style="display: none;"><div class="el-scrollbar__thumb" style="transform: translateX(0%);"></div></div><div class="el-scrollbar__bar is-vertical" style="display: none;"><div class="el-scrollbar__thumb" style="transform: translateY(0%);"></div></div></div><div class="el-select-dropdown__empty"><span>无数据</span></div><!--v-if--><!--v-if--></div><span class="el-popper__arrow" data-popper-arrow="" style="position: absolute; left: 5px;"></span></div><!--v-if--><!--v-if--></div><div id="el-popper-container-9657"><div class="el-popper is-pure is-light el-tooltip el-select__popper" tabindex="-1" aria-hidden="true" role="tooltip" id="el-id-9657-3" data-popper-reference-hidden="false" data-popper-escaped="false" data-popper-placement="bottom-start" style="z-index: 2002; position: absolute; inset: 80px auto auto 339px; display: none;"><div class="el-select-dropdown" style="min-width: 461px;"><!--v-if--><!--v-if--><div class="el-scrollbar is-empty" style="display: none;"><div class="el-select-dropdown__wrap el-scrollbar__wrap el-scrollbar__wrap--hidden-default"><ul id="el-id-9657-2" class="el-scrollbar__view el-select-dropdown__list" role="listbox" aria-orientation="vertical" style=""><!--v-if--></ul></div><div class="el-scrollbar__bar is-horizontal" style="display: none;"><div class="el-scrollbar__thumb" style="transform: translateX(0%);"></div></div><div class="el-scrollbar__bar is-vertical" style="display: none;"><div class="el-scrollbar__thumb" style="transform: translateY(0%);"></div></div></div><div class="el-select-dropdown__empty"><span>无数据</span></div><!--v-if--><!--v-if--></div><span class="el-popper__arrow" data-popper-arrow="" style="position: absolute; left: 5px;"></span></div><!--v-if--><!--v-if--></div><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" display="none">
+<defs id="tui-image-editor-svg-default-icons">
+<symbol id="ic-apply" viewBox="0 0 24 24">
+    <path d="M0 0h24v24H0z" stroke="none" fill="none"></path>
+    <path fill="none" stroke="inherit" d="M4 12.011l5 5L20.011 6"></path>
+</symbol>
+<symbol id="ic-cancel" viewBox="0 0 24 24">
+    <path d="M0 0h24v24H0z" fill="none" stroke="none"></path>
+    <path fill="none" stroke="inherit" d="M6 6l12 12M18 6L6 18"></path>
+</symbol>
+<symbol id="ic-crop" viewBox="0 0 24 24">
+    <path d="M0 0h24v24H0z" stroke="none" fill="none"></path>
+    <path stroke="none" fill="inherit" d="M4 0h1v20a1 1 0 0 1-1-1V0zM20 17h-1V5h1v12zm0 2v5h-1v-5h1z"></path>
+    <path stroke="none" fill="inherit" d="M5 19h19v1H5zM4.762 4v1H0V4h4.762zM7 4h12a1 1 0 0 1 1 1H7V4z"></path>
+</symbol>
+<!-- This icon made by Pixel perfect from www.flaticon.com -->
+<symbol id="ic-resize" viewBox="0 0 24 24">
+  <path d="M0 0h24v24H0z" stroke="none" fill="none"></path>
+  <path stroke="none" fill="inherit" d="M 18.988281 3.011719 C 18.800781 2.824219 18.5 2.824219 18.3125 3.011719 L 11.621094 9.707031 C 11.429688 9.894531 11.429688 10.195312 11.621094 10.378906 C 11.710938 10.472656 11.835938 10.519531 11.957031 10.519531 C 12.078125 10.519531 12.203125 10.472656 12.292969 10.378906 L 18.988281 3.6875 C 19.175781 3.5 19.175781 3.199219 18.988281 3.011719 Z M 18.988281 3.011719 "></path>
+  <path stroke="none" fill="inherit" d="M 18.652344 2.867188 C 18.386719 2.867188 18.171875 3.082031 18.171875 3.347656 L 18.171875 9.085938 C 18.171875 9.347656 18.386719 9.5625 18.652344 9.5625 C 18.917969 9.5625 19.132812 9.347656 19.132812 9.085938 L 19.132812 3.347656 C 19.132812 3.082031 18.917969 2.867188 18.652344 2.867188 Z M 18.652344 2.867188 "></path>
+  <path stroke="none" fill="inherit" d="M 18.652344 2.867188 L 12.914062 2.867188 C 12.652344 2.867188 12.4375 3.082031 12.4375 3.347656 C 12.4375 3.613281 12.652344 3.828125 12.914062 3.828125 L 18.652344 3.828125 C 18.917969 3.828125 19.132812 3.613281 19.132812 3.347656 C 19.132812 3.082031 18.917969 2.867188 18.652344 2.867188 Z M 18.652344 2.867188 "></path>
+  <path stroke="none" fill="inherit" d="M 10.378906 11.621094 C 10.195312 11.433594 9.890625 11.433594 9.703125 11.621094 L 3.007812 18.316406 C 2.820312 18.5 2.820312 18.804688 3.007812 18.992188 C 3.105469 19.085938 3.226562 19.132812 3.347656 19.132812 C 3.46875 19.132812 3.589844 19.085938 3.683594 18.992188 L 10.378906 12.296875 C 10.566406 12.109375 10.566406 11.804688 10.378906 11.621094 Z M 10.378906 11.621094 "></path>
+  <path stroke="none" fill="inherit" d="M 3.347656 12.4375 C 3.082031 12.4375 2.867188 12.652344 2.867188 12.914062 L 2.867188 18.652344 C 2.867188 18.917969 3.082031 19.132812 3.347656 19.132812 C 3.613281 19.132812 3.828125 18.917969 3.828125 18.652344 L 3.828125 12.914062 C 3.828125 12.652344 3.613281 12.4375 3.347656 12.4375 Z M 3.347656 12.4375 "></path>
+  <path stroke="none" fill="inherit" d="M 9.085938 18.171875 L 3.347656 18.171875 C 3.082031 18.171875 2.867188 18.386719 2.867188 18.652344 C 2.867188 18.917969 3.082031 19.132812 3.347656 19.132812 L 9.085938 19.132812 C 9.347656 19.132812 9.5625 18.917969 9.5625 18.652344 C 9.5625 18.386719 9.347656 18.171875 9.085938 18.171875 Z M 9.085938 18.171875 "></path>
+  <path stroke="none" fill="inherit" d="M 20.5625 0 L 1.4375 0 C 0.644531 0 0 0.644531 0 1.4375 L 0 20.5625 C 0 21.355469 0.644531 22 1.4375 22 L 20.5625 22 C 21.355469 22 22 21.355469 22 20.5625 L 22 1.4375 C 22 0.644531 21.355469 0 20.5625 0 Z M 21.042969 20.5625 C 21.042969 20.828125 20.828125 21.042969 20.5625 21.042969 L 1.4375 21.042969 C 1.171875 21.042969 0.957031 20.828125 0.957031 20.5625 L 0.957031 1.4375 C 0.957031 1.171875 1.171875 0.957031 1.4375 0.957031 L 20.5625 0.957031 C 20.828125 0.957031 21.042969 1.171875 21.042969 1.4375 Z M 21.042969 20.5625 "></path>
+</symbol>
+<!--  -->
+<symbol id="ic-delete-all" viewBox="0 0 24 24">
+    <path stroke="none" fill="inherit" d="M5 23H3a1 1 0 0 1-1-1V6h1v16h2v1zm16-10h-1V6h1v7zM9 13H8v-3h1v3zm3 0h-1v-3h1v3zm3 0h-1v-3h1v3zM14.794 3.794L13 2h-3L8.206 3.794A.963.963 0 0 1 8 2.5l.703-1.055A1 1 0 0 1 9.535 1h3.93a1 1 0 0 1 .832.445L15 2.5a.965.965 0 0 1-.206 1.294zM14.197 4H8.803h5.394z"></path>
+    <path stroke="none" fill="inherit" d="M0 3h23v1H0zM11.286 21H8.714L8 23H7l1-2.8V20h.071L9.5 16h1l1.429 4H12v.2l1 2.8h-1l-.714-2zm-.357-1L10 17.4 9.071 20h1.858zM20 22h3v1h-4v-7h1v6zm-5 0h3v1h-4v-7h1v6z"></path>
+</symbol>
+<symbol id="ic-delete" viewBox="0 0 24 24">
+    <path stroke="none" fill="inherit" d="M3 6v16h17V6h1v16a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6h1zM14.794 3.794L13 2h-3L8.206 3.794A.963.963 0 0 1 8 2.5l.703-1.055A1 1 0 0 1 9.535 1h3.93a1 1 0 0 1 .832.445L15 2.5a.965.965 0 0 1-.206 1.294zM14.197 4H8.803h5.394z"></path>
+    <path stroke="none" fill="inherit" d="M0 3h23v1H0zM8 10h1v6H8v-6zm3 0h1v6h-1v-6zm3 0h1v6h-1v-6z"></path>
+</symbol>
+<symbol id="ic-draw-free" viewBox="0 0 32 32">
+    <path fill="none" stroke="inherit" d="M2.5 20.929C2.594 10.976 4.323 6 7.686 6c5.872 0 2.524 19 7.697 19s1.89-14.929 6.414-14.929 1.357 10.858 5.13 10.858c1.802 0 2.657-2.262 2.566-6.786"></path>
+</symbol>
+<symbol id="ic-draw-line" viewBox="0 0 32 32">
+    <path fill="none" stroke="inherit" d="M2 15.5h28"></path>
+</symbol>
+<symbol id="ic-draw" viewBox="0 0 24 24">
+    <path fill="none" stroke="inherit" d="M2.5 21.5H5c.245 0 .48-.058.691-.168l.124-.065.14.01c.429.028.85-.127 1.16-.437L22.55 5.405a.5.5 0 0 0 0-.707l-3.246-3.245a.5.5 0 0 0-.707 0L3.162 16.888a1.495 1.495 0 0 0-.437 1.155l.01.14-.065.123c-.111.212-.17.448-.17.694v2.5z"></path>
+    <path stroke="none" fill="inherit" d="M16.414 3.707l3.89 3.89-.708.706-3.889-3.889z"></path>
+</symbol>
+<symbol id="ic-filter" viewBox="0 0 24 24">
+    <path d="M0 0h24v24H0z" fill="none" stroke="none"></path>
+    <path stroke="none" fill="inherit" d="M12 7v1H2V7h10zm6 0h4v1h-4V7zM12 16v1h10v-1H12zm-6 0H2v1h4v-1z"></path>
+    <path stroke="none" fill="inherit" d="M8.5 20a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7zm0-1a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM15.5 11a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7zm0-1a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"></path>
+</symbol>
+<symbol id="ic-flip-reset" viewBox="0 0 31 32">
+    <path fill="none" stroke="none" d="M31 0H0v32h31z"></path>
+    <path stroke="none" fill="inherit" d="M28 16a8 8 0 0 1-8 8H3v-1h1v-7H3a8 8 0 0 1 8-8h17v1h-1v7h1zM11 9a7 7 0 0 0-7 7v7h16a7 7 0 0 0 7-7V9H11z"></path>
+    <path fill="none" stroke="inherit" stroke-linecap="square" d="M24 5l3.5 3.5L24 12M7 20l-3.5 3.5L7 27"></path>
+</symbol>
+<symbol id="ic-flip-x" viewBox="0 0 32 32">
+    <path fill="none" stroke="none" d="M32 32H0V0h32z"></path>
+    <path stroke="none" fill="inherit" d="M17 32h-1V0h1zM27.167 11l.5 3h-1.03l-.546-3h1.076zm-.5-3h-1.122L25 5h-5V4h5.153a1 1 0 0 1 .986.836L26.667 8zm1.5 9l.5 3h-.94l-.545-3h.985zm1 6l.639 3.836A1 1 0 0 1 28.819 28H26v-1h3l-.726-4h.894zM23 28h-3v-1h3v1zM13 4v1H7L3 27h10v1H3.18a1 1 0 0 1-.986-1.164l3.666-22A1 1 0 0 1 6.847 4H13z"></path>
+</symbol>
+<symbol id="ic-flip-y" viewBox="0 0 32 32">
+    <path fill="none" stroke="none" d="M0 0v32h32V0z"></path>
+    <path stroke="none" fill="inherit" d="M0 16v1h32v-1zM11 27.167l3 .5v-1.03l-3-.546v1.076zm-3-.5v-1.122L5 25v-5H4v5.153a1 1 0 0 0 .836.986L8 26.667zm9 1.5l3 .5v-.94l-3-.545v.985zm6 1l3.836.639A1 1 0 0 0 28 28.82V26h-1v3l-4-.727v.894zM28 23v-3h-1v3h1zM4 13h1V7l22-4v10h1V3.18a1 1 0 0 0-1.164-.986l-22 3.667A1 1 0 0 0 4 6.847V13z"></path>
+</symbol>
+<symbol id="ic-flip" viewBox="0 0 24 24">
+    <path d="M0 0h24v24H0z" fill="none" stroke="none"></path>
+    <path fill="inherit" stroke="none" d="M11 0h1v24h-1zM19 21v-1h2v-2h1v2a1 1 0 0 1-1 1h-2zm-2 0h-3v-1h3v1zm5-5h-1v-3h1v3zm0-5h-1V8h1v3zm0-5h-1V4h-2V3h2a1 1 0 0 1 1 1v2zm-5-3v1h-3V3h3zM9 3v1H2v16h7v1H2a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h7z"></path>
+</symbol>
+<symbol id="ic-history" viewBox="0 0 24 24">
+    <path fill="none" stroke="none" d="M0 0H24V24H0z" transform="translate(-740 -16) translate(547 8) translate(193 8)"></path>
+    <path fill="inherit" stroke="none" d="M12.5 1C18.299 1 23 5.701 23 11.5S18.299 22 12.5 22c-5.29 0-9.665-3.911-10.394-8.999h1.012C3.838 17.534 7.764 21 12.5 21c5.247 0 9.5-4.253 9.5-9.5S17.747 2 12.5 2C8.49 2 5.06 4.485 3.666 8H3h4v1H2V4h1v3.022C4.68 3.462 8.303 1 12.5 1zm.5 5l-.001 5.291 2.537 2.537-.708.708L12.292 12H12V6h1z" transform="translate(-740 -16) translate(547 8) translate(193 8)"></path>
+</symbol>
+<symbol id="ic-history-check" viewBox="0 0 24 24">
+    <g fill="none" fill-rule="evenodd">
+        <path stroke="#555555" d="M4.5 -1L1.5 2 6.5 7" transform="translate(-60 -804) translate(60 804) translate(2 3) rotate(-90 4 3)"></path>
+    </g>
+</symbol>
+<symbol id="ic-history-crop" viewBox="0 0 24 24">
+    <g fill="none" stroke="none" fill-rule="evenodd">
+        <path d="M0 0H12V12H0z" transform="translate(-84 -804) translate(84 804)"></path>
+        <path fill="#434343" d="M2 0h1v10c-.552 0-1-.448-1-1V0zM10 9v3H9V9h1zM9 2h1v6H9V2z" transform="translate(-84 -804) translate(84 804)"></path>
+        <path fill="#434343" d="M2 9H12V10H2zM9 2c.513 0 .936.386.993.883L10 3H3V2h6zM2 3H0V2h2v1z" transform="translate(-84 -804) translate(84 804)"></path>
+    </g>
+</symbol>
+<!-- This icon made by Pixel perfect from www.flaticon.com -->
+<symbol id="ic-history-resize" viewBox="0 0 24 24">
+  <g fill="none" stroke="none" fill-rule="evenodd">
+    <path fill="#434343" d="M 9.492188 1.507812 C 9.398438 1.414062 9.25 1.414062 9.15625 1.507812 L 5.8125 4.851562 C 5.714844 4.945312 5.714844 5.097656 5.8125 5.1875 C 5.855469 5.234375 5.917969 5.257812 5.976562 5.257812 C 6.039062 5.257812 6.101562 5.234375 6.148438 5.1875 L 9.492188 1.84375 C 9.585938 1.75 9.585938 1.601562 9.492188 1.507812 Z M 9.492188 1.507812 "></path>
+    <path fill="#434343" d="M 9.328125 1.433594 C 9.195312 1.433594 9.085938 1.539062 9.085938 1.671875 L 9.085938 4.542969 C 9.085938 4.671875 9.195312 4.78125 9.328125 4.78125 C 9.460938 4.78125 9.566406 4.671875 9.566406 4.542969 L 9.566406 1.671875 C 9.566406 1.539062 9.460938 1.433594 9.328125 1.433594 Z M 9.328125 1.433594 "></path>
+    <path fill="#434343" d="M 9.328125 1.433594 L 6.457031 1.433594 C 6.328125 1.433594 6.21875 1.539062 6.21875 1.671875 C 6.21875 1.804688 6.328125 1.914062 6.457031 1.914062 L 9.328125 1.914062 C 9.460938 1.914062 9.566406 1.804688 9.566406 1.671875 C 9.566406 1.539062 9.460938 1.433594 9.328125 1.433594 Z M 9.328125 1.433594 "></path>
+    <path fill="#434343" d="M 5.1875 5.8125 C 5.097656 5.71875 4.945312 5.71875 4.851562 5.8125 L 1.503906 9.15625 C 1.410156 9.25 1.410156 9.402344 1.503906 9.496094 C 1.554688 9.542969 1.613281 9.566406 1.671875 9.566406 C 1.734375 9.566406 1.796875 9.542969 1.84375 9.496094 L 5.1875 6.148438 C 5.28125 6.054688 5.28125 5.902344 5.1875 5.8125 Z M 5.1875 5.8125 "></path>
+    <path fill="#434343" d="M 1.671875 6.21875 C 1.539062 6.21875 1.433594 6.328125 1.433594 6.457031 L 1.433594 9.328125 C 1.433594 9.460938 1.539062 9.566406 1.671875 9.566406 C 1.804688 9.566406 1.914062 9.460938 1.914062 9.328125 L 1.914062 6.457031 C 1.914062 6.328125 1.804688 6.21875 1.671875 6.21875 Z M 1.671875 6.21875 "></path>
+    <path fill="#434343" d="M 4.542969 9.085938 L 1.671875 9.085938 C 1.539062 9.085938 1.433594 9.195312 1.433594 9.328125 C 1.433594 9.460938 1.539062 9.566406 1.671875 9.566406 L 4.542969 9.566406 C 4.671875 9.566406 4.78125 9.460938 4.78125 9.328125 C 4.78125 9.195312 4.671875 9.085938 4.542969 9.085938 Z M 4.542969 9.085938 "></path>
+    <path fill="#434343" d="M 10.28125 0 L 0.71875 0 C 0.320312 0 0 0.320312 0 0.71875 L 0 10.28125 C 0 10.679688 0.320312 11 0.71875 11 L 10.28125 11 C 10.679688 11 11 10.679688 11 10.28125 L 11 0.71875 C 11 0.320312 10.679688 0 10.28125 0 Z M 10.523438 10.28125 C 10.523438 10.414062 10.414062 10.523438 10.28125 10.523438 L 0.71875 10.523438 C 0.585938 10.523438 0.476562 10.414062 0.476562 10.28125 L 0.476562 0.71875 C 0.476562 0.585938 0.585938 0.476562 0.71875 0.476562 L 10.28125 0.476562 C 10.414062 0.476562 10.523438 0.585938 10.523438 0.71875 Z M 10.523438 10.28125 "></path>
+  </g>
+</symbol>
+<!--  -->
+<symbol id="ic-history-draw" viewBox="0 0 24 24">
+    <g fill="none" stroke="none" fill-rule="evenodd">
+        <path d="M0 1H12V13H0z" transform="translate(-156 -804) translate(156 803)"></path>
+        <path stroke="#434343" d="M9.622 1.584l1.835 1.658-8.31 8.407L.5 12.5V11l9.122-9.416z" transform="translate(-156 -804) translate(156 803)"></path>
+        <path fill="#434343" d="M7.628 3.753L10.378 3.753 10.378 4.253 7.628 4.253z" transform="translate(-156 -804) translate(156 803) rotate(45 9.003 4.003)"></path>
+    </g>
+</symbol>
+<symbol id="ic-history-filter" viewBox="0 0 24 24">
+    <g fill="none" stroke="none" fill-rule="evenodd">
+        <path d="M0 0H12V12H0z" transform="translate(-276 -804) translate(276 804)"></path>
+        <path fill="#434343" d="M12 3v1H9V3h3zM7 4H0V3h7v1z" transform="translate(-276 -804) translate(276 804)"></path>
+        <path fill="#434343" d="M12 8v1H9V8h3zM7 9H0V8h7v1z" transform="translate(-276 -804) translate(276 804) matrix(-1 0 0 1 12 0)"></path>
+        <path fill="#434343" d="M8 1c1.105 0 2 .895 2 2s-.895 2-2 2-2-.895-2-2 .895-2 2-2zm0 1c-.552 0-1 .448-1 1s.448 1 1 1 1-.448 1-1-.448-1-1-1zM4 7c1.105 0 2 .895 2 2s-.895 2-2 2-2-.895-2-2 .895-2 2-2zm0 1c-.552 0-1 .448-1 1s.448 1 1 1 1-.448 1-1-.448-1-1-1z" transform="translate(-276 -804) translate(276 804)"></path>
+    </g>
+</symbol>
+<symbol id="ic-history-flip" viewBox="0 0 24 24">
+    <g fill="none" stroke="none" fill-rule="evenodd">
+        <path d="M0 0H12V12H0z" transform="translate(-108 -804) translate(108 804)"></path>
+        <path fill="#434343" d="M6 0L7 0 7 12 6 12zM11 10V9h1v1.5c0 .276-.224.5-.5.5H10v-1h1zM5 1v1H1v8h4v1H.5c-.276 0-.5-.224-.5-.5v-9c0-.276.224-.5.5-.5H5zm7 5v2h-1V6h1zm0-3v2h-1V3h1zM9 1v1H7V1h2zm2.5 0c.276 0 .5.224.5.5V2h-2V1h1.5zM9 11H7v-1h2v1z" transform="translate(-108 -804) translate(108 804)"></path>
+    </g>
+</symbol>
+<symbol id="ic-history-icon" viewBox="0 0 24 24">
+    <g fill="none" stroke="none" fill-rule="evenodd">
+        <path d="M0 0H12V12H0z" transform="translate(-204 -804) translate(204 804)"></path>
+        <path stroke="#434343" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.1" d="M6 9.568L2.601 11 2.975 7.467 0.5 4.82 4.13 4.068 6 1 7.87 4.068 11.5 4.82 9.025 7.467 9.399 11z" transform="translate(-204 -804) translate(204 804)"></path>
+    </g>
+</symbol>
+<symbol id="ic-history-mask" viewBox="0 0 24 24">
+    <g fill="none" stroke="none" fill-rule="evenodd">
+        <g transform="translate(-252 -804) translate(252 804)">
+            <path d="M0 0H12V12H0z"></path>
+            <circle cx="6" cy="6" r="2.5" stroke="#444"></circle>
+            <path fill="#434343" d="M11.5 0c.276 0 .5.224.5.5v11c0 .276-.224.5-.5.5H.5c-.276 0-.5-.224-.5-.5V.5C0 .224.224 0 .5 0h11zM11 1H1v10h10V1z"></path>
+        </g>
+    </g>
+</symbol>
+<symbol id="ic-history-rotate" viewBox="0 0 24 24">
+    <defs>
+        <path id="rfn4rylffa" d="M7 12c-.335 0-.663-.025-.983-.074C3.171 11.492 1 9.205 1 6.444c0-1.363.534-2.613 1.415-3.58"></path>
+        <mask id="6f9gn2dysb" width="6" height="9.136" x="0" y="0" maskUnits="objectBoundingBox">
+            <use xlink:href="#rfn4rylffa" stroke="434343"></use>
+        </mask>
+    </defs>
+    <g fill="none" stroke="none" fill-rule="evenodd">
+        <g transform="translate(-132 -804) translate(132 804)">
+            <path d="M0 0.5H12V12.5H0z"></path>
+            <path fill="#434343" d="M6.5 1C9.538 1 12 3.462 12 6.5c0 2.37-1.5 4.39-3.6 5.163l-.407-.916C9.744 10.13 11 8.462 11 6.5 11 4.015 8.985 2 6.5 2c-.777 0-1.509.197-2.147.544L4 1.75l-.205-.04C4.594 1.258 5.517 1 6.5 1z"></path>
+            <use stroke="#434343" stroke-dasharray="2 1.25" stroke-width="1" mask="url(#6f9gn2dysb)" xlink:href="#rfn4rylffa"></use>
+            <path fill="#434343" d="M4.279 0L6 1.75 4.25 3.571 3.543 2.864 4.586 1.75 3.572 0.707z" transform="matrix(-1 0 0 1 9.543 0)"></path>
+        </g>
+    </g>
+</symbol>
+<symbol id="ic-history-shape" viewBox="0 0 24 24">
+    <g fill="none" stroke="none" fill-rule="evenodd">
+        <path d="M0 0H12V12H0z" transform="translate(-180 -804) translate(180 804)"></path>
+        <path fill="#434343" d="M11.5 4c.276 0 .5.224.5.5v7c0 .276-.224.5-.5.5h-7c-.276 0-.5-.224-.5-.5V8.8h1V11h6V5H8.341l-.568-1H11.5z" transform="translate(-180 -804) translate(180 804)"></path>
+        <path stroke="#434343" stroke-linecap="round" stroke-linejoin="round" d="M4.5 0.5L8.5 7.611 0.5 7.611z" transform="translate(-180 -804) translate(180 804)"></path>
+    </g>
+</symbol>
+<symbol id="ic-history-text" viewBox="0 0 24 24">
+    <g fill="none" stroke="none" fill-rule="evenodd">
+        <path d="M0 0H12V12H0z" transform="translate(-228 -804) translate(228 804)"></path>
+        <path fill="#434343" d="M2 1h8c.552 0 1 .448 1 1H1c0-.552.448-1 1-1z" transform="translate(-228 -804) translate(228 804)"></path>
+        <path fill="#434343" d="M1 1H2V3H1zM10 1H11V3H10zM5.5 1L6.5 1 6.5 11 5.5 11z" transform="translate(-228 -804) translate(228 804)"></path>
+        <path fill="#434343" d="M4 10H8V11H4z" transform="translate(-228 -804) translate(228 804)"></path>
+    </g>
+</symbol>
+<symbol id="ic-history-load" viewBox="0 0 24 24">
+    <g fill="none" stroke="none" fill-rule="evenodd">
+        <path d="M0 0H12V12H0z" transform="translate(-324 -805) translate(324 805)"></path>
+        <path fill="#434343" d="M5 0c.552 0 1 .448 1 1v1h5.5c.276 0 .5.224.5.5v8c0 .276-.224.5-.5.5H.5c-.276 0-.5-.224-.5-.5V1c0-.552.448-1 1-1h4zm0 1H1v9h10V3H5V1z" transform="translate(-324 -805) translate(324 805)"></path>
+        <path fill="#434343" d="M1 2L5 2 5 3 1 3z" transform="translate(-324 -805) translate(324 805)"></path>
+    </g>
+</symbol>
+<symbol id="ic-history-delete" viewBox="0 0 24 24">
+    <g fill="none" stroke="none" fill-rule="evenodd">
+        <g fill="#434343">
+            <path d="M2 9h8V1h1v8.5c0 .276-.224.5-.5.5h-9c-.276 0-.5-.224-.5-.5V1h1v8zM0 0H12V1H0z" transform="translate(-300 -804) translate(300 804) translate(0 2)"></path>
+            <path d="M4 3H5V7H4zM7 3H8V7H7z" transform="translate(-300 -804) translate(300 804) translate(0 2)"></path>
+            <path d="M4 1h4V0h1v1.5c0 .276-.224.5-.5.5h-5c-.276 0-.5-.224-.5-.5V0h1v1z" transform="translate(-300 -804) translate(300 804) matrix(1 0 0 -1 0 2)"></path>
+        </g>
+    </g>
+</symbol>
+<symbol id="ic-history-group" viewBox="0 0 24 24">
+    <g fill="none" stroke="none" fill-rule="evenodd">
+        <g transform="translate(-348 -804) translate(348 804)">
+            <path d="M0 0H12V12H0z"></path>
+            <path fill="#434343" d="M1 9v2h1v1H.5c-.276 0-.5-.224-.5-.5V9h1zm11 1v1.5c0 .276-.224.5-.5.5H9v-1h2v-1h1zm-4 1v1H6v-1h2zm-3 0v1H3v-1h2zm7-4v2h-1V7h1zM1 6v2H0V6h1zm11-2v2h-1V4h1zM1 3v2H0V3h1zm10.5-3c.276 0 .5.224.5.5V3h-1V1h-1V0h1.5zM6 0v1H4V0h2zm3 0v1H7V0h2zM0 .5C0 .224.224 0 .5 0H3v1H1v1H0V.5zM9.5 4c.276 0 .5.224.5.5v5c0 .276-.224.5-.5.5h-5c-.276 0-.5-.224-.5-.5V8.355c.317.094.652.145 1 .145V9h4V5h-.5c0-.348-.05-.683-.145-1H9.5z"></path>
+            <circle cx="5" cy="5" r="2.5" stroke="#434343"></circle>
+        </g>
+    </g>
+</symbol>
+<symbol id="ic-icon-arrow-2" viewBox="0 0 32 32">
+    <path fill="none" stroke="inherit" stroke-linecap="round" stroke-linejoin="round" d="M21.793 18.5H2.5v-5h18.935l-7.6-8h5.872l10.5 10.5-10.5 10.5h-5.914l8-8z"></path>
+</symbol>
+<symbol id="ic-icon-arrow-3" viewBox="0 0 32 32">
+    <path fill="none" stroke="inherit" stroke-linecap="round" stroke-linejoin="round" d="M25.288 16.42L14.208 27.5H6.792l11.291-11.291L6.826 4.5h7.381l11.661 11.661-.58.258z"></path>
+</symbol>
+<symbol id="ic-icon-arrow" viewBox="0 0 32 32">
+    <path fill="none" stroke="inherit" d="M2.5 11.5v9h18v5.293L30.293 16 20.5 6.207V11.5h-18z"></path>
+</symbol>
+<symbol id="ic-icon-bubble" viewBox="0 0 32 32">
+    <path fill="none" stroke="inherit" stroke-linecap="round" stroke-linejoin="round" d="M22.207 24.5L16.5 30.207V24.5H8A6.5 6.5 0 0 1 1.5 18V9A6.5 6.5 0 0 1 8 2.5h16A6.5 6.5 0 0 1 30.5 9v9a6.5 6.5 0 0 1-6.5 6.5h-1.793z"></path>
+</symbol>
+<symbol id="ic-icon-heart" viewBox="0 0 32 32">
+    <path fill-rule="nonzero" fill="none" stroke="inherit" d="M15.996 30.675l1.981-1.79c7.898-7.177 10.365-9.718 12.135-13.012.922-1.716 1.377-3.37 1.377-5.076 0-4.65-3.647-8.297-8.297-8.297-2.33 0-4.86 1.527-6.817 3.824l-.38.447-.381-.447C13.658 4.027 11.126 2.5 8.797 2.5 4.147 2.5.5 6.147.5 10.797c0 1.714.46 3.375 1.389 5.098 1.775 3.288 4.26 5.843 12.123 12.974l1.984 1.806z"></path>
+</symbol>
+<symbol id="ic-icon-load" viewBox="0 0 32 32">
+    <path fill="none" stroke="inherit" stroke-linecap="round" stroke-linejoin="round" d="M17.314 18.867l1.951-2.53 4 5.184h-17l6.5-8.84 4.549 6.186z"></path>
+    <path stroke="none" fill="inherit" d="M18.01 4a11.798 11.798 0 0 0 0 1H3v24h24V14.986a8.738 8.738 0 0 0 1 0V29a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h15.01z"></path>
+    <path stroke="none" fill="inherit" d="M25 3h1v9h-1z"></path>
+    <path fill="none" stroke="inherit" d="M22 6l3.5-3.5L29 6"></path>
+</symbol>
+<symbol id="ic-icon-location" viewBox="0 0 32 32">
+    <path fill="none" stroke="inherit" d="M16 31.28C23.675 23.302 27.5 17.181 27.5 13c0-6.351-5.149-11.5-11.5-11.5S4.5 6.649 4.5 13c0 4.181 3.825 10.302 11.5 18.28z"></path>
+    <circle fill="none" stroke="inherit" cx="16" cy="13" r="4.5"></circle>
+</symbol>
+<symbol id="ic-icon-polygon" viewBox="0 0 32 32">
+    <path fill="none" stroke="inherit" d="M.576 16L8.29 29.5h15.42L31.424 16 23.71 2.5H8.29L.576 16z"></path>
+</symbol>
+<symbol id="ic-icon-star-2" viewBox="0 0 32 32">
+    <path fill="none" stroke="inherit" d="M19.446 31.592l2.265-3.272 3.946.25.636-3.94 3.665-1.505-1.12-3.832 2.655-2.962-2.656-2.962 1.12-3.832-3.664-1.505-.636-3.941-3.946.25-2.265-3.271L16 3.024 12.554 1.07 10.289 4.34l-3.946-.25-.636 3.941-3.665 1.505 1.12 3.832L.508 16.33l2.656 2.962-1.12 3.832 3.664 1.504.636 3.942 3.946-.25 2.265 3.27L16 29.638l3.446 1.955z"></path>
+</symbol>
+<symbol id="ic-icon-star" viewBox="0 0 32 32">
+    <path fill="none" stroke="inherit" d="M25.292 29.878l-1.775-10.346 7.517-7.327-10.388-1.51L16 1.282l-4.646 9.413-10.388 1.51 7.517 7.327-1.775 10.346L16 24.993l9.292 4.885z"></path>
+</symbol>
+<symbol id="ic-icon" viewBox="0 0 24 24">
+    <path fill="none" stroke="inherit" stroke-linecap="round" stroke-linejoin="round" d="M11.923 19.136L5.424 22l.715-7.065-4.731-5.296 6.94-1.503L11.923 2l3.574 6.136 6.94 1.503-4.731 5.296L18.42 22z"></path>
+</symbol>
+<symbol id="ic-mask-load" viewBox="0 0 32 32">
+    <path stroke="none" fill="none" d="M0 0h32v32H0z"></path>
+    <path stroke="none" fill="inherit" d="M18.01 4a11.798 11.798 0 0 0 0 1H3v24h24V14.986a8.738 8.738 0 0 0 1 0V29a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h15.01zM15 23a6 6 0 1 1 0-12 6 6 0 0 1 0 12zm0-1a5 5 0 1 0 0-10 5 5 0 0 0 0 10z"></path>
+    <path stroke="none" fill="inherit" d="M25 3h1v9h-1z"></path>
+    <path fill="none" stroke="inherit" d="M22 6l3.5-3.5L29 6"></path>
+</symbol>
+<symbol id="ic-mask" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="4.5" stroke="inherit" fill="none"></circle>
+    <path stroke="none" fill="inherit" d="M2 1h20a1 1 0 0 1 1 1v20a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zm0 1v20h20V2H2z"></path>
+</symbol>
+<symbol id="ic-redo" viewBox="0 0 24 24">
+    <path d="M0 0h24v24H0z" opacity=".5" fill="none" stroke="none"></path>
+    <path stroke="none" fill="inherit" d="M21 6H9a6 6 0 1 0 0 12h12v1H9A7 7 0 0 1 9 5h12v1z"></path>
+    <path fill="none" stroke="inherit" stroke-linecap="square" d="M19 3l2.5 2.5L19 8"></path>
+</symbol>
+<symbol id="ic-reset" viewBox="0 0 24 24">
+    <path d="M0 0h24v24H0z" opacity=".5" stroke="none" fill="none"></path>
+    <path stroke="none" fill="inherit" d="M2 13v-1a7 7 0 0 1 7-7h13v1h-1v5h1v1a7 7 0 0 1-7 7H2v-1h1v-5H2zm7-7a6 6 0 0 0-6 6v6h12a6 6 0 0 0 6-6V6H9z"></path>
+    <path fill="none" stroke="inherit" stroke-linecap="square" d="M19 3l2.5 2.5L19 8M5 16l-2.5 2.5L5 21"></path>
+</symbol>
+<symbol id="ic-rotate-clockwise" viewBox="0 0 32 32">
+    <path stroke="none" fill="inherit" d="M29 17h-.924c0 6.627-5.373 12-12 12-6.628 0-12-5.373-12-12C4.076 10.398 9.407 5.041 16 5V4C8.82 4 3 9.82 3 17s5.82 13 13 13 13-5.82 13-13z"></path>
+    <path fill="none" stroke="inherit" stroke-linecap="square" d="M16 1.5l4 3-4 3"></path>
+    <path stroke="none" fill="inherit" fill-rule="nonzero" d="M16 4h4v1h-4z"></path>
+</symbol>
+<symbol id="ic-rotate-counterclockwise" viewBox="0 0 32 32">
+    <path stroke="none" d="M3 17h.924c0 6.627 5.373 12 12 12 6.628 0 12-5.373 12-12 0-6.602-5.331-11.96-11.924-12V4c7.18 0 13 5.82 13 13s-5.82 13-13 13S3 24.18 3 17z"></path>
+    <path stroke="none" fill="inherit" fill-rule="nonzero" d="M12 4h4v1h-4z"></path>
+    <path fill="none" stroke="inherit" stroke-linecap="square" d="M16 1.5l-4 3 4 3"></path>
+</symbol>
+<symbol id="ic-rotate" viewBox="0 0 24 24">
+    <path d="M0 0h24v24H0z" fill="none" stroke="none"></path>
+    <path fill="inherit" stroke="none" d="M8.349 22.254a10.002 10.002 0 0 1-2.778-1.719l.65-.76a9.002 9.002 0 0 0 2.495 1.548l-.367.931zm2.873.704l.078-.997a9 9 0 1 0-.557-17.852l-.14-.99A10.076 10.076 0 0 1 12.145 3c5.523 0 10 4.477 10 10s-4.477 10-10 10c-.312 0-.62-.014-.924-.042zm-7.556-4.655a9.942 9.942 0 0 1-1.253-2.996l.973-.234a8.948 8.948 0 0 0 1.124 2.693l-.844.537zm-1.502-5.91A9.949 9.949 0 0 1 2.88 9.23l.925.382a8.954 8.954 0 0 0-.644 2.844l-.998-.062zm2.21-5.686c.687-.848 1.51-1.58 2.436-2.166l.523.852a9.048 9.048 0 0 0-2.188 1.95l-.771-.636z"></path>
+    <path stroke="inherit" fill="none" stroke-linecap="square" d="M13 1l-2.5 2.5L13 6"></path>
+</symbol>
+<symbol id="ic-shape-circle" viewBox="0 0 32 32">
+    <circle cx="16" cy="16" r="14.5" fill="none" stroke="inherit"></circle>
+</symbol>
+<symbol id="ic-shape-rectangle" viewBox="0 0 32 32">
+    <rect width="27" height="27" x="2.5" y="2.5" fill="none" stroke="inherit" rx="1"></rect>
+</symbol>
+<symbol id="ic-shape-triangle" viewBox="0 0 32 32">
+    <path fill="none" stroke-linecap="round" stroke-linejoin="round" d="M16 2.5l15.5 27H.5z"></path>
+</symbol>
+<symbol id="ic-shape" viewBox="0 0 24 24">
+    <path stroke="none" fill="inherit" d="M14.706 8H21a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1v-4h1v4h12V9h-5.706l-.588-1z"></path>
+    <path fill="none" stroke="inherit" stroke-linecap="round" stroke-linejoin="round" d="M8.5 1.5l7.5 13H1z"></path>
+</symbol>
+<symbol id="ic-text-align-center" viewBox="0 0 32 32">
+    <path stroke="none" fill="none" d="M0 0h32v32H0z"></path>
+    <path stroke="none" fill="inherit" d="M2 5h28v1H2zM8 12h16v1H8zM2 19h28v1H2zM8 26h16v1H8z"></path>
+</symbol>
+<symbol id="ic-text-align-left" viewBox="0 0 32 32">
+    <path stroke="none" fill="none" d="M0 0h32v32H0z"></path>
+    <path stroke="none" fill="inherit" d="M2 5h28v1H2zM2 12h16v1H2zM2 19h28v1H2zM2 26h16v1H2z"></path>
+</symbol>
+<symbol id="ic-text-align-right" viewBox="0 0 32 32">
+    <path stroke="none" fill="none" d="M0 0h32v32H0z"></path>
+    <path stroke="none" fill="inherit" d="M2 5h28v1H2zM14 12h16v1H14zM2 19h28v1H2zM14 26h16v1H14z"></path>
+</symbol>
+<symbol id="ic-text-bold" viewBox="0 0 32 32">
+    <path fill="none" stroke="none" d="M0 0h32v32H0z"></path>
+    <path stroke="none" fill="inherit" d="M7 2h2v2H7zM7 28h2v2H7z"></path>
+    <path fill="none" stroke="inherit" stroke-width="2" d="M9 3v12h9a6 6 0 1 0 0-12H9zM9 15v14h10a7 7 0 0 0 0-14H9z"></path>
+</symbol>
+<symbol id="ic-text-italic" viewBox="0 0 32 32">
+    <path fill="none" stroke="none" d="M0 0h32v32H0z"></path>
+    <path stroke="none" fill="inherit" d="M15 2h5v1h-5zM11 29h5v1h-5zM17 3h1l-4 26h-1z"></path>
+</symbol>
+<symbol id="ic-text-underline" viewBox="0 0 32 32">
+    <path stroke="none" fill="none" d="M0 0h32v32H0z"></path>
+    <path stroke="none" fill="inherit" d="M8 2v14a8 8 0 1 0 16 0V2h1v14a9 9 0 0 1-18 0V2h1zM3 29h26v1H3z"></path>
+    <path stroke="none" fill="inherit" d="M5 2h5v1H5zM22 2h5v1h-5z"></path>
+</symbol>
+<symbol id="ic-text" viewBox="0 0 24 24">
+    <path stroke="none" fill="inherit" d="M4 3h15a1 1 0 0 1 1 1H3a1 1 0 0 1 1-1zM3 4h1v1H3zM19 4h1v1h-1z"></path>
+    <path stroke="none" fill="inherit" d="M11 3h1v18h-1z"></path>
+    <path stroke="none" fill="inherit" d="M10 20h3v1h-3z"></path>
+</symbol>
+<symbol id="ic-undo" viewBox="0 0 24 24">
+    <path d="M24 0H0v24h24z" opacity=".5" fill="none" stroke="none"></path>
+    <path stroke="none" fill="inherit" d="M3 6h12a6 6 0 1 1 0 12H3v1h12a7 7 0 0 0 0-14H3v1z"></path>
+    <path fill="none" stroke="inherit" stroke-linecap="square" d="M5 3L2.5 5.5 5 8"></path>
+</symbol>
+<symbol id="ic-zoom-in" viewBox="0 0 24 24">
+    <g transform="translate(-229 -290) translate(229 290)">
+        <circle cx="10.5" cy="10.5" r="9" stroke="inherit" fill="none"></circle>
+        <path fill="inherit" d="M18.828 15.828H19.828V22.828H18.828z" transform="rotate(-45 19.328 19.328)"></path>
+        <path fill="inherit" d="M7 10H14V11H7z"></path>
+        <path fill="inherit" d="M10 7H11V14H10z"></path>
+    </g>
+</symbol>
+<symbol id="ic-zoom-out" viewBox="0 0 24 24">
+    <g transform="translate(-263 -290) translate(263 290)">
+        <circle cx="10.5" cy="10.5" r="9" stroke="inherit" fill="none"></circle>
+        <path fill="inherit" d="M18.828 15.828H19.828V22.828H18.828z" transform="rotate(-45 19.328 19.328)"></path>
+        <path fill="inherit" d="M7 10H14V11H7z"></path>
+    </g>
+</symbol>
+<symbol id="ic-hand" viewBox="0 0 24 24">
+    <g fill="none" fill-rule="evenodd" stroke-linejoin="round">
+        <path fill="inherit" fill-rule="nonzero" d="M8.672 3.36c1.328 0 2.114.78 2.29 1.869l.014.101.023.006v1.042l-.638-.185c-.187-.055-.323-.211-.354-.399L10 5.713c0-.825-.42-1.353-1.328-1.353C7.695 4.36 7 5.041 7 5.713v7.941c0 .439-.524.665-.843.364l-1.868-1.761c-.595-.528-1.316-.617-1.918-.216-.522.348-.562 1.203-.18 1.8L7.738 22h11.013l.285-.518c1.247-2.326 1.897-4.259 1.96-5.785l.004-.239V8.035c0-.656-.5-1.17-1-1.17-.503 0-1 .456-1 1.17 0 .333-.32.573-.64.48L18 8.41V7.368l.086.026.042-.136c.279-.805.978-1.332 1.738-1.388L20 5.865c1.057 0 2 .967 2 2.17v7.423c0 1.929-.845 4.352-2.521 7.29-.09.156-.255.252-.435.252H7.474c-.166 0-.321-.082-.414-.219l-5.704-8.39c-.653-1.019-.584-2.486.46-3.182 1-.666 2.216-.516 3.148.31L6 12.495V5.713c0-1.18 1.058-2.263 2.49-2.348z" transform="translate(-297 -290) translate(297 290)"></path>
+        <path fill="inherit" fill-rule="nonzero" d="M12.5 1.5c1.325 0 2.41 1.032 2.495 2.336L15 4v7.22h-1V4c0-.828-.672-1.5-1.5-1.5-.78 0-1.42.595-1.493 1.356L11 4v7.22h-1V4c0-1.38 1.12-2.5 2.5-2.5z" transform="translate(-297 -290) translate(297 290)"></path>
+        <path fill="inherit" fill-rule="nonzero" d="M16.5 3.5c1.325 0 2.41 1.032 2.495 2.336L19 6v6.3h-1V6c0-.828-.672-1.5-1.5-1.5-.78 0-1.42.595-1.493 1.356L15 6v2.44h-1V6c0-1.38 1.12-2.5 2.5-2.5z" transform="translate(-297 -290) translate(297 290)"></path>
+    </g>
+</symbol>
+</defs>
+</svg></body></html>
