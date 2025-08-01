@@ -2,7 +2,7 @@
 import { reactive } from 'vue'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
-import { CodeDiff } from "v-code-diff";
+import CodeDiff  from "v-code-diff";
 // import { copy } from '@/utils/string'
 const info = reactive({
   title: "文本对比",

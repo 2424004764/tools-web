@@ -63,11 +63,11 @@
     "path": "^0.12.7",
     "pinia": "^2.1.7",
     "tailwindcss": "^3.3.5",
-    "typescript": "^5.3.2",
+    "typescript": "^5.9.2",
     "vite": "^4.5.1",
     "vite-plugin-html": "^3.2.0",
     "vite-plugin-svg-icons": "^2.0.1",
     "vue-router": "^4.2.5",
-    "vue-tsc": "^1.8.24"
+    "vue-tsc": "^3.0.4"
   }
 }

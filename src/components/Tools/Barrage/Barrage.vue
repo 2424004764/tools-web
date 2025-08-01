@@ -87,7 +87,7 @@ onBeforeMount(() => {
     <div class="p-4 rounded-2xl bg-white">
       <div class="flex mb-2">
         <el-text class="w-20">弹幕内容:</el-text>
-        <div class="w-72"><el-input v-model="info.content" type="textarea" rows="3"></el-input></div>
+        <div class="w-72"><el-input v-model="info.content" type="textarea" :rows="3"></el-input></div>
       </div>
 
       <div class="flex mb-2">
