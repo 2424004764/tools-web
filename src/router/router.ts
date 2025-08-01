@@ -51,16 +51,16 @@ export const constantRoute = [
       description: '正则表达式测试工具,常用正则表达式,在线正则表达式',
     }
   },
-  {
-    path: '/unicode',
-    component: () => import('@/components/Tools/Unicode/Unicode.vue'),
-    name: 'unicode',
-    meta: {
-      title: "Unicode转中文",
-      keywords: '在线Unicode编码转换，中文转Unicode，Unicode转中文',
-      description: '在线Unicode编码转换，中文转Unicode，Unicode转中文，在文本框里输入要转换的内容，然后点击要转换的类型按钮，转换完成后即可看到对应的内容。..',
-    }
-  },
+  // {
+  //   path: '/unicode',
+  //   component: () => import('@/components/Tools/Unicode/Unicode.vue'),
+  //   name: 'unicode',
+  //   meta: {
+  //     title: "Unicode转中文",
+  //     keywords: '在线Unicode编码转换，中文转Unicode，Unicode转中文',
+  //     description: '在线Unicode编码转换，中文转Unicode，Unicode转中文，在文本框里输入要转换的内容，然后点击要转换的类型按钮，转换完成后即可看到对应的内容。..',
+  //   }
+  // },
   {
     path: '/wordcount',
     component: () => import('@/components/Tools/WordCount/WordCount.vue'),
