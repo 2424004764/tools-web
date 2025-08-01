@@ -431,6 +431,16 @@ export const constantRoute = [
       description: '在线富文本编辑, html实时预览，在线编辑文本，文本编辑获取html',
     }
   },
+  {
+    path: '/ai-text-to-image',
+    component: () => import('@/components/Tools/AiTextToImage/AiTextToImage.vue'),
+    name: 'AiTextToImage',
+    meta: {
+      title: "在线文生图",
+      keywords: '在线文生图,文生图,文生图工具,文生图服务',
+      description: '提供在线免费无限次数的文生图服务',
+    }
+  },
   // 关于
   {
     path: '/about',
