@@ -4,6 +4,8 @@ import axios from 'axios';
 
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
+const pollinationsApiKey = ref(import.meta.env.VITE_POLLINATIONS_API_KEY || '')
+
 const info = reactive({
   title: "在线文生图",
   desc: "免费无限次数生成图片，无需登录注册、直接使用",
@@ -54,7 +56,6 @@ const info = reactive({
   });
 
   // 生成随机种子
-  
   const generateRandomSeed = () => {
     seed.value = Math.floor(Math.random() * info.maxSeed);
   };
@@ -77,7 +78,7 @@ const info = reactive({
         width: width.value,
         height: height.value,
         nologo: noLogo.value ? 'true' : undefined,
-        seed: actualSeed.toString() // 总是传递种子参数
+        seed: actualSeed.toString()
       };
       
       // 移除未定义的参数
@@ -88,10 +89,14 @@ const info = reactive({
       // 添加时间戳避免缓存
       filteredParams._t = Date.now();
       
+      // 直接请求 Pollinations API（不再使用代理）
       const response = await axios.get(
-        `/api/pollinations/prompt/${encodeURIComponent(prompt.value)}`,
+        `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt.value)}`,
         {
           params: filteredParams,
+          headers: {
+            Authorization: 'Bearer ' + pollinationsApiKey.value
+          },
           responseType: 'blob'
         }
       );
