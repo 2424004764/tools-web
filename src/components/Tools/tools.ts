@@ -507,6 +507,22 @@ export function getToolsCate() {
           cate: '其他工具'
         }
       ]
+    },
+    {
+      id: 10,
+      title: 'AI工具',
+      icon: '',
+      list:[
+        {
+          id: 1,
+          title: '在线文生图',
+          logo: '/images/logo/ai_test_to_image.png',
+          desc: '提供在线免费无限次数的文生图服务',
+          url: '/ai-text-to-image/',
+          cateId: 10,
+          cate: 'AI工具'
+        }
+      ]
     }
   ]
 }

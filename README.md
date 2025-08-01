@@ -10,7 +10,8 @@
   </pre>
   <p> 只需简单几步，即可快速搭建属于自己的在线工具箱。</p> 
 
-[![node](https://img.shields.io/badge/any_text-18.14.2-red?label=node)](node)
+[![node](https://img.shields.io/badge/any_text-22.13.1-red?label=node)](node)
+[![pnpm](https://img.shields.io/badge/any_text-10.14.0-white?label=pnpm)](pnpm)
 [![vue](https://img.shields.io/badge/any_text-3.3.10-origin?label=vue)](vue)
 [![tailwindcss](https://img.shields.io/badge/any_text-3.3.5-yellow?label=tailwindcss)](tailwindcss)
 [![elementplus](https://img.shields.io/badge/any_text-2.7-blue?label=element-plus)](elementplus)
@@ -24,6 +25,7 @@
 - [开始使用](#开始使用)
   - [Docker部署](#Docker部署)
   - [手动部署](#手动部署)
+  - [cloudflare部署](#Cloudflare部署)
 - [工具列表](#工具列表)
 - [其他](#其他)
 
@@ -84,6 +86,10 @@ pnpm build
 ```
 pnpm build:pro
 ```
+
+### Cloudflare部署
+
+见我的公众号文章：https://mp.weixin.qq.com/s/kIrz2uAv0cmT3f2rPWbtdQ
 
 ## 工具列表
 

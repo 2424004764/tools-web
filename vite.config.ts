@@ -39,7 +39,14 @@ export default defineConfig(({command, mode}) => {
           //   res.setHeader("x-res-proxyUrl", proxyUrl)
           // }
         },
-        
+        '/api/pollinations': {
+          target: 'https://image.pollinations.ai',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/pollinations/, ''),
+          headers: {
+            Authorization: 'Bearer NpgaKlHjioTlyo2B'
+          }
+        }
       }
     }
   }
