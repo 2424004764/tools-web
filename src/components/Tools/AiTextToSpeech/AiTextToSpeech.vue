@@ -56,7 +56,7 @@ const fetchVoices = async () => {
   
   try {
     const response = await axios.get(
-      `${pollinationsProxyUrl.value}?path=voices&target=${pollinationsUrl.value}`
+      `${pollinationsProxyUrl.value}?path=models&target=${pollinationsUrl.value}`
     );
     const voiceNames = response.data;
 
@@ -96,7 +96,7 @@ const generateSpeech = async () => {
 
   try {
     // 构造查询参数
-    const params = {
+    const params: Record<string, string> = {
       voice: selectedVoice.value,
       speed: speed.value.toString(),
       pitch: pitch.value.toString(),
