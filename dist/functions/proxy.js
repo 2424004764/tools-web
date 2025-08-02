@@ -40,8 +40,13 @@ export async function onRequest(context) {
     // 拼接最终目标地址
     const targetUrl = new URL(targetParam)
 
-    // 拼接请求路径和查询参数
+    // 拼接请求路径
     const path = url.searchParams.get('path') || '';
+    if (path) {
+        targetUrl.pathname = path;  // 设置目标 URL 的路径
+    }
+
+    // 处理 params 查询参数
     const params = new URLSearchParams();
 
     // 获取所有的查询参数并添加到 params 对象中
@@ -51,22 +56,23 @@ export async function onRequest(context) {
         }
     });
 
-    // 合并目标 URL 的路径和查询参数
-    if (path) {
-        targetUrl.pathname = path;  // 设置目标 URL 的路径
+    // 将 params 拼接到目标 URL 的查询字符串中
+    if (params.toString()) {
+        targetUrl.search = params.toString();
     }
 
-    // 拼接查询参数到目标 URL（确保正确地拼接）
-    const finalParams = params.toString();
-    if (finalParams) {
-        targetUrl.search = finalParams;  // 设置目标 URL 的查询参数
-    }
+    // 打印调试信息
+    console.log({
+        "pathname": targetUrl.pathname,
+        "params": params.toString(),
+        "targetUrl": targetUrl.toString(),
+    });
 
+    // 返回拼接后的目标 URL
     return new Response(JSON.stringify({
         "pathname": targetUrl.pathname,
-        "params": finalParams,
+        "params": params.toString(),
         "targetUrl": targetUrl.toString(),
-        "targetUrl3": targetUrl,
     }), { status: 200 })
 
     // 创建新的请求配置
@@ -85,22 +91,4 @@ export async function onRequest(context) {
     if (allowedOrigins.includes(origin)) {
         newHeaders.set('Access-Control-Allow-Origin', origin)
         newHeaders.set('Access-Control-Allow-Methods', 'GET, POST')
-        newHeaders.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-    }
-
-    return new Response(response.body, {
-        status: response.status,
-        statusText: response.statusText,
-        headers: newHeaders
-    })
-}
-
-// 设置 CORS 响应头的通用函数
-function getCORSHeaders(origin) {
-    return {
-        'Access-Control-Allow-Origin': origin,
-        'Access-Control-Allow-Methods': 'GET, POST',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        'Access-Control-Max-Age': '86400'
-    }
-}
+        newHeaders.set('Access-C
