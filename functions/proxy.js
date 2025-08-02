@@ -91,4 +91,22 @@ export async function onRequest(context) {
     if (allowedOrigins.includes(origin)) {
         newHeaders.set('Access-Control-Allow-Origin', origin)
         newHeaders.set('Access-Control-Allow-Methods', 'GET, POST')
-        newHeaders.set('Access-C
+        newHeaders.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+    }
+
+    return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: newHeaders
+    })
+}
+
+// 设置 CORS 响应头的通用函数
+function getCORSHeaders(origin) {
+    return {
+        'Access-Control-Allow-Origin': origin,
+        'Access-Control-Allow-Methods': 'GET, POST',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Max-Age': '86400'
+    }
+}
