@@ -6,14 +6,13 @@ import DetailHeader from "@/components/Layout/DetailHeader/DetailHeader.vue";
 import ToolDetail from "@/components/Layout/ToolDetail/ToolDetail.vue";
 const pollinationsApiKey = ref(import.meta.env.VITE_POLLINATIONS_API_KEY || "");
 const maxHistoryCount = ref(Number(import.meta.env.VITE_AI_IMAGE_HISTORY_MAX) || 20);
+const pollinationsProxyUrl = ref(import.meta.env.VITE_POLLINATIONS_PROXY_URL);
+const pollinationsUrl = ref(import.meta.env.VITE_POLLINATIONS_URL);
 
 const info = reactive({
   title: "在线文生图",
   desc: "免费无限次数生成图片，无需登录注册、直接使用，如果生成出错或者生成的内容和提示词不一致，请重试，或者重新进一下页面",
   maxSeed: 100000000,
-  // apiUrl: "https://proxy-pollinations.2424004764.workers.dev",
-  apiUrl: "https://tool.fologde.com/proxy",
-  pollinationsApi: "https://image.pollinations.ai",
   // 预设提示词列表
   presetPrompts: [
     "一个神秘瑰丽的微观世界：花粉颗粒的精细结构、覆盖露珠的微小植物、发光孢子、漂浮的细菌和微粒，呈现出超现实的生物荧光效果。采用微距摄影风格，焦点清晰，背景虚化，整体色彩鲜艳，画面极具科幻与自然美感。",
@@ -103,7 +102,7 @@ const fetchModels = async () => {
   
   try {
     const response = await axios.get(
-      `${info.apiUrl}?path=models&target=${info.pollinationsApi}`
+      `${pollinationsProxyUrl.value}?path=models&target=${pollinationsUrl.value}`
     );
     const modelNames = response.data;
 
@@ -173,7 +172,7 @@ const generateImage = async () => {
     // 将 filteredParams 转成 GET 参数拼接
     const queryString = new URLSearchParams(filteredParams).toString();
     const response = await axios.get(
-      `${info.apiUrl}?path=prompt/${encodeURIComponent(prompt.value)}&target=${info.pollinationsApi}&params=${queryString}`,
+      `${pollinationsProxyUrl.value}?path=prompt/${encodeURIComponent(prompt.value)}&target=${pollinationsUrl.value}&params=${queryString}`,
       {
         headers: {
           Authorization: "Bearer " + pollinationsApiKey.value,
