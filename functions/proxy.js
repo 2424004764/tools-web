@@ -1,6 +1,4 @@
 export async function onRequest(context) {
-    // 测试地址：
-    // https://tool.fologde.com/proxy/?target=https://image.pollinations.ai&path=models&params=a=1&b=2
     const { request } = context
     const url = new URL(request.url)
     const origin = request.headers.get('Origin')
@@ -58,13 +56,15 @@ export async function onRequest(context) {
         targetUrl.pathname = path;  // 设置目标 URL 的路径
     }
 
-    // 拼接查询参数到目标 URL
-    if (params.toString()) {
-        targetUrl.search = params.toString();  // 设置目标 URL 的查询参数
+    // 拼接查询参数到目标 URL（确保正确地拼接）
+    const finalParams = params.toString();
+    if (finalParams) {
+        targetUrl.search = finalParams;  // 设置目标 URL 的查询参数
     }
+
     return new Response(JSON.stringify({
         "pathname": targetUrl.pathname,
-        "params": targetUrl.search,
+        "params": finalParams,
         "targetUrl": targetUrl.toString(),
         "targetUrl2": targetUrl,
     }), { status: 200 })
