@@ -10,7 +10,8 @@ const info = reactive({
   title: "在线文生图",
   desc: "免费无限次数生成图片，无需登录注册、直接使用",
   maxSeed: 100000000,
-  apiUrl: 'https://proxy-pollinations.2424004764.workers.dev'
+  apiUrl: 'https://proxy-pollinations.2424004764.workers.dev',
+  pollinationsApi: 'https://image.pollinations.ai'
 })
 
   const prompt = ref('汽车');
@@ -30,7 +31,7 @@ const info = reactive({
   // 获取可用模型
   const fetchModels = async () => {
     try {
-      const response = await axios.get(info.apiUrl + '/models');
+      const response = await axios.get(info.apiUrl + '/models?target='+info.pollinationsApi);
       const modelNames = response.data;
       
       models.value = modelNames.map(name => ({
