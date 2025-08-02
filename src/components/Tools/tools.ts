@@ -521,6 +521,15 @@ export function getToolsCate() {
           url: '/ai-text-to-image/',
           cateId: 10,
           cate: 'AI工具'
+        },
+        {
+          id: 2,
+          title: '在线文本转语音',
+          logo: '/images/logo/ai_text_to_speech.png',
+          desc: '提供在线免费无限次数的文本转语音服务',
+          url: '/ai-text-to-speech/',
+          cateId: 10,
+          cate: 'AI工具'
         }
       ]
     }

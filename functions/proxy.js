@@ -11,7 +11,7 @@ export async function onRequest(context) {
     ]
 
     // 允许代理的目标接口（此处限制只能访问指定目标）
-    const allowedTargets = ['https://image.pollinations.ai']
+    const allowedTargets = ['https://image.pollinations.ai', 'https://text.pollinations.ai']
 
     // 处理预检请求（OPTIONS）
     if (request.method === 'OPTIONS') {

@@ -441,6 +441,16 @@ export const constantRoute = [
       description: '提供在线免费无限次数的文生图服务',
     }
   },
+  {
+    path: '/ai-text-to-speech',
+    component: () => import('@/components/Tools/AiTextToSpeech/AiTextToSpeech.vue'),
+    name: 'AiTextToSpeech',
+    meta: {
+      title: "在线文本转语音",
+      keywords: '在线文本转语音,文本转语音,语音合成,AI语音',
+      description: '提供在线免费无限次数的文本转语音服务',
+    }
+  },
   // 关于
   {
     path: '/about',
