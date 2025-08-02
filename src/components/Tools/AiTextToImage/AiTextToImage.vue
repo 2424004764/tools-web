@@ -9,7 +9,7 @@ const maxHistoryCount = ref(Number(import.meta.env.VITE_AI_IMAGE_HISTORY_MAX) ||
 
 const info = reactive({
   title: "在线文生图",
-  desc: "免费无限次数生成图片，无需登录注册、直接使用，如果生成出错，请稍后重试，或者重新进一下页面",
+  desc: "免费无限次数生成图片，无需登录注册、直接使用，如果生成出错或者生成的内容和提示词不一致，请重试，或者重新进一下页面",
   maxSeed: 100000000,
   // apiUrl: "https://proxy-pollinations.2424004764.workers.dev",
   apiUrl: "https://tool.fologde.com/proxy",
