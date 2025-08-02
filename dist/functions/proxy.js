@@ -75,12 +75,12 @@ export async function onRequest(context) {
     }
 
     // 返回拼接后的目标 URL
-    return new Response(JSON.stringify({
-        "pathname": targetUrl.pathname,
-        "params": params.toString(),
-        "targetUrl": targetUrl.toString(),
-        "targetUrl3": targetUrl.toString(),
-    }), { status: 200 })
+    // return new Response(JSON.stringify({
+    //     "pathname": targetUrl.pathname,
+    //     "params": params.toString(),
+    //     "targetUrl": targetUrl.toString(),
+    //     "targetUrl3": targetUrl.toString(),
+    // }), { status: 200 })
 
     // 创建新的请求配置
     const newRequestInit = {
