@@ -1,4 +1,6 @@
 export async function onRequest(context) {
+    // 测试地址：
+    // https://tool.fologde.com/proxy/?target=https://image.pollinations.ai&path=models&params=a=1&b=2
     const { request } = context
     const url = new URL(request.url)
     const origin = request.headers.get('Origin')
@@ -63,6 +65,8 @@ export async function onRequest(context) {
     return new Response(JSON.stringify({
         "pathname": targetUrl.pathname,
         "params": targetUrl.search,
+        "targetUrl": targetUrl.toString(),
+        "targetUrl2": targetUrl,
     }), { status: 200 })
 
     // 创建新的请求配置
