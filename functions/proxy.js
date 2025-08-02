@@ -46,33 +46,40 @@ export async function onRequest(context) {
         targetUrl.pathname = path;  // 设置目标 URL 的路径
     }
 
-    // 处理 params 查询参数
+    // 处理查询参数
     const params = new URLSearchParams();
 
-    // 获取所有的查询参数并添加到 params 对象中
+    // 获取 params 参数的值并解析为查询参数
+    const paramsValue = url.searchParams.get('params');
+    if (paramsValue) {
+        // 解析 params 参数的值作为查询字符串
+        const paramPairs = paramsValue.split('&');
+        paramPairs.forEach(pair => {
+            const [key, value] = pair.split('=');
+            if (key && value !== undefined) {
+                params.set(key, value);
+            }
+        });
+    }
+
+    // 获取其他查询参数（除了 target、path、params）
     url.searchParams.forEach((value, key) => {
-        if (key !== 'target' && key !== 'path') {  // 排除 target 和 path 参数
+        if (key !== 'target' && key !== 'path' && key !== 'params') {
             params.set(key, value);
         }
     });
 
-    // 将 params 拼接到目标 URL 的查询字符串中
+    // 将查询参数拼接到目标 URL
     if (params.toString()) {
         targetUrl.search = params.toString();
     }
-
-    // 打印调试信息
-    console.log({
-        "pathname": targetUrl.pathname,
-        "params": params.toString(),
-        "targetUrl": targetUrl.toString(),
-    });
 
     // 返回拼接后的目标 URL
     return new Response(JSON.stringify({
         "pathname": targetUrl.pathname,
         "params": params.toString(),
         "targetUrl": targetUrl.toString(),
+        "targetUrl3": targetUrl.toString(),
     }), { status: 200 })
 
     // 创建新的请求配置
