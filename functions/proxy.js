@@ -39,9 +39,27 @@ export async function onRequest(context) {
 
     // 拼接最终目标地址
     const targetUrl = new URL(targetParam)
+
     // 拼接请求路径和查询参数
-    targetUrl.pathname = url.searchParams.get('path')  // 使用请求的路径
-    targetUrl.search = url.searchParams.get('params')     // 保留查询参数
+    const path = url.searchParams.get('path') || '';
+    const params = new URLSearchParams();
+
+    // 获取所有的查询参数并添加到 params 对象中
+    url.searchParams.forEach((value, key) => {
+        if (key !== 'target' && key !== 'path') {  // 排除 target 和 path 参数
+            params.set(key, value);
+        }
+    });
+
+    // 合并目标 URL 的路径和查询参数
+    if (path) {
+        targetUrl.pathname = path;  // 设置目标 URL 的路径
+    }
+
+    // 拼接查询参数到目标 URL
+    if (params.toString()) {
+        targetUrl.search = params.toString();  // 设置目标 URL 的查询参数
+    }
     return new Response(JSON.stringify({
         "pathname": targetUrl.pathname,
         "params": targetUrl.search,
