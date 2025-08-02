@@ -38,7 +38,10 @@ export async function onRequest(context) {
     }
 
     // 拼接最终目标地址
-    const targetUrl = new URL(targetParam + url.pathname + url.search)
+    const targetUrl = new URL(targetParam)
+    // 拼接请求路径和查询参数
+    targetUrl.pathname = url.pathname  // 使用请求的路径（/models）
+    targetUrl.search = url.search     // 保留查询参数
 
     // 创建新的请求配置
     const newRequestInit = {
