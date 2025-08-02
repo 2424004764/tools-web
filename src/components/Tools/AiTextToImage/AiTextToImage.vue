@@ -103,7 +103,7 @@ const fetchModels = async () => {
   
   try {
     const response = await axios.get(
-      info.apiUrl + "/models?target=" + info.pollinationsApi
+      `${info.apiUrl}?path=models&target=${info.pollinationsApi}`
     );
     const modelNames = response.data;
 
@@ -160,23 +160,21 @@ const generateImage = async () => {
       seed: actualSeed.toString(),
     };
 
-    // 移除未定义的参数
+    // 移除未定义的参数并确保所有值都是字符串
     const filteredParams = Object.fromEntries(
-      Object.entries(params).filter(([_, v]) => v !== undefined)
+      Object.entries(params)
+        .filter(([_, v]) => v !== undefined)
+        .map(([k, v]) => [k, String(v)]) // 确保所有值都是字符串
     );
 
     // 添加时间戳避免缓存
-    filteredParams._t = Date.now();
+    filteredParams._t = String(Date.now());
 
-    // 直接请求 Pollinations API
+    // 将 filteredParams 转成 GET 参数拼接
+    const queryString = new URLSearchParams(filteredParams).toString();
     const response = await axios.get(
-      info.apiUrl +
-        "/prompt/" +
-        encodeURIComponent(prompt.value) +
-        "?target=" +
-        info.pollinationsApi,
+      `${info.apiUrl}?path=prompt/${encodeURIComponent(prompt.value)}&target=${info.pollinationsApi}&params=${queryString}`,
       {
-        params: filteredParams,
         headers: {
           Authorization: "Bearer " + pollinationsApiKey.value,
         },
