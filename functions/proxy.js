@@ -40,11 +40,11 @@ export async function onRequest(context) {
     // 拼接最终目标地址
     const targetUrl = new URL(targetParam)
     // 拼接请求路径和查询参数
-    targetUrl.pathname = url.pathname  // 使用请求的路径（/models）
-    targetUrl.search = url.search     // 保留查询参数
+    targetUrl.pathname = url.searchParams.get('path')  // 使用请求的路径
+    targetUrl.search = url.searchParams.get('params')     // 保留查询参数
     return new Response(JSON.stringify({
-        "targetUrl": targetUrl.toString(),
-        "request": request.toString(),
+        "pathname": targetUrl.pathname,
+        "params": targetUrl.search,
     }), { status: 200 })
 
     // 创建新的请求配置

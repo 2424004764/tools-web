@@ -83,7 +83,14 @@ windows命令
 // 将根目录的functions文件夹全部内容和wrangler.toml文件复制到/dist文件夹下
 pnpm build && xcopy /E /I /H /Y .\functions\* .\dist\functions\ && xcopy /Y .\wrangler.toml .\dist\
 
-linux只需要改一下复制的命令即可
+linux只需要改一下复制的命令即可:
+pnpm build && cp -r ./functions/* ./dist/functions/ && cp ./wrangler.toml ./dist/ && git add . && git commit -m "debug" && git push origin master
+
+```
+
+编译 && 移动 && 提交一条命令搞定：
+```
+pnpm build && cp -r ./functions/* ./dist/functions/ && cp ./wrangler.toml ./dist/ 
 ```
 
 打包seo静态页面:复制`.env.development`文件，并将文件名修改为`.env.production`,将里面的`NODE_ENV`的值改为`productio`,然后运行下面打包命令
