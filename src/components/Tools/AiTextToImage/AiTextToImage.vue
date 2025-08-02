@@ -93,7 +93,7 @@ const info = reactive({
       
       // 直接请求 Pollinations API（不再使用代理）
       const response = await axios.get(
-        info.apiUrl + '/prompt/' + encodeURIComponent(prompt.value),
+        info.apiUrl + '/prompt/' + encodeURIComponent(prompt.value)+'?target='+info.pollinationsApi,
         {
           params: filteredParams,
           headers: {
