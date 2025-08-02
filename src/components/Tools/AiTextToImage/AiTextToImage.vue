@@ -90,6 +90,9 @@ const historyList = ref<{ prompt: string; image: string; timestamp: number }[]>(
 const viewingImage = ref(""); // 当前查看的大图
 const viewingPrompt = ref(""); // 当前查看的提示词
 
+// 添加新的响应式变量
+const showGeneratedImageModal = ref(false);
+
 // 获取可用模型
 const fetchModels = async () => {
   try {
@@ -189,9 +192,14 @@ const generateImage = async () => {
   }
 };
 
-// 在新标签页打开图像
+// 修改打开图像的方法
 const openImageInNewTab = () => {
-  window.open(imageUrl.value, "_blank");
+  showGeneratedImageModal.value = true;
+};
+
+// 添加关闭生成图片模态框的方法
+const closeGeneratedImageModal = () => {
+  showGeneratedImageModal.value = false;
 };
 
 const saveToHistory = (prompt: string, image: string) => {
@@ -477,7 +485,7 @@ const clearAllHistory = () => {
                 <img
                   :src="imageUrl"
                   alt="生成的图像"
-                  class="rounded-lg shadow-lg max-w-full max-h-[70vh] object-contain cursor-pointer"
+                  class="rounded-lg shadow-lg max-w-full max-h-[70vh] object-contain cursor-pointer hover:scale-105 transition-transform"
                   @click="openImageInNewTab"
                 />
               </div>
@@ -558,6 +566,53 @@ const clearAllHistory = () => {
         <h3>提示词内容</h3>
         <div class="prompt-content">{{ viewingPrompt }}</div>
         <button @click="viewingPrompt = ''">关闭</button>
+      </div>
+    </div>
+
+    <!-- 生成图片大图查看模态框 -->
+    <div
+      v-if="showGeneratedImageModal && imageUrl"
+      class="generated-image-modal"
+      @click.self="closeGeneratedImageModal"
+    >
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="text-lg font-semibold text-gray-800">生成结果</h3>
+          <button
+            @click="closeGeneratedImageModal"
+            class="close-btn"
+            title="关闭"
+          >
+            <svg
+              class="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <img
+            :src="imageUrl"
+            alt="生成的图像"
+            class="generated-image"
+          />
+        </div>
+        <div class="modal-footer">
+          <button
+            @click="closeGeneratedImageModal"
+            class="btn-secondary"
+          >
+            关闭
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -1008,5 +1063,126 @@ select:focus {
   .history-item {
     padding: 8px;
   }
+}
+
+/* 新增生成图片模态框样式 */
+.generated-image-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+  animation: modalFadeIn 0.3s ease;
+}
+
+.generated-image-modal .modal-content {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  max-width: 90%;
+  max-height: 90%;
+  width: 600px; /* Adjust as needed */
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: contentSlideIn 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.generated-image-modal .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.generated-image-modal .modal-header h3 {
+  margin: 0;
+  color: #1f2937;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.generated-image-modal .close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  transition: all 0.2s ease;
+}
+
+.generated-image-modal .close-btn:hover {
+  background: #f3f4f6;
+  border-radius: 6px;
+}
+
+.generated-image-modal .modal-body {
+  flex-grow: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 10px;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.generated-image-modal .generated-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.generated-image-modal .modal-footer {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  padding-top: 15px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.generated-image-modal .btn-secondary {
+  padding: 10px 30px;
+  background: #e5e7eb;
+  color: #374151;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.generated-image-modal .btn-secondary:hover {
+  background: #d1d5db;
+  transform: translateY(-1px);
+}
+
+.generated-image-modal .btn-primary {
+  flex: 1;
+  padding: 10px 15px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.generated-image-modal .btn-primary:hover {
+  background: #2563eb;
+  transform: translateY(-1px);
 }
 </style>
