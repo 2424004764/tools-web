@@ -102,6 +102,9 @@ pnpm build:pro
 
 见我的公众号文章：https://mp.weixin.qq.com/s/kIrz2uAv0cmT3f2rPWbtdQ
 
+## 功能开发日志
+- 2025年8月2日 新增文生图
+
 ## 工具列表
 
 - 开发运维
