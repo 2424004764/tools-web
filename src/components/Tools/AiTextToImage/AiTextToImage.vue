@@ -14,7 +14,7 @@ const info = reactive({
   pollinationsApi: 'https://image.pollinations.ai'
 })
 
-  const prompt = ref('汽车');
+  const prompt = ref('一个神秘瑰丽的微观世界：花粉颗粒的精细结构、覆盖露珠的微小植物、发光孢子、漂浮的细菌和微粒，呈现出超现实的生物荧光效果。采用微距摄影风格，焦点清晰，背景虚化，整体色彩鲜艳，画面极具科幻与自然美感。');
   const imageUrl = ref('');
   const isLoading = ref(false);
   
@@ -25,7 +25,7 @@ const info = reactive({
   // 参数
   const width = ref(1024);
   const height = ref(1024);
-  const noLogo = ref(false);
+  const noLogo = ref(true);
   const seed = ref(-1);
 
   // 获取可用模型
