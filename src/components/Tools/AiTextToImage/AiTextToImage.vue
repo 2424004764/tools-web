@@ -11,7 +11,8 @@ const info = reactive({
   title: "在线文生图",
   desc: "免费无限次数生成图片，无需登录注册、直接使用",
   maxSeed: 100000000,
-  apiUrl: "https://proxy-pollinations.2424004764.workers.dev",
+  // apiUrl: "https://proxy-pollinations.2424004764.workers.dev",
+  apiUrl: "https://tool.fologde.com/proxy",
   pollinationsApi: "https://image.pollinations.ai",
   // 预设提示词列表
   presetPrompts: [
