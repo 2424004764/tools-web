@@ -66,7 +66,7 @@ export async function onRequest(context) {
         "pathname": targetUrl.pathname,
         "params": finalParams,
         "targetUrl": targetUrl.toString(),
-        "targetUrl2": targetUrl,
+        "targetUrl3": targetUrl,
     }), { status: 200 })
 
     // 创建新的请求配置
