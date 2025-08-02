@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
-import axios from 'axios';
+import { ref, reactive, onMounted } from "vue";
+import axios from "axios";
 
-import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
-import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
-const pollinationsApiKey = ref(import.meta.env.VITE_POLLINATIONS_API_KEY || '')
+import DetailHeader from "@/components/Layout/DetailHeader/DetailHeader.vue";
+import ToolDetail from "@/components/Layout/ToolDetail/ToolDetail.vue";
+const pollinationsApiKey = ref(import.meta.env.VITE_POLLINATIONS_API_KEY || "");
 
 const info = reactive({
   title: "在线文生图",
   desc: "免费无限次数生成图片，无需登录注册、直接使用",
   maxSeed: 100000000,
-  apiUrl: 'https://proxy-pollinations.2424004764.workers.dev',
-  pollinationsApi: 'https://image.pollinations.ai',
+  apiUrl: "https://proxy-pollinations.2424004764.workers.dev",
+  pollinationsApi: "https://image.pollinations.ai",
   // 预设提示词列表
   presetPrompts: [
     "一个神秘瑰丽的微观世界：花粉颗粒的精细结构、覆盖露珠的微小植物、发光孢子、漂浮的细菌和微粒，呈现出超现实的生物荧光效果。采用微距摄影风格，焦点清晰，背景虚化，整体色彩鲜艳，画面极具科幻与自然美感。",
@@ -64,119 +64,169 @@ const info = reactive({
     "古中国宫殿：红墙金瓦的宫殿建筑群，龙纹雕刻，庭院中的荷花池，传统中国风",
     "外星沙漠：紫色沙丘，水晶结构，三颗太阳的天空，奇特的外星生物",
     "未来城市公园：高楼大厦间的绿洲，悬浮花园，全息蝴蝶飞舞，自然与科技融合",
-    "海底城市：透明穹顶保护的水下城市，街道上有潜水艇穿梭，窗外是珊瑚礁和鱼群"
-  ]
-})
+    "海底城市：透明穹顶保护的水下城市，街道上有潜水艇穿梭，窗外是珊瑚礁和鱼群",
+  ],
+});
 
-  const prompt = ref(info.presetPrompts[0]); // 使用第一个预设提示词作为默认值
-  const imageUrl = ref('');
-  const isLoading = ref(false);
-  
-  // 模型列表
-  const models = ref<{value: string, label: string}[]>([]);
-  const selectedModel = ref('');
-  
-  // 参数
-  const width = ref(1024);
-  const height = ref(1024);
-  const noLogo = ref(true);
-  const seed = ref(-1);
+const prompt = ref(info.presetPrompts[0]); // 使用第一个预设提示词作为默认值
+const imageUrl = ref("");
+const isLoading = ref(false);
 
-  // 获取可用模型
-  const fetchModels = async () => {
-    try {
-      const response = await axios.get(info.apiUrl + '/models?target='+info.pollinationsApi);
-      const modelNames = response.data;
-      
-      models.value = modelNames.map(name => ({
-        value: name,
-        label: name.charAt(0).toUpperCase() + name.slice(1)
-      }));
-      
-      if (models.value.length > 0) {
-        selectedModel.value = models.value[0].value;
-      }
-    } catch (error) {
-      console.error('获取模型失败:', error);
-      models.value = [
-        { value: 'flux', label: 'Flux' },
-        { value: 'kontext', label: 'Kontext' },
-        { value: 'turbo', label: 'Turbo' }
-      ];
+// 模型列表
+const models = ref<{ value: string; label: string }[]>([]);
+const selectedModel = ref("");
+
+// 参数
+const width = ref(1024);
+const height = ref(1024);
+const noLogo = ref(true);
+const seed = ref(-1);
+
+// 历史记录
+const historyList = ref<{ prompt: string; image: string; timestamp: number }[]>(
+  []
+);
+const viewingImage = ref(""); // 当前查看的大图
+const viewingPrompt = ref(""); // 当前查看的提示词
+
+// 获取可用模型
+const fetchModels = async () => {
+  try {
+    const response = await axios.get(
+      info.apiUrl + "/models?target=" + info.pollinationsApi
+    );
+    const modelNames = response.data;
+
+    models.value = modelNames.map((name) => ({
+      value: name,
+      label: name.charAt(0).toUpperCase() + name.slice(1),
+    }));
+
+    if (models.value.length > 0) {
       selectedModel.value = models.value[0].value;
     }
+  } catch (error) {
+    console.error("获取模型失败:", error);
+    models.value = [
+      { value: "flux", label: "Flux" },
+      { value: "kontext", label: "Kontext" },
+      { value: "turbo", label: "Turbo" },
+    ];
+    selectedModel.value = models.value[0].value;
+  }
+};
+
+onMounted(() => {
+  fetchModels();
+});
+
+// 生成随机种子
+const generateRandomSeed = () => {
+  seed.value = Math.floor(Math.random() * info.maxSeed);
+};
+
+// 随机选择预设提示词
+const randomPresetPrompt = () => {
+  const randomIndex = Math.floor(Math.random() * info.presetPrompts.length);
+  prompt.value = info.presetPrompts[randomIndex];
+};
+
+const generateImage = async () => {
+  if (!prompt.value.trim() || !selectedModel.value) return;
+
+  isLoading.value = true;
+  imageUrl.value = "";
+
+  try {
+    // 如果 seed 为 -1，生成一个随机种子
+    const actualSeed =
+      seed.value === -1 ? Math.floor(Math.random() * info.maxSeed) : seed.value;
+
+    // 构造查询参数
+    const params = {
+      model: selectedModel.value,
+      width: width.value,
+      height: height.value,
+      nologo: noLogo.value ? "true" : undefined,
+      seed: actualSeed.toString(),
+    };
+
+    // 移除未定义的参数
+    const filteredParams = Object.fromEntries(
+      Object.entries(params).filter(([_, v]) => v !== undefined)
+    );
+
+    // 添加时间戳避免缓存
+    filteredParams._t = Date.now();
+
+    // 直接请求 Pollinations API
+    const response = await axios.get(
+      info.apiUrl +
+        "/prompt/" +
+        encodeURIComponent(prompt.value) +
+        "?target=" +
+        info.pollinationsApi,
+      {
+        params: filteredParams,
+        headers: {
+          Authorization: "Bearer " + pollinationsApiKey.value,
+        },
+        responseType: "blob",
+      }
+    );
+
+    const blob = new Blob([response.data], { type: "image/png" });
+    imageUrl.value = URL.createObjectURL(blob);
+
+    // 保存到历史记录
+    saveToHistory(prompt.value, imageUrl.value);
+  } catch (error) {
+    console.error("生成失败:", error);
+    alert("图像生成失败，请稍后重试");
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+// 在新标签页打开图像
+const openImageInNewTab = () => {
+  window.open(imageUrl.value, "_blank");
+};
+
+const saveToHistory = (prompt: string, image: string) => {
+  const newItem = {
+    prompt,
+    image,
+    timestamp: Date.now(),
   };
 
-  onMounted(() => {
-    fetchModels();
-  });
+  // 添加到历史记录开头（最新在最前）
+  historyList.value.unshift(newItem);
 
-  // 生成随机种子
-  const generateRandomSeed = () => {
-    seed.value = Math.floor(Math.random() * info.maxSeed);
-  };
-  
-  // 随机选择预设提示词
-  const randomPresetPrompt = () => {
-    const randomIndex = Math.floor(Math.random() * info.presetPrompts.length);
-    prompt.value = info.presetPrompts[randomIndex];
-  };
+  // 限制历史记录数量（最多20条）
+  if (historyList.value.length > 20) {
+    historyList.value.pop();
+  }
+};
 
-  const generateImage = async () => {
-    if (!prompt.value.trim() || !selectedModel.value) return;
-    
-    isLoading.value = true;
-    imageUrl.value = '';
-    
-    try {
-      // 如果 seed 为 -1，生成一个随机种子
-      const actualSeed = seed.value === -1 
-        ? Math.floor(Math.random() * info.maxSeed) 
-        : seed.value;
-      
-      // 构造查询参数
-      const params = {
-        model: selectedModel.value,
-        width: width.value,
-        height: height.value,
-        nologo: noLogo.value ? 'true' : undefined,
-        seed: actualSeed.toString()
-      };
-      
-      // 移除未定义的参数
-      const filteredParams = Object.fromEntries(
-        Object.entries(params).filter(([_, v]) => v !== undefined)
-      );
-      
-      // 添加时间戳避免缓存
-      filteredParams._t = Date.now();
-      
-      // 直接请求 Pollinations API
-      const response = await axios.get(
-        info.apiUrl + '/prompt/' + encodeURIComponent(prompt.value)+'?target='+info.pollinationsApi,
-        {
-          params: filteredParams,
-          headers: {
-            Authorization: 'Bearer ' + pollinationsApiKey.value
-          },
-          responseType: 'blob'
-        }
-      );
-      
-      const blob = new Blob([response.data], { type: 'image/png' });
-      imageUrl.value = URL.createObjectURL(blob);
-    } catch (error) {
-      console.error('生成失败:', error);
-      alert('图像生成失败，请稍后重试');
-    } finally {
-      isLoading.value = false;
-    }
-  };
+const viewImage = (image: string) => {
+  viewingImage.value = image;
+};
 
-  // 在新标签页打开图像
-  const openImageInNewTab = () => {
-    window.open(imageUrl.value, '_blank');
-  };
+// 查看提示词功能
+const viewPrompt = (prompt: string) => {
+  viewingPrompt.value = prompt;
+};
+
+// 删除历史记录
+const removeHistory = (index: number) => {
+  historyList.value.splice(index, 1);
+};
+
+// 清空所有历史记录
+const clearAllHistory = () => {
+  historyList.value = [];
+};
 </script>
 
 <template>
@@ -190,21 +240,32 @@ const info = reactive({
           <!-- 左侧：选项和输入 -->
           <div class="space-y-6">
             <div class="input-section">
-              <label class="block text-sm font-medium text-gray-700 mb-2">提示词</label>
-              <textarea 
-                v-model="prompt" 
+              <label class="block text-sm font-medium text-gray-700 mb-2"
+                >提示词</label
+              >
+              <textarea
+                v-model="prompt"
                 placeholder="输入描述文字..."
                 class="w-full p-4 border rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 min-h-[150px]"
               ></textarea>
-              
+
               <!-- 添加"换一个"按钮 -->
               <div class="mt-2 flex justify-end">
-                <button 
+                <button
                   @click="randomPresetPrompt"
                   class="text-sm text-blue-600 hover:text-blue-800 flex items-center"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-4 w-4 mr-1"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fill-rule="evenodd"
+                      d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
+                      clip-rule="evenodd"
+                    />
                   </svg>
                   换一个提示词
                 </button>
@@ -213,12 +274,18 @@ const info = reactive({
 
             <!-- 模型选择器 -->
             <div class="model-selector">
-              <label class="block text-sm font-medium text-gray-700 mb-2">选择模型</label>
-              <select 
-                v-model="selectedModel" 
+              <label class="block text-sm font-medium text-gray-700 mb-2"
+                >选择模型</label
+              >
+              <select
+                v-model="selectedModel"
                 class="w-full p-3 border rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500"
               >
-                <option v-for="model in models" :key="model.value" :value="model.value">
+                <option
+                  v-for="model in models"
+                  :key="model.value"
+                  :value="model.value"
+                >
                   {{ model.label }}
                 </option>
               </select>
@@ -227,51 +294,66 @@ const info = reactive({
             <!-- 参数区域 -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">宽度 (px)</label>
-                <input 
-                  v-model.number="width" 
-                  type="number" 
-                  min="64" 
-                  max="4096" 
-                  class="w-full p-2 border rounded-lg"
+                <label class="block text-sm font-medium text-gray-700 mb-2"
+                  >宽度 (px)</label
                 >
+                <input
+                  v-model.number="width"
+                  type="number"
+                  min="64"
+                  max="4096"
+                  class="w-full p-2 border rounded-lg"
+                />
               </div>
-              
+
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">高度 (px)</label>
-                <input 
-                  v-model.number="height" 
-                  type="number" 
-                  min="64" 
-                  max="4096" 
-                  class="w-full p-2 border rounded-lg"
+                <label class="block text-sm font-medium text-gray-700 mb-2"
+                  >高度 (px)</label
                 >
+                <input
+                  v-model.number="height"
+                  type="number"
+                  min="64"
+                  max="4096"
+                  class="w-full p-2 border rounded-lg"
+                />
               </div>
-              
+
               <!-- 随机种子区域 -->
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">随机种子</label>
+                <label class="block text-sm font-medium text-gray-700 mb-2"
+                  >随机种子</label
+                >
                 <div class="flex">
-                  <input 
-                    v-model.number="seed" 
-                    type="number" 
-                    min="-1" 
+                  <input
+                    v-model.number="seed"
+                    type="number"
+                    min="-1"
                     class="flex-1 p-2 border rounded-l-lg"
                     placeholder="-1 表示随机"
-                  >
-                  <button 
+                  />
+                  <button
                     @click="generateRandomSeed"
                     class="bg-gray-200 hover:bg-gray-300 px-3 rounded-r-lg border-t border-r border-b"
                     title="生成随机种子"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="h-5 w-5"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fill-rule="evenodd"
+                        d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
+                        clip-rule="evenodd"
+                      />
                     </svg>
                   </button>
                 </div>
                 <div class="flex justify-between mt-1">
                   <p class="text-xs text-gray-500">-1 = 随机</p>
-                  <button 
+                  <button
                     @click="seed = -1"
                     class="text-xs text-blue-600 hover:text-blue-800"
                   >
@@ -279,31 +361,63 @@ const info = reactive({
                   </button>
                 </div>
               </div>
-              
+
               <div class="flex items-center justify-start md:justify-end">
                 <div class="flex items-center">
-                  <input 
-                    v-model="noLogo" 
-                    type="checkbox" 
-                    id="noLogo" 
+                  <input
+                    v-model="noLogo"
+                    type="checkbox"
+                    id="noLogo"
                     class="mr-2"
+                  />
+                  <label for="noLogo" class="text-sm font-medium text-gray-700"
+                    >不显示水印</label
                   >
-                  <label for="noLogo" class="text-sm font-medium text-gray-700">不显示水印</label>
                 </div>
               </div>
             </div>
 
-            <button 
-              @click="generateImage" 
-              class="generate-btn bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg shadow-md transition w-full"
+            <button
+              @click="generateImage"
+              :disabled="isLoading"
+              :class="[
+                'generate-btn py-3 px-6 rounded-lg shadow-md transition w-full flex items-center justify-center',
+                isLoading 
+                  ? 'bg-gray-400 cursor-not-allowed' 
+                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+              ]"
             >
-              生成图像
+              <svg
+                v-if="isLoading"
+                class="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                ></circle>
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              {{ isLoading ? "生成中..." : "生成图像" }}
             </button>
           </div>
 
           <!-- 右侧：生成结果 -->
           <div class="result-section">
-            <div v-if="isLoading" class="loading flex flex-col items-center justify-center h-full">
+            <div
+              v-if="isLoading"
+              class="loading flex flex-col items-center justify-center h-full"
+            >
               <div class="spinner"></div>
               <p class="mt-4 text-lg">生成中...</p>
             </div>
@@ -314,20 +428,56 @@ const info = reactive({
                 <p class="text-sm text-gray-500">点击图像可查看大图</p>
               </div>
               <div class="flex-1 flex items-center justify-center">
-                <img 
-                  :src="imageUrl" 
-                  alt="生成的图像" 
+                <img
+                  :src="imageUrl"
+                  alt="生成的图像"
                   class="rounded-lg shadow-lg max-w-full max-h-[70vh] object-contain cursor-pointer"
                   @click="openImageInNewTab"
-                >
+                />
               </div>
             </div>
 
-            <div v-else class="placeholder flex flex-col items-center justify-center h-full text-center p-8">
-              <div class="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mb-4"></div>
-              <h3 class="text-lg font-medium text-gray-700 mb-2">等待生成图像</h3>
+            <div
+              v-else
+              class="placeholder flex flex-col items-center justify-center h-full text-center p-8"
+            >
+              <div
+                class="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mb-4"
+              ></div>
+              <h3 class="text-lg font-medium text-gray-700 mb-2">
+                等待生成图像
+              </h3>
               <p class="text-gray-500">输入提示词并点击"生成图像"按钮</p>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 新增：历史记录区域 -->
+    <div class="history-section" v-if="historyList.length">
+      <div class="history-header">
+        <h3>历史记录</h3>
+        <button @click="clearAllHistory" class="clear-btn">清空全部</button>
+      </div>
+      <div class="history-list">
+        <div
+          v-for="(item, index) in historyList"
+          :key="index"
+          class="history-item"
+        >
+          <img
+            :src="item.image"
+            alt="历史图片"
+            class="thumbnail"
+            @click="viewImage(item.image)"
+          />
+          <div class="history-actions">
+            <button @click="viewImage(item.image)">查看大图</button>
+            <button @click="viewPrompt(item.prompt)">查看提示词</button>
+            <button @click="removeHistory(index)" class="delete-btn">
+              删除
+            </button>
           </div>
         </div>
       </div>
@@ -337,8 +487,33 @@ const info = reactive({
     <ToolDetail title="描述">
       <el-text>
         {{ info.desc }}
-      </el-text> 
+      </el-text>
     </ToolDetail>
+
+    <!-- 大图查看模态框 -->
+    <div
+      v-if="viewingImage"
+      class="image-modal"
+      @click.self="viewingImage = ''"
+    >
+      <div class="modal-content">
+        <img :src="viewingImage" alt="大图预览" />
+        <button @click="viewingImage = ''">关闭</button>
+      </div>
+    </div>
+
+    <!-- 提示词查看模态框 -->
+    <div
+      v-if="viewingPrompt"
+      class="prompt-modal"
+      @click.self="viewingPrompt = ''"
+    >
+      <div class="modal-content">
+        <h3>提示词内容</h3>
+        <div class="prompt-content">{{ viewingPrompt }}</div>
+        <button @click="viewingPrompt = ''">关闭</button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -388,20 +563,25 @@ const info = reactive({
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* 输入框样式 */
-input[type="number"], input[type="text"], textarea, select {
+input[type="number"],
+input[type="text"],
+textarea,
+select {
   border: 1px solid #e2e8f0;
   border-radius: 0.5rem;
   padding: 0.75rem;
   transition: all 0.2s;
 }
 
-input[type="number"]:focus, 
-input[type="text"]:focus, 
-textarea:focus, 
+input[type="number"]:focus,
+input[type="text"]:focus,
+textarea:focus,
 select:focus {
   outline: none;
   border-color: #4299e1;
@@ -412,15 +592,44 @@ select:focus {
 .generate-btn {
   font-weight: 600;
   transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
 }
 
-.generate-btn:hover {
+.generate-btn:not(:disabled):hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
-.generate-btn:active {
+.generate-btn:not(:disabled):active {
   transform: translateY(0);
+}
+
+.generate-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.generate-btn:disabled:hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* 加载动画 */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
 }
 
 /* 随机种子输入框样式 */
@@ -438,5 +647,320 @@ select:focus {
 
 .flex > button:hover {
   background-color: #d1d5db;
+}
+
+/* 新增历史记录样式 */
+.history-section {
+  margin-top: 20px;
+  padding: 15px;
+  background: #f5f5f5;
+  border-radius: 8px;
+}
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.history-header h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+}
+
+.clear-btn {
+  padding: 6px 12px;
+  background: #ff4d4f;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.clear-btn:hover {
+  background: #ff7875;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(255, 77, 79, 0.3);
+}
+
+.history-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 15px;
+}
+
+.history-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: white;
+  padding: 12px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.history-item::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(59, 130, 246, 0.1),
+    rgba(147, 51, 234, 0.1)
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.history-item:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.history-item:hover::before {
+  opacity: 1;
+}
+
+.thumbnail {
+  width: 90px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+
+.thumbnail:hover {
+  transform: scale(1.05);
+  border-color: #3b82f6;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+/* 调整历史记录操作按钮的样式 */
+.history-actions {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.history-actions button {
+  padding: 6px 10px;
+  font-size: 11px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  color: #495057;
+}
+
+.history-actions button:hover {
+  background: #e9ecef;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.history-actions button:active {
+  transform: translateY(0);
+}
+
+.delete-btn {
+  background: #fff5f5 !important;
+  color: #dc2626 !important;
+  border-color: #fecaca !important;
+}
+
+.delete-btn:hover {
+  background: #fef2f2 !important;
+  color: #b91c1c !important;
+  border-color: #fca5a5 !important;
+}
+
+/* 大图模态框样式 */
+.image-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+  animation: modalFadeIn 0.3s ease;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.modal-content {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  max-width: 90%;
+  max-height: 90%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: contentSlideIn 0.3s ease;
+}
+
+@keyframes contentSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal-content img {
+  max-width: 100%;
+  max-height: 80vh;
+  display: block;
+  margin-bottom: 15px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.modal-content button {
+  padding: 8px 16px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.modal-content button:hover {
+  background: #2563eb;
+  transform: translateY(-1px);
+}
+
+/* 提示词模态框样式 */
+.prompt-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+  animation: modalFadeIn 0.3s ease;
+}
+
+.prompt-modal .modal-content {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  max-width: 80%;
+  max-height: 80%;
+  width: 500px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: contentSlideIn 0.3s ease;
+}
+
+.prompt-modal .modal-content h3 {
+  margin: 0 0 16px 0;
+  color: #1f2937;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.prompt-content {
+  margin: 15px 0;
+  padding: 16px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  line-height: 1.6;
+  color: #374151;
+  font-size: 14px;
+}
+
+.prompt-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.prompt-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.prompt-content::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.prompt-content::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .history-list {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 10px;
+  }
+
+  .thumbnail {
+    width: 70px;
+    height: 70px;
+  }
+
+  .history-actions button {
+    font-size: 10px;
+    padding: 4px 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .history-list {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 8px;
+  }
+
+  .thumbnail {
+    width: 60px;
+    height: 60px;
+  }
+
+  .history-item {
+    padding: 8px;
+  }
 }
 </style>
