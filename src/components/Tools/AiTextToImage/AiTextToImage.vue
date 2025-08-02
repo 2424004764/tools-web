@@ -249,6 +249,33 @@ const canGenerateImage = computed(() => {
          selectedModel.value && 
          prompt.value.trim();
 });
+
+// 添加复制提示词的方法
+const copyPrompt = async (text: string) => {
+  try {
+    await navigator.clipboard.writeText(text);
+    // 可以添加一个简单的提示，比如临时改变按钮文字
+    const copyBtn = document.querySelector('.copy-prompt-btn') as HTMLButtonElement;
+    if (copyBtn) {
+      const originalText = copyBtn.innerHTML;
+      copyBtn.innerHTML = '已复制!';
+      copyBtn.style.background = '#10b981';
+      setTimeout(() => {
+        copyBtn.innerHTML = originalText;
+        copyBtn.style.background = '#3b82f6';
+      }, 2000);
+    }
+  } catch (err) {
+    console.error('复制失败:', err);
+    // 降级方案：使用传统的复制方法
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textArea);
+  }
+};
 </script>
 
 <template>
@@ -613,9 +640,23 @@ const canGenerateImage = computed(() => {
       @click.self="viewingPrompt = ''"
     >
       <div class="modal-content">
-        <h3>提示词内容</h3>
+        <div class="prompt-header">
+          <h3>提示词内容</h3>
+        </div>
         <div class="prompt-content">{{ viewingPrompt }}</div>
-        <button @click="viewingPrompt = ''">关闭</button>
+        <div class="prompt-footer">
+          <button @click="viewingPrompt = ''" class="btn-secondary">关闭</button>
+          <button 
+            @click="copyPrompt(viewingPrompt)"
+            class="copy-prompt-btn"
+            title="复制提示词"
+          >
+            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+            </svg>
+            复制
+          </button>
+        </div>
       </div>
     </div>
 
@@ -1031,6 +1072,7 @@ select:focus {
   animation: modalFadeIn 0.3s ease;
 }
 
+/* 提示词模态框样式更新 */
 .prompt-modal .modal-content {
   background: white;
   padding: 24px;
@@ -1040,17 +1082,26 @@ select:focus {
   width: 500px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   animation: contentSlideIn 0.3s ease;
+  display: flex;
+  flex-direction: column;
 }
 
-.prompt-modal .modal-content h3 {
-  margin: 0 0 16px 0;
+.prompt-header {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.prompt-header h3 {
+  margin: 0;
   color: #1f2937;
   font-size: 18px;
   font-weight: 600;
 }
 
 .prompt-content {
-  margin: 15px 0;
+  flex-grow: 1;
+  margin-bottom: 16px;
   padding: 16px;
   background: #f8f9fa;
   border: 1px solid #e9ecef;
@@ -1079,6 +1130,55 @@ select:focus {
 
 .prompt-content::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
+}
+
+.prompt-footer {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.copy-prompt-btn {
+  display: flex;
+  align-items: center;
+  padding: 10px 20px;
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.copy-prompt-btn:hover {
+  background: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
+}
+
+.copy-prompt-btn:active {
+  transform: translateY(0);
+}
+
+.btn-secondary {
+  padding: 10px 20px;
+  background: #e5e7eb;
+  color: #374151;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: #d1d5db;
+  transform: translateY(-1px);
 }
 
 /* 响应式调整 */
