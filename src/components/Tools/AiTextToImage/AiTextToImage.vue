@@ -5,6 +5,7 @@ import axios from "axios";
 import DetailHeader from "@/components/Layout/DetailHeader/DetailHeader.vue";
 import ToolDetail from "@/components/Layout/ToolDetail/ToolDetail.vue";
 const pollinationsApiKey = ref(import.meta.env.VITE_POLLINATIONS_API_KEY || "");
+const maxHistoryCount = ref(Number(import.meta.env.VITE_AI_IMAGE_HISTORY_MAX) || 20);
 
 const info = reactive({
   title: "在线文生图",
@@ -203,8 +204,8 @@ const saveToHistory = (prompt: string, image: string) => {
   // 添加到历史记录开头（最新在最前）
   historyList.value.unshift(newItem);
 
-  // 限制历史记录数量（最多20条）
-  if (historyList.value.length > 20) {
+  // 限制历史记录数量
+  if (historyList.value.length > maxHistoryCount.value) {
     historyList.value.pop();
   }
 };
@@ -269,6 +270,51 @@ const clearAllHistory = () => {
                   </svg>
                   换一个提示词
                 </button>
+              </div>
+
+              <!-- 提示词网站链接 -->
+              <div class="mt-3 flex flex-wrap gap-2">
+                <span class="text-xs text-gray-500 mr-2">提示词灵感：</span>
+                <a
+                  href="https://prompthero.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="inline-flex items-center px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 transition-colors"
+                >
+                  <svg
+                    class="w-3 h-3 mr-1"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"
+                    />
+                    <path
+                      d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"
+                    />
+                  </svg>
+                  PromptHero
+                </a>
+                <a
+                  href="https://lexica.art"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="inline-flex items-center px-2 py-1 text-xs bg-purple-50 text-purple-700 rounded-md hover:bg-purple-100 transition-colors"
+                >
+                  <svg
+                    class="w-3 h-3 mr-1"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"
+                    />
+                    <path
+                      d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"
+                    />
+                  </svg>
+                  Lexica
+                </a>
               </div>
             </div>
 
@@ -382,9 +428,9 @@ const clearAllHistory = () => {
               :disabled="isLoading"
               :class="[
                 'generate-btn py-3 px-6 rounded-lg shadow-md transition w-full flex items-center justify-center',
-                isLoading 
-                  ? 'bg-gray-400 cursor-not-allowed' 
-                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+                isLoading
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-blue-600 hover:bg-blue-700 text-white',
               ]"
             >
               <svg
