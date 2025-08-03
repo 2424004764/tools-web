@@ -58,15 +58,25 @@ const fetchVoices = async () => {
     const response = await axios.get(
       `${pollinationsProxyUrl.value}?path=models&target=${pollinationsUrl.value}`
     );
-    const voiceNames = response.data;
+    const models = response.data;
 
-    voices.value = voiceNames.map((name: string) => ({
-      value: name,
-      label: name.charAt(0).toUpperCase() + name.slice(1),
-    }));
+    // 过滤出有voices字段且不为空的模型
+    const audioModel = models.find((model: any) => 
+      model.voices && Array.isArray(model.voices) && model.voices.length > 0
+    );
 
-    if (voices.value.length > 0) {
-      selectedVoice.value = voices.value[0].value;
+    if (audioModel && audioModel.voices) {
+      voices.value = audioModel.voices.map((voice: string) => ({
+        value: voice,
+        label: voice.charAt(0).toUpperCase() + voice.slice(1),
+      }));
+
+      if (voices.value.length > 0) {
+        selectedVoice.value = voices.value[0].value;
+      }
+    } else {
+      voices.value = [];
+      selectedVoice.value = "";
     }
   } catch (error) {
     console.error("获取语音列表失败:", error);
@@ -107,9 +117,8 @@ const generateSpeech = async () => {
     params._t = String(Date.now());
 
     // 将 params 转成 GET 参数拼接
-    const queryString = new URLSearchParams(params).toString();
     const response = await axios.get(
-      `${pollinationsProxyUrl.value}?path=speech/${encodeURIComponent(text.value)}&target=${pollinationsUrl.value}&params=${queryString}`,
+      `${pollinationsProxyUrl.value}?path=${encodeURIComponent(text.value)}&target=${pollinationsUrl.value}`,
       {
         headers: {
           Authorization: "Bearer " + pollinationsApiKey.value,
