@@ -391,6 +391,16 @@ export const constantRoute = [
       description: '在线生成字形ASCII画',
     }
   },
+  {
+    path: '/imagetobase64',
+    component: () => import('@/components/Tools/ImageToBase64/ImageToBase64.vue'),
+    name: 'imageToBase64',
+    meta: {
+      title: "图片转Base64",
+      keywords: '图片转base64,图片编码,base64编码,图片转码',
+      description: '将图片文件转换为Base64编码，支持拖拽上传和点击上传，方便在网页中使用图片',
+    }
+  },
   // {
   //   path: '/jsforamt',
   //   component: () => import('@/components/Tools/JSFormat/JSFormat.vue'),
