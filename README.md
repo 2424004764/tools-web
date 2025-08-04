@@ -19,7 +19,7 @@
 
 </div>
 
-本仓库fork于：<a href="https://github.com/naroat/tools-web" target="_blank">Tools-Web</a>，感谢naroat做出的贡献！
+本仓库fork于：<a href="https://github.com/naroat/tools-web" target="_blank">Tools-Web</a>，感谢naroat做出的贡献！能让我方便在此基础上添加新功能。
 
 ## 目录
 
