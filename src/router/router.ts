@@ -51,16 +51,16 @@ export const constantRoute = [
       description: '正则表达式测试工具,常用正则表达式,在线正则表达式',
     }
   },
-  // {
-  //   path: '/unicode',
-  //   component: () => import('@/components/Tools/Unicode/Unicode.vue'),
-  //   name: 'unicode',
-  //   meta: {
-  //     title: "Unicode转中文",
-  //     keywords: '在线Unicode编码转换，中文转Unicode，Unicode转中文',
-  //     description: '在线Unicode编码转换，中文转Unicode，Unicode转中文，在文本框里输入要转换的内容，然后点击要转换的类型按钮，转换完成后即可看到对应的内容。..',
-  //   }
-  // },
+  {
+    path: '/unicode',
+    component: () => import('@/components/Tools/Unicode/Unicode.vue'),
+    name: 'unicode',
+    meta: {
+      title: "Unicode转中文",
+      keywords: '在线Unicode编码转换，中文转Unicode，Unicode转中文',
+      description: '在线Unicode编码转换，中文转Unicode，Unicode转中文，在文本框里输入要转换的内容，然后点击要转换的类型按钮，转换完成后即可看到对应的内容。..',
+    }
+  },
   {
     path: '/wordcount',
     component: () => import('@/components/Tools/WordCount/WordCount.vue'),
@@ -381,16 +381,16 @@ export const constantRoute = [
       description: '颜色选择器、在各种颜色空间如十六进制、rgb、hsl、css等等之间转换颜色',
     }
   },
-  // {
-  //   path: '/asciiwordpic',
-  //   component: () => import('@/components/Tools/ASCIIWordPic/ASCIIWordPic.vue'),
-  //   name: 'asciiWordPic',
-  //   meta: {
-  //     title: "ASCII字形生成器",
-  //     keywords: 'ASCII画,字形画,字形生成器',
-  //     description: '在线生成字形ASCII画',
-  //   }
-  // },
+  {
+    path: '/asciiwordpic',
+    component: () => import('@/components/Tools/ASCIIWordPic/ASCIIWordPic.vue'),
+    name: 'asciiWordPic',
+    meta: {
+      title: "ASCII字形生成器",
+      keywords: 'ASCII画,字形画,字形生成器',
+      description: '在线生成字形ASCII画',
+    }
+  },
   // {
   //   path: '/jsforamt',
   //   component: () => import('@/components/Tools/JSFormat/JSFormat.vue'),
