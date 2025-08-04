@@ -7,7 +7,7 @@ import figlet from 'figlet';
 const info = reactive({
   title: "ASCII字形生成器",
 })
-figlet.defaults({ fontPath: '//unpkg.com/figlet@1.6.0/fonts/' });
+figlet.defaults({ fontPath: '//unpkg.com/figlet@1.6.0/fonts' });
 
 const content = ref('Tools-Web')
 const contentRes = ref('')
