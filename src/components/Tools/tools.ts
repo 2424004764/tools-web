@@ -353,6 +353,15 @@ export function getToolsCate() {
           cateId: 5,
           cate: '图片处理',
         },
+        {
+          id: 1,
+          title: '图片转Base64',
+          logo: '/images/logo/img.png',
+          desc: '将图片文件转换为Base64编码，支持拖拽上传和点击上传',
+          url: '/imagetobase64/',
+          cateId: 5,
+          cate: '图片处理',
+        },
       ]
     },
     {
