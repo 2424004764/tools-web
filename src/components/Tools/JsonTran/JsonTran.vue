@@ -3,39 +3,26 @@ import { reactive } from 'vue'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { transferred, copy } from '@/utils/string';
-import { Codemirror } from "vue-codemirror";
-import { json } from '@codemirror/lang-json';
-import '@codemirror/search';
-import '@codemirror/state';
-import '@codemirror/commands';
-// import { syntaxTree } from '@codemirror/language';
-// import { linter, Diagnostic } from '@codemirror/lint';
-
-// const regexpLinter = linter(view => {
-//   let diagnostics: Diagnostic[] = []
-//   syntaxTree(view.state).cursor().iterate(node => {
-//     if (node.name == "number") diagnostics.push({
-//       from: node.from,
-//       to: node.to,
-//       severity: "warning",
-//       message: "Regular expressions are FORBIDDEN",
-//       actions: [{
-//         name: "Remove",
-//         apply(view, from, to) { view.dispatch({changes: {from, to}}) }
-//       }]
-//     })
-//   })
-//   return diagnostics
-// })
+import Codemirror from "codemirror-editor-vue3";
+import "codemirror/mode/javascript/javascript.js";
 
 const info = reactive({
   title: "Json在线转换",
   code: '',
-  extensions: [json()],  //[json(), lineNumbers()],
   isParseErr: false,
   parseErr: ''
 })
 
+const cmOptions = {
+  mode: "application/json",
+  lineNumbers: true,
+  theme: "default",
+  indentUnit: 2,
+  tabSize: 2,
+  lineWrapping: true,
+  foldGutter: true,
+  gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"]
+}
 
 //格式化json
 const formatJson = () => {
@@ -48,7 +35,6 @@ const formatJson = () => {
     info.code = JSON.stringify(JSON.parse(info.code), null, '\t');
   } catch(error) {
     info.isParseErr = true;
-    // info.parseErr = (error as Error).message
     info.parseErr = '无效的JSON'
   }
 }
@@ -82,29 +68,16 @@ const copyRes = async () => {
   <div class="flex flex-col mt-3 flex-1">
     <DetailHeader :title="info.title"></DetailHeader>
 
-    <div class="p-4 rounded-2xl bg-white ">
+    <div class="p-4 rounded-2xl bg-white">
       
       <div>
-        <!-- 
-          tabSize: tab键前进的个数
-          style： 自定义样式
-          autofocus： 挂载后立即聚焦在编辑器
-          indent-with-tab：绑定键盘tab事件
-          extensions： 扩展，传数组
-          
-          @ready="console.log('ready', $event)"
-          @change="console.log('change', $event)"
-          @focus="console.log('focus', $event)"
-          @blur="console.log('blur', $event)"
-         -->
-        <codemirror
-          v-model="info.code"
-          placeholder="这里是代码..."
-          :style="{ height: '400px' }"
-          :autofocus="true"
-          :indent-with-tab="true" 
-          :tabSize="2"
-          :extensions="info.extensions"
+        <Codemirror
+          v-model:value="info.code"
+          :options="cmOptions"
+          border
+          height="400"
+          width="100%"
+          placeholder="请输入JSON代码..."
         />
       </div>
       
@@ -113,8 +86,6 @@ const copyRes = async () => {
         <el-button type="primary" @click="compress">压缩</el-button>
         <el-button type="primary" @click="tran">转义</el-button>
         <el-button type="primary" @click="unTransferred">去转义</el-button>
-        <!-- <el-button type="primary">unicode转中文</el-button> -->
-        <!-- <el-button type="primary">中文转unicode</el-button> -->
         <el-button type="primary" @click="copyRes">复制</el-button>
         <el-button type="primary" @click="clear">清空</el-button>
       </div>

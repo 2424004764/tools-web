@@ -56,6 +56,12 @@ importers:
       axios:
         specifier: ^1.6.2
         version: 1.11.0
+      codemirror:
+        specifier: ^5.65.19
+        version: 5.65.19
+      codemirror-editor-vue3:
+        specifier: ^2.8.0
+        version: 2.8.0(codemirror@5.65.19)(diff-match-patch@1.0.5)(vue@3.5.18(typescript@5.9.2))
       colord:
         specifier: ^2.9.3
         version: 2.9.3
@@ -1308,6 +1314,13 @@ packages:
   clone@2.1.2:
     resolution: {integrity: sha512-3Pe/CF1Nn94hyhIYpjtiLhdCoEoz0DqQ+988E9gmeEdQZlojxnOb74wctFyuwWQHzqyf9X7C7MG8juUpqBJT8w==, tarball: https://registry.npmmirror.com/clone/-/clone-2.1.2.tgz}
     engines: {node: '>=0.8'}
+
+  codemirror-editor-vue3@2.8.0:
+    resolution: {integrity: sha512-ebYGNhBpLmQNLguXzNyMMkn6K8v3lcS5/Ncvdn6YS4bLGEHE67MfsJIS/WV0L7I6WavUuFlY/Rs/AJKChIwSwg==, tarball: https://registry.npmmirror.com/codemirror-editor-vue3/-/codemirror-editor-vue3-2.8.0.tgz}
+    peerDependencies:
+      codemirror: ^5
+      diff-match-patch: ^1.0.5
+      vue: ^3.x
 
   codemirror@5.65.19:
     resolution: {integrity: sha512-+aFkvqhaAVr1gferNMuN8vkTSrWIFvzlMV9I2KBLCWS2WpZ2+UAkZjlMZmEuT+gcXTi6RrGQCkWq1/bDtGqhIA==, tarball: https://registry.npmmirror.com/codemirror/-/codemirror-5.65.19.tgz}
@@ -5808,6 +5821,12 @@ snapshots:
       wrap-ansi: 7.0.0
 
   clone@2.1.2: {}
+
+  codemirror-editor-vue3@2.8.0(codemirror@5.65.19)(diff-match-patch@1.0.5)(vue@3.5.18(typescript@5.9.2)):
+    dependencies:
+      codemirror: 5.65.19
+      diff-match-patch: 1.0.5
+      vue: 3.5.18(typescript@5.9.2)
 
   codemirror@5.65.19: {}
 
