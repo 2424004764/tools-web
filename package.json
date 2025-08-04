@@ -26,6 +26,8 @@
     "@wangeditor/editor": "^5.1.23",
     "@wangeditor/editor-for-vue": "^5.1.12",
     "axios": "^1.6.2",
+    "codemirror": "^5.65.19",
+    "codemirror-editor-vue3": "^2.8.0",
     "colord": "^2.9.3",
     "csso": "^5.0.5",
     "default-passive-events": "^2.0.0",

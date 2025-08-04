@@ -31,16 +31,16 @@ export const constantRoute = [
       description: '在线md5加密，一键生成md5加密字符串，可生成16位或32位md5加密字符串，md5双重加密',
     }
   },
-  // {
-  //   path: '/json',
-  //   component: () => import('@/components/Tools/JsonTran/JsonTran.vue'),
-  //   name: 'json',
-  //   meta: {
-  //     title: "Json在线转换",
-  //     keywords: 'json编辑器，json格式化,json压缩,json转义,json去转义',
-  //     description: '提供实时编辑和预览JSON 数据，语法高亮、校验、格式化、转义，去转义、压缩等功能，可以提高阅读修改的效率和准确性',
-  //   }
-  // },
+  {
+    path: '/json',
+    component: () => import('@/components/Tools/JsonTran/JsonTran.vue'),
+    name: 'json',
+    meta: {
+      title: "Json在线转换",
+      keywords: 'json编辑器，json格式化,json压缩,json转义,json去转义',
+      description: '提供实时编辑和预览JSON 数据，语法高亮、校验、格式化、转义，去转义、压缩等功能，可以提高阅读修改的效率和准确性',
+    }
+  },
   {
     path: '/reg',
     component: () => import('@/components/Tools/RegTest/RegTest.vue'),
