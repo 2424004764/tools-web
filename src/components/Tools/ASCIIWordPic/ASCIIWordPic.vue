@@ -12,6 +12,8 @@ figlet.defaults({ fontPath: '//unpkg.com/figlet@1.6.0/fonts' });
 const content = ref('Tools-Web')
 const contentRes = ref('')
 const fontStyle = ref('Big')
+const loading = ref(false)
+const maxWidth = ref(120)
 const options = ref([
   {
     value: 'Alpha',
@@ -100,15 +102,17 @@ const options = ref([
 ])
 
 const gen = () => {
+  loading.value = true
   figlet(content.value, 
   {
     font: fontStyle.value,
-    width: 120,
+    width: maxWidth.value,
     horizontalLayout: "default",
     verticalLayout: "default",
     whitespaceBreak: true,
   }, 
   function (err, data) {
+    loading.value = false
     if (err) {
       console.log(';----', err)
       return;
@@ -137,7 +141,7 @@ onMounted(() => {
       <div class="mb-6">
         <el-input v-model="content" :rows="4" type="textarea" placeholder="请输入内容"></el-input>
         <div class="mt-3 flex items-center">
-          <div class="flex items-center mr-3 w-36">
+          <div class="flex items-center mr-3 w-48">
             <div class="w-10">
               <el-text class="">风格</el-text>
             </div>
@@ -156,14 +160,32 @@ onMounted(() => {
             </el-select>
           </div>
           
-          <el-button type="primary" @click="gen()">生成</el-button>
+          <div class="flex items-center mr-3 w-48">
+            <div class="w-14">
+              <el-text class="">最大宽度</el-text>
+            </div>
+            <el-input-number
+              v-model="maxWidth"
+              :min="1"
+              :max="1000"
+              size="default"
+              class="ml-2 flex-1"
+              @change="gen"
+            />
+          </div>
+          
+          <el-button type="primary" @click="gen()" :loading="loading">生成</el-button>
           <el-button type="primary" @click="copy(contentRes)">复制结果</el-button>
           <el-button type="primary" @click="clear">清除</el-button>
         </div>
       </div>
 
       <div>
-        <pre tabindex="0"><code>{{ contentRes }}</code></pre>
+        <div v-if="loading" class="flex justify-center items-center py-8">
+          <el-icon class="is-loading mr-2"><Loading /></el-icon>
+          <span>正在生成ASCII字形...</span>
+        </div>
+        <pre v-else tabindex="0"><code>{{ contentRes }}</code></pre>
       </div>
 
     </div>
@@ -171,7 +193,7 @@ onMounted(() => {
     <!-- desc -->
     <ToolDetail title="描述">
       <el-text>
-        好用的ASCII字形生成器，输入框中输入需要生成的字母；提供多种风格选择
+        好用的ASCII字形生成器，输入框中输入需要生成的字母；提供多种风格选择，可设置输出最大宽度，暂不支持中文
       </el-text> 
     </ToolDetail>
   
