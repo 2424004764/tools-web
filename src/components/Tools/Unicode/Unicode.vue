@@ -2,17 +2,26 @@
 import { reactive } from 'vue'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
-import { Codemirror } from "vue-codemirror"
-// import { lineNumbers } from '@codemirror/view';
 import { copy } from '@/utils/string'
-
+import Codemirror from "codemirror-editor-vue3";
+import "codemirror/mode/javascript/javascript.js";
 
 const info = reactive({
   title: "Unicode转中文",
-  // extensions: [lineNumbers()],
   content: '',
   tranRes: '',
 })
+
+const cmOptions = {
+  mode: "text/plain",
+  lineNumbers: true,
+  theme: "default",
+  indentUnit: 2,
+  tabSize: 2,
+  lineWrapping: true,
+  foldGutter: true,
+  gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"]
+}
 
 const clearRes = () => {
   info.tranRes = ''
@@ -48,32 +57,39 @@ const toUnicode = () => {
 const copyRes = async () => {
   copy(info.tranRes)
 }
+
+//清空输入框
+const clear = () => {
+  info.content = ''
+}
 </script>
 
 <template>
   <div class="flex flex-col mt-3 flex-1">
     <DetailHeader :title="info.title"></DetailHeader>
 
-    <div  class="p-4 rounded-2xl bg-white">
+    <div class="p-4 rounded-2xl bg-white">
+      
       <div>
-        <codemirror
-          v-model="info.content"
-          placeholder=""
-          :style="{ height: '200px' }"
-          :autofocus="true"
-          :indent-with-tab="true" 
-          :tabSize="2"
+        <Codemirror
+          v-model:value="info.content"
+          :options="cmOptions"
+          border
+          height="200"
+          width="100%"
+          placeholder="请输入要转换的文本..."
         />
       </div>
-
+      
       <div class="mt-4">
         <el-button type="primary" @click="toZH">unicode转中文</el-button>
         <el-button type="primary" @click="toUnicode">中文转unicode</el-button>
         <el-button type="primary" @click="copyRes">复制结果</el-button>
+        <el-button type="primary" @click="clear">清空</el-button>
       </div>
 
       <div class="mt-3 min-h-md bg-gray-100 p-3 mb-3">
-        <el-input type="textarea" :rows="8" v-model="info.tranRes"></el-input>
+        <el-input type="textarea" :rows="8" v-model="info.tranRes" placeholder="转换结果将显示在这里..."></el-input>
       </div>
     </div>
 
