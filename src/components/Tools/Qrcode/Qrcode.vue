@@ -42,7 +42,304 @@ const info = reactive({
   cornerDotGradientRotation: 0,
   cornerDotGradientColor1: "#FF0000",
   cornerDotGradientColor2: "#00FF00",
+  // 新增：配置模式
+  configMode: "preset", // "preset" 或 "custom"
+  // 新增：预设配置，默认选择 "default"
+  presetConfig: "default",
 });
+
+// 预设配置定义
+const presetConfigs = {
+  default: {
+    name: "默认配置",
+    description: "当前默认的渐变配置",
+    dotType: "dots", // 当前实际使用的点样式
+    cornerSquareType: "square",
+    cornerDotType: "square",
+    colorMode: "gradient",
+    gradientType: "radial",
+    gradientRotation: 0,
+    gradientColor1: "#FF8C00", // 确保和当前实际颜色一致
+    gradientColor2: "#1E90FF",
+    bgColor: "#ffffff",
+    cornerSquareColorMode: "single",
+    cornerSquareColor: "#000000",
+    cornerDotColorMode: "single",
+    cornerDotColor: "#000000",
+  },
+  classic: {
+    name: "经典黑",
+    description: "经典黑白配色，简约大方",
+    dotType: "square",
+    cornerSquareType: "square",
+    cornerDotType: "square",
+    colorMode: "single",
+    preColor: "#000000",
+    bgColor: "#ffffff",
+    cornerSquareColor: "#000000",
+    cornerDotColor: "#000000",
+  },
+  modern: {
+    name: "现代蓝",
+    description: "现代蓝色渐变，科技感十足",
+    dotType: "rounded",
+    cornerSquareType: "extra-rounded",
+    cornerDotType: "dot",
+    colorMode: "gradient",
+    gradientType: "linear",
+    gradientRotation: 45,
+    gradientColor1: "#667eea",
+    gradientColor2: "#764ba2",
+    bgColor: "#ffffff",
+    cornerSquareColorMode: "single",
+    cornerSquareColor: "#667eea",
+    cornerDotColorMode: "single",
+    cornerDotColor: "#667eea",
+  },
+  warm: {
+    name: "温暖橙",
+    description: "温暖橙色系，活力满满",
+    dotType: "dots",
+    cornerSquareType: "extra-rounded",
+    cornerDotType: "dot",
+    colorMode: "gradient",
+    gradientType: "radial",
+    gradientRotation: 0,
+    gradientColor1: "#ff9a9e",
+    gradientColor2: "#fecfef",
+    bgColor: "#ffffff",
+    cornerSquareColorMode: "single",
+    cornerSquareColor: "#ff9a9e",
+    cornerDotColorMode: "single",
+    cornerDotColor: "#ff9a9e",
+  },
+  elegant: {
+    name: "优雅紫",
+    description: "优雅紫色渐变，高贵典雅",
+    dotType: "classy",
+    cornerSquareType: "extra-rounded",
+    cornerDotType: "dot",
+    colorMode: "gradient",
+    gradientType: "linear",
+    gradientRotation: 135,
+    gradientColor1: "#a8edea",
+    gradientColor2: "#fed6e3",
+    bgColor: "#ffffff",
+    cornerSquareColorMode: "single",
+    cornerSquareColor: "#a8edea",
+    cornerDotColorMode: "single",
+    cornerDotColor: "#a8edea",
+  },
+  tech: {
+    name: "科技绿",
+    description: "科技绿色系，未来感十足",
+    dotType: "rounded",
+    cornerSquareType: "square",
+    cornerDotType: "square",
+    colorMode: "gradient",
+    gradientType: "linear",
+    gradientRotation: 90,
+    gradientColor1: "#00d4aa",
+    gradientColor2: "#0099cc",
+    bgColor: "#ffffff",
+    cornerSquareColorMode: "single",
+    cornerSquareColor: "#00d4aa",
+    cornerDotColorMode: "single",
+    cornerDotColor: "#00d4aa",
+  },
+  sunset: {
+    name: "日落红",
+    description: "温暖日落色调，浪漫温馨",
+    dotType: "dots",
+    cornerSquareType: "extra-rounded",
+    cornerDotType: "dot",
+    colorMode: "gradient",
+    gradientType: "linear",
+    gradientRotation: 45,
+    gradientColor1: "#ff6b6b",
+    gradientColor2: "#ffa726",
+    bgColor: "#ffffff",
+    cornerSquareColorMode: "single",
+    cornerSquareColor: "#ff6b6b",
+    cornerDotColorMode: "single",
+    cornerDotColor: "#ff6b6b",
+  },
+  ocean: {
+    name: "海洋蓝",
+    description: "深邃海洋蓝，宁静致远",
+    dotType: "rounded",
+    cornerSquareType: "extra-rounded",
+    cornerDotType: "dot",
+    colorMode: "gradient",
+    gradientType: "linear",
+    gradientRotation: 180,
+    gradientColor1: "#4facfe",
+    gradientColor2: "#00f2fe",
+    bgColor: "#ffffff",
+    cornerSquareColorMode: "single",
+    cornerSquareColor: "#4facfe",
+    cornerDotColorMode: "single",
+    cornerDotColor: "#4facfe",
+  },
+  forest: {
+    name: "森林绿",
+    description: "自然森林绿，生机勃勃",
+    dotType: "classy",
+    cornerSquareType: "extra-rounded",
+    cornerDotType: "dot",
+    colorMode: "gradient",
+    gradientType: "radial",
+    gradientRotation: 0,
+    gradientColor1: "#56ab2f",
+    gradientColor2: "#a8e6cf",
+    bgColor: "#ffffff",
+    cornerSquareColorMode: "single",
+    cornerSquareColor: "#56ab2f",
+    cornerDotColorMode: "single",
+    cornerDotColor: "#56ab2f",
+  },
+  gold: {
+    name: "金色奢华",
+    description: "金色渐变，奢华高贵",
+    dotType: "classy",
+    cornerSquareType: "extra-rounded",
+    cornerDotType: "dot",
+    colorMode: "gradient",
+    gradientType: "linear",
+    gradientRotation: 45,
+    gradientColor1: "#ffd700",
+    gradientColor2: "#ffb347",
+    bgColor: "#ffffff",
+    cornerSquareColorMode: "single",
+    cornerSquareColor: "#ffd700",
+    cornerDotColorMode: "single",
+    cornerDotColor: "#ffd700",
+  },
+  neon: {
+    name: "霓虹紫",
+    description: "霓虹紫色，炫酷时尚",
+    dotType: "dots",
+    cornerSquareType: "square",
+    cornerDotType: "square",
+    colorMode: "gradient",
+    gradientType: "linear",
+    gradientRotation: 90,
+    gradientColor1: "#ff00ff",
+    gradientColor2: "#00ffff",
+    bgColor: "#ffffff",
+    cornerSquareColorMode: "single",
+    cornerSquareColor: "#ff00ff",
+    cornerDotColorMode: "single",
+    cornerDotColor: "#ff00ff",
+  },
+  vintage: {
+    name: "复古棕",
+    description: "复古棕色系，怀旧经典",
+    dotType: "classy",
+    cornerSquareType: "extra-rounded",
+    cornerDotType: "dot",
+    colorMode: "single",
+    preColor: "#8b4513",
+    bgColor: "#f5f5dc",
+    cornerSquareColor: "#8b4513",
+    cornerDotColor: "#8b4513",
+  },
+  pastel: {
+    name: "粉彩梦",
+    description: "柔和粉彩色，温柔甜美",
+    dotType: "rounded",
+    cornerSquareType: "extra-rounded",
+    cornerDotType: "dot",
+    colorMode: "gradient",
+    gradientType: "linear",
+    gradientRotation: 135,
+    gradientColor1: "#ffb3ba",
+    gradientColor2: "#baffc9",
+    bgColor: "#ffffff",
+    cornerSquareColorMode: "single",
+    cornerSquareColor: "#ffb3ba",
+    cornerDotColorMode: "single",
+    cornerDotColor: "#ffb3ba",
+  },
+  cyber: {
+    name: "赛博朋克",
+    description: "赛博朋克风格，未来科技",
+    dotType: "square",
+    cornerSquareType: "square",
+    cornerDotType: "square",
+    colorMode: "gradient",
+    gradientType: "linear",
+    gradientRotation: 45,
+    gradientColor1: "#00ff00",
+    gradientColor2: "#ff00ff",
+    bgColor: "#000000",
+    cornerSquareColorMode: "single",
+    cornerSquareColor: "#00ff00",
+    cornerDotColorMode: "single",
+    cornerDotColor: "#00ff00",
+  },
+  minimal: {
+    name: "极简白",
+    description: "极简白色系，干净清爽",
+    dotType: "rounded",
+    cornerSquareType: "extra-rounded",
+    cornerDotType: "dot",
+    colorMode: "single",
+    preColor: "#666666",
+    bgColor: "#ffffff",
+    cornerSquareColor: "#666666",
+    cornerDotColor: "#666666",
+  },
+  fire: {
+    name: "火焰红",
+    description: "炽热火焰红，激情四射",
+    dotType: "dots",
+    cornerSquareType: "extra-rounded",
+    cornerDotType: "dot",
+    colorMode: "gradient",
+    gradientType: "linear",
+    gradientRotation: 45,
+    gradientColor1: "#ff4500",
+    gradientColor2: "#ff6347",
+    bgColor: "#ffffff",
+    cornerSquareColorMode: "single",
+    cornerSquareColor: "#ff4500",
+    cornerDotColorMode: "single",
+    cornerDotColor: "#ff4500",
+  },
+  ice: {
+    name: "冰雪蓝",
+    description: "清凉冰雪蓝，纯净透明",
+    dotType: "rounded",
+    cornerSquareType: "extra-rounded",
+    cornerDotType: "dot",
+    colorMode: "gradient",
+    gradientType: "linear",
+    gradientRotation: 180,
+    gradientColor1: "#87ceeb",
+    gradientColor2: "#b0e0e6",
+    bgColor: "#ffffff",
+    cornerSquareColorMode: "single",
+    cornerSquareColor: "#87ceeb",
+    cornerDotColorMode: "single",
+    cornerDotColor: "#87ceeb",
+  }
+};
+
+// 应用预设配置
+const applyPreset = (presetKey: string) => {
+  const preset = presetConfigs[presetKey as keyof typeof presetConfigs];
+  if (preset) {
+    Object.assign(info, preset);
+    info.presetConfig = presetKey;
+    info.qrKey += 1;
+  }
+};
+
+// 监听预设配置变化
+const handlePresetChange = () => {
+  applyPreset(info.presetConfig);
+};
 
 const uploadLogo = ref();
 const showQRDialog = ref(false);
@@ -67,6 +364,25 @@ onMounted(() => {
   window.addEventListener("resize", () => {
     windowWidth.value = window.innerWidth;
   });
+
+  // 在组件初始化时，将当前配置设置为默认预设
+  presetConfigs.default = {
+    name: "默认配置",
+    description: "当前默认的渐变配置",
+    dotType: info.dotType,
+    cornerSquareType: info.cornerSquareType,
+    cornerDotType: info.cornerDotType,
+    colorMode: info.colorMode,
+    gradientType: info.gradientType,
+    gradientRotation: info.gradientRotation,
+    gradientColor1: info.gradientColor1,
+    gradientColor2: info.gradientColor2,
+    bgColor: info.bgColor,
+    cornerSquareColorMode: info.cornerSquareColorMode,
+    cornerSquareColor: info.cornerSquareColor,
+    cornerDotColorMode: info.cornerDotColorMode,
+    cornerDotColor: info.cornerDotColor,
+  };
 });
 
 // 上传达到上限触发
@@ -294,285 +610,6 @@ const cornersDotOptions = computed(() => {
             </el-select>
           </div>
 
-          <!-- 点样式设置 -->
-          <div class="space-y-2">
-            <label class="text-sm font-medium text-gray-700">点样式</label>
-            <el-select
-              v-model="info.dotType"
-              class="w-full"
-              @change="handleDotTypeChange"
-            >
-              <el-option label="方形" value="square" />
-              <el-option label="圆角" value="rounded" />
-              <el-option label="圆点" value="dots" />
-              <el-option label="经典" value="classy" />
-              <el-option label="经典圆角" value="classy-rounded" />
-              <el-option label="超圆角" value="extra-rounded" />
-            </el-select>
-          </div>
-
-          <!-- 颜色设置 -->
-          <div class="space-y-2">
-            <label class="text-sm font-medium text-gray-700">颜色设置</label>
-            
-            <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
-              <!-- 颜色模式选择 -->
-              <el-tabs v-model="info.colorMode" @tab-change="handleColorModeChange">
-                <el-tab-pane label="单色" name="single">
-                  <div class="space-y-2">
-                    <div class="flex gap-4">
-                      <div class="flex-1">
-                        <label class="text-xs text-gray-500 mb-1 block">前景色</label>
-                        <el-color-picker
-                          v-model="info.preColor"
-                          @change="handleColorChange"
-                          class="color-picker-limit"
-                        />
-                      </div>
-                      <div class="flex-1">
-                        <label class="text-xs text-gray-500 mb-1 block">背景色</label>
-                        <el-color-picker
-                          v-model="info.bgColor"
-                          @change="handleColorChange"
-                          class="color-picker-limit"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </el-tab-pane>
-                
-                <el-tab-pane label="渐变色" name="gradient">
-                  <div class="space-y-3">
-                    <!-- 渐变类型 -->
-                    <div>
-                      <label class="text-xs text-gray-500 mb-1 block">渐变类型</label>
-                      <el-select
-                        v-model="info.gradientType"
-                        class="w-full"
-                        @change="handleGradientChange"
-                      >
-                        <el-option label="线性渐变" value="linear" />
-                        <el-option label="径向渐变" value="radial" />
-                      </el-select>
-                    </div>
-                    
-                    <!-- 渐变角度（线性渐变时显示） -->
-                    <div v-if="info.gradientType === 'linear'">
-                      <label class="text-xs text-gray-500 mb-1 block">渐变角度</label>
-                      <el-slider
-                        v-model="info.gradientRotation"
-                        :min="0"
-                        :max="360"
-                        :step="1"
-                        @change="handleGradientChange"
-                        show-input
-                      />
-                    </div>
-                    
-                    <!-- 渐变色选择 -->
-                    <div class="flex gap-4">
-                      <div class="flex-1">
-                        <label class="text-xs text-gray-500 mb-1 block">起始色</label>
-                        <el-color-picker
-                          v-model="info.gradientColor1"
-                          @change="handleGradientChange"
-                          class="color-picker-limit"
-                        />
-                      </div>
-                      <div class="flex-1">
-                        <label class="text-xs text-gray-500 mb-1 block">结束色</label>
-                        <el-color-picker
-                          v-model="info.gradientColor2"
-                          @change="handleGradientChange"
-                          class="color-picker-limit"
-                        />
-                      </div>
-                    </div>
-                    
-                    <!-- 背景色 -->
-                    <div>
-                      <label class="text-xs text-gray-500 mb-1 block">背景色</label>
-                      <el-color-picker
-                        v-model="info.bgColor"
-                        @change="handleColorChange"
-                        class="color-picker-limit"
-                      />
-                    </div>
-                  </div>
-                </el-tab-pane>
-              </el-tabs>
-            </div>
-          </div>
-
-          <!-- 角落方块设置 -->
-          <div class="space-y-2">
-            <label class="text-sm font-medium text-gray-700">角落方块</label>
-            
-            <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
-              <!-- 角落方块样式 -->
-              <div class="mb-3">
-                <label class="text-xs text-gray-500 mb-1 block">样式</label>
-                <el-select
-                  v-model="info.cornerSquareType"
-                  class="w-full"
-                  @change="handleDotTypeChange"
-                >
-                  <el-option label="方形" value="square" />
-                  <el-option label="圆点" value="dot" />
-                  <el-option label="超圆角" value="extra-rounded" />
-                </el-select>
-              </div>
-              
-              <!-- 角落方块颜色设置 -->
-              <el-tabs v-model="info.cornerSquareColorMode" @tab-change="handleCornerSquareColorModeChange">
-                <el-tab-pane label="单色" name="single">
-                  <div class="space-y-2">
-                    <label class="text-xs text-gray-500 mb-1 block">颜色</label>
-                    <el-color-picker
-                      v-model="info.cornerSquareColor"
-                      @change="handleCornerSquareGradientChange"
-                      class="color-picker-limit"
-                    />
-                  </div>
-                </el-tab-pane>
-                
-                <el-tab-pane label="渐变色" name="gradient">
-                  <div class="space-y-3">
-                    <!-- 渐变类型 -->
-                    <div>
-                      <label class="text-xs text-gray-500 mb-1 block">渐变类型</label>
-                      <el-select
-                        v-model="info.cornerSquareGradientType"
-                        class="w-full"
-                        @change="handleCornerSquareGradientChange"
-                      >
-                        <el-option label="线性渐变" value="linear" />
-                        <el-option label="径向渐变" value="radial" />
-                      </el-select>
-                    </div>
-                    
-                    <!-- 渐变角度（线性渐变时显示） -->
-                    <div v-if="info.cornerSquareGradientType === 'linear'">
-                      <label class="text-xs text-gray-500 mb-1 block">渐变角度</label>
-                      <el-slider
-                        v-model="info.cornerSquareGradientRotation"
-                        :min="0"
-                        :max="360"
-                        :step="1"
-                        @change="handleCornerSquareGradientChange"
-                        show-input
-                      />
-                    </div>
-                    
-                    <!-- 渐变色选择 -->
-                    <div class="flex gap-4">
-                      <div class="flex-1">
-                        <label class="text-xs text-gray-500 mb-1 block">起始色</label>
-                        <el-color-picker
-                          v-model="info.cornerSquareGradientColor1"
-                          @change="handleCornerSquareGradientChange"
-                          class="color-picker-limit"
-                        />
-                      </div>
-                      <div class="flex-1">
-                        <label class="text-xs text-gray-500 mb-1 block">结束色</label>
-                        <el-color-picker
-                          v-model="info.cornerSquareGradientColor2"
-                          @change="handleCornerSquareGradientChange"
-                          class="color-picker-limit"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </el-tab-pane>
-              </el-tabs>
-            </div>
-          </div>
-
-          <!-- 角落点设置 -->
-          <div class="space-y-2">
-            <label class="text-sm font-medium text-gray-700">角落点</label>
-            
-            <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
-              <!-- 角落点样式 -->
-              <div class="mb-3">
-                <label class="text-xs text-gray-500 mb-1 block">样式</label>
-                <el-select
-                  v-model="info.cornerDotType"
-                  class="w-full"
-                  @change="handleDotTypeChange"
-                >
-                  <el-option label="圆点" value="dot" />
-                  <el-option label="方形" value="square" />
-                </el-select>
-              </div>
-              
-              <!-- 角落点颜色设置 -->
-              <el-tabs v-model="info.cornerDotColorMode" @tab-change="handleCornerDotColorModeChange">
-                <el-tab-pane label="单色" name="single">
-                  <div class="space-y-2">
-                    <label class="text-xs text-gray-500 mb-1 block">颜色</label>
-                    <el-color-picker
-                      v-model="info.cornerDotColor"
-                      @change="handleCornerDotGradientChange"
-                      class="color-picker-limit"
-                    />
-                  </div>
-                </el-tab-pane>
-                
-                <el-tab-pane label="渐变色" name="gradient">
-                  <div class="space-y-3">
-                    <!-- 渐变类型 -->
-                    <div>
-                      <label class="text-xs text-gray-500 mb-1 block">渐变类型</label>
-                      <el-select
-                        v-model="info.cornerDotGradientType"
-                        class="w-full"
-                        @change="handleCornerDotGradientChange"
-                      >
-                        <el-option label="线性渐变" value="linear" />
-                        <el-option label="径向渐变" value="radial" />
-                      </el-select>
-                    </div>
-                    
-                    <!-- 渐变角度（线性渐变时显示） -->
-                    <div v-if="info.cornerDotGradientType === 'linear'">
-                      <label class="text-xs text-gray-500 mb-1 block">渐变角度</label>
-                      <el-slider
-                        v-model="info.cornerDotGradientRotation"
-                        :min="0"
-                        :max="360"
-                        :step="1"
-                        @change="handleCornerDotGradientChange"
-                        show-input
-                      />
-                    </div>
-                    
-                    <!-- 渐变色选择 -->
-                    <div class="flex gap-4">
-                      <div class="flex-1">
-                        <label class="text-xs text-gray-500 mb-1 block">起始色</label>
-                        <el-color-picker
-                          v-model="info.cornerDotGradientColor1"
-                          @change="handleCornerDotGradientChange"
-                          class="color-picker-limit"
-                        />
-                      </div>
-                      <div class="flex-1">
-                        <label class="text-xs text-gray-500 mb-1 block">结束色</label>
-                        <el-color-picker
-                          v-model="info.cornerDotGradientColor2"
-                          @change="handleCornerDotGradientChange"
-                          class="color-picker-limit"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </el-tab-pane>
-              </el-tabs>
-            </div>
-          </div>
-
           <!-- Logo上传 -->
           <div class="space-y-2">
             <label class="text-sm font-medium text-gray-700">Logo</label>
@@ -609,7 +646,7 @@ const cornersDotOptions = computed(() => {
                       type="danger"
                       size="small"
                       circle
-                      @click="handleRemove"
+                      @click="handleRemove({ url: info.fileList[0] })"
                     >
                       <el-icon><Delete /></el-icon>
                     </el-button>
@@ -617,6 +654,328 @@ const cornersDotOptions = computed(() => {
                 </div>
               </template>
             </el-upload>
+          </div>
+
+          <!-- 配置模式选择 -->
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-gray-700">样式配置</label>
+            <el-tabs v-model="info.configMode" class="w-full">
+              <el-tab-pane label="预设" name="preset">
+                <div class="space-y-4">
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div
+                      v-for="(preset, key) in presetConfigs"
+                      :key="key"
+                      class="preset-card"
+                      :class="{ 'preset-card-active': info.presetConfig === key }"
+                      @click="applyPreset(key)"
+                    >
+                      <div class="preset-preview">
+                        <QRCodeVue3
+                          :value="'预览'"
+                          :width="60"
+                          :height="60"
+                          :qrOptions="{
+                            typeNumber: 0,
+                            mode: 'Byte',
+                            errorCorrectionLevel: 'H',
+                          }"
+                          :dotsOptions="{
+                            type: preset.dotType,
+                            color: preset.colorMode === 'single' ? preset.preColor : preset.gradientColor1,
+                          }"
+                          :background-options="{ color: preset.bgColor }"
+                          :cornersSquareOptions="{
+                            type: preset.cornerSquareType,
+                            color: preset.cornerSquareColor,
+                          }"
+                          :cornersDotOptions="{
+                            type: preset.cornerDotType,
+                            color: preset.cornerDotColor,
+                          }"
+                        />
+                      </div>
+                      <div class="preset-info">
+                        <h4 class="preset-name">{{ preset.name }}</h4>
+                        <p class="preset-desc">{{ preset.description }}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </el-tab-pane>
+              
+              <el-tab-pane label="自定义配置" name="custom">
+                <div class="space-y-4">
+                  <!-- 点样式设置 -->
+                  <div class="space-y-2">
+                    <label class="text-sm font-medium text-gray-700">点样式</label>
+                    <el-select
+                      v-model="info.dotType"
+                      class="w-full"
+                      @change="handleDotTypeChange"
+                    >
+                      <el-option label="方形" value="square" />
+                      <el-option label="圆角" value="rounded" />
+                      <el-option label="圆点" value="dots" />
+                      <el-option label="经典" value="classy" />
+                      <el-option label="经典圆角" value="classy-rounded" />
+                      <el-option label="超圆角" value="extra-rounded" />
+                    </el-select>
+                  </div>
+
+                  <!-- 颜色设置 -->
+                  <div class="space-y-2">
+                    <label class="text-sm font-medium text-gray-700">颜色设置</label>
+                    
+                    <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                      <!-- 颜色模式选择 -->
+                      <el-tabs v-model="info.colorMode" @tab-change="handleColorModeChange">
+                        <el-tab-pane label="单色" name="single">
+                          <div class="space-y-2">
+                            <div class="flex gap-4">
+                              <div class="flex-1">
+                                <label class="text-xs text-gray-500 mb-1 block">前景色</label>
+                                <el-color-picker
+                                  v-model="info.preColor"
+                                  @change="handleColorChange"
+                                />
+                              </div>
+                              <div class="flex-1">
+                                <label class="text-xs text-gray-500 mb-1 block">背景色</label>
+                                <el-color-picker
+                                  v-model="info.bgColor"
+                                  @change="handleColorChange"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </el-tab-pane>
+                        
+                        <el-tab-pane label="渐变色" name="gradient">
+                          <div class="space-y-3">
+                            <!-- 渐变类型 -->
+                            <div>
+                              <label class="text-xs text-gray-500 mb-1 block">渐变类型</label>
+                              <el-select
+                                v-model="info.gradientType"
+                                class="w-full"
+                                @change="handleGradientChange"
+                              >
+                                <el-option label="线性渐变" value="linear" />
+                                <el-option label="径向渐变" value="radial" />
+                              </el-select>
+                            </div>
+                            
+                            <!-- 渐变角度（线性渐变时显示） -->
+                            <div v-if="info.gradientType === 'linear'">
+                              <label class="text-xs text-gray-500 mb-1 block">渐变角度</label>
+                              <el-slider
+                                v-model="info.gradientRotation"
+                                :min="0"
+                                :max="360"
+                                :step="1"
+                                @input="handleGradientChange"
+                                show-input
+                              />
+                            </div>
+                            
+                            <!-- 渐变色选择 -->
+                            <div class="flex gap-4">
+                              <div class="flex-1">
+                                <label class="text-xs text-gray-500 mb-1 block">起始色</label>
+                                <el-color-picker
+                                  v-model="info.gradientColor1"
+                                  @change="handleGradientChange"
+                                />
+                              </div>
+                              <div class="flex-1">
+                                <label class="text-xs text-gray-500 mb-1 block">结束色</label>
+                                <el-color-picker
+                                  v-model="info.gradientColor2"
+                                  @change="handleGradientChange"
+                                />
+                              </div>
+                            </div>
+                            
+                            <!-- 背景色 -->
+                            <div>
+                              <label class="text-xs text-gray-500 mb-1 block">背景色</label>
+                              <el-color-picker
+                                v-model="info.bgColor"
+                                @change="handleColorChange"
+                              />
+                            </div>
+                          </div>
+                        </el-tab-pane>
+                      </el-tabs>
+                    </div>
+                  </div>
+
+                  <!-- 角落方块设置 -->
+                  <div class="space-y-2">
+                    <label class="text-sm font-medium text-gray-700">角落方块</label>
+                    
+                    <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                      <!-- 角落方块样式 -->
+                      <div class="mb-3">
+                        <label class="text-xs text-gray-500 mb-1 block">样式</label>
+                        <el-select
+                          v-model="info.cornerSquareType"
+                          class="w-full"
+                          @change="handleDotTypeChange"
+                        >
+                          <el-option label="方形" value="square" />
+                          <el-option label="圆点" value="dot" />
+                          <el-option label="超圆角" value="extra-rounded" />
+                        </el-select>
+                      </div>
+                      
+                      <!-- 角落方块颜色设置 -->
+                      <el-tabs v-model="info.cornerSquareColorMode" @tab-change="handleCornerSquareColorModeChange">
+                        <el-tab-pane label="单色" name="single">
+                          <div class="space-y-2">
+                            <label class="text-xs text-gray-500 mb-1 block">颜色</label>
+                            <el-color-picker
+                              v-model="info.cornerSquareColor"
+                              @change="handleCornerSquareGradientChange"
+                            />
+                          </div>
+                        </el-tab-pane>
+                        
+                        <el-tab-pane label="渐变色" name="gradient">
+                          <div class="space-y-3">
+                            <!-- 渐变类型 -->
+                            <div>
+                              <label class="text-xs text-gray-500 mb-1 block">渐变类型</label>
+                              <el-select
+                                v-model="info.cornerSquareGradientType"
+                                class="w-full"
+                                @change="handleCornerSquareGradientChange"
+                              >
+                                <el-option label="线性渐变" value="linear" />
+                                <el-option label="径向渐变" value="radial" />
+                              </el-select>
+                            </div>
+                            
+                            <!-- 渐变角度（线性渐变时显示） -->
+                            <div v-if="info.cornerSquareGradientType === 'linear'">
+                              <label class="text-xs text-gray-500 mb-1 block">渐变角度</label>
+                              <el-slider
+                                v-model="info.cornerSquareGradientRotation"
+                                :min="0"
+                                :max="360"
+                                :step="1"
+                                @input="handleCornerSquareGradientChange"
+                                show-input
+                              />
+                            </div>
+                            
+                            <!-- 渐变色选择 -->
+                            <div class="flex gap-4">
+                              <div class="flex-1">
+                                <label class="text-xs text-gray-500 mb-1 block">起始色</label>
+                                <el-color-picker
+                                  v-model="info.cornerSquareGradientColor1"
+                                  @change="handleCornerSquareGradientChange"
+                                />
+                              </div>
+                              <div class="flex-1">
+                                <label class="text-xs text-gray-500 mb-1 block">结束色</label>
+                                <el-color-picker
+                                  v-model="info.cornerSquareGradientColor2"
+                                  @change="handleCornerSquareGradientChange"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </el-tab-pane>
+                      </el-tabs>
+                    </div>
+                  </div>
+
+                  <!-- 角落点设置 -->
+                  <div class="space-y-2">
+                    <label class="text-sm font-medium text-gray-700">角落点</label>
+                    
+                    <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                      <!-- 角落点样式 -->
+                      <div class="mb-3">
+                        <label class="text-xs text-gray-500 mb-1 block">样式</label>
+                        <el-select
+                          v-model="info.cornerDotType"
+                          class="w-full"
+                          @change="handleDotTypeChange"
+                        >
+                          <el-option label="圆点" value="dot" />
+                          <el-option label="方形" value="square" />
+                        </el-select>
+                      </div>
+                      
+                      <!-- 角落点颜色设置 -->
+                      <el-tabs v-model="info.cornerDotColorMode" @tab-change="handleCornerDotColorModeChange">
+                        <el-tab-pane label="单色" name="single">
+                          <div class="space-y-2">
+                            <label class="text-xs text-gray-500 mb-1 block">颜色</label>
+                            <el-color-picker
+                              v-model="info.cornerDotColor"
+                              @change="handleCornerDotGradientChange"
+                            />
+                          </div>
+                        </el-tab-pane>
+                        
+                        <el-tab-pane label="渐变色" name="gradient">
+                          <div class="space-y-3">
+                            <!-- 渐变类型 -->
+                            <div>
+                              <label class="text-xs text-gray-500 mb-1 block">渐变类型</label>
+                              <el-select
+                                v-model="info.cornerDotGradientType"
+                                class="w-full"
+                                @change="handleCornerDotGradientChange"
+                              >
+                                <el-option label="线性渐变" value="linear" />
+                                <el-option label="径向渐变" value="radial" />
+                              </el-select>
+                            </div>
+                            
+                            <!-- 渐变角度（线性渐变时显示） -->
+                            <div v-if="info.cornerDotGradientType === 'linear'">
+                              <label class="text-xs text-gray-500 mb-1 block">渐变角度</label>
+                              <el-slider
+                                v-model="info.cornerDotGradientRotation"
+                                :min="0"
+                                :max="360"
+                                :step="1"
+                                @input="handleCornerDotGradientChange"
+                                show-input
+                              />
+                            </div>
+                            
+                            <!-- 渐变色选择 -->
+                            <div class="flex gap-4">
+                              <div class="flex-1">
+                                <label class="text-xs text-gray-500 mb-1 block">起始色</label>
+                                <el-color-picker
+                                  v-model="info.cornerDotGradientColor1"
+                                  @change="handleCornerDotGradientChange"
+                                />
+                              </div>
+                              <div class="flex-1">
+                                <label class="text-xs text-gray-500 mb-1 block">结束色</label>
+                                <el-color-picker
+                                  v-model="info.cornerDotGradientColor2"
+                                  @change="handleCornerDotGradientChange"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </el-tab-pane>
+                      </el-tabs>
+                    </div>
+                  </div>
+                </div>
+              </el-tab-pane>
+            </el-tabs>
           </div>
 
           <!-- 操作按钮 -->
@@ -713,6 +1072,39 @@ const cornersDotOptions = computed(() => {
 </template>
 
 <style scoped>
+/* 预设卡片样式 */
+.preset-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  background: #fafbfc;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.preset-card-active {
+  border-color: #409eff;
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.08);
+  background: #f0f7ff;
+}
+.preset-preview {
+  flex-shrink: 0;
+}
+.preset-info {
+  flex: 1;
+}
+.preset-name {
+  font-weight: 600;
+  font-size: 15px;
+  margin-bottom: 2px;
+}
+.preset-desc {
+  font-size: 12px;
+  color: #888;
+}
+
 /* 预览容器固定在右侧，不再悬浮 */
 .preview-container {
   width: 320px;
@@ -720,8 +1112,6 @@ const cornersDotOptions = computed(() => {
   border-radius: 12px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
   padding: 16px;
-  /* 取消 position: fixed; */
-  /* 保持和内容区同一高度对齐 */
   align-self: flex-start;
   margin-left: auto;
 }
@@ -923,5 +1313,16 @@ const cornersDotOptions = computed(() => {
   content: "下载二维码";
   font-size: 16px;
   display: inline-block;
+}
+
+/* 让el-slider的输入框变窄，滑块更宽 */
+:deep(.el-slider__input) {
+  width: 120px !important;
+  min-width: 0 !important;
+  margin-left: 28px !important;
+}
+
+:deep(.el-slider__runway) {
+  margin-left: 20px;
 }
 </style>
