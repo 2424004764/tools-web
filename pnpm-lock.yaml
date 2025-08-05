@@ -65,6 +65,9 @@ importers:
       colord:
         specifier: ^2.9.3
         version: 2.9.3
+      cron-parser:
+        specifier: ^5.3.0
+        version: 5.3.0
       csso:
         specifier: ^5.0.5
         version: 5.0.5
@@ -1429,6 +1432,10 @@ packages:
 
   crelt@1.0.6:
     resolution: {integrity: sha512-VQ2MBenTq1fWZUH9DJNGti7kKv6EeAuYr3cLwxUWhIu1baTaXh4Ib5W2CqHVqib4/MqbYGJqiL3Zb8GJZr3l4g==, tarball: https://registry.npmmirror.com/crelt/-/crelt-1.0.6.tgz}
+
+  cron-parser@5.3.0:
+    resolution: {integrity: sha512-IS4mnFu6n3CFgEmXjr+B2zzGHsjJmHEdN+BViKvYSiEn3KWss9ICRDETDX/VZldiW82B94OyAZm4LIT4vcKK0g==, tarball: https://registry.npmmirror.com/cron-parser/-/cron-parser-5.3.0.tgz}
+    engines: {node: '>=18'}
 
   cross-fetch@4.0.0:
     resolution: {integrity: sha512-e4a5N8lVvuLgAWgnCrLr2PP0YyDOTHa9H/Rj54dirp61qXnNq46m82bRhNqIA5VccJtWBvPTFRV3TtvHUKPB1g==, tarball: https://registry.npmmirror.com/cross-fetch/-/cross-fetch-4.0.0.tgz}
@@ -2833,6 +2840,10 @@ packages:
 
   lru-cache@7.18.3:
     resolution: {integrity: sha512-jumlc0BIUrS3qJGgIkWZsyfAM7NCWiBcCDhnd+3NNM5KbBmLTgHVfWBcg6W+rLUsIpzpERPsvwUP7CckAQSOoA==, tarball: https://registry.npmmirror.com/lru-cache/-/lru-cache-7.18.3.tgz}
+    engines: {node: '>=12'}
+
+  luxon@3.7.1:
+    resolution: {integrity: sha512-RkRWjA926cTvz5rAb1BqyWkKbbjzCGchDUIKMCUvNi17j6f6j8uHGDV82Aqcqtzd+icoYpELmG3ksgGiFNNcNg==, tarball: https://registry.npmmirror.com/luxon/-/luxon-3.7.1.tgz}
     engines: {node: '>=12'}
 
   magic-string@0.30.17:
@@ -5916,6 +5927,10 @@ snapshots:
 
   crelt@1.0.6: {}
 
+  cron-parser@5.3.0:
+    dependencies:
+      luxon: 3.7.1
+
   cross-fetch@4.0.0(encoding@0.1.13):
     dependencies:
       node-fetch: 2.7.0(encoding@0.1.13)
@@ -7546,6 +7561,8 @@ snapshots:
   lru-cache@10.4.3: {}
 
   lru-cache@7.18.3: {}
+
+  luxon@3.7.1: {}
 
   magic-string@0.30.17:
     dependencies:

@@ -52,6 +52,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/cron',
+    component: () => import('@/components/Tools/CronGenerator/CronGenerator.vue'),
+    name: 'cron',
+    meta: {
+      title: "Cron表达式生成器",
+      keywords: 'cron表达式,cron表达式生成器,定时任务,在线cron',
+      description: '在线Cron表达式生成器，支持秒、分、时、日、月、周、年的配置，提供常用预设模板和实时预览功能',
+    }
+  },
+  {
     path: '/unicode',
     component: () => import('@/components/Tools/Unicode/Unicode.vue'),
     name: 'unicode',

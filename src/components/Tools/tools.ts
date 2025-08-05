@@ -100,6 +100,15 @@ export function getToolsCate() {
         },
         {
           id: 1,
+          title: 'Cron表达式生成器',
+          logo: '/images/logo/cron.png',
+          desc: '在线生成和解析Cron表达式，支持定时任务配置',
+          url: '/cron/',
+          cateId: 2,
+          cate: '开发运维',
+        },
+        {
+          id: 1,
           title: 'html实体转义',
           logo: '/images/logo/HtmlEntity.png',
           desc: 'html实体转义，实体转义成html',
