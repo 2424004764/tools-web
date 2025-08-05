@@ -42,7 +42,7 @@
     "lodash": "^4.17.21",
     "prettier": "^3.3.2",
     "prismjs": "^1.29.0",
-    "qrcode-vue3": "^1.6.8",
+    "qrcode-vue3": "^1.7.1",
     "sass": "^1.69.5",
     "sass-loader": "^13.3.2",
     "terser": "^5.31.1",
