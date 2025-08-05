@@ -5,6 +5,7 @@ import QRCodeVue3 from "qrcode-vue3";
 import { Delete, Plus } from "@element-plus/icons-vue";
 import { ElMessage, type UploadFile } from "element-plus";
 import { v4 as uuidv4 } from "uuid";
+import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 
 const info = reactive({
   title: "二维码生成",
@@ -567,7 +568,7 @@ const cornersDotOptions = computed(() => {
           <!-- 内容输入 -->
           <div class="space-y-2">
             <label class="text-sm font-medium text-gray-700"
-              >内容（网站链接，扫码会直接打开）</label
+              >内容（网站链接，扫码会直接打开，暂不支持中文）</label
             >
             <el-input
               v-model="info.content"
@@ -577,6 +578,13 @@ const cornersDotOptions = computed(() => {
               class="w-full"
               @input="handleContentChange"
             />
+          </div>
+
+          <!-- 清除内容按钮 -->
+          <div class="flex gap-3">
+            <el-button @click="clearContent" class="flex-1">
+              清除内容
+            </el-button>
           </div>
 
           <!-- 尺寸设置 -->
@@ -977,58 +985,59 @@ const cornersDotOptions = computed(() => {
               </el-tab-pane>
             </el-tabs>
           </div>
-
-          <!-- 操作按钮 -->
-          <div class="flex gap-3 pt-4">
-            <el-button @click="clearContent" class="flex-1">
-              清除内容
-            </el-button>
-          </div>
         </div>
       </div>
 
-      <!-- 右侧预览区域 -->
+      <!-- 右侧预览区域始终渲染，但内容区做条件渲染 -->
       <div class="preview-container">
         <div class="flex flex-col items-center space-y-4 lg:w-80">
-          <div class="text-center">
-            <h3 class="text-lg font-medium text-gray-900 mb-2">二维码预览</h3>
-            <p class="text-sm text-gray-500">点击二维码查看大图</p>
-          </div>
-
-          <div class="qr-code bg-white p-4 rounded-lg border border-gray-200">
-            <div class="qr-code-wrapper" @click="viewLargeQR">
-              <QRCodeVue3
-                :key="info.qrKey"
-                :value="info.content"
-                :width="qrSize"
-                :height="qrSize"
-                :qrOptions="{
-                  typeNumber: 0,
-                  mode: 'Byte',
-                  errorCorrectionLevel: info.errorCorrectionLevel,
-                }"
-                :imageOptions="{
-                  hideBackgroundDots: true,
-                  imageSize: 0.4,
-                  margin: 0,
-                }"
-                :dotsOptions="dotsOptions"
-                :image="info.fileList[0] || undefined"
-                :background-options="{ color: info.bgColor }"
-                :cornersSquareOptions="cornersSquareOptions"
-                :cornersDotOptions="cornersDotOptions"
-                :download="true"
-                :download-options="{
-                  name: downloadFileName,
-                  extension: 'png',
-                }"
-                myclass="qr-code-container"
-                imgclass="qr-code-image"
-                download-button="qr-download-btn"
-                file-ext="png"
-              />
+          <template v-if="info.content && info.content.trim()">
+            <div class="text-center">
+              <h3 class="text-lg font-medium text-gray-900 mb-2">二维码预览</h3>
+              <p class="text-sm text-gray-500">点击二维码查看大图</p>
             </div>
-          </div>
+            <div class="qr-code bg-white p-4 rounded-lg border border-gray-200">
+              <div class="qr-code-wrapper" @click="viewLargeQR">
+                <QRCodeVue3
+                  :key="info.qrKey"
+                  :value="info.content"
+                  :width="qrSize"
+                  :height="qrSize"
+                  :qrOptions="{
+                    typeNumber: 0,
+                    mode: 'Byte',
+                    errorCorrectionLevel: info.errorCorrectionLevel,
+                  }"
+                  :imageOptions="{
+                    hideBackgroundDots: true,
+                    imageSize: 0.4,
+                    margin: 0,
+                  }"
+                  :dotsOptions="dotsOptions"
+                  :image="info.fileList[0] || undefined"
+                  :background-options="{ color: info.bgColor }"
+                  :cornersSquareOptions="cornersSquareOptions"
+                  :cornersDotOptions="cornersDotOptions"
+                  :download="true"
+                  :download-options="{
+                    name: downloadFileName,
+                    extension: 'png',
+                  }"
+                  myclass="qr-code-container"
+                  imgclass="qr-code-image"
+                  download-button="qr-download-btn"
+                  file-ext="png"
+                />
+              </div>
+            </div>
+          </template>
+          <template v-else>
+            <!-- 占位内容，可自定义为空白或友好提示 -->
+            <div class="flex flex-col items-center justify-center h-64 w-full opacity-60">
+              <el-icon size="48"><svg viewBox="0 0 1024 1024"><path d="M512 64C264.6 64 64 264.6 64 512s200.6 448 448 448 448-200.6 448-448S759.4 64 512 64zm0 820c-205.2 0-372-166.8-372-372S306.8 140 512 140s372 166.8 372 372-166.8 372-372 372zm0-624c-139.2 0-252 112.8-252 252s112.8 252 252 252 252-112.8 252-252S651.2 260 512 260zm0 432c-99.2 0-180-80.8-180-180s80.8-180 180-180 180 80.8 180 180-80.8 180-180 180z" fill="#d3d3d3"/></svg></el-icon>
+              <span class="text-gray-400 mt-4">请输入内容以生成二维码</span>
+            </div>
+          </template>
         </div>
       </div>
     </div>
@@ -1068,6 +1077,13 @@ const cornersDotOptions = computed(() => {
         />
       </div>
     </el-dialog>
+
+    <!-- 页面底部 ToolDetail，始终显示 -->
+    <ToolDetail title="描述">
+      <el-text>
+        本工具支持生成高颜值二维码，支持丰富的自定义样式（点样式、渐变、角落方块、角落点等）、多种精美预设、一键切换风格，并可上传Logo。扫码可直达目标链接，适用于宣传、分享、名片等多种场景。
+      </el-text>
+    </ToolDetail>
   </div>
 </template>
 
