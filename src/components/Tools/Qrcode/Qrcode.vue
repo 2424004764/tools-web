@@ -67,6 +67,8 @@ const presetConfigs = {
     cornerSquareColor: "#000000",
     cornerDotColorMode: "single",
     cornerDotColor: "#000000",
+    // 添加单色模式的属性
+    preColor: "#000000",
   },
   classic: {
     name: "经典黑",
@@ -79,6 +81,11 @@ const presetConfigs = {
     bgColor: "#ffffff",
     cornerSquareColor: "#000000",
     cornerDotColor: "#000000",
+    // 添加渐变模式的属性
+    gradientType: "linear",
+    gradientRotation: 0,
+    gradientColor1: "#000000",
+    gradientColor2: "#000000",
   },
   modern: {
     name: "现代蓝",
@@ -96,6 +103,8 @@ const presetConfigs = {
     cornerSquareColor: "#667eea",
     cornerDotColorMode: "single",
     cornerDotColor: "#667eea",
+    // 添加单色模式的属性
+    preColor: "#667eea",
   },
   warm: {
     name: "温暖橙",
@@ -113,6 +122,8 @@ const presetConfigs = {
     cornerSquareColor: "#ff9a9e",
     cornerDotColorMode: "single",
     cornerDotColor: "#ff9a9e",
+    // 添加单色模式的属性
+    preColor: "#ff9a9e",
   },
   elegant: {
     name: "优雅紫",
@@ -130,6 +141,8 @@ const presetConfigs = {
     cornerSquareColor: "#a8edea",
     cornerDotColorMode: "single",
     cornerDotColor: "#a8edea",
+    // 添加单色模式的属性
+    preColor: "#a8edea",
   },
   tech: {
     name: "科技绿",
@@ -147,6 +160,8 @@ const presetConfigs = {
     cornerSquareColor: "#00d4aa",
     cornerDotColorMode: "single",
     cornerDotColor: "#00d4aa",
+    // 添加单色模式的属性
+    preColor: "#00d4aa",
   },
   sunset: {
     name: "日落红",
@@ -164,6 +179,8 @@ const presetConfigs = {
     cornerSquareColor: "#ff6b6b",
     cornerDotColorMode: "single",
     cornerDotColor: "#ff6b6b",
+    // 添加单色模式的属性
+    preColor: "#ff6b6b",
   },
   ocean: {
     name: "海洋蓝",
@@ -181,6 +198,8 @@ const presetConfigs = {
     cornerSquareColor: "#4facfe",
     cornerDotColorMode: "single",
     cornerDotColor: "#4facfe",
+    // 添加单色模式的属性
+    preColor: "#4facfe",
   },
   forest: {
     name: "森林绿",
@@ -198,6 +217,8 @@ const presetConfigs = {
     cornerSquareColor: "#56ab2f",
     cornerDotColorMode: "single",
     cornerDotColor: "#56ab2f",
+    // 添加单色模式的属性
+    preColor: "#56ab2f",
   },
   gold: {
     name: "金色奢华",
@@ -215,6 +236,8 @@ const presetConfigs = {
     cornerSquareColor: "#ffd700",
     cornerDotColorMode: "single",
     cornerDotColor: "#ffd700",
+    // 添加单色模式的属性
+    preColor: "#ffd700",
   },
   neon: {
     name: "霓虹紫",
@@ -232,6 +255,8 @@ const presetConfigs = {
     cornerSquareColor: "#ff00ff",
     cornerDotColorMode: "single",
     cornerDotColor: "#ff00ff",
+    // 添加单色模式的属性
+    preColor: "#ff00ff",
   },
   vintage: {
     name: "复古棕",
@@ -244,6 +269,11 @@ const presetConfigs = {
     bgColor: "#f5f5dc",
     cornerSquareColor: "#8b4513",
     cornerDotColor: "#8b4513",
+    // 添加渐变模式的属性
+    gradientType: "linear",
+    gradientRotation: 0,
+    gradientColor1: "#8b4513",
+    gradientColor2: "#8b4513",
   },
   pastel: {
     name: "粉彩梦",
@@ -261,6 +291,8 @@ const presetConfigs = {
     cornerSquareColor: "#ffb3ba",
     cornerDotColorMode: "single",
     cornerDotColor: "#ffb3ba",
+    // 添加单色模式的属性
+    preColor: "#ffb3ba",
   },
   cyber: {
     name: "赛博朋克",
@@ -278,6 +310,8 @@ const presetConfigs = {
     cornerSquareColor: "#00ff00",
     cornerDotColorMode: "single",
     cornerDotColor: "#00ff00",
+    // 添加单色模式的属性
+    preColor: "#00ff00",
   },
   minimal: {
     name: "极简白",
@@ -290,6 +324,11 @@ const presetConfigs = {
     bgColor: "#ffffff",
     cornerSquareColor: "#666666",
     cornerDotColor: "#666666",
+    // 添加渐变模式的属性
+    gradientType: "linear",
+    gradientRotation: 0,
+    gradientColor1: "#666666",
+    gradientColor2: "#666666",
   },
   fire: {
     name: "火焰红",
@@ -307,6 +346,8 @@ const presetConfigs = {
     cornerSquareColor: "#ff4500",
     cornerDotColorMode: "single",
     cornerDotColor: "#ff4500",
+    // 添加单色模式的属性
+    preColor: "#ff4500",
   },
   ice: {
     name: "冰雪蓝",
@@ -324,6 +365,8 @@ const presetConfigs = {
     cornerSquareColor: "#87ceeb",
     cornerDotColorMode: "single",
     cornerDotColor: "#87ceeb",
+    // 添加单色模式的属性
+    preColor: "#87ceeb",
   }
 };
 
@@ -335,11 +378,6 @@ const applyPreset = (presetKey: string) => {
     info.presetConfig = presetKey;
     info.qrKey += 1;
   }
-};
-
-// 监听预设配置变化
-const handlePresetChange = () => {
-  applyPreset(info.presetConfig);
 };
 
 const uploadLogo = ref();
@@ -383,6 +421,8 @@ onMounted(() => {
     cornerSquareColor: info.cornerSquareColor,
     cornerDotColorMode: info.cornerDotColorMode,
     cornerDotColor: info.cornerDotColor,
+    // 添加单色模式的属性
+    preColor: info.preColor,
   };
 });
 
@@ -654,7 +694,7 @@ const cornersDotOptions = computed(() => {
                       type="danger"
                       size="small"
                       circle
-                      @click="handleRemove({ url: info.fileList[0] })"
+                      @click="handleRemove()"
                     >
                       <el-icon><Delete /></el-icon>
                     </el-button>
