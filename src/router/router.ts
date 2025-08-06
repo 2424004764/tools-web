@@ -202,6 +202,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/filesize',
+    component: () => import('@/components/Tools/FileSize/FileSize.vue'),
+    name: 'fileSize',
+    meta: {
+      title: "文件大小转换",
+      keywords: '文件大小转换,字节转换,KB转换,MB转换,GB转换,TB转换',
+      description: '在线文件大小单位转换工具,支持字节、KB、MB、GB、TB等单位互转',
+    }
+  },
+  {
     path: '/decision',
     component: () => import('@/components/Tools/Decision/Decision.vue'),
     name: 'decision',
