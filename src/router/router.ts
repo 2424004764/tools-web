@@ -527,4 +527,14 @@ export const constantRoute = [
       description: '经典贪吃蛇游戏，支持键盘控制，挑战你的反应速度',
     }
   },
+  {
+    path: '/memory',
+    component: () => import('@/components/Tools/Memory/Memory.vue'),
+    name: 'memory',
+    meta: {
+      title: "记忆力翻牌",
+      keywords: '记忆力游戏,翻牌配对,记忆训练,益智游戏',
+      description: '记忆力翻牌配对游戏，考验你的记忆力，找到相同的卡片配对，训练大脑记忆能力',
+    }
+  },
 ]
