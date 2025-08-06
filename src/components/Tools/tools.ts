@@ -465,6 +465,15 @@ export function getToolsCate() {
           cateId: 11,
           cate: '趣味互动',
         },
+        {
+          id: 5,
+          title: '2048',
+          logo: '/images/logo/2048.png',
+          desc: '经典2048益智游戏，考验策略思维和数字逻辑',
+          url: '/game2048/',
+          cateId: 11,
+          cate: '趣味互动',
+        },
       ]
     },
     {
