@@ -537,4 +537,14 @@ export const constantRoute = [
       description: '记忆力翻牌配对游戏，考验你的记忆力，找到相同的卡片配对，训练大脑记忆能力',
     }
   },
+  {
+    path: '/tetris',
+    component: () => import('@/components/Tools/Tetris/Tetris.vue'),
+    name: 'tetris',
+    meta: {
+      title: "俄罗斯方块",
+      keywords: '俄罗斯方块,益智游戏,空间思维,经典游戏',
+      description: '经典俄罗斯方块游戏，考验你的空间思维和反应速度，消除横行获得高分',
+    }
+  },
 ]
