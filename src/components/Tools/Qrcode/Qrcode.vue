@@ -659,6 +659,65 @@ const cornersDotOptions = computed(() => {
     };
   }
 });
+
+// 下载二维码功能
+const downloadQR = () => {
+  if (!info.content) {
+    ElMessage.warning("请先生成二维码");
+    return;
+  }
+  
+  // 查找二维码图片元素
+  const qrImage = document.querySelector('.qr-code-image') as HTMLImageElement;
+  if (!qrImage) {
+    ElMessage.error("二维码元素未找到");
+    return;
+  }
+  
+  try {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const size = qrSize.value;
+    
+    canvas.width = size;
+    canvas.height = size;
+    
+    // 绘制背景
+    ctx!.fillStyle = info.bgColor;
+    ctx!.fillRect(0, 0, size, size);
+    
+    const img = new Image();
+    
+    img.onload = () => {
+      ctx!.drawImage(img, 0, 0, size, size);
+      
+      // 下载图片
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${downloadFileName.value}.png`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          ElMessage.success("下载成功");
+        }
+      }, 'image/png');
+    };
+    
+    img.onerror = () => {
+      ElMessage.error("图片生成失败");
+    };
+    
+    // 直接使用二维码图片的src
+    img.src = qrImage.src;
+  } catch (error) {
+    console.error('下载失败:', error);
+    ElMessage.error("下载失败，请重试");
+  }
+};
 </script>
 
 <template>
@@ -883,13 +942,15 @@ const cornersDotOptions = computed(() => {
                     
                     <!-- 渐变角度（线性渐变时显示） -->
                     <div v-if="info.gradientType === 'linear'">
-                      <label class="text-xs text-gray-500 mb-1 block">渐变角度</label>
+                      <label class="text-xs text-gray-500 mb-1 block">
+                        渐变角度: {{ info.gradientRotation }}°
+                      </label>
                       <el-slider
                         v-model="info.gradientRotation"
                         :min="0"
                         :max="360"
                         :step="1"
-                                @input="handleGradientChange"
+                        @input="handleGradientChange"
                         show-input
                       />
                     </div>
@@ -974,13 +1035,15 @@ const cornersDotOptions = computed(() => {
                     
                     <!-- 渐变角度（线性渐变时显示） -->
                     <div v-if="info.cornerSquareGradientType === 'linear'">
-                      <label class="text-xs text-gray-500 mb-1 block">渐变角度</label>
+                      <label class="text-xs text-gray-500 mb-1 block">
+                        渐变角度: {{ info.cornerSquareGradientRotation }}°
+                      </label>
                       <el-slider
                         v-model="info.cornerSquareGradientRotation"
                         :min="0"
                         :max="360"
                         :step="1"
-                                @input="handleCornerSquareGradientChange"
+                        @input="handleCornerSquareGradientChange"
                         show-input
                       />
                     </div>
@@ -1055,13 +1118,15 @@ const cornersDotOptions = computed(() => {
                     
                     <!-- 渐变角度（线性渐变时显示） -->
                     <div v-if="info.cornerDotGradientType === 'linear'">
-                      <label class="text-xs text-gray-500 mb-1 block">渐变角度</label>
+                      <label class="text-xs text-gray-500 mb-1 block">
+                        渐变角度: {{ info.cornerDotGradientRotation }}°
+                      </label>
                       <el-slider
                         v-model="info.cornerDotGradientRotation"
                         :min="0"
                         :max="360"
                         :step="1"
-                                @input="handleCornerDotGradientChange"
+                        @input="handleCornerDotGradientChange"
                         show-input
                       />
                     </div>
@@ -1110,7 +1175,7 @@ const cornersDotOptions = computed(() => {
               <div class="qr-code-wrapper" @click="viewLargeQR">
                 <QRCodeVue3
                   :key="info.qrKey"
-                  :value="info.content"
+                  :value="info.content || '预览'"
                   :width="qrSize"
                   :height="qrSize"
                   :qrOptions="{
@@ -1128,17 +1193,19 @@ const cornersDotOptions = computed(() => {
                   :background-options="{ color: info.bgColor }"
                   :cornersSquareOptions="cornersSquareOptions"
                   :cornersDotOptions="cornersDotOptions"
-                  :download="true"
-                  :download-options="{
-                    name: downloadFileName,
-                    extension: 'png',
-                  }"
                   myclass="qr-code-container"
                   imgclass="qr-code-image"
-                  download-button="qr-download-btn"
-                  file-ext="png"
                 />
               </div>
+              
+              <!-- 下载按钮 -->
+              <button
+                v-if="info.content"
+                class="qr-download-btn"
+                @click="downloadQR"
+              >
+                下载二维码
+              </button>
             </div>
           </template>
           <template v-else>
@@ -1167,7 +1234,7 @@ const cornersDotOptions = computed(() => {
               <div class="qr-code-wrapper" @click="viewLargeQR">
                 <QRCodeVue3
                   :key="info.qrKey"
-                  :value="info.content"
+                  :value="info.content || '预览'"
                   :width="qrSize"
                   :height="qrSize"
                   :qrOptions="{
@@ -1185,17 +1252,19 @@ const cornersDotOptions = computed(() => {
                   :background-options="{ color: info.bgColor }"
                   :cornersSquareOptions="cornersSquareOptions"
                   :cornersDotOptions="cornersDotOptions"
-                  :download="true"
-                  :download-options="{
-                    name: downloadFileName,
-                    extension: 'png',
-                  }"
                   myclass="qr-code-container"
                   imgclass="qr-code-image"
-                  download-button="qr-download-btn"
-                  file-ext="png"
                 />
               </div>
+              
+              <!-- 下载按钮 -->
+              <button
+                v-if="info.content"
+                class="qr-download-btn"
+                @click="downloadQR"
+              >
+                下载二维码
+              </button>
             </div>
           </template>
           <template v-else>
@@ -1422,7 +1491,9 @@ const cornersDotOptions = computed(() => {
                             
                             <!-- 渐变角度（线性渐变时显示） -->
                             <div v-if="info.gradientType === 'linear'">
-                              <label class="text-xs text-gray-500 mb-1 block">渐变角度</label>
+                              <label class="text-xs text-gray-500 mb-1 block">
+                                渐变角度: {{ info.gradientRotation }}°
+                              </label>
                               <el-slider
                                 v-model="info.gradientRotation"
                                 :min="0"
@@ -1513,7 +1584,9 @@ const cornersDotOptions = computed(() => {
                             
                             <!-- 渐变角度（线性渐变时显示） -->
                             <div v-if="info.cornerSquareGradientType === 'linear'">
-                              <label class="text-xs text-gray-500 mb-1 block">渐变角度</label>
+                              <label class="text-xs text-gray-500 mb-1 block">
+                                渐变角度: {{ info.cornerSquareGradientRotation }}°
+                              </label>
                               <el-slider
                                 v-model="info.cornerSquareGradientRotation"
                                 :min="0"
@@ -1594,7 +1667,9 @@ const cornersDotOptions = computed(() => {
                             
                             <!-- 渐变角度（线性渐变时显示） -->
                             <div v-if="info.cornerDotGradientType === 'linear'">
-                              <label class="text-xs text-gray-500 mb-1 block">渐变角度</label>
+                              <label class="text-xs text-gray-500 mb-1 block">
+                                渐变角度: {{ info.cornerDotGradientRotation }}°
+                              </label>
                               <el-slider
                                 v-model="info.cornerDotGradientRotation"
                                 :min="0"
@@ -1935,4 +2010,48 @@ const cornersDotOptions = computed(() => {
 :deep(.el-slider__runway) {
   margin-left: 20px;
 }
+
+/* H5端滑动条布局优化 */
+@media (max-width: 1024px) {
+  /* 让滑动条和输入框分两行显示 */
+  :deep(.el-slider) {
+    width: 100% !important;
+    margin-bottom: 8px;
+  }
+  
+  /* 隐藏H5端的输入框，只保留滑动条 */
+  :deep(.el-slider .el-slider__input) {
+    display: none !important;
+  }
+  
+  /* 或者如果你想保留输入框，可以这样布局 */
+  /*
+  :deep(.el-slider) {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  :deep(.el-slider .el-slider__runway) {
+    order: 1;
+  }
+  
+  :deep(.el-slider .el-slider__input) {
+    order: 2;
+    width: 100% !important;
+  }
+  */
+}
+
+/* 桌面端保持原有布局 */
+@media (min-width: 1025px) {
+  :deep(.el-slider) {
+    width: 100%;
+  }
+  
+  :deep(.el-slider .el-slider__input) {
+    width: 80px;
+  }
+}
+
 </style>
