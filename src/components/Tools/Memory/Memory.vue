@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref, onMounted, onUnmounted } from 'vue'
+import { reactive, ref, onMounted, onUnmounted, computed } from 'vue'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 
@@ -17,6 +17,14 @@ const gameState = reactive({
   time: 0,
 })
 
+// 格子数选项
+const gridSizeOptions = [
+  { label: '6×6', value: 6 },
+  { label: '7×7', value: 7 },
+  { label: '8×8', value: 8 },
+  { label: '9×9', value: 9 },
+]
+
 // 游戏配置
 const config = reactive({
   gridSize: window.innerWidth < 768 ? 4 : 6, // 移动端4x4，桌面端6x6
@@ -24,6 +32,28 @@ const config = reactive({
   flipDuration: 500,
   matchDelay: 1000,
 })
+
+// 当前选择的格子数
+const selectedGridSize = ref(6)
+
+// 检测是否为移动端
+const isMobile = ref(false)
+
+// 获取可用的格子数选项（移动端只显示4×4）
+const availableGridSizeOptions = computed(() => {
+  if (isMobile.value) {
+    return [{ label: '4×4', value: 4 }]
+  }
+  return gridSizeOptions
+})
+
+// 检测设备类型
+const detectDevice = () => {
+  isMobile.value = window.innerWidth < 768
+  if (isMobile.value) {
+    selectedGridSize.value = 4
+  }
+}
 
 // 卡片数据
 const cards = ref<Array<{
@@ -39,11 +69,11 @@ const flippedCards = ref<number[]>([])
 let gameTimer: number | null = null
 
 // 卡片符号
-const cardSymbols = ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🦆', '🦅', '🦉']
+const cardSymbols = ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🦆', '🦅', '🦉', '🦇', '🦉', '🦊', '🐺', '🐗', '🐴', '🦄', '🐝', '🐛', '🦋', '🐜']
 
 // 初始化游戏
 const initGame = () => {
-  const totalCards = config.gridSize * config.gridSize
+  const totalCards = selectedGridSize.value * selectedGridSize.value
   const symbols = cardSymbols.slice(0, totalCards / 2)
   const gameCards: Array<{
     id: number
@@ -161,6 +191,20 @@ const restartGame = () => {
   startGame()
 }
 
+// 重置游戏（不保存当前进度）
+const resetGame = () => {
+  if (gameTimer) {
+    clearInterval(gameTimer)
+  }
+  gameState.isPlaying = false
+  gameState.gameOver = false
+  gameState.score = 0
+  gameState.moves = 0
+  gameState.time = 0
+  flippedCards.value = []
+  cards.value = []
+}
+
 // 格式化时间
 const formatTime = (seconds: number) => {
   const mins = Math.floor(seconds / 60)
@@ -170,6 +214,12 @@ const formatTime = (seconds: number) => {
 
 // 生命周期
 onMounted(() => {
+  // 检测设备类型
+  detectDevice()
+  
+  // 监听窗口大小变化
+  window.addEventListener('resize', detectDevice)
+  
   // 从localStorage加载最高分
   const savedHighScore = localStorage.getItem('memoryHighScore')
   if (savedHighScore) {
@@ -181,6 +231,8 @@ onUnmounted(() => {
   if (gameTimer) {
     clearInterval(gameTimer)
   }
+  // 移除事件监听器
+  window.removeEventListener('resize', detectDevice)
   // 保存最高分
   localStorage.setItem('memoryHighScore', gameState.highScore.toString())
 })
@@ -212,12 +264,31 @@ onUnmounted(() => {
           </div>
           <div class="text-center bg-indigo-50 p-3 rounded-lg border border-indigo-200">
             <h3 class="text-sm font-medium text-indigo-900">格子数</h3>
-            <p class="text-xl font-bold text-indigo-600">{{ config.gridSize }}×{{ config.gridSize }}</p>
+            <p class="text-xl font-bold text-indigo-600">{{ selectedGridSize }}×{{ selectedGridSize }}</p>
+          </div>
+        </div>
+
+        <!-- 格子数选择 -->
+        <div v-if="!isMobile" class="flex justify-center mb-6">
+          <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+            <h3 class="text-sm font-medium text-gray-700 mb-3 text-center">选择格子数</h3>
+            <div class="flex gap-2">
+              <el-button
+                v-for="option in availableGridSizeOptions"
+                :key="option.value"
+                :type="selectedGridSize === option.value ? 'primary' : 'default'"
+                :disabled="gameState.isPlaying"
+                @click="selectedGridSize = option.value"
+                class="min-w-[60px]"
+              >
+                {{ option.label }}
+              </el-button>
+            </div>
           </div>
         </div>
 
         <!-- 游戏控制 -->
-        <div class="flex justify-center mb-6">
+        <div class="flex justify-center mb-6 gap-4">
           <el-button 
             v-if="!gameState.isPlaying && !gameState.gameOver"
             @click="startGame" 
@@ -227,12 +298,28 @@ onUnmounted(() => {
             开始游戏
           </el-button>
           <el-button 
+            v-if="gameState.isPlaying"
+            @click="restartGame" 
+            type="warning"
+            class="bg-orange-500 hover:bg-orange-600 border-orange-600"
+          >
+            重新开始
+          </el-button>
+          <el-button 
             v-if="gameState.gameOver"
             @click="restartGame" 
             type="success"
             class="bg-green-500 hover:bg-green-600 border-green-600"
           >
-            重新开始
+            再来一局
+          </el-button>
+          <el-button 
+            v-if="gameState.isPlaying || gameState.gameOver"
+            @click="resetGame" 
+            type="info"
+            class="bg-gray-500 hover:bg-gray-600 border-gray-600"
+          >
+            重置游戏
           </el-button>
         </div>
 
@@ -242,7 +329,7 @@ onUnmounted(() => {
             class="bg-gray-100 p-4 rounded-lg shadow-lg"
             :style="{
               display: 'grid',
-              gridTemplateColumns: `repeat(${config.gridSize}, ${config.cardSize}px)`,
+              gridTemplateColumns: `repeat(${selectedGridSize}, ${config.cardSize}px)`,
               gap: '8px'
             }"
           >
@@ -307,6 +394,17 @@ onUnmounted(() => {
               <p><strong class="text-green-600">得分规则：</strong>每对匹配+10分，时间越短得分越高</p>
               <p><strong class="text-red-600">挑战：</strong>用最少的步数和时间完成游戏</p>
             </div>
+          </div>
+        </div>
+
+        <!-- 底部说明 -->
+        <div class="mt-6 bg-blue-50 rounded-lg p-4 border border-blue-200">
+          <h3 class="text-sm font-medium text-blue-900 mb-2">设备适配说明</h3>
+          <div class="text-xs text-blue-700 space-y-1">
+            <p><strong>移动端（手机/平板）：</strong>自动适配为4×4格子，确保最佳游戏体验</p>
+            <p><strong>桌面端（电脑）：</strong>支持6×6到12×12多种格子数，可根据难度选择</p>
+            <p><strong>操作提示：</strong>移动端点击卡片，桌面端支持鼠标点击</p>
+            <p><strong>性能优化：</strong>大格子数游戏建议在性能较好的设备上运行</p>
           </div>
         </div>
       </div>
