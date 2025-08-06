@@ -447,6 +447,15 @@ export function getToolsCate() {
           cateId: 11,
           cate: '趣味互动',
         },
+        {
+          id: 3,
+          title: '俄罗斯方块',
+          logo: '/images/logo/tetris.png',
+          desc: '经典俄罗斯方块游戏，考验空间思维和反应速度',
+          url: '/tetris/',
+          cateId: 11,
+          cate: '趣味互动',
+        },
       ]
     },
     {
