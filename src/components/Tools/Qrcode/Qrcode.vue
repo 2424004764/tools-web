@@ -422,19 +422,17 @@ const updatePageInfo = () => {
 
 // 简化的动态 margin-top 计算
 const dynamicMarginTop = computed(() => {
-  // 预览区可以停留的最大位置
+  // 在移动端（小屏幕）时，返回固定值，不跟随滚动
+  if (windowWidth.value < 1024) {
+    return 24; // 移动端固定位置
+  }
+  
+  // 桌面端才使用动态定位
   const maxTop = scrollTop.value - 80;
-  
-  // 基础位置
   const basePosition = 100;
-  
-  // 滚动影响（使用更小的系数）
   const scrollInfluence = scrollTop.value * 0.8;
   
-  // 计算目标位置
   let targetPosition = basePosition + scrollInfluence;
-  
-  // 限制在安全范围内
   targetPosition = Math.max(20, Math.min(maxTop, targetPosition));
   
   return targetPosition;
@@ -667,8 +665,9 @@ const cornersDotOptions = computed(() => {
   <div class="flex flex-col mt-3 ml-4 flex-1 mr-3">
     <DetailHeader :title="info.title"></DetailHeader>
 
+    <!-- 桌面端布局：左右分栏 -->
     <div
-      class="flex flex-col lg:flex-row gap-6 w-full p-6 rounded-2xl bg-white shadow-sm"
+      class="hidden lg:flex flex-col lg:flex-row gap-6 w-full p-6 rounded-2xl bg-white shadow-sm"
     >
       <!-- 左侧控制面板 -->
       <div class="flex-1 space-y-4">
@@ -822,6 +821,545 @@ const cornersDotOptions = computed(() => {
               
               <el-tab-pane label="自定义配置" name="custom">
                 <div class="space-y-4">
+          <!-- 点样式设置 -->
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-gray-700">点样式</label>
+            <el-select
+              v-model="info.dotType"
+              class="w-full"
+              @change="handleDotTypeChange"
+            >
+              <el-option label="方形" value="square" />
+              <el-option label="圆角" value="rounded" />
+              <el-option label="圆点" value="dots" />
+              <el-option label="经典" value="classy" />
+              <el-option label="经典圆角" value="classy-rounded" />
+              <el-option label="超圆角" value="extra-rounded" />
+            </el-select>
+          </div>
+
+          <!-- 颜色设置 -->
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-gray-700">颜色设置</label>
+            
+            <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+              <!-- 颜色模式选择 -->
+              <el-tabs v-model="info.colorMode" @tab-change="handleColorModeChange">
+                <el-tab-pane label="单色" name="single">
+                  <div class="space-y-2">
+                    <div class="flex gap-4">
+                      <div class="flex-1">
+                        <label class="text-xs text-gray-500 mb-1 block">前景色</label>
+                        <el-color-picker
+                          v-model="info.preColor"
+                          @change="handleColorChange"
+                        />
+                      </div>
+                      <div class="flex-1">
+                        <label class="text-xs text-gray-500 mb-1 block">背景色</label>
+                        <el-color-picker
+                          v-model="info.bgColor"
+                          @change="handleColorChange"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </el-tab-pane>
+                
+                <el-tab-pane label="渐变色" name="gradient">
+                  <div class="space-y-3">
+                    <!-- 渐变类型 -->
+                    <div>
+                      <label class="text-xs text-gray-500 mb-1 block">渐变类型</label>
+                      <el-select
+                        v-model="info.gradientType"
+                        class="w-full"
+                        @change="handleGradientChange"
+                      >
+                        <el-option label="线性渐变" value="linear" />
+                        <el-option label="径向渐变" value="radial" />
+                      </el-select>
+                    </div>
+                    
+                    <!-- 渐变角度（线性渐变时显示） -->
+                    <div v-if="info.gradientType === 'linear'">
+                      <label class="text-xs text-gray-500 mb-1 block">渐变角度</label>
+                      <el-slider
+                        v-model="info.gradientRotation"
+                        :min="0"
+                        :max="360"
+                        :step="1"
+                                @input="handleGradientChange"
+                        show-input
+                      />
+                    </div>
+                    
+                    <!-- 渐变色选择 -->
+                    <div class="flex gap-4">
+                      <div class="flex-1">
+                        <label class="text-xs text-gray-500 mb-1 block">起始色</label>
+                        <el-color-picker
+                          v-model="info.gradientColor1"
+                          @change="handleGradientChange"
+                        />
+                      </div>
+                      <div class="flex-1">
+                        <label class="text-xs text-gray-500 mb-1 block">结束色</label>
+                        <el-color-picker
+                          v-model="info.gradientColor2"
+                          @change="handleGradientChange"
+                        />
+                      </div>
+                    </div>
+                    
+                    <!-- 背景色 -->
+                    <div>
+                      <label class="text-xs text-gray-500 mb-1 block">背景色</label>
+                      <el-color-picker
+                        v-model="info.bgColor"
+                        @change="handleColorChange"
+                      />
+                    </div>
+                  </div>
+                </el-tab-pane>
+              </el-tabs>
+            </div>
+          </div>
+
+          <!-- 角落方块设置 -->
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-gray-700">角落方块</label>
+            
+            <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+              <!-- 角落方块样式 -->
+              <div class="mb-3">
+                <label class="text-xs text-gray-500 mb-1 block">样式</label>
+                <el-select
+                  v-model="info.cornerSquareType"
+                  class="w-full"
+                  @change="handleDotTypeChange"
+                >
+                  <el-option label="方形" value="square" />
+                  <el-option label="圆点" value="dot" />
+                  <el-option label="超圆角" value="extra-rounded" />
+                </el-select>
+              </div>
+              
+              <!-- 角落方块颜色设置 -->
+              <el-tabs v-model="info.cornerSquareColorMode" @tab-change="handleCornerSquareColorModeChange">
+                <el-tab-pane label="单色" name="single">
+                  <div class="space-y-2">
+                    <label class="text-xs text-gray-500 mb-1 block">颜色</label>
+                    <el-color-picker
+                      v-model="info.cornerSquareColor"
+                      @change="handleCornerSquareGradientChange"
+                    />
+                  </div>
+                </el-tab-pane>
+                
+                <el-tab-pane label="渐变色" name="gradient">
+                  <div class="space-y-3">
+                    <!-- 渐变类型 -->
+                    <div>
+                      <label class="text-xs text-gray-500 mb-1 block">渐变类型</label>
+                      <el-select
+                        v-model="info.cornerSquareGradientType"
+                        class="w-full"
+                        @change="handleCornerSquareGradientChange"
+                      >
+                        <el-option label="线性渐变" value="linear" />
+                        <el-option label="径向渐变" value="radial" />
+                      </el-select>
+                    </div>
+                    
+                    <!-- 渐变角度（线性渐变时显示） -->
+                    <div v-if="info.cornerSquareGradientType === 'linear'">
+                      <label class="text-xs text-gray-500 mb-1 block">渐变角度</label>
+                      <el-slider
+                        v-model="info.cornerSquareGradientRotation"
+                        :min="0"
+                        :max="360"
+                        :step="1"
+                                @input="handleCornerSquareGradientChange"
+                        show-input
+                      />
+                    </div>
+                    
+                    <!-- 渐变色选择 -->
+                    <div class="flex gap-4">
+                      <div class="flex-1">
+                        <label class="text-xs text-gray-500 mb-1 block">起始色</label>
+                        <el-color-picker
+                          v-model="info.cornerSquareGradientColor1"
+                          @change="handleCornerSquareGradientChange"
+                        />
+                      </div>
+                      <div class="flex-1">
+                        <label class="text-xs text-gray-500 mb-1 block">结束色</label>
+                        <el-color-picker
+                          v-model="info.cornerSquareGradientColor2"
+                          @change="handleCornerSquareGradientChange"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </el-tab-pane>
+              </el-tabs>
+            </div>
+          </div>
+
+          <!-- 角落点设置 -->
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-gray-700">角落点</label>
+            
+            <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+              <!-- 角落点样式 -->
+              <div class="mb-3">
+                <label class="text-xs text-gray-500 mb-1 block">样式</label>
+                <el-select
+                  v-model="info.cornerDotType"
+                  class="w-full"
+                  @change="handleDotTypeChange"
+                >
+                  <el-option label="圆点" value="dot" />
+                  <el-option label="方形" value="square" />
+                </el-select>
+              </div>
+              
+              <!-- 角落点颜色设置 -->
+              <el-tabs v-model="info.cornerDotColorMode" @tab-change="handleCornerDotColorModeChange">
+                <el-tab-pane label="单色" name="single">
+                  <div class="space-y-2">
+                    <label class="text-xs text-gray-500 mb-1 block">颜色</label>
+                    <el-color-picker
+                      v-model="info.cornerDotColor"
+                      @change="handleCornerDotGradientChange"
+                    />
+                  </div>
+                </el-tab-pane>
+                
+                <el-tab-pane label="渐变色" name="gradient">
+                  <div class="space-y-3">
+                    <!-- 渐变类型 -->
+                    <div>
+                      <label class="text-xs text-gray-500 mb-1 block">渐变类型</label>
+                      <el-select
+                        v-model="info.cornerDotGradientType"
+                        class="w-full"
+                        @change="handleCornerDotGradientChange"
+                      >
+                        <el-option label="线性渐变" value="linear" />
+                        <el-option label="径向渐变" value="radial" />
+                      </el-select>
+                    </div>
+                    
+                    <!-- 渐变角度（线性渐变时显示） -->
+                    <div v-if="info.cornerDotGradientType === 'linear'">
+                      <label class="text-xs text-gray-500 mb-1 block">渐变角度</label>
+                      <el-slider
+                        v-model="info.cornerDotGradientRotation"
+                        :min="0"
+                        :max="360"
+                        :step="1"
+                                @input="handleCornerDotGradientChange"
+                        show-input
+                      />
+                    </div>
+                    
+                    <!-- 渐变色选择 -->
+                    <div class="flex gap-4">
+                      <div class="flex-1">
+                        <label class="text-xs text-gray-500 mb-1 block">起始色</label>
+                        <el-color-picker
+                          v-model="info.cornerDotGradientColor1"
+                          @change="handleCornerDotGradientChange"
+                        />
+                      </div>
+                      <div class="flex-1">
+                        <label class="text-xs text-gray-500 mb-1 block">结束色</label>
+                        <el-color-picker
+                          v-model="info.cornerDotGradientColor2"
+                          @change="handleCornerDotGradientChange"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </el-tab-pane>
+              </el-tabs>
+                    </div>
+                  </div>
+                </div>
+              </el-tab-pane>
+            </el-tabs>
+          </div>
+            </div>
+      </div>
+
+      <!-- 右侧预览区域 -->
+      <div 
+        class="preview-container" 
+        :style="{ marginTop: dynamicMarginTop + 'px' }"
+      >
+        <div class="flex flex-col items-center space-y-4 lg:w-80">
+          <template v-if="info.content && info.content.trim()">
+            <div class="text-center">
+              <h3 class="text-lg font-medium text-gray-900 mb-2">二维码预览</h3>
+              <p class="text-sm text-gray-500">点击二维码查看大图</p>
+            </div>
+            <div class="qr-code bg-white p-4 rounded-lg border border-gray-200">
+              <div class="qr-code-wrapper" @click="viewLargeQR">
+                <QRCodeVue3
+                  :key="info.qrKey"
+                  :value="info.content"
+                  :width="qrSize"
+                  :height="qrSize"
+                  :qrOptions="{
+                    typeNumber: 0,
+                    mode: 'Byte',
+                    errorCorrectionLevel: info.errorCorrectionLevel,
+                  }"
+                  :imageOptions="{
+                    hideBackgroundDots: true,
+                    imageSize: 0.4,
+                    margin: 0,
+                  }"
+                  :dotsOptions="dotsOptions"
+                  :image="info.fileList[0] || undefined"
+                  :background-options="{ color: info.bgColor }"
+                  :cornersSquareOptions="cornersSquareOptions"
+                  :cornersDotOptions="cornersDotOptions"
+                  :download="true"
+                  :download-options="{
+                    name: downloadFileName,
+                    extension: 'png',
+                  }"
+                  myclass="qr-code-container"
+                  imgclass="qr-code-image"
+                  download-button="qr-download-btn"
+                  file-ext="png"
+                />
+              </div>
+            </div>
+          </template>
+          <template v-else>
+            <!-- 占位内容 -->
+            <div class="flex flex-col items-center justify-center h-64 w-full opacity-60">
+              <el-icon size="48"><svg viewBox="0 0 1024 1024"><path d="M512 64C264.6 64 64 264.6 64 512s200.6 448 448 448 448-200.6 448-448S759.4 64 512 64zm0 820c-205.2 0-372-166.8-372-372S306.8 140 512 140s372 166.8 372 372-166.8 372-372 372zm0-624c-139.2 0-252 112.8-252 252s112.8 252 252 252 252-112.8 252-252S651.2 260 512 260zm0 432c-99.2 0-180-80.8-180-180s80.8-180 180-180 180 80.8 180 180-80.8 180-180 180z" fill="#d3d3d3"/></svg></el-icon>
+              <span class="text-gray-400 mt-4">请输入内容以生成二维码</span>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+
+    <!-- 移动端布局：预览区在前，控制面板在后 -->
+    <div class="lg:hidden">
+      <!-- 移动端预览区 -->
+      <div class="w-full p-6 rounded-2xl bg-white shadow-sm mb-6">
+        <div class="flex flex-col items-center space-y-4">
+          <template v-if="info.content && info.content.trim()">
+            <div class="text-center">
+              <h3 class="text-lg font-medium text-gray-900 mb-2">二维码预览</h3>
+              <p class="text-sm text-gray-500">点击二维码查看大图</p>
+            </div>
+
+            <div class="qr-code bg-white p-4 rounded-lg border border-gray-200">
+              <div class="qr-code-wrapper" @click="viewLargeQR">
+                <QRCodeVue3
+                  :key="info.qrKey"
+                  :value="info.content"
+                  :width="qrSize"
+                  :height="qrSize"
+                  :qrOptions="{
+                    typeNumber: 0,
+                    mode: 'Byte',
+                    errorCorrectionLevel: info.errorCorrectionLevel,
+                  }"
+                  :imageOptions="{
+                    hideBackgroundDots: true,
+                    imageSize: 0.4,
+                    margin: 0,
+                  }"
+                  :dotsOptions="dotsOptions"
+                  :image="info.fileList[0] || undefined"
+                  :background-options="{ color: info.bgColor }"
+                  :cornersSquareOptions="cornersSquareOptions"
+                  :cornersDotOptions="cornersDotOptions"
+                  :download="true"
+                  :download-options="{
+                    name: downloadFileName,
+                    extension: 'png',
+                  }"
+                  myclass="qr-code-container"
+                  imgclass="qr-code-image"
+                  download-button="qr-download-btn"
+                  file-ext="png"
+                />
+              </div>
+            </div>
+          </template>
+          <template v-else>
+            <!-- 占位内容 -->
+            <div class="flex flex-col items-center justify-center h-64 w-full opacity-60">
+              <el-icon size="48"><svg viewBox="0 0 1024 1024"><path d="M512 64C264.6 64 64 264.6 64 512s200.6 448 448 448 448-200.6 448-448S759.4 64 512 64zm0 820c-205.2 0-372-166.8-372-372S306.8 140 512 140s372 166.8 372 372-166.8 372-372 372zm0-624c-139.2 0-252 112.8-252 252s112.8 252 252 252 252-112.8 252-252S651.2 260 512 260zm0 432c-99.2 0-180-80.8-180-180s80.8-180 180-180 180 80.8 180 180-80.8 180-180 180z" fill="#d3d3d3"/></svg></el-icon>
+              <span class="text-gray-400 mt-4">请输入内容以生成二维码</span>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- 移动端控制面板 -->
+      <div class="w-full p-6 rounded-2xl bg-white shadow-sm">
+        <div class="space-y-4">
+          <!-- 内容输入 -->
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-gray-700"
+              >内容（网站链接，扫码会直接打开，暂不支持中文）</label
+            >
+            <el-input
+              v-model="info.content"
+              type="textarea"
+              :rows="4"
+              placeholder="输入文字或网址生成二维码，支持中文内容"
+              class="w-full"
+              @input="handleContentChange"
+            />
+          </div>
+
+          <!-- 清除内容按钮 -->
+          <div class="flex gap-3">
+            <el-button @click="clearContent" class="flex-1">
+              清除内容
+            </el-button>
+          </div>
+
+          <!-- 尺寸设置 -->
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-gray-700">尺寸</label>
+            <el-select
+              v-model="info.size"
+              class="w-full"
+              @change="handleSizeChange"
+            >
+              <el-option label="小尺寸 128px" value="128" />
+              <el-option label="常规 200px" value="200" />
+              <el-option label="适中 300px" value="300" />
+              <el-option label="较大 400px" value="400" />
+              <el-option label="大尺寸 500px" value="500" />
+            </el-select>
+          </div>
+
+          <!-- 纠错级别 -->
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-gray-700">纠错级别</label>
+            <el-select
+              v-model="info.errorCorrectionLevel"
+              class="w-full"
+              @change="handleErrorCorrectionChange"
+            >
+              <el-option label="L - 可遮挡 7%" value="L" />
+              <el-option label="M - 可遮挡 15%" value="M" />
+              <el-option label="Q - 可遮挡 25%" value="Q" />
+              <el-option label="H - 可遮挡 30%" value="H" />
+            </el-select>
+          </div>
+
+          <!-- Logo上传 -->
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-gray-700">Logo</label>
+            <el-upload
+              ref="uploadLogo"
+              action="#"
+              :auto-upload="false"
+              :limit="1"
+              list-type="picture-card"
+              accept=".png,.ico,.jpg,.jpeg"
+              :on-change="handleChange"
+              :on-exceed="handleExceed"
+              :on-remove="handleRemove"
+              :file-list="
+                info.fileList.length > 0
+                  ? info.fileList.map((url) => ({ url, name: 'logo' }))
+                  : []
+              "
+              :show-file-list="false"
+              class="w-full"
+            >
+              <template v-if="info.fileList.length === 0">
+                <el-icon><Plus /></el-icon>
+              </template>
+              <template v-else>
+                <div class="relative w-full h-full">
+                  <img
+                    class="w-full h-full object-cover"
+                    :src="info.fileList[0]"
+                    alt=""
+                  />
+                  <span class="absolute top-1 right-1">
+                    <el-button
+                      type="danger"
+                      size="small"
+                      circle
+                      @click="handleRemove()"
+                    >
+                      <el-icon><Delete /></el-icon>
+                    </el-button>
+                  </span>
+                </div>
+              </template>
+            </el-upload>
+          </div>
+
+          <!-- 配置模式选择 -->
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-gray-700">样式配置</label>
+            <el-tabs v-model="info.configMode" class="w-full">
+              <el-tab-pane label="预设" name="preset">
+                <div class="space-y-4">
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div
+                      v-for="(preset, key) in presetConfigs"
+                      :key="key"
+                      class="preset-card"
+                      :class="{ 'preset-card-active': info.presetConfig === key }"
+                      @click="applyPreset(key)"
+                    >
+                      <div class="preset-preview">
+                        <QRCodeVue3
+                          :value="'预览'"
+                          :width="60"
+                          :height="60"
+                          :qrOptions="{
+                            typeNumber: 0,
+                            mode: 'Byte',
+                            errorCorrectionLevel: 'H',
+                          }"
+                          :dotsOptions="{
+                            type: preset.dotType,
+                            color: preset.colorMode === 'single' ? preset.preColor : preset.gradientColor1,
+                          }"
+                          :background-options="{ color: preset.bgColor }"
+                          :cornersSquareOptions="{
+                            type: preset.cornerSquareType,
+                            color: preset.cornerSquareColor,
+                          }"
+                          :cornersDotOptions="{
+                            type: preset.cornerDotType,
+                            color: preset.cornerDotColor,
+                          }"
+                        />
+          </div>
+                      <div class="preset-info">
+                        <h4 class="preset-name">{{ preset.name }}</h4>
+                        <p class="preset-desc">{{ preset.description }}</p>
+        </div>
+      </div>
+                  </div>
+                </div>
+              </el-tab-pane>
+              
+              <el-tab-pane label="自定义配置" name="custom">
+                <div class="space-y-4">
                   <!-- 点样式设置 -->
                   <div class="space-y-2">
                     <label class="text-sm font-medium text-gray-700">点样式</label>
@@ -837,7 +1375,7 @@ const cornersDotOptions = computed(() => {
                       <el-option label="经典圆角" value="classy-rounded" />
                       <el-option label="超圆角" value="extra-rounded" />
                     </el-select>
-                  </div>
+          </div>
 
                   <!-- 颜色设置 -->
                   <div class="space-y-2">
@@ -1095,62 +1633,6 @@ const cornersDotOptions = computed(() => {
           </div>
         </div>
       </div>
-
-      <!-- 右侧预览区域，使用简化的动态定位 -->
-      <div 
-        class="preview-container" 
-        :style="{ marginTop: dynamicMarginTop + 'px' }"
-      >
-        <div class="flex flex-col items-center space-y-4 lg:w-80">
-          <template v-if="info.content && info.content.trim()">
-            <div class="text-center">
-              <h3 class="text-lg font-medium text-gray-900 mb-2">二维码预览</h3>
-              <p class="text-sm text-gray-500">点击二维码查看大图</p>
-            </div>
-            <div class="qr-code bg-white p-4 rounded-lg border border-gray-200">
-              <div class="qr-code-wrapper" @click="viewLargeQR">
-                <QRCodeVue3
-                  :key="info.qrKey"
-                  :value="info.content"
-                  :width="qrSize"
-                  :height="qrSize"
-                  :qrOptions="{
-                    typeNumber: 0,
-                    mode: 'Byte',
-                    errorCorrectionLevel: info.errorCorrectionLevel,
-                  }"
-                  :imageOptions="{
-                    hideBackgroundDots: true,
-                    imageSize: 0.4,
-                    margin: 0,
-                  }"
-                  :dotsOptions="dotsOptions"
-                  :image="info.fileList[0] || undefined"
-                  :background-options="{ color: info.bgColor }"
-                  :cornersSquareOptions="cornersSquareOptions"
-                  :cornersDotOptions="cornersDotOptions"
-                  :download="true"
-                  :download-options="{
-                    name: downloadFileName,
-                    extension: 'png',
-                  }"
-                  myclass="qr-code-container"
-                  imgclass="qr-code-image"
-                  download-button="qr-download-btn"
-                  file-ext="png"
-                />
-              </div>
-            </div>
-          </template>
-          <template v-else>
-            <!-- 占位内容，可自定义为空白或友好提示 -->
-            <div class="flex flex-col items-center justify-center h-64 w-full opacity-60">
-              <el-icon size="48"><svg viewBox="0 0 1024 1024"><path d="M512 64C264.6 64 64 264.6 64 512s200.6 448 448 448 448-200.6 448-448S759.4 64 512 64zm0 820c-205.2 0-372-166.8-372-372S306.8 140 512 140s372 166.8 372 372-166.8 372-372 372zm0-624c-139.2 0-252 112.8-252 252s112.8 252 252 252 252-112.8 252-252S651.2 260 512 260zm0 432c-99.2 0-180-80.8-180-180s80.8-180 180-180 180 80.8 180 180-80.8 180-180 180z" fill="#d3d3d3"/></svg></el-icon>
-              <span class="text-gray-400 mt-4">请输入内容以生成二维码</span>
-            </div>
-          </template>
-        </div>
-      </div>
     </div>
 
     <!-- 大图弹窗 -->
@@ -1163,30 +1645,30 @@ const cornersDotOptions = computed(() => {
       center
     >
       <div class="flex flex-col items-center">
-        <QRCodeVue3
+              <QRCodeVue3
           :key="info.qrKey + '-large'"
-          :value="info.content"
+                :value="info.content"
           :width="largeQRSize"
           :height="largeQRSize"
-          :qrOptions="{
-            typeNumber: 0,
-            mode: 'Byte',
-            errorCorrectionLevel: info.errorCorrectionLevel,
-          }"
-          :imageOptions="{
-            hideBackgroundDots: true,
-            imageSize: 0.4,
-            margin: 0,
-          }"
-          :dotsOptions="dotsOptions"
-          :image="info.fileList[0] || undefined"
-          :background-options="{ color: info.bgColor }"
-          :cornersSquareOptions="cornersSquareOptions"
-          :cornersDotOptions="cornersDotOptions"
+                :qrOptions="{
+                  typeNumber: 0,
+                  mode: 'Byte',
+                  errorCorrectionLevel: info.errorCorrectionLevel,
+                }"
+                :imageOptions="{
+                  hideBackgroundDots: true,
+                  imageSize: 0.4,
+                  margin: 0,
+                }"
+                :dotsOptions="dotsOptions"
+                :image="info.fileList[0] || undefined"
+                :background-options="{ color: info.bgColor }"
+                :cornersSquareOptions="cornersSquareOptions"
+                :cornersDotOptions="cornersDotOptions"
           myclass="qr-code-container-large"
           imgclass="qr-code-image-large"
-        />
-      </div>
+              />
+            </div>
     </el-dialog>
 
     <!-- 页面底部 ToolDetail，始终显示 -->
@@ -1232,16 +1714,15 @@ const cornersDotOptions = computed(() => {
   color: #888;
 }
 
-/* 预览容器，不使用 sticky 定位 */
-.preview-container {
-  width: 320px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-  padding: 16px;
+/* 预览容器 */
+  .preview-container {
+    width: 320px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    padding: 16px;
   align-self: flex-start;
   margin-left: auto;
-  /* 移除 sticky 相关样式 */
   transition: margin-top 0.1s ease;
 }
 
@@ -1249,7 +1730,7 @@ const cornersDotOptions = computed(() => {
   .preview-container {
     width: 100%;
     margin-left: 0;
-    margin-top: 24px;
+    /* 移动端不设置 margin-top，使用固定位置 */
   }
 }
 
