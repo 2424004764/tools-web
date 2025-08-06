@@ -100,6 +100,15 @@ export function getToolsCate() {
         },
         {
           id: 1,
+          title: '文件大小转换',
+          logo: '/images/logo/file_size.png',
+          desc: '文件大小单位转换，支持字节、KB、MB、GB、TB等单位互转',
+          url: '/filesize/',
+          cateId: 2,
+          cate: '开发运维',
+        },
+        {
+          id: 1,
           title: 'Cron表达式生成器',
           logo: '/images/logo/cron.png',
           desc: '在线生成和解析Cron表达式，支持定时任务配置',
