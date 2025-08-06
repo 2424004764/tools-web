@@ -517,4 +517,14 @@ export const constantRoute = [
     redirect: '/404',
     name: 'Any',
   },
+  {
+    path: '/snake',
+    component: () => import('@/components/Tools/Snake/Snake.vue'),
+    name: 'snake',
+    meta: {
+      title: "贪吃蛇",
+      keywords: '贪吃蛇,小游戏,休闲游戏,键盘游戏',
+      description: '经典贪吃蛇游戏，支持键盘控制，挑战你的反应速度',
+    }
+  },
 ]

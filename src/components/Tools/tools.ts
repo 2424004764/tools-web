@@ -425,6 +425,22 @@ export function getToolsCate() {
       ]
     },
     {
+      id: 11,
+      title: '趣味互动',
+      icon: '',
+      list: [
+        {
+          id: 1,
+          title: '贪吃蛇',
+          logo: '/images/logo/snake.png',
+          desc: '经典贪吃蛇游戏，支持键盘控制，挑战你的反应速度',
+          url: '/snake/',
+          cateId: 11,
+          cate: '趣味互动',
+        },
+      ]
+    },
+    {
       id: 9,
       title: '选择随机',
       icon: '',
