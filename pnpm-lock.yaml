@@ -104,6 +104,9 @@ importers:
       prismjs:
         specifier: ^1.29.0
         version: 1.30.0
+      qrcode-reader-vue3:
+        specifier: ^3.1.4
+        version: 3.1.4(typescript@5.9.2)
       qrcode-vue3:
         specifier: ^1.7.1
         version: 1.7.1
@@ -918,6 +921,13 @@ packages:
   '@xtuc/long@4.2.2':
     resolution: {integrity: sha512-NuHqBY1PB/D8xU6s/thBgOAiAP7HOYDQ32+BFZILJ8ivkUkAHQnWfn6WhL79Owj1qmUnoN/YPhktdIoucipkAQ==, tarball: https://registry.npmmirror.com/@xtuc/long/-/long-4.2.2.tgz}
 
+  '@zxing/library@0.18.6':
+    resolution: {integrity: sha512-bulZ9JHoLFd9W36pi+7e7DnEYNJhljYjZ1UTsKPOoLMU3qtC+REHITeCRNx40zTRJZx18W5TBRXt5pq2Uopjsw==, tarball: https://registry.npmmirror.com/@zxing/library/-/library-0.18.6.tgz}
+    engines: {node: '>= 10.4.0'}
+
+  '@zxing/text-encoding@0.9.0':
+    resolution: {integrity: sha512-U/4aVJ2mxI0aDNI8Uq0wEhMgY+u4CNtEb0om3+y3+niDAsoTCOB33UF0sxpzqzdqXLqmvc+vZyAt4O8pPdfkwA==, tarball: https://registry.npmmirror.com/@zxing/text-encoding/-/text-encoding-0.9.0.tgz}
+
   abab@2.0.6:
     resolution: {integrity: sha512-j2afSsaIENvHZN2B8GOpF566vZ5WVk5opAiMTvWgaQT8DkbOqsTfvNAvHoRGU2zzP8cPoqys+xHTRDWW8L+/BA==, tarball: https://registry.npmmirror.com/abab/-/abab-2.0.6.tgz}
     deprecated: Use your platform's native atob() and btoa() methods instead
@@ -1147,6 +1157,10 @@ packages:
   balanced-match@1.0.2:
     resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==, tarball: https://registry.npmmirror.com/balanced-match/-/balanced-match-1.0.2.tgz}
 
+  barcode-detector@0.7.0:
+    resolution: {integrity: sha512-SJh+LV6e+W5e6QJe70ralFfqcYwvaOUGWyr+GepuQ5swPH4jF2asyTxOIUZNSU9Z5isD3KWI5hlqQ+b/QaFFOg==, tarball: https://registry.npmmirror.com/barcode-detector/-/barcode-detector-0.7.0.tgz}
+    deprecated: 'The ownership of barcode-detector has been transferred to a new user. Please update to version 2.0.0 or higher for continued support and maintenance. View the new API and source code at https://github.com/Sec-ant/barcode-detector '
+
   bare-events@2.6.0:
     resolution: {integrity: sha512-EKZ5BTXYExaNqi3I3f9RtEsaI/xBSGjE0XZCZilPzFAV/goswFHuPd9jEZlPIZ/iNZJwDSao9qRiScySz7MbQg==, tarball: https://registry.npmmirror.com/bare-events/-/bare-events-2.6.0.tgz}
 
@@ -1230,6 +1244,9 @@ packages:
 
   call-me-maybe@1.0.2:
     resolution: {integrity: sha512-HpX65o1Hnr9HH25ojC1YGs7HCQLq0GCOibSaWER0eNpgJ/Z1MZv2mTc7+xh6WOPxbRVcmgbv4hGU+uSQ/2xFZQ==, tarball: https://registry.npmmirror.com/call-me-maybe/-/call-me-maybe-1.0.2.tgz}
+
+  callforth@0.4.0:
+    resolution: {integrity: sha512-k3kD3OBPRvYs3Sb41Fn1T7l6vvSmTMPq1a0jxh8QKD+wb+17G8oOq48eBi0stn8ahpNVUJtPlrlYwbfv9Cfhpg==, tarball: https://registry.npmmirror.com/callforth/-/callforth-0.4.0.tgz}
 
   callsites@3.1.0:
     resolution: {integrity: sha512-P8BjAsXvZS+VIDUI11hHCQEv74YT67YUi5JJFNWIqL235sBmjX4+qx9Muvls5ivyNENctx46xQLQ3aTuE7ssaQ==, tarball: https://registry.npmmirror.com/callsites/-/callsites-3.1.0.tgz}
@@ -1413,6 +1430,9 @@ packages:
   core-js@2.6.12:
     resolution: {integrity: sha512-Kb2wC0fvsWfQrgk8HU5lW6U/Lcs8+9aaYcy4ZFc6DDlo4nZ7n70dEgE5rtR0oG6ufKDUnrwfWL1mXR5ljDatrQ==, tarball: https://registry.npmmirror.com/core-js/-/core-js-2.6.12.tgz}
     deprecated: core-js@<3.23.3 is no longer maintained and not recommended for usage due to the number of issues. Because of the V8 engine whims, feature detection in old core-js versions could cause a slowdown up to 100x even if nothing is polyfilled. Some versions have web compatibility issues. Please, upgrade your dependencies to the actual version of core-js.
+
+  core-js@3.45.0:
+    resolution: {integrity: sha512-c2KZL9lP4DjkN3hk/an4pWn5b5ZefhRJnAc42n6LJ19kSnbeRbdQZE5dSeE2LBol1OwJD3X1BQvFTAsa8ReeDA==, tarball: https://registry.npmmirror.com/core-js/-/core-js-3.45.0.tgz}
 
   core-util-is@1.0.2:
     resolution: {integrity: sha512-3lqz5YjWTYnW6dlDa5TLaTCcShfar1e40rmcJVwCBJC6mWlFuj0eCHIElmG1g5kyuJ/GD+8Wn4FFCcz4gJPfaQ==, tarball: https://registry.npmmirror.com/core-util-is/-/core-util-is-1.0.2.tgz}
@@ -2729,6 +2749,9 @@ packages:
     resolution: {integrity: sha512-P2bSOMAc/ciLz6DzgjVlGJP9+BrJWu5UDGK70C2iweC5QBIeFf0ZXRvGjEj2uYgrY2MkAAhsSWHDWlFtEroZWw==, tarball: https://registry.npmmirror.com/jsprim/-/jsprim-1.4.2.tgz}
     engines: {node: '>=0.6.0'}
 
+  jsqr@1.4.0:
+    resolution: {integrity: sha512-dxLob7q65Xg2DvstYkRpkYtmKm2sPJ9oFhrhmudT1dZvNFFTlroai3AWSpLey/w5vMcLBXRgOJsbXpdN9HzU/A==, tarball: https://registry.npmmirror.com/jsqr/-/jsqr-1.4.0.tgz}
+
   jwt-decode@4.0.0:
     resolution: {integrity: sha512-+KJGIyHgkGuIq3IEBNftfhW/LfWhXUIY6OmyVWjliu5KH1y0fw7VQ8YndE2O4qZdMSd9SqbnC8GOcZEy0Om7sA==, tarball: https://registry.npmmirror.com/jwt-decode/-/jwt-decode-4.0.0.tgz}
     engines: {node: '>=18'}
@@ -3548,6 +3571,9 @@ packages:
   qrcode-generator@1.5.2:
     resolution: {integrity: sha512-pItrW0Z9HnDBnFmgiNrY1uxRdri32Uh9EjNYLPVC2zZ3ZRIIEqBoDgm4DkvDwNNDHTK7FNkmr8zAa77BYc9xNw==, tarball: https://registry.npmmirror.com/qrcode-generator/-/qrcode-generator-1.5.2.tgz}
 
+  qrcode-reader-vue3@3.1.4:
+    resolution: {integrity: sha512-PXYZ7JVKu2H3L0r7iMYuD5yKnD839hlmYGvTJB4q5Qn3Y3gYeqWZaNiWxrMqhkI2Wkbrj5u7Uo88vhOT9iegKA==, tarball: https://registry.npmmirror.com/qrcode-reader-vue3/-/qrcode-reader-vue3-3.1.4.tgz}
+
   qrcode-vue3@1.7.1:
     resolution: {integrity: sha512-Xa82NslFJUqsnQbLtc1qO+xPEOeFaTRxktg3ugRd2Pk116kta1X+7GLSEPQj9gor8jWVyfmLmhYZHuANnRZoLQ==, tarball: https://registry.npmmirror.com/qrcode-vue3/-/qrcode-vue3-1.7.1.tgz}
 
@@ -3680,6 +3706,10 @@ packages:
   rope-sequence@1.3.4:
     resolution: {integrity: sha512-UT5EDe2cu2E/6O4igUr5PSFs23nvvukicWHx6GnOPlHAiiYbzNuCRQCuiUdHJQcqKalLKlrYJnjY0ySGsXNQXQ==, tarball: https://registry.npmmirror.com/rope-sequence/-/rope-sequence-1.3.4.tgz}
 
+  rtcpeerconnection-shim@1.2.15:
+    resolution: {integrity: sha512-C6DxhXt7bssQ1nHb154lqeL0SXz5Dx4RczXZu2Aa/L1NJFnEVDxFwCBo3fqtuljhHIGceg5JKBV4XJ0gW5JKyw==, tarball: https://registry.npmmirror.com/rtcpeerconnection-shim/-/rtcpeerconnection-shim-1.2.15.tgz}
+    engines: {node: '>=6.0.0', npm: '>=3.10.0'}
+
   run-async@2.4.1:
     resolution: {integrity: sha512-tvVnVv01b8c1RrA6Ep7JkStj85Guv/YrMcwqYQnwjsAS2cTmmPGBBjAjpCW7RrSodNSoE2/qg9O4bceNvUuDgQ==, tarball: https://registry.npmmirror.com/run-async/-/run-async-2.4.1.tgz}
     engines: {node: '>=0.12.0'}
@@ -3755,6 +3785,9 @@ packages:
 
   scroll-into-view-if-needed@2.2.31:
     resolution: {integrity: sha512-dGCXy99wZQivjmjIqihaBQNjryrz5rueJY7eHfTdyWEiR4ttYpsajb14rn9s5d4DY4EcY6+4+U/maARBXJedkA==, tarball: https://registry.npmmirror.com/scroll-into-view-if-needed/-/scroll-into-view-if-needed-2.2.31.tgz}
+
+  sdp@2.12.0:
+    resolution: {integrity: sha512-jhXqQAQVM+8Xj5EjJGVweuEzgtGWb3tmEEpl3CLP3cStInSbVHSg0QWOGQzNq8pSID4JkpeV2mPqlMDLrm0/Vw==, tarball: https://registry.npmmirror.com/sdp/-/sdp-2.12.0.tgz}
 
   section-matter@1.0.0:
     resolution: {integrity: sha512-vfD3pmTzGpufjScBh50YHKzEu2lxBWhVEHsNGoEXmCmn2hKGfeNLYMzCJpe8cD7gqX7TJluOVpBkAequ6dgMmA==, tarball: https://registry.npmmirror.com/section-matter/-/section-matter-1.0.0.tgz}
@@ -4142,6 +4175,10 @@ packages:
     resolution: {integrity: sha512-vxXDZg8/+p3gblxB6BhhG5yWVn1kGRlaL8O78UDXc3wRnPizB5g83dcvWV1jpDMIPnjZjOFuxlMmE82XJ4407w==, tarball: https://registry.npmmirror.com/traverse/-/traverse-0.6.11.tgz}
     engines: {node: '>= 0.4'}
 
+  ts-custom-error@3.3.1:
+    resolution: {integrity: sha512-5OX1tzOjxWEgsr/YEUWSuPrQ00deKLh6D7OTWcvNHm12/7QPyRh8SYpyWvA4IZv8H/+GQWQEh/kwo95Q9OVW1A==, tarball: https://registry.npmmirror.com/ts-custom-error/-/ts-custom-error-3.3.1.tgz}
+    engines: {node: '>=14.0.0'}
+
   ts-dedent@2.2.0:
     resolution: {integrity: sha512-q5W7tVM71e2xjHZTlgfTDoPF/SmqKG5hddq9SzR49CH2hayqRKJtQ4mtRlSxKaJlR/+9rEM+mnBHf7I2/BQcpQ==, tarball: https://registry.npmmirror.com/ts-dedent/-/ts-dedent-2.2.0.tgz}
     engines: {node: '>=6.10'}
@@ -4436,6 +4473,10 @@ packages:
     peerDependenciesMeta:
       webpack-cli:
         optional: true
+
+  webrtc-adapter@7.7.1:
+    resolution: {integrity: sha512-TbrbBmiQBL9n0/5bvDdORc6ZfRY/Z7JnEj+EYOD1ghseZdpJ+nF2yx14k3LgQKc7JZnG7HAcL+zHnY25So9d7A==, tarball: https://registry.npmmirror.com/webrtc-adapter/-/webrtc-adapter-7.7.1.tgz}
+    engines: {node: '>=6.0.0', npm: '>=3.10.0'}
 
   whatwg-encoding@1.0.5:
     resolution: {integrity: sha512-b5lim54JOPN9HtzvK9HFXvBma/rnfFeqsic0hSpjtDbVxR3dJKLc+KB4V6GgiGOvl7CY/KNh8rxSo9DKQrnUEw==, tarball: https://registry.npmmirror.com/whatwg-encoding/-/whatwg-encoding-1.0.5.tgz}
@@ -5415,6 +5456,15 @@ snapshots:
 
   '@xtuc/long@4.2.2': {}
 
+  '@zxing/library@0.18.6':
+    dependencies:
+      ts-custom-error: 3.3.1
+    optionalDependencies:
+      '@zxing/text-encoding': 0.9.0
+
+  '@zxing/text-encoding@0.9.0':
+    optional: true
+
   abab@2.0.6:
     optional: true
 
@@ -5624,6 +5674,11 @@ snapshots:
 
   balanced-match@1.0.2: {}
 
+  barcode-detector@0.7.0:
+    dependencies:
+      '@zxing/library': 0.18.6
+      jsqr: 1.4.0
+
   bare-events@2.6.0:
     optional: true
 
@@ -5733,6 +5788,8 @@ snapshots:
       get-intrinsic: 1.3.0
 
   call-me-maybe@1.0.2: {}
+
+  callforth@0.4.0: {}
 
   callsites@3.1.0: {}
 
@@ -5913,6 +5970,8 @@ snapshots:
       toggle-selection: 1.0.6
 
   core-js@2.6.12: {}
+
+  core-js@3.45.0: {}
 
   core-util-is@1.0.2:
     optional: true
@@ -7469,6 +7528,8 @@ snapshots:
       verror: 1.10.0
     optional: true
 
+  jsqr@1.4.0: {}
+
   jwt-decode@4.0.0: {}
 
   katex@0.13.24:
@@ -8425,6 +8486,16 @@ snapshots:
 
   qrcode-generator@1.5.2: {}
 
+  qrcode-reader-vue3@3.1.4(typescript@5.9.2):
+    dependencies:
+      barcode-detector: 0.7.0
+      callforth: 0.4.0
+      core-js: 3.45.0
+      vue: 3.5.18(typescript@5.9.2)
+      webrtc-adapter: 7.7.1
+    transitivePeerDependencies:
+      - typescript
+
   qrcode-vue3@1.7.1:
     dependencies:
       qrcode-generator: 1.5.2
@@ -8570,6 +8641,10 @@ snapshots:
 
   rope-sequence@1.3.4: {}
 
+  rtcpeerconnection-shim@1.2.15:
+    dependencies:
+      sdp: 2.12.0
+
   run-async@2.4.1: {}
 
   run-parallel@1.2.0:
@@ -8644,6 +8719,8 @@ snapshots:
   scroll-into-view-if-needed@2.2.31:
     dependencies:
       compute-scroll-into-view: 1.0.20
+
+  sdp@2.12.0: {}
 
   section-matter@1.0.0:
     dependencies:
@@ -9139,6 +9216,8 @@ snapshots:
       typedarray.prototype.slice: 1.0.5
       which-typed-array: 1.1.19
 
+  ts-custom-error@3.3.1: {}
+
   ts-dedent@2.2.0: {}
 
   ts-interface-checker@0.1.13: {}
@@ -9487,6 +9566,11 @@ snapshots:
       - '@swc/core'
       - esbuild
       - uglify-js
+
+  webrtc-adapter@7.7.1:
+    dependencies:
+      rtcpeerconnection-shim: 1.2.15
+      sdp: 2.12.0
 
   whatwg-encoding@1.0.5:
     dependencies:
