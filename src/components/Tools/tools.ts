@@ -474,6 +474,15 @@ export function getToolsCate() {
           cateId: 11,
           cate: '趣味互动',
         },
+        {
+          id: 6,
+          title: '扫雷',
+          logo: '/images/logo/minesweeper.png',
+          desc: '经典扫雷游戏，考验逻辑推理能力',
+          url: '/minesweeper/',
+          cateId: 11,
+          cate: '趣味互动',
+        },
       ]
     },
     {

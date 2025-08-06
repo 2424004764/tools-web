@@ -567,4 +567,14 @@ export const constantRoute = [
       description: '经典2048益智游戏，考验你的策略思维和数字逻辑能力，通过合并达到2048',
     }
   },
+  {
+    path: '/minesweeper',
+    component: () => import('@/components/Tools/Minesweeper/Minesweeper.vue'),
+    name: 'minesweeper',
+    meta: {
+      title: "扫雷",
+      keywords: '扫雷,逻辑推理,益智游戏,数字推理',
+      description: '经典扫雷游戏，考验你的逻辑推理能力，找出所有地雷挑战最快时间',
+    }
+  },
 ]
