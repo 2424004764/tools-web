@@ -557,4 +557,14 @@ export const constantRoute = [
       description: '经典打地鼠游戏，考验你的反应速度和手眼协调能力，30秒倒计时挑战',
     }
   },
+  {
+    path: '/game2048',
+    component: () => import('@/components/Tools/Game2048/Game2048.vue'),
+    name: 'game2048',
+    meta: {
+      title: "2048",
+      keywords: '2048,益智游戏,数字逻辑,策略思维',
+      description: '经典2048益智游戏，考验你的策略思维和数字逻辑能力，通过合并达到2048',
+    }
+  },
 ]
