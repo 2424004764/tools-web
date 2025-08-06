@@ -188,7 +188,17 @@ export const constantRoute = [
     meta: {
       title: "二维码生成",
       keywords: '二维码,qrcode,二维码制作,二维码生成,微信二维码',
-      description: '在线生成二维码,logo二维码',
+      description: '在线生成二维码,支持logo二维码,多种样式预设',
+    }
+  },
+  {
+    path: '/qrcode-scan',
+    component: () => import('@/components/Tools/QrcodeScan/QrcodeScan.vue'),
+    name: 'qrcodeScan',
+    meta: {
+      title: "二维码识别",
+      keywords: '二维码识别,二维码扫描,qrcode扫描,二维码读取',
+      description: '在线识别二维码,支持摄像头扫描、图片上传、拖拽等多种方式',
     }
   },
   {
