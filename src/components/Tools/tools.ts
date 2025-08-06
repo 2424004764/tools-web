@@ -438,6 +438,15 @@ export function getToolsCate() {
           cateId: 11,
           cate: '趣味互动',
         },
+        {
+          id: 2,
+          title: '记忆力翻牌',
+          logo: '/images/logo/memory.png',
+          desc: '翻牌配对游戏，考验记忆力，找到相同的卡片',
+          url: '/memory/',
+          cateId: 11,
+          cate: '趣味互动',
+        },
       ]
     },
     {
