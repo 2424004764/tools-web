@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref, computed, onMounted } from "vue";
+import { reactive, ref, computed, onMounted, onUnmounted } from "vue";
 import DetailHeader from "@/components/Layout/DetailHeader/DetailHeader.vue";
 import QRCodeVue3 from "qrcode-vue3";
 import { Delete, Plus } from "@element-plus/icons-vue";
@@ -384,6 +384,62 @@ const uploadLogo = ref();
 const showQRDialog = ref(false);
 const windowWidth = ref(800); // 默认宽度
 
+// 添加滚动距离响应式变量
+const scrollTop = ref(0);
+const scrollDirection = ref('down'); // 'up' 或 'down'
+const lastScrollTop = ref(0);
+
+// 添加页面总高度计算
+const pageHeight = ref(0);
+const viewportHeight = ref(0);
+
+// 监听滚动事件
+const handleScroll = () => {
+  const currentScrollTop = window.pageYOffset || document.documentElement.scrollTop;
+  
+  // 更新滚动距离
+  scrollTop.value = currentScrollTop;
+  
+  // 判断滚动方向
+  if (currentScrollTop > lastScrollTop.value) {
+    scrollDirection.value = 'down';
+  } else if (currentScrollTop < lastScrollTop.value) {
+    scrollDirection.value = 'up';
+  }
+  
+  // 更新上次滚动位置
+  lastScrollTop.value = currentScrollTop;
+  
+  // 更新页面高度信息
+  updatePageInfo();
+};
+
+// 更新页面信息
+const updatePageInfo = () => {
+  viewportHeight.value = window.innerHeight;
+  pageHeight.value = document.documentElement.scrollHeight;
+};
+
+// 简化的动态 margin-top 计算
+const dynamicMarginTop = computed(() => {
+  // 预览区可以停留的最大位置
+  const maxTop = scrollTop.value - 80;
+  
+  // 基础位置
+  const basePosition = 100;
+  
+  // 滚动影响（使用更小的系数）
+  const scrollInfluence = scrollTop.value * 0.8;
+  
+  // 计算目标位置
+  let targetPosition = basePosition + scrollInfluence;
+  
+  // 限制在安全范围内
+  targetPosition = Math.max(20, Math.min(maxTop, targetPosition));
+  
+  return targetPosition;
+});
+
 // 计算属性：动态设置二维码尺寸
 const qrSize = computed(() => parseInt(info.size));
 
@@ -402,7 +458,14 @@ onMounted(() => {
   windowWidth.value = window.innerWidth;
   window.addEventListener("resize", () => {
     windowWidth.value = window.innerWidth;
+    updatePageInfo();
   });
+  
+  // 添加滚动监听
+  window.addEventListener("scroll", handleScroll, { passive: true });
+  
+  // 初始化页面信息
+  updatePageInfo();
 
   // 在组件初始化时，将当前配置设置为默认预设
   presetConfigs.default = {
@@ -424,6 +487,11 @@ onMounted(() => {
     // 添加单色模式的属性
     preColor: info.preColor,
   };
+});
+
+// 组件卸载时移除监听器
+onUnmounted(() => {
+  window.removeEventListener("scroll", handleScroll);
 });
 
 // 上传达到上限触发
@@ -1028,8 +1096,11 @@ const cornersDotOptions = computed(() => {
         </div>
       </div>
 
-      <!-- 右侧预览区域始终渲染，但内容区做条件渲染 -->
-      <div class="preview-container">
+      <!-- 右侧预览区域，使用简化的动态定位 -->
+      <div 
+        class="preview-container" 
+        :style="{ marginTop: dynamicMarginTop + 'px' }"
+      >
         <div class="flex flex-col items-center space-y-4 lg:w-80">
           <template v-if="info.content && info.content.trim()">
             <div class="text-center">
@@ -1161,7 +1232,7 @@ const cornersDotOptions = computed(() => {
   color: #888;
 }
 
-/* 预览容器固定在右侧，不再悬浮 */
+/* 预览容器，不使用 sticky 定位 */
 .preview-container {
   width: 320px;
   background: white;
@@ -1170,6 +1241,8 @@ const cornersDotOptions = computed(() => {
   padding: 16px;
   align-self: flex-start;
   margin-left: auto;
+  /* 移除 sticky 相关样式 */
+  transition: margin-top 0.1s ease;
 }
 
 @media (max-width: 1024px) {
