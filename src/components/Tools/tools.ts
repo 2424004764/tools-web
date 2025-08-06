@@ -456,6 +456,15 @@ export function getToolsCate() {
           cateId: 11,
           cate: '趣味互动',
         },
+        {
+          id: 4,
+          title: '打地鼠',
+          logo: '/images/logo/whackamole.png',
+          desc: '经典打地鼠游戏，考验反应速度和手眼协调',
+          url: '/whackamole/',
+          cateId: 11,
+          cate: '趣味互动',
+        },
       ]
     },
     {

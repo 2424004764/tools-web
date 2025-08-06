@@ -547,4 +547,14 @@ export const constantRoute = [
       description: '经典俄罗斯方块游戏，考验你的空间思维和反应速度，消除横行获得高分',
     }
   },
+  {
+    path: '/whackamole',
+    component: () => import('@/components/Tools/WhackAMole/WhackAMole.vue'),
+    name: 'whackamole',
+    meta: {
+      title: "打地鼠",
+      keywords: '打地鼠,街机游戏,反应速度,手眼协调',
+      description: '经典打地鼠游戏，考验你的反应速度和手眼协调能力，30秒倒计时挑战',
+    }
+  },
 ]
