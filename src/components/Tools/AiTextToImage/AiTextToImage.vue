@@ -586,7 +586,7 @@ const copyPrompt = async (text: string) => {
     <!-- 新增：历史记录区域 -->
     <div class="history-section" v-if="historyList.length">
       <div class="history-header">
-        <h3>历史记录</h3>
+        <h3>历史记录（刷新会清空）</h3>
         <button @click="clearAllHistory" class="clear-btn">清空全部</button>
       </div>
       <div class="history-list">

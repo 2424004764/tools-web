@@ -577,4 +577,14 @@ export const constantRoute = [
       description: '经典扫雷游戏，考验你的逻辑推理能力，找出所有地雷挑战最快时间',
     }
   },
+  {
+    path: '/puzzle',
+    component: () => import('@/components/Tools/Puzzle/Puzzle.vue'),
+    name: 'puzzle',
+    meta: {
+      title: "数字华容道",
+      keywords: '数字华容道,滑块游戏,益智游戏,逻辑游戏',
+      description: '经典数字华容道游戏，通过移动数字方块将数字按顺序排列，考验逻辑思维和空间规划能力',
+    }
+  },
 ]
