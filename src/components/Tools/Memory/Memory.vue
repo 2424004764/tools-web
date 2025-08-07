@@ -402,7 +402,7 @@ onUnmounted(() => {
           <h3 class="text-sm font-medium text-blue-900 mb-2">设备适配说明</h3>
           <div class="text-xs text-blue-700 space-y-1">
             <p><strong>移动端（手机/平板）：</strong>自动适配为4×4格子，确保最佳游戏体验</p>
-            <p><strong>桌面端（电脑）：</strong>支持6×6到12×12多种格子数，可根据难度选择</p>
+            <p><strong>桌面端（电脑）：</strong>支持6×6到9×9多种格子数，可根据难度选择</p>
             <p><strong>操作提示：</strong>移动端点击卡片，桌面端支持鼠标点击</p>
             <p><strong>性能优化：</strong>大格子数游戏建议在性能较好的设备上运行</p>
           </div>

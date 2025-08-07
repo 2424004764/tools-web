@@ -483,6 +483,15 @@ export function getToolsCate() {
           cateId: 11,
           cate: '趣味互动',
         },
+        {
+          id: 7,
+          title: '数字华容道',
+          logo: '/images/logo/puzzle.png',
+          desc: '经典数字华容道游戏，考验逻辑思维和空间规划能力',
+          url: '/puzzle/',
+          cateId: 11,
+          cate: '趣味互动',
+        },
       ]
     },
     {
