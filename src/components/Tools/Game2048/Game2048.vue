@@ -284,25 +284,25 @@ const restartGame = () => {
 const getTileColor = (value: number) => {
   const colors = {
     0: 'bg-gray-200',
-    2: 'bg-[#EEE4DA]',
-    4: 'bg-[#EDE0C8]',
-    8: 'bg-[#F2B179]',
-    16: 'bg-[#F59563]',
-    32: 'bg-[#F67C5F]',
-    64: 'bg-[#F65E3B]',
-    128: 'bg-[#EDCF72]',
-    256: 'bg-[#EDCC61]',
-    512: 'bg-[#EDC850]',
-    1024: 'bg-[#EDC53F]',
-    2048: 'bg-[#EDC22E]',
+    2: 'bg-tile-2',
+    4: 'bg-tile-4',
+    8: 'bg-tile-8',
+    16: 'bg-tile-16',
+    32: 'bg-tile-32',
+    64: 'bg-tile-64',
+    128: 'bg-tile-128',
+    256: 'bg-tile-256',
+    512: 'bg-tile-512',
+    1024: 'bg-tile-1024',
+    2048: 'bg-tile-2048',
   }
-  return colors[value as keyof typeof colors] || 'bg-[#3C3A32]'
+  return colors[value as keyof typeof colors] || 'bg-tile-dark'
 }
 
 // 获取方块文字颜色
 const getTileTextColor = (value: number) => {
-  if (value <= 4) return 'text-[#776E65]'
-  return 'text-[#F9F6F2]'
+  if (value <= 4) return 'text-tile-text-dark'
+  return 'text-tile-text-light'
 }
 
 // 触摸控制相关变量
