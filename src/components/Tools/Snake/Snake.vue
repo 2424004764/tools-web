@@ -13,6 +13,7 @@ const gameState = reactive({
   score: 0,
   highScore: 0,
   gameOver: false,
+  gameTime: 0, // 游戏时间（秒）
 })
 
 // 游戏配置 - 根据屏幕尺寸调整
@@ -46,6 +47,8 @@ const direction = ref({ x: 1, y: 0 })
 
 // 游戏循环
 let gameLoop: number | null = null
+// 计时器
+let timeTimer: number | null = null
 
 // 生成随机食物位置
 const generateFood = () => {
@@ -108,6 +111,17 @@ const gameOver = () => {
     clearInterval(gameLoop)
     gameLoop = null
   }
+  if (timeTimer) {
+    clearInterval(timeTimer)
+    timeTimer = null
+  }
+}
+
+// 格式化时间显示
+const formatTime = (seconds: number) => {
+  const minutes = Math.floor(seconds / 60)
+  const remainingSeconds = seconds % 60
+  return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`
 }
 
 // 开始游戏
@@ -115,6 +129,7 @@ const startGame = () => {
   gameState.isPlaying = true
   gameState.gameOver = false
   gameState.score = 0
+  gameState.gameTime = 0
   
   // 根据屏幕尺寸设置初始蛇的位置
   if (window.innerWidth < 1024) {
@@ -139,8 +154,17 @@ const startGame = () => {
   if (gameLoop) {
     clearInterval(gameLoop)
   }
+  if (timeTimer) {
+    clearInterval(timeTimer)
+  }
   
   gameLoop = setInterval(moveSnake, config.speed)
+  // 启动计时器，每秒更新一次
+  timeTimer = setInterval(() => {
+    if (gameState.isPlaying) {
+      gameState.gameTime++
+    }
+  }, 1000)
 }
 
 // 暂停游戏
@@ -151,9 +175,19 @@ const pauseGame = () => {
       clearInterval(gameLoop)
       gameLoop = null
     }
+    if (timeTimer) {
+      clearInterval(timeTimer)
+      timeTimer = null
+    }
   } else {
     gameState.isPlaying = true
     gameLoop = setInterval(moveSnake, config.speed)
+    // 重新启动计时器
+    timeTimer = setInterval(() => {
+      if (gameState.isPlaying) {
+        gameState.gameTime++
+      }
+    }, 1000)
   }
 }
 
@@ -260,6 +294,9 @@ onUnmounted(() => {
   if (gameLoop) {
     clearInterval(gameLoop)
   }
+  if (timeTimer) {
+    clearInterval(timeTimer)
+  }
   // 保存最高分
   localStorage.setItem('snakeHighScore', gameState.highScore.toString())
 })
@@ -283,6 +320,10 @@ const canvasSize = config.gridSize * config.cellSize
           <div class="text-center bg-green-50 p-4 rounded-lg border border-green-200 flex-1 mx-2">
             <h3 class="text-lg font-medium text-green-900">最高分</h3>
             <p class="text-2xl font-bold text-green-600">{{ gameState.highScore }}</p>
+          </div>
+          <div class="text-center bg-purple-50 p-4 rounded-lg border border-purple-200 flex-1 mx-2">
+            <h3 class="text-lg font-medium text-purple-900">游戏时间</h3>
+            <p class="text-2xl font-bold text-purple-600">{{ formatTime(gameState.gameTime) }}</p>
           </div>
         </div>
 
@@ -375,7 +416,7 @@ const canvasSize = config.gridSize * config.cellSize
         <!-- 游戏控制 -->
         <div class="flex justify-center space-x-4 mb-6">
           <el-button 
-            v-if="!gameState.isPlaying && !gameState.gameOver"
+            v-if="!gameState.isPlaying && !gameState.gameOver && gameState.gameTime === 0"
             @click="startGame" 
             type="primary"
             class="bg-blue-500 hover:bg-blue-600 border-blue-600"
@@ -389,6 +430,14 @@ const canvasSize = config.gridSize * config.cellSize
             class="bg-orange-500 hover:bg-orange-600 border-orange-600"
           >
             暂停
+          </el-button>
+          <el-button 
+            v-if="!gameState.isPlaying && !gameState.gameOver && gameState.gameTime > 0"
+            @click="pauseGame" 
+            type="success"
+            class="bg-green-500 hover:bg-green-600 border-green-600"
+          >
+            继续游戏
           </el-button>
           <el-button 
             v-if="gameState.gameOver"
@@ -454,6 +503,7 @@ const canvasSize = config.gridSize * config.cellSize
           <div class="bg-red-50 border-2 border-red-300 rounded-lg p-4 shadow-md">
             <h3 class="text-lg font-medium text-red-900 mb-2">游戏结束</h3>
             <p class="text-red-600">最终得分: {{ gameState.score }}</p>
+            <p class="text-purple-600">游戏时间: {{ formatTime(gameState.gameTime) }}</p>
             <p v-if="gameState.score > gameState.highScore" class="text-green-600 font-medium">
               新纪录！恭喜你创造了新的最高分！
             </p>
