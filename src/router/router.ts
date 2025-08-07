@@ -587,4 +587,14 @@ export const constantRoute = [
       description: '经典数字华容道游戏，通过移动数字方块将数字按顺序排列，考验逻辑思维和空间规划能力',
     }
   },
+  {
+    path: '/sudoku',
+    component: () => import('@/components/Tools/Sudoku/Sudoku.vue'),
+    name: 'sudoku',
+    meta: {
+      title: "数独游戏",
+      keywords: '数独,数独游戏,逻辑推理,数字游戏,益智游戏',
+      description: '经典数独游戏，填入数字1-9，使每行、每列和每个3x3宫格都包含1-9且不重复，考验逻辑推理能力',
+    }
+  },
 ]
