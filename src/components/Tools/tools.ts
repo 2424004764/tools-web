@@ -492,6 +492,15 @@ export function getToolsCate() {
           cateId: 11,
           cate: '趣味互动',
         },
+        {
+          id: 8,
+          title: '数独游戏',
+          logo: '/images/logo/sudoku.png',
+          desc: '经典数独游戏，考验逻辑推理和数字分析能力',
+          url: '/sudoku/',
+          cateId: 11,
+          cate: '趣味互动',
+        },
       ]
     },
     {
