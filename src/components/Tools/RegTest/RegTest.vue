@@ -2,7 +2,8 @@
 import { reactive } from 'vue'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
-import { Codemirror } from "vue-codemirror"
+import Codemirror from "codemirror-editor-vue3";
+import "codemirror/mode/javascript/javascript.js";
 // import { lineNumbers } from '@codemirror/view';
 
 const info = reactive({
@@ -12,10 +13,10 @@ const info = reactive({
   content: `一些测试实例:
 邮箱1：demo@163.com
 邮箱2：demo2@163.com
-手机号：13012341234
-url: http://tools.ranblogs.com、https://ranblogs.com
+手机号：18899990000
+url: https://tool.fologde.com、https://fologde.com
 IP: 192.168.0.1
-时间：2023-11-24
+时间：2025-08-08
 `,
   matchRes: '',
   matchNum: 0,
@@ -31,8 +32,23 @@ IP: 192.168.0.1
     },
     {
       id: 1,
+      title: '严格手机号(国内)',
+      reg: '^1[3-9]\\d{9}$'
+    },
+    {
+      id: 1,
       title: '匹配网址URL',
       reg: '(http|ftp|https):\\\/\\\/[\\w\\-_]+(\\.[\\w\\-_]+)+([\\w\\-\\.,@?^=%&:/~\\+#]*[\\w\\-\\@?^=%&/~\\+#])?'
+    },
+    {
+      id: 1,
+      title: 'URL(简化, http/https)',
+      reg: '^https?:\\\/\\\/[^\\s\\/$.?#].[^\\s]*$'
+    },
+    {
+      id: 1,
+      title: 'URL(可带端口)',
+      reg: '^https?:\\\/\\\/[^\\s/:]+(?::\\d{2,5})?(?:\\\/[^\\s]*)?$'
     },
     {
       id: 1,
@@ -66,11 +82,88 @@ IP: 192.168.0.1
     },
     {
       id: 1,
+      title: 'IPv4(严格0-255)',
+      reg: '^(?:(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)\\.){3}(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)$'
+    },
+    {
+      id: 1,
+      title: 'IPv6(简单)',
+      reg: '^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$'
+    },
+    {
+      id: 1,
       title: '匹配日期(年-月-日)',
       reg: "(([0-9]{3}[1-9]|[0-9]{2}[1-9][0-9]{1}|[0-9]{1}[1-9][0-9]{2}|[1-9][0-9]{3})-(((0[13578]|1[02])-(0[1-9]|[12][0-9]|3[01]))|((0[469]|11)-(0[1-9]|[12][0-9]|30))|(02-(0[1-9]|[1][0-9]|2[0-8]))))|((([0-9]{2})(0[48]|[2468][048]|[13579][26])|((0[48]|[2468][048]|[3579][26])00))-02-29)"
     },
+    {
+      id: 1,
+      title: '时间戳(10或13位)',
+      reg: '^\\d{10}(\\d{3})?$'
+    },
+    {
+      id: 1,
+      title: '正负浮点数',
+      reg: '^-?\\d+(?:\\.\\d+)?$'
+    },
+    {
+      id: 1,
+      title: '十六进制颜色',
+      reg: '^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$'
+    },
+    {
+      id: 1,
+      title: '中国邮政编码',
+      reg: '^[1-9]\\d{5}(?!\\d)$'
+    },
+    {
+      id: 1,
+      title: 'QQ号',
+      reg: '^[1-9][0-9]{4,10}$'
+    },
+    {
+      id: 1,
+      title: '微信号',
+      reg: '^[a-zA-Z][-_a-zA-Z0-9]{5,19}$'
+    },
+    {
+      id: 1,
+      title: '用户名(字母开头,6-20位,含下划线数字)',
+      reg: '^[a-zA-Z]\\w{5,19}$'
+    },
+    {
+      id: 1,
+      title: '强密码(大小写+数字+特殊,>=8)',
+      reg: '^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^\\da-zA-Z]).{8,}$'
+    },
+    {
+      id: 1,
+      title: '座机电话',
+      reg: '^0\\d{2,3}-?\\d{7,8}$'
+    },
+    {
+      id: 1,
+      title: '车牌号(简化版)',
+      reg: '^[京津沪渝冀豫云辽黑湘皖鲁新苏浙赣鄂桂甘晋蒙陕吉闽贵粤青藏川宁琼使领A-Z]{1}[A-Z]{1}[A-Z0-9]{4}[A-Z0-9挂学警港澳]{1}$'
+    },
+    {
+      id: 1,
+      title: '银行卡号(简单10-19位)',
+      reg: '^[1-9]\\d{9,18}$'
+    },
   ]
 })
+
+// src/components/Tools/RegTest/RegTest.vue （在 info 定义后增加）
+const cmOptions = {
+  mode: "text/plain",
+  lineNumbers: true,
+  theme: "default",
+  indentUnit: 2,
+  tabSize: 2,
+  lineWrapping: true,
+  foldGutter: true,
+  gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"]
+}
 
 //使用正则
 const useReg = (reg: string) => {
@@ -122,13 +215,13 @@ const execMatch = () => {
 
     <div class="p-4 rounded-2xl bg-white ">
       <div>
-        <codemirror
-          v-model="info.content"
-          placeholder=""
-          :style="{ height: '300px' }"
-          :autofocus="true"
-          :indent-with-tab="true" 
-          :tabSize="2"
+        <Codemirror
+          v-model:value="info.content"
+          :options="cmOptions"
+          border
+          height="300"
+          width="100%"
+          placeholder="这里输入要匹配的文本..."
         />
       </div>
 
@@ -161,9 +254,29 @@ const execMatch = () => {
 
     <!-- desc -->
     <ToolDetail title="描述">
-      <el-text>
-        正则表达式是对字符串（包括普通字符（例如，a 到 z 之间的字母）和特殊字符（称为“元字符”））操作的一种逻辑公式，就是用事先定义好的一些特定字符、及这些特定字符的组合，组成一个“规则字符串”，这个“规则字符串”用来表达对字符串的一种过滤逻辑。正则表达式是一种文本模式，该模式描述在搜索文本时要匹配的一个或多个字符串
-      </el-text> 
+      <div class="text-sm leading-7">
+        <p class="font-bold">使用方式</p>
+        <p>1) 在上方输入“待匹配文本”和“正则表达式”，可勾选“全局搜索(g)”与“忽略大小写(i)”。</p>
+        <p>2) 点击“测试匹配”后，匹配到的结果与次数会显示在下方。</p>
+        <p>3) 也可点击“常用正则”快速填充示例。</p>
+        <br>
+        <p class="font-bold">语法速查</p>
+        <ul class="list-disc ml-5">
+          <li>元字符：<code>.</code> 任意字符，<code>\\d</code> 数字，<code>\\w</code> 字母数字下划线，<code>\\s</code> 空白</li>
+          <li>边界：<code>^</code> 开头，<code>$</code> 结尾，<code>\\b</code> 单词边界</li>
+          <li>量词：<code>*</code> 0+，<code>+</code> 1+，<code>?</code> 0/1，<code>{m,n}</code> 区间（加 <code>?</code> 为惰性）</li>
+          <li>分组与引用：<code>(...)</code> 捕获组，<code>(?:...)</code> 非捕获组，<code>\\1</code> 反向引用</li>
+          <li>命名捕获：<code>(?&lt;name&gt;...)</code>，前瞻/否定：<code>(?=...)</code>/<code>(?!...)</code>，后顾/否定：<code>(?&lt;=...)</code>/<code>(?&lt;!...)</code></li>
+          <li>标志位：<code>g</code> 全局，<code>i</code> 忽略大小写，<code>m</code> 多行，<code>s</code> 点号匹配换行，<code>u</code> Unicode，<code>y</code> 粘连</li>
+        </ul>
+        <br>
+        <p class="font-bold">JS 常用用法</p>
+        <ul class="list-disc ml-5">
+          <li><code>const re = /pattern/gi</code> 或 <code>new RegExp('pattern','gi')</code></li>
+          <li><code>re.test(str)</code>、<code>str.match(re)</code>、<code>[...str.matchAll(re)]</code></li>
+          <li><code>str.replace(re, replacer)</code>、<code>str.split(re)</code></li>
+        </ul>
+      </div>
     </ToolDetail>
 
   </div>

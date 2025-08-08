@@ -1,17 +1,20 @@
 <script setup lang="ts">
-import { reactive } from 'vue'
+import { reactive, onMounted } from 'vue'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { copy } from '@/utils/string'
 import { ElMessage } from 'element-plus'
 import { v4 as uuidv4 } from 'uuid'
+// src/components/Tools/UUID/UUID.vue
+// 1) state 增加格式字段
 const info = reactive({
   title: "UUID生成器",
   resStr: '',
-  pwNum: 1,
+  pwNum: 5,
   autosize: {
     minRows: 5
   },
+  format: 'lower', // 新增：lower | upper | lowerNoHyphen | upperNoHyphen
 })
 
 //生成
@@ -34,7 +37,10 @@ const gen = () => {
     if (i == info.pwNum) {
       ext = ''
     }
-    info.resStr += uuidv4() + ext
+    // 3) 生成处应用格式化
+    // 替换原来的：info.resStr += uuidv4() + ext
+    const raw = uuidv4()
+    info.resStr += formatUuid(raw) + ext
   }
 }
 
@@ -42,6 +48,28 @@ const gen = () => {
 const copyRes = async (resStr: string) => {
   copy(resStr)
 }
+
+// 2) 新增：格式化函数
+const formatUuid = (u: string) => {
+  let s = u
+  if (info.format === 'upper' || info.format === 'upperNoHyphen') {
+    s = s.toUpperCase()
+  } else {
+    s = s.toLowerCase()
+  }
+  if (info.format === 'lowerNoHyphen' || info.format === 'upperNoHyphen') {
+    s = s.replace(/-/g, '')
+  }
+  return s
+}
+
+// src/components/Tools/UUID/UUID.vue
+// 在脚本中增加预设数组
+
+// 挂载后自动生成
+onMounted(() => {
+  gen()
+})
 </script>
 
 <template>
@@ -50,9 +78,18 @@ const copyRes = async (resStr: string) => {
 
     <div class="p-4 rounded-2xl bg-white">
       <div>
-        <el-input v-model="info.pwNum" placeholder="范围1~100" class="" max="100" type="number">
-          <template #prepend>生成数量:</template>
-        </el-input>
+        <el-text>生成数量: {{ info.pwNum }}</el-text>
+        <el-slider v-model="info.pwNum" :min="1" :max="100" :step="1" />
+      </div>
+      <!-- 将“格式”行改为：添加 flex 对齐与固定宽度标签 -->
+      <div class="mt-3 flex items-center">
+        <span class="mr-2 inline-block w-20 text-right">格式:</span>
+        <el-radio-group v-model="info.format" size="large">
+          <el-radio-button label="lower">小写</el-radio-button>
+          <el-radio-button label="upper">大写</el-radio-button>
+          <el-radio-button label="lowerNoHyphen">去掉-小写</el-radio-button>
+          <el-radio-button label="upperNoHyphen">去掉-大写</el-radio-button>
+        </el-radio-group>
       </div>
       <div class="mt-3 mb-3">
         <el-button type="primary" @click="gen">生成UUID</el-button>
@@ -60,7 +97,7 @@ const copyRes = async (resStr: string) => {
       </div>
       <!-- res -->
       <div>
-        <el-input type="textarea" :autosize="info.autosize" v-model="info.resStr"></el-input>
+        <el-input type="textarea" :autosize="info.autosize" v-model="info.resStr" readonly></el-input>
       </div>
     </div>
 

@@ -4,7 +4,7 @@ import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 const info = reactive({
   title: "在线字数统计",
-  content: '',
+  content: '统计这句话中的中文、字母、数字与标 点。有1个数字，还有字母abc，半角标点符号,',
   tranRes: '',
   chinaCharNum: 0,
   letterNum: 0,
@@ -32,6 +32,7 @@ const changeContent = () => {
   //合计
   info.sum = info.chinaCharNum + info.letterNum + info.punctuationHalfNum + info.punctuationFullNum + info.numberNum + info.emptyNum;
 }
+changeContent()
 </script>
 
 <template>
@@ -55,9 +56,12 @@ const changeContent = () => {
 
     <!-- desc -->
     <ToolDetail title="描述">
-      <el-text>
-        在线统计字数、汉字、标点、数字、字母、字符
-      </el-text>
+      <div class="leading-6">
+        <div>在线统计字数、汉字、标点、数字、字母、字符。</div>
+        <div>标点说明：</div>
+        <div>· 半角标点（英文/ASCII）：! " # $ % & ' ( ) * + , - . / : ; &lt; = &gt; ? @ [ \ ] ^ _ ` { | } ~</div>
+        <div>· 全角标点（中文）：。？！，、；： “ ” ‘ ’ （） 《》 〈〉 【】 『』 「」 〔〕 …… — ～ ￥ 等</div>
+      </div>
     </ToolDetail>
 
   </div>
