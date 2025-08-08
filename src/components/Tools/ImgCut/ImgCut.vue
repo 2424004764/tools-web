@@ -74,13 +74,9 @@ const cut = () => {
   cutImg.value = results;
 }
 
-//计算切割样式
+//计算切割样式（仅控制网格，不再设置固定宽度）
 const cutImgStyle = computed(() => {
-  const width = `width: ${image.value.width || 800}px;`;
-  const grid = `grid: repeat(${lineNum.value}, 1fr) / repeat(${
-    lineNum.value
-  }, 1fr);`;
-  return width + grid;
+  return `grid: repeat(${lineNum.value}, 1fr) / repeat(${lineNum.value}, 1fr);`;
 })
 
 watch(cutImgStyle, () => {
@@ -99,7 +95,7 @@ onMounted(() => {
     <div class="p-4 rounded-2xl bg-white">
       <el-upload
         v-model:file-list="fileList"
-        class="dataFileRef flex"
+        class="dataFileRef flex flex-col md:flex-row gap-2 md:gap-3 w-full"
         ref="dataFileRef"
         accept="image/*"
         :http-request="updateDataFile"
@@ -116,20 +112,20 @@ onMounted(() => {
       </div>
 
 
-      <div class="mt-3 min-h-md bg-gray-100 p-3 mb-3 flex flex-col" v-if="image.src">
+      <div class="mt-3 min-h-md bg-gray-100 p-3 mb-3 flex flex-col md:flex-row gap-4 items-start" v-if="image.src">
         <!-- 预览 -->
-        <div class="mb-3">
+        <div class="w-full md:w-1/2">
           <el-text>预览: </el-text>
-          <div :style="cutImgStyle" class="grid gap-1 max-w-full">
-              <img v-for="(src,index) in cutImg" :key="index" :src="src" alt="结果" />
+          <div :style="cutImgStyle" class="grid gap-2 w-full">
+            <img v-for="(src,index) in cutImg" :key="index" :src="src" alt="结果" class="w-full h-auto block"/>
           </div>
         </div>
 
         <!-- 原图 -->
-        <div>
+        <div class="w-full md:w-1/2">
           <el-text>原图: </el-text>
-          <div>
-            <img :src="image.src" alt="原图" v-if="image.src"/>
+          <div class="w-full">
+            <img :src="image.src" alt="原图" v-if="image.src" class="max-w-full h-auto block"/>
           </div>
         </div>
       </div>
@@ -149,4 +145,12 @@ onMounted(() => {
 </template>
 
 <style scoped>
+:deep(.el-upload-list__item){
+  width: 100%;
+}
+:deep(.el-upload-list__item-name){
+  white-space: normal;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
 </style>
