@@ -607,4 +607,14 @@ export const constantRoute = [
       description: '精选第三方AI工具分类导航，一键直达常用AI服务与网站',
     }
   },
+  {
+    path: '/postman',
+    component: () => import('@/components/Tools/PostmanLite/PostmanLite.vue'),
+    name: 'postman',
+    meta: {
+      title: "在线请求调试",
+      keywords: '在线postman, http客户端, 接口调试, 请求构造, 跨域CORS',
+      description: '简化版Postman：构造HTTP请求、查看响应，支持JSON、表单、Raw',
+    }
+  },
 ]

@@ -125,6 +125,15 @@ export function getToolsCate() {
           cateId: 2,
           cate: '开发运维',
         },
+        {
+          id: 1,
+          title: '在线请求调试',
+          logo: '/images/logo/request.png',
+          desc: '简化版Postman：构造HTTP请求、查看响应，支持JSON、表单、Raw',
+          url: '/postman/',
+          cateId: 2,
+          cate: '开发运维',
+        },
         // {
         //   id: 1,
         //   title: 'js代码格式化/压缩',
