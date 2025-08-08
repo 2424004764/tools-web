@@ -20,6 +20,7 @@ const gameState = reactive({
   highScore: 0,
   gameOver: false,
   gameTime: 0, // 游戏时间（秒）
+  hasStarted: false, // 是否已开始过本局
 });
 
 // 游戏配置 - 根据屏幕尺寸调整
@@ -239,15 +240,19 @@ const formatTime = (seconds: number) => {
 
 // 开始游戏
 const startGame = () => {
+  const resuming = gameState.hasStarted && !gameState.gameOver;
+
   gameState.isPlaying = true;
   gameState.gameOver = false;
-  gameState.score = 0;
-  gameState.gameTime = 0;
 
-  // 使用保存的初始位置和方向
-  snake.value = [...initialSnakePosition];
-  food.value = { ...initialFoodPosition };
-  direction.value = { ...initialDirection };
+  // 仅在首次开始或重新开始时重置
+  if (!resuming) {
+    gameState.score = 0;
+    gameState.gameTime = 0;
+    snake.value = [...initialSnakePosition];
+    food.value = { ...initialFoodPosition };
+    direction.value = { ...initialDirection };
+  }
 
   if (gameLoop) {
     clearInterval(gameLoop);
@@ -257,12 +262,13 @@ const startGame = () => {
   }
 
   gameLoop = setInterval(moveSnake, config.speed);
-  // 启动计时器，每秒更新一次
   timeTimer = setInterval(() => {
     if (gameState.isPlaying) {
       gameState.gameTime++;
     }
   }, 1000);
+
+  gameState.hasStarted = true;
 };
 
 // 暂停游戏
@@ -296,6 +302,8 @@ const restartGame = () => {
   }
   // 重新初始化位置
   initializeGamePositions();
+  // 标记新一局
+  gameState.hasStarted = false;
   startGame();
 };
 
@@ -698,14 +706,10 @@ const getCurrentColorScheme = () => {
           </div>
         </div>
 
-        <!-- 游戏控制 -->
+        <!-- 游戏控制：按钮条件 -->
         <div class="flex justify-center space-x-4 mb-6">
           <el-button
-            v-if="
-              !gameState.isPlaying &&
-              !gameState.gameOver &&
-              gameState.gameTime === 0
-            "
+            v-if="!gameState.isPlaying && !gameState.gameOver && !gameState.hasStarted"
             @click="startGame"
             type="primary"
             class="bg-blue-500 hover:bg-blue-600 border-blue-600"
@@ -721,11 +725,7 @@ const getCurrentColorScheme = () => {
             暂停
           </el-button>
           <el-button
-            v-if="
-              !gameState.isPlaying &&
-              !gameState.gameOver &&
-              gameState.gameTime > 0
-            "
+            v-if="!gameState.isPlaying && !gameState.gameOver && gameState.hasStarted"
             @click="pauseGame"
             type="success"
             class="bg-green-500 hover:bg-green-600 border-green-600"
