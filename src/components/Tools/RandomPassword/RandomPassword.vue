@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive } from 'vue'
+import { onMounted, reactive, computed } from 'vue'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { copy, genRandomStrByChars } from '@/utils/string'
@@ -7,7 +7,7 @@ import { ElMessage } from 'element-plus'
 const info = reactive({
   title: "随机密码生成",
   char: '',
-  pwLen: 10,
+  pwLen: 16,
   pwNum: 5,
   resStr: '',
   autosize: {
@@ -108,12 +108,35 @@ const copyRes = async (resStr: string) => {
   copy(resStr)
 }
 
+const strength = computed(() => {
+  const l = info.pwLen || 0
+  const n = new Set(info.char.split('')).size
+  if (l <= 0 || n <= 0) {
+    return { entropy: 0, label: '无', color: '#909399', percent: 0 }
+  }
+  const entropy = l * Math.log2(n)
+  let label = '弱'
+  let color = '#F56C6C'
+  let percent = 20
+  if (entropy >= 80) {
+    label = '极强'; color = '#409EFF'; percent = 100
+  } else if (entropy >= 60) {
+    label = '强'; color = '#67C23A'; percent = 80
+  } else if (entropy >= 36) {
+    label = '中等'; color = '#E6A23C'; percent = 60
+  } else if (entropy >= 28) {
+    label = '较弱'; color = '#E6A23C'; percent = 35
+  }
+  return { entropy, label, color, percent }
+})
+
 onMounted(() => {
   //设置初始字符
   changeCheckBox(info.checkedNum, 0)
   changeCheckBox(info.checkedLower, 1)
   changeCheckBox(info.checkedUpper, 2)
   changeCheckBox(info.checkedSign, 3)
+  gen()
 })
 </script>
 
@@ -133,12 +156,18 @@ onMounted(() => {
         <el-input class="" v-model="info.char">
           <template #prepend>包含字符:</template>
         </el-input>
-        <el-input v-model="info.pwLen" placeholder="范围1~100" class="mt-3" max="100" type="number">
-          <template #prepend>生成长度:</template>
-        </el-input>
-        <el-input v-model="info.pwNum" placeholder="范围1~100" class="mt-3" max="100" type="number">
-          <template #prepend>生成数量:</template>
-        </el-input>
+        <div class="mt-3">
+          <el-text>生成长度: {{ info.pwLen }}</el-text>
+          <el-slider v-model="info.pwLen" :min="1" :max="100" :step="1" />
+        </div>
+        <div class="mt-3">
+          <el-text>生成数量: {{ info.pwNum }}</el-text>
+          <el-slider v-model="info.pwNum" :min="1" :max="100" :step="1" />
+        </div>
+        <div class="mt-2">
+          <el-text>密码强度: {{ strength.label }}（约 {{ strength.entropy.toFixed(1) }} bits）</el-text>
+          <el-progress :percentage="strength.percent" :color="strength.color" :stroke-width="8" />
+        </div>
       </div>
       <div class="mt-3 mb-3">
         <el-button type="primary" @click="gen">生成密码</el-button>
@@ -155,6 +184,10 @@ onMounted(() => {
       <el-text>
         在线生成密码支持开启或关闭大小写 、数字 、特殊符号，支持自定义字符，长度；批量生成密码
       </el-text> 
+      <el-text class="block mt-2">
+        bits（熵）说明：表示密码的随机信息量，值越大越难被穷举。约需要 2 的 bits 次方次尝试才能遍历所有可能；
+        一般参考：≥28 为较弱、≥36 为中等、≥60 为强、≥80 为极强。
+      </el-text>
     </ToolDetail>
 
   </div>

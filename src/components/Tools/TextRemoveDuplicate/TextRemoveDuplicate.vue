@@ -6,7 +6,7 @@ import { copy } from '@/utils/string'
 
 const info = reactive({
   title: "文本去重",
-  content: '',
+  content: '我是文本\n我是文本',
   tranRes: '',
 })
 
