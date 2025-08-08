@@ -597,4 +597,14 @@ export const constantRoute = [
       description: '经典数独游戏，填入数字1-9，使每行、每列和每个3x3宫格都包含1-9且不重复，考验逻辑推理能力',
     }
   },
+  {
+    path: '/aihub',
+    component: () => import('@/components/Tools/AiHub/AiHub.vue'),
+    name: 'aihub',
+    meta: {
+      title: 'AI工具导航',
+      keywords: 'AI工具导航,AI工具集合,AI第三方工具,AI网站',
+      description: '精选第三方AI工具分类导航，一键直达常用AI服务与网站',
+    }
+  },
 ]

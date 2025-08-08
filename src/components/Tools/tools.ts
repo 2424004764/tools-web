@@ -628,6 +628,15 @@ export function getToolsCate() {
           cateId: 10,
           cate: 'AI工具'
         },
+        {
+          id: 2,
+          title: 'AI工具导航',
+          logo: '/images/logo/ai_tools.png',
+          desc: '精选第三方AI工具分类导航，一键直达',
+          url: '/aihub/',
+          cateId: 10,
+          cate: 'AI工具'
+        },
         // {
         //   id: 2,
         //   title: '在线文本转语音',
