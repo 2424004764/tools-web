@@ -617,4 +617,14 @@ export const constantRoute = [
       description: '简化版Postman：构造HTTP请求、查看响应，支持JSON、表单、Raw',
     }
   },
+  {
+    path: '/urlparams',
+    component: () => import('@/components/Tools/UrlParams/UrlParams.vue'),
+    name: 'urlParams',
+    meta: {
+      title: 'URL 参数解析/构造',
+      keywords: 'URL 参数解析,URL 参数构造,querystring,URL 查询参数',
+      description: '一键解析 ?a=1&b=2，支持编辑后重新拼接',
+    }
+  },
 ]
