@@ -161,6 +161,15 @@ export function getToolsCate() {
         //   cateId: 2,
         //   cate: '开发运维',
         // }
+        {
+          id: 1,
+          title: 'URL 参数解析/构造',
+          logo: '/images/logo/url.png',
+          desc: '一键解析 ?a=1&b=2，支持编辑后重新拼接',
+          url: '/urlparams/',
+          cateId: 2,
+          cate: '开发运维',
+        },
       ]
     },
     {
