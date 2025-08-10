@@ -21,13 +21,6 @@ const state = reactive({
 const rows = ref<Row[]>([{ key: '', value: '' }])
 
 const enc = (s: string) => (state.autoEncode ? encodeURIComponent(s) : s)
-const dec = (s: string) => {
-  try { 
-    return decodeURIComponent(s.replace(/\+/g, ' '))
-  } catch { 
-    return s 
-  }
-}
 
 const parse = () => {
   let s = (state.raw || '').trim()

@@ -627,4 +627,14 @@ export const constantRoute = [
       description: '一键解析 ?a=1&b=2，支持编辑后重新拼接',
     }
   },
+  {
+    path: '/hash',
+    component: () => import('@/components/Tools/Hash/Hash.vue'),
+    name: 'hash',
+    meta: {
+      title: '哈希校验/HMAC',
+      keywords: 'SHA1,SHA256,SHA512,HMAC-SHA256,哈希,摘要,校验',
+      description: 'SHA-1/256/512、HMAC-SHA256，支持文本与文件摘要计算',
+    }
+  },
 ]
