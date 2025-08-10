@@ -170,6 +170,15 @@ export function getToolsCate() {
           cateId: 2,
           cate: '开发运维',
         },
+        {
+          id: 1,
+          title: '哈希校验/HMAC',
+          logo: '/images/logo/md5.png',
+          desc: 'SHA-1/256/512、HMAC-SHA256，文本/文件摘要',
+          url: '/hash/',
+          cateId: 2,
+          cate: '开发运维',
+        },
       ]
     },
     {
