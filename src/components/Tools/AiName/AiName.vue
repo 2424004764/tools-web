@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import axios from 'axios'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
@@ -28,6 +28,28 @@ const style = ref<'不限' | '古典' | '现代' | '文雅' | '阳光' | '中性
 const count = ref(10)
 const noCache = ref(true)
 const meaning = ref('')
+const birthDate = ref('') // YYYY-MM-DD
+const fixedChar = ref('') // 仅允许 1 个字
+const fixedPos = ref<'前' | '后'>('前')
+const birthText = ref('')
+
+// 统一格式化 datetime-local 值为 YYYY-MM-DD HH:mm:ss
+function formatBirth(dt: string): string {
+  if (!dt) return ''
+  // Safari/Chromium datetime-local 值格式：YYYY-MM-DDTHH:mm 或 HH:mm:ss
+  const [d, t] = dt.split('T')
+  if (!d) return ''
+  if (!t) return `${d} 00:00:00`
+  const parts = t.split(':')
+  const hh = parts[0] || '00'
+  const mm = parts[1] || '00'
+  const ss = parts[2]?.slice(0, 2) || '00'
+  return `${d} ${hh}:${mm}:${ss}`
+}
+
+watch(birthDate, (v) => {
+  birthText.value = formatBirth((v || '').trim())
+}, { immediate: true })
 const meaningExamples = [
   '聪慧睿智',
   '健康平安',
@@ -52,6 +74,7 @@ const canGenerate = computed(() => {
     : !!fatherSurname.value.trim()
   return haveSelectedSurname && !isLoading.value && count.value > 0 && count.value <= 50
 })
+const showFixedChar = computed(() => givenLen.value === '1-2' || givenLen.value === '2')
 
 const examples = [
   { f: '张', m: '李' },
@@ -93,6 +116,19 @@ const buildPrompt = (overrideLen?: GivenLen, overrideCount?: number) => {
   const meaningText = meaning.value.replace(/\r?\n/g, '；').trim()
   if (meaningText) {
     lines.push(`- 寓意：${meaningText}（名字需体现或贴近该寓意）`)
+  }
+  const bt = birthText.value
+  if (bt) {
+    lines.push(`- 出生日期时间：${bt}（精确到时分秒，可用于参考读音与寓意的协调与避讳）`)
+  }
+  const fx = (fixedChar.value || '').trim().slice(0, 1)
+  if (fx && (lenChoice === '2' || lenChoice === '1-2')) {
+    const posText = fixedPos.value === '前' ? '第1位' : '第2位'
+    if (lenChoice === '2') {
+      lines.push(`- 固定字：名中必须包含「${fx}」，且位置在${posText}`)
+    } else {
+      lines.push(`- 固定字：若为1字名则名=「${fx}」；若为2字名则包含「${fx}」且位置在${posText}`)
+    }
   }
   lines.push(
     `- 规则：所有姓名必须以所选姓氏开头；避免多音不雅，尽量避开同音低俗；可参考寓意、音律、字形搭配、文化典故等`,
@@ -137,6 +173,8 @@ function countChineseChars(s: string): number {
 function filterByGivenLen(items: Array<{ name: string; reason: string }>): Array<{ name: string; reason: string }>{
   const expectedSurname = (surnameUsage.value === '父姓' ? fatherSurname.value.trim() : motherSurname.value.trim()) || fatherSurname.value.trim() || motherSurname.value.trim()
   const wantLen = givenLen.value
+  const fx = (fixedChar.value || '').trim().slice(0, 1)
+  const needFix = fx && (wantLen === '2' || wantLen === '1-2')
   const ok = items.filter(it => {
     const name = (it.name || '').trim()
     if (!name) return false
@@ -145,8 +183,21 @@ function filterByGivenLen(items: Array<{ name: string; reason: string }>): Array
       given = name.slice(expectedSurname.length)
     }
     const len = countChineseChars(given)
-    if (wantLen === '1-2') return len === 1 || len === 2
-    return len === Number(wantLen)
+    // 长度判定
+    const lenPass = wantLen === '1-2' ? (len === 1 || len === 2) : len === Number(wantLen)
+    if (!lenPass) return false
+    // 固定字判定
+    if (!needFix) return true
+    if (len === 1) {
+      return given === fx
+    }
+    if (len === 2) {
+      const first = given[0]
+      const second = given[1]
+      if (fixedPos.value === '前') return first === fx
+      return second === fx
+    }
+    return true
   })
   if (wantLen !== '1-2') return ok
   // 1-2: 尝试均衡输出
@@ -305,6 +356,27 @@ const copyAll = () => results.value.length && copy(results.value.map(i => `${i.n
             <div>
               <label class="block text-sm text-gray-700 mb-1">数量</label>
               <input v-model.number="count" type="number" min="1" max="50" class="w-full p-2 border rounded-lg" />
+            </div>
+            <div class="col-span-3 grid grid-cols-3 gap-3" v-if="showFixedChar">
+              <div>
+                <label class="block text-sm text-gray-700 mb-1">固定字（名）</label>
+                <input v-model="fixedChar" maxlength="1" placeholder="仅 1 个汉字" class="w-full p-2 border rounded-lg" />
+              </div>
+              <div>
+                <label class="block text-sm text-gray-700 mb-1">固定字位置</label>
+                <select v-model="fixedPos" class="w-full p-2 border rounded-lg">
+                  <option value="前">前（第1位）</option>
+                  <option value="后">后（第2位）</option>
+                </select>
+              </div>
+              <div class="col-span-3">
+                <label class="block text-sm text-gray-700 mb-1">出生日期时间</label>
+                <input v-model="birthDate" type="datetime-local" step="1" class="w-full p-2 border rounded-lg" />
+              </div>
+            </div>
+            <div class="col-span-3" v-else>
+              <label class="block text-sm text-gray-700 mb-1">出生日期时间</label>
+              <input v-model="birthDate" type="datetime-local" step="1" class="w-full p-2 border rounded-lg min-w-[320px]" />
             </div>
           </div>
 
