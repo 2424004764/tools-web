@@ -1,0 +1,22 @@
+User-agent: *
+Allow: /
+
+# Block internal endpoints
+Disallow: /api/
+Disallow: /functions/
+Disallow: /__vite/
+
+Sitemap: https://tool.fologde.com/sitemap.xml
+
+User-agent: *
+Allow: /
+
+# Block internal endpoints
+Disallow: /api/
+Disallow: /functions/
+Disallow: /__vite/
+
+# Uncomment and set your production sitemap URL to help search engines discover pages
+# Sitemap: https://your-domain.com/sitemap.xml
+
+

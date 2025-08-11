@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+
+# Block internal endpoints
+Disallow: /api/
+Disallow: /functions/
+Disallow: /__vite/
+
+
+Sitemap: https://tool.fologde.com/sitemap.xml
