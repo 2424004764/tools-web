@@ -64,6 +64,15 @@ export function getToolsCate() {
         },
         {
           id: 1,
+          title: 'CSV/TSV ↔ JSON 互转',
+          logo: '/images/logo/json.png',
+          desc: 'CSV、TSV 与 JSON 相互转换，支持列头推断与分隔符选择',
+          url: '/csv-json/',
+          cateId: 2,
+          cate: '开发运维',
+        },
+        {
+          id: 1,
           title: '正则测试工具',
           logo: '/images/logo/reg.png',
           desc: '正则表达式测试工具, 常用正则表达式',
