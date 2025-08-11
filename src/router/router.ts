@@ -618,6 +618,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/ai-variable-name',
+    component: () => import('@/components/Tools/AiVariableName/AiVariableName.vue'),
+    name: 'ai-variable-name',
+    meta: {
+      title: 'AI起变量名',
+      keywords: 'AI变量名,AI变量,AI命名,AI起变量名',
+      description: '根据描述自动生成符合命名规范的变量名，支持多种命名风格与语言',
+    }
+  },
+  {
     path: '/postman',
     component: () => import('@/components/Tools/PostmanLite/PostmanLite.vue'),
     name: 'postman',

@@ -125,7 +125,7 @@ onMounted(() => {
           placeholder="输入关键词搜索，如文本、json、图片等"
           :remote-method="searchTools"
           :loading="loading"
-          class="ml-3"
+          class="ml-3 w-full"
           size="large"
         >
           <el-option
@@ -192,7 +192,7 @@ onMounted(() => {
 :deep(.el-select__wrapper) {
     box-shadow: 0 0 0 0px var(--el-input-border-color, var(--el-border-color)) inset;
     cursor: default;
-    @apply md:w-full;
+    @apply w-full;
 }
 
 .el-select :deep(.el-select__wrapper){

@@ -39,7 +39,7 @@ onMounted(() => {
       <div class="flex justify-between flex-wrap self-card-div c-xs:ml-0" :gutter="10">
           <router-link v-for="(item, index) in cate.list" :key="index" :to="item.url" class="flex flex-col mt-5 border-solid rounded-2xl border-gray w-[24%] p-2 bg-white hover:shadow-md c-xs:w-[99.5%] c-md:w-[24%] c-sm:w-[32%] p-5 hover:-translate-y-2 duration-300">
             <div class="flex items-center border-b pb-2">
-              <el-image :src="item.logo" class="w-10 h-10 min-h-[2.5rem] min-w-[2.5rem] rounded-full"></el-image>
+              <el-image :src="item.logo" class="w-10 h-10 min-h-[2.5rem] min-w-[2.5rem]"></el-image>
               <div class="flex flex-col ml-2 w-full">
                 <div class="flex">
                   <div class="font-semibold text-lg line-clamp-1">{{ item.title }}</div>

@@ -110,7 +110,7 @@ git add . && git commit -m "新增xx功能" && git push origin master
 
 ### Cloudflare部署
 
-见我的公众号文章：https://mp.weixin.qq.com/s/kIrz2uAv0cmT3f2rPWbtdQ
+详见我的公众号文章：https://mp.weixin.qq.com/s/kIrz2uAv0cmT3f2rPWbtdQ
 
 ## 功能开发日志
 - 2025年8月2日 新增文生图
@@ -119,7 +119,7 @@ git add . && git commit -m "新增xx功能" && git push origin master
 - 2025-08-07 新增数独小游戏
 - 2025-08-08 新增AI工具导航、postman lite功能
 - 2025-08-10 新增哈希校验功能
-- 2025-08-11 新增CSV/TSV互转JSON、命名风格转换功能
+- 2025-08-11 新增CSV/TSV互转JSON、命名风格转换、AI起变量名功能
 
 ## 工具列表
 
