@@ -83,19 +83,19 @@ pnpm dev
 ```
 windows命令
 // 打包并且将根目录的functions文件夹全部内容和wrangler.toml文件复制到/dist文件夹下
-pnpm build && xcopy /E /I /H /Y .\functions\* .\dist\functions\ && xcopy /Y .\wrangler.toml .\dist\
+pnpm build && xcopy /E /I /H /Y .\functions\* .\dist\functions\ && xcopy /Y .\wrangler.toml .\dist\ && xcopy /Y .\robots.txt .\dist\ && xcopy /Y .\sitemap.xml .\dist\
 
 // 打包静态页面并且将根目录的functions文件夹全部内容和wrangler.toml文件复制到/dist文件夹下
-pnpm build:pro && xcopy /E /I /H /Y .\functions\* .\dist\functions\ && xcopy /Y .\wrangler.toml .\dist\
+pnpm build:pro && xcopy /E /I /H /Y .\functions\* .\dist\functions\ && xcopy /Y .\wrangler.toml .\dist\ && xcopy /Y .\robots.txt .\dist\ && xcopy /Y .\sitemap.xml .\dist\
 
 linux只需要改一下复制的命令即可:
-pnpm build && cp -r ./functions/* ./dist/functions/ && cp ./wrangler.toml ./dist/ && git add . && git commit -m "debug" && git push origin master
+pnpm build && cp -r ./functions/* ./dist/functions/ && cp ./wrangler.toml ./dist/ && cp ./robots.txt ./dist/ && cp ./sitemap.xml ./dist/ && git add . && git commit -m "debug" && git push origin master
 
 ```
 
 编译 && 移动 && 提交一条命令搞定：
 ```
-pnpm build && cp -r ./functions/* ./dist/functions/ && cp ./wrangler.toml ./dist/ 
+pnpm build && cp -r ./functions/* ./dist/functions/ && cp ./wrangler.toml ./dist/ && cp ./robots.txt ./dist/ && cp ./sitemap.xml ./dist/
 ```
 
 打包seo静态页面:复制`.env.development`文件，并将文件名修改为`.env.production`,将里面的`NODE_ENV`的值改为`production`,然后运行下面打包命令
