@@ -628,6 +628,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/ai-name',
+    component: () => import('@/components/Tools/AiName/AiName.vue'),
+    name: 'ai-name',
+    meta: {
+      title: 'AI起名',
+      keywords: 'AI起名,起名字,宝宝起名,中文姓名,取名',
+      description: '输入父母姓氏，选择名的长度与性别，生成多个中文姓名，并给出命名理由',
+    }
+  },
+  {
     path: '/postman',
     component: () => import('@/components/Tools/PostmanLite/PostmanLite.vue'),
     name: 'postman',
