@@ -42,6 +42,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/csv-json',
+    component: () => import('@/components/Tools/CsvJson/CsvJson.vue'),
+    name: 'csv-json',
+    meta: {
+      title: 'CSV/TSV ↔ JSON 互转',
+      keywords: 'CSV,TSV,JSON,互转,分隔符,列头推断',
+      description: 'CSV、TSV 与 JSON 相互转换，支持列头推断与分隔符选择',
+    }
+  },
+  {
     path: '/reg',
     component: () => import('@/components/Tools/RegTest/RegTest.vue'),
     name: 'reg',
