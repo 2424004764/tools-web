@@ -98,7 +98,7 @@ pnpm build && cp -r ./functions/* ./dist/functions/ && cp ./wrangler.toml ./dist
 pnpm build && cp -r ./functions/* ./dist/functions/ && cp ./wrangler.toml ./dist/ 
 ```
 
-打包seo静态页面:复制`.env.development`文件，并将文件名修改为`.env.production`,将里面的`NODE_ENV`的值改为`productio`,然后运行下面打包命令
+打包seo静态页面:复制`.env.development`文件，并将文件名修改为`.env.production`,将里面的`NODE_ENV`的值改为`production`,然后运行下面打包命令
 ```
 pnpm build:pro
 ```
