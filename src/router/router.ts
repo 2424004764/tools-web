@@ -638,6 +638,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/naming-case',
+    component: () => import('@/components/Tools/NamingCase/NamingCase.vue'),
+    name: 'naming-case',
+    meta: {
+      title: '命名风格转换',
+      keywords: 'snake_case,camelCase,PascalCase,kebab-case,命名,风格,转换',
+      description: 'snake_case、camelCase、PascalCase、kebab-case 相互转换，支持逐行转换与复制',
+    }
+  },
+  {
     path: '/hash',
     component: () => import('@/components/Tools/Hash/Hash.vue'),
     name: 'hash',

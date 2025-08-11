@@ -181,6 +181,15 @@ export function getToolsCate() {
         },
         {
           id: 1,
+          title: '命名风格转换',
+          logo: '/images/logo/naming-case.png',
+          desc: 'snake_case、camelCase、PascalCase、kebab-case 相互转换，支持逐行转换与复制',
+          url: '/naming-case/',
+          cateId: 2,
+          cate: '开发运维',
+        },
+        {
+          id: 1,
           title: '哈希校验/HMAC',
           logo: '/images/logo/md5.png',
           desc: 'SHA-1/256/512、HMAC-SHA256，文本/文件摘要',
