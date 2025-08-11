@@ -694,7 +694,7 @@ export function getToolsCate() {
         {
           id: 4,
           title: 'AI起名',
-          logo: '/images/logo/ai_tools.png',
+          logo: '/images/logo/ai_get_name.png',
           desc: '输入父母姓氏、选择名长与性别，生成多个姓名并附命名理由',
           url: '/ai-name/',
           cateId: 10,
