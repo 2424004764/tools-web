@@ -677,4 +677,14 @@ export const constantRoute = [
       description: 'SHA-1/256/512、HMAC-SHA256，支持文本与文件摘要计算',
     }
   },
+  {
+    path: '/ai-translate',
+    component: () => import('@/components/Tools/AiTranslate/AiTranslate.vue'),
+    name: 'ai-translate',
+    meta: {
+      title: 'AI翻译',
+      keywords: 'AI翻译,自动检测,多语言翻译,LibreTranslate',
+      description: '支持多语言互译，源语言自动检测，免费使用'
+    }
+  },
 ]
