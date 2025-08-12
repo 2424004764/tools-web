@@ -4,6 +4,7 @@ import Left from '@/components/Layout/Left/Left.vue'
 import Floor from '@/components/Layout/Floor/Floor.vue'
 // import Right from '@/components/Layout/Right/Right.vue'
 import { useComponentStore } from '@/store/modules/component'
+import SimilarRecommend from '@/components/Layout/SimilarRecommend/SimilarRecommend.vue'
 
 //store
 const componentStore = useComponentStore()
@@ -37,6 +38,7 @@ const componentStore = useComponentStore()
             <component :is="Component" :key="route.path"></component>
           </transition>
         </router-view>
+        <SimilarRecommend />
       </el-main>
       <el-footer class="md:mb-6 mt-12 c-xs:mb-12">
         <Floor />

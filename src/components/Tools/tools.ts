@@ -700,6 +700,15 @@ export function getToolsCate() {
           cateId: 10,
           cate: 'AI工具'
         },
+        {
+          id: 5,
+          title: 'AI翻译',
+          logo: '/images/logo/ai_translate.png',
+          desc: '支持多语言互译，源语言自动检测',
+          url: '/ai-translate/',
+          cateId: 10,
+          cate: 'AI工具'
+        },
         // {
         //   id: 2,
         //   title: '在线文本转语音',
