@@ -709,6 +709,15 @@ export function getToolsCate() {
           cateId: 10,
           cate: 'AI工具'
         },
+        {
+          id: 6,
+          title: 'AI小学作文',
+          logo: '/images/logo/ai_elementary_essay.png',
+          desc: '按年级/题材/关键词生成贴合小学生水平的作文',
+          url: '/ai-elementary-essay/',
+          cateId: 10,
+          cate: 'AI工具'
+        },
         // {
         //   id: 2,
         //   title: '在线文本转语音',

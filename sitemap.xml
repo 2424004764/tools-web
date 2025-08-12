@@ -69,6 +69,7 @@
   <url><loc>https://tool.fologde.com/aihub</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/ai-variable-name</loc><changefreq>weekly</changefreq><priority>0.8</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/ai-name</loc><changefreq>weekly</changefreq><priority>0.9</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
+  <url><loc>https://tool.fologde.com/ai-elementary-essay</loc><changefreq>weekly</changefreq><priority>0.7</priority><lastmod>2025-08-12T00:00:00+00:00</lastmod></url>
 
   <!-- URL 参数/命名风格/哈希/Postman 等 -->
   <url><loc>https://tool.fologde.com/postman</loc><changefreq>monthly</changefreq><priority>0.4</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
