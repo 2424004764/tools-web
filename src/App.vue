@@ -1,36 +1,40 @@
 <script setup lang="ts">
-import Header from '@/components/Layout/Header/Header.vue'
-import Left from '@/components/Layout/Left/Left.vue'
-import Floor from '@/components/Layout/Floor/Floor.vue'
+import Header from "@/components/Layout/Header/Header.vue";
+import Left from "@/components/Layout/Left/Left.vue";
+import Floor from "@/components/Layout/Floor/Floor.vue";
 // import Right from '@/components/Layout/Right/Right.vue'
-import { useComponentStore } from '@/store/modules/component'
-import SimilarRecommend from '@/components/Layout/SimilarRecommend/SimilarRecommend.vue'
+import { useComponentStore } from "@/store/modules/component";
+import SimilarRecommend from "@/components/Layout/SimilarRecommend/SimilarRecommend.vue";
 
 //store
-const componentStore = useComponentStore()
-
+const componentStore = useComponentStore();
 </script>
 
 <template>
   <el-container>
     <!-- left -->
-    <el-aside class="fixed top-0 left-0 h-full z-10 c-md:block c-sm:hidden c-xs:hidden" width="240px" v-show="!componentStore.leftCom">
-        <Left></Left>
+    <el-aside
+      class="fixed top-0 left-0 h-full z-10 c-md:block c-sm:hidden c-xs:hidden"
+      width="240px"
+      v-show="!componentStore.leftCom"
+    >
+      <Left></Left>
     </el-aside>
-    <el-drawer 
+    <el-drawer
       show-close
-      size="240px" 
-      :with-header="false" 
-      v-model="componentStore.leftComDrawer" 
+      size="240px"
+      :with-header="false"
+      v-model="componentStore.leftComDrawer"
       direction="ltr"
-      >
+      :lock-scroll="false"
+    >
       <Left></Left>
     </el-drawer>
 
     <!-- right -->
-    <el-container  :class="!componentStore.leftCom ? 'c-md:ml-[240px]' : ''">
+    <el-container :class="!componentStore.leftCom ? 'c-md:ml-[240px]' : ''">
       <el-header>
-        <Header/>
+        <Header />
       </el-header>
       <el-main>
         <router-view v-slot="{ Component, route }">
@@ -44,7 +48,6 @@ const componentStore = useComponentStore()
         <Floor />
       </el-footer>
     </el-container>
-
   </el-container>
 </template>
 
@@ -52,17 +55,17 @@ const componentStore = useComponentStore()
 /* 过度动画配置代码 */
 .animation-enter-from,
 .animation-leave-to {
-	transform: translateX(20px);
-	opacity: 0;
+  transform: translateX(20px);
+  opacity: 0;
 }
 .animation-enter-to,
 .animation-leave-from {
-	opacity: 1;
+  opacity: 1;
 }
 .animation-enter-active {
-	transition: all 0.7s ease;
+  transition: all 0.7s ease;
 }
 .animation-leave-active {
-	transition: all 0.3s cubic-bezier(1, 0.6, 0.6, 1);
+  transition: all 0.3s cubic-bezier(1, 0.6, 0.6, 1);
 }
 </style>
