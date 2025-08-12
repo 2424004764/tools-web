@@ -105,7 +105,6 @@ watch(
   () => route.query.value,
   () => {
     if (route.path !== "/") return;
-    console.log("route.query.value", route.query.value);
     updateActive();
   }
 );
