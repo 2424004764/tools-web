@@ -6,6 +6,6 @@ alwaysApply: true
 - 这是一个vue3项目，使用ts语法
 - 如果需要新建一个组件功能，则需要在components/Tools/tools.ts文件中添加工具信息、在router/router.ts中添加路由、拷贝示例目录components/Tools/Example修改名称，在这个拷贝出来的目录中开发工具即可，生成的工具logo需要根据工具名真实生成，如：AI翻译，那logo就是ai_translate.png
 - 返回中文
-- 代码部分只生成改动的地方，未改动的不要返回，精简返回的代码
+- 代码部分只生成改动的地方，未改动的不要返回，精简返回的代码给出最小修复
 - 自己多复盘几遍再给我答案
 - 新增的功能页面需要在sitemap.xml注册、并且在README.md的功能开发日志声明

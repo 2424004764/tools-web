@@ -8,11 +8,10 @@ const router = createRouter({
   history: createWebHistory(),
   routes: constantRoute,
   //滚动行为
-  scrollBehavior() {
-    return {
-      left: 0,
-      top: 0,
-    }
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) return savedPosition
+    if (to.path === from.path) return false
+    return { left: 0, top: 0 }
   },
 })
 // _form: ‘_’表示占位变量，可以不被使用

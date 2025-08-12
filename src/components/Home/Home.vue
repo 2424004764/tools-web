@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { onMounted, watch, nextTick } from 'vue';
 import { RouterLink } from "vue-router"
 // import { Star } from '@element-plus/icons-vue'
 import { useToolsStore } from '@/store/modules/tools'
@@ -17,13 +17,35 @@ const route = useRoute()
 // }
 
 
-onMounted(() => {
-  // getToolsCate()
-  if (route.query && route.query.value) {//底部导航跳转过来的则定位到响应位置
-      document?.querySelector('#' + `${route.query.value}`)?.scrollIntoView();
-  } else {//其他位置跳转过来不需要定位的则定位到顶部
-      document?.querySelector('#collect')?.scrollIntoView()
+const scrollToAnchor = async () => {
+  const v = route.query?.value as any
+  const anchor = Array.isArray(v) ? v[0] : v
+  if (typeof anchor !== 'string' || !anchor) return
+  await nextTick()
+  requestAnimationFrame(() => {
+    document?.getElementById(anchor)?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+      inline: 'start',
+    })
+  })
+}
+
+onMounted(async () => {
+  await nextTick()
+  if (route.query && route.query.value) {
+    scrollToAnchor()
+  } else {
+    document?.querySelector('#collect')?.scrollIntoView()
   }
+})
+
+watch(() => route.query.value, () => {
+  scrollToAnchor()
+})
+
+watch(() => toolsStore.cates.length, () => {
+  scrollToAnchor()
 })
 </script>
 
