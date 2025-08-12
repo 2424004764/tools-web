@@ -687,4 +687,14 @@ export const constantRoute = [
       description: '支持多语言互译，源语言自动检测，免费使用'
     }
   },
+  {
+    path: '/ai-elementary-essay',
+    component: () => import('@/components/Tools/AiElementaryEssay/AiElementaryEssay.vue'),
+    name: 'ai-elementary-essay',
+    meta: {
+      title: 'AI小学作文',
+      keywords: 'AI小学作文,作文生成,小学生作文,年级作文,题材作文',
+      description: '按年级、体裁和关键词生成贴合小学生水平的作文，支持字数、风格与结构控制'
+    }
+  },
 ]
