@@ -707,4 +707,14 @@ export const constantRoute = [
       description: 'AI智能生成每日励志鸡汤文，支持多种风格选择，定时刷新，为你的每一天注入正能量'
     }
   },
+  {
+    path: '/ai-chat',
+    component: () => import('@/components/Tools/AiChat/AiChat.vue'),
+    name: 'ai-chat',
+    meta: {
+      title: "AI对话",
+      keywords: 'AI对话,智能对话,AI助手,聊天机器人,智能问答',
+      description: '智能AI对话助手，支持多轮对话，提供专业、准确的回答，帮助你解决各种问题',
+    }
+  },
 ]

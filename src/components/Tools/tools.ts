@@ -727,6 +727,15 @@ export function getToolsCate() {
           cateId: 10,
           cate: 'AI工具'
         },
+        {
+          id: 8,
+          title: 'AI对话',
+          logo: '/images/logo/ai_chat.png',
+          desc: '智能AI对话助手，支持多轮对话，提供专业、准确的回答',
+          url: '/ai-chat/',
+          cateId: 10,
+          cate: 'AI工具'
+        },
         // {
         //   id: 2,
         //   title: '在线文本转语音',
