@@ -697,4 +697,14 @@ export const constantRoute = [
       description: '按年级、体裁和关键词生成贴合小学生水平的作文，支持字数、风格与结构控制'
     }
   },
+  {
+    path: '/ai-daily-motivation',
+    component: () => import('@/components/Tools/AiDailyMotivation/AiDailyMotivation.vue'),
+    name: 'ai-daily-motivation',
+    meta: {
+      title: 'AI每日励志鸡汤文',
+      keywords: 'AI鸡汤文,励志鸡汤文,每日鸡汤,正能量,励志语录',
+      description: 'AI智能生成每日励志鸡汤文，支持多种风格选择，定时刷新，为你的每一天注入正能量'
+    }
+  },
 ]

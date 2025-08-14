@@ -718,6 +718,15 @@ export function getToolsCate() {
           cateId: 10,
           cate: 'AI工具'
         },
+        {
+          id: 7,
+          title: 'AI每日励志鸡汤文',
+          logo: '/images/logo/ai_daily_motivation.png',
+          desc: 'AI智能生成每日励志鸡汤文，支持多种风格选择，定时刷新，为你的每一天注入正能量',
+          url: '/ai-daily-motivation/',
+          cateId: 10,
+          cate: 'AI工具'
+        },
         // {
         //   id: 2,
         //   title: '在线文本转语音',
