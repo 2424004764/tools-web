@@ -121,6 +121,7 @@ git add . && git commit -m "新增xx功能" && git push origin master
 - 2025-08-10 新增哈希校验功能
 - 2025-08-11 新增CSV/TSV互转JSON、命名风格转换、AI起变量名、AI起名功能
 - 2025-08-12 新增AI翻译、AI小学作文功能
+- 2025-08-12 新增 AI每日励志鸡汤文 功能
 
 ## 工具列表
 
@@ -213,6 +214,7 @@ git add . && git commit -m "新增xx功能" && git push origin master
   - AI起名
   - AI翻译
   - AI小学作文
+  - AI每日励志鸡汤文
 
 ## 其他
 
