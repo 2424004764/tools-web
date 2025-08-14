@@ -12,6 +12,7 @@ const info = reactive({
 const pollinationsApiKey = ref(import.meta.env.VITE_POLLINATIONS_API_KEY || "");
 const pollinationsProxyUrl = ref(import.meta.env.VITE_POLLINATIONS_PROXY_URL);
 const pollinationsTextUrl = ref(import.meta.env.VITE_POLLINATIONS_TEXT_URL);
+const pollinationsUrl = ref(import.meta.env.VITE_POLLINATIONS_URL);
 
 // 状态管理
 const loading = ref(false);
@@ -19,6 +20,7 @@ const refreshing = ref(false);
 const autoRefresh = ref(true);
 const refreshInterval = ref(1); // 默认1分钟
 const selectedStyle = ref("励志");
+const generateCount = ref(5); // 新增：生成条数
 const lastRefreshTime = ref<Date | null>(null);
 const refreshTimer = ref<NodeJS.Timeout | null>(null);
 const retryCount = ref(0); // 新增：重试次数
@@ -45,6 +47,17 @@ const styleOptions = [
   { value: "爱情", label: "爱情", emoji: "💝" },
 ];
 
+// 生成条数选项
+const countOptions = [
+  { value: 1, label: "1条" },
+  { value: 2, label: "2条" },
+  { value: 4, label: "4条" },
+  { value: 5, label: "5条" },
+  { value: 6, label: "6条" },
+  { value: 8, label: "8条" },
+  { value: 10, label: "10条" },
+];
+
 // 刷新间隔选项
 const intervalOptions = [
   { value: 1, label: "1分钟" },
@@ -53,9 +66,7 @@ const intervalOptions = [
 ];
 
 // 生成鸡汤文
-// 生成鸡汤文
-// 生成鸡汤文
-const generateMotivations = async () => {
+const generateMotivations = async (isAutoRefresh: boolean = false) => {
   if (loading.value) return;
 
   loading.value = true;
@@ -64,7 +75,7 @@ const generateMotivations = async () => {
 
   while (retryCount < maxRetries) {
     try {
-      const prompt = `请生成5条${selectedStyle.value}风格的励志鸡汤文，要求：
+      const prompt = `请生成${generateCount.value}条${selectedStyle.value}风格的励志鸡汤文，要求：
 1. 每条鸡汤文要简洁有力，字数控制在30-50字之间
 2. 内容要积极向上，富有哲理和启发性
 3. 风格要符合"${selectedStyle.value}"主题
@@ -85,7 +96,7 @@ const generateMotivations = async () => {
         .split("\n")
         .map((line) => line.trim())
         .filter((line) => line.length > 0 && line.length <= 100)
-        .slice(0, 5);
+        .slice(0, generateCount.value);
 
       // 验证生成的内容是否有效
       if (lines.length === 0 || lines.some((line) => line.length < 10)) {
@@ -100,6 +111,7 @@ const generateMotivations = async () => {
         timestamp: new Date(),
       }));
 
+      // 只有在成功生成后才替换原有内容
       motivationList.value = newMotivations;
       lastRefreshTime.value = new Date();
 
@@ -116,18 +128,19 @@ const generateMotivations = async () => {
 
       // 如果还有重试机会，等待2秒后重试
       if (retryCount < maxRetries) {
-        // 显示重试状态
+        // 显示重试状态，但不清空现有内容
         console.log(`生成失败，2秒后进行第${retryCount + 1}次重试...`);
         await new Promise((resolve) => setTimeout(resolve, 2000)); // 等待2秒
         continue;
       }
 
-      // 所有重试都失败了，清空列表并显示错误状态
-      console.log("所有重试都失败");
-      motivationList.value = [];
-
-      // 显示重试失败提示
-      alert(`AI生成失败，已重试${maxRetries}次。请检查网络连接或稍后重试。`);
+      // 所有重试都失败了，保持原有内容不变
+      console.log("所有重试都失败，保持原有内容");
+      
+      // 只有在手动刷新时才显示弹窗提示，自动刷新时不显示
+      if (!isAutoRefresh) {
+        alert(`AI生成失败，已重试${maxRetries}次。请检查网络连接或稍后重试。当前显示的是上次成功生成的内容。`);
+      }
     }
   }
 
@@ -138,8 +151,11 @@ const generateMotivations = async () => {
 const refreshMotivations = async () => {
   if (refreshing.value) return;
   refreshing.value = true;
-  await generateMotivations();
-  refreshing.value = false;
+  try {
+    await generateMotivations(false); // 手动刷新，传入false
+  } finally {
+    refreshing.value = false;
+  }
 };
 
 // 设置自动刷新
@@ -153,7 +169,7 @@ const setupAutoRefresh = () => {
   // 只有在开启自动刷新时才设置新的定时器
   if (autoRefresh.value) {
     refreshTimer.value = setInterval(() => {
-      generateMotivations();
+      generateMotivations(true); // 自动刷新，传入true
     }, refreshInterval.value * 60 * 1000);
   }
 };
@@ -208,6 +224,214 @@ const formatDate = (date: Date) => {
   });
 };
 
+// 新增：封面生成相关状态
+// 修改：每条鸡汤文独立的封面生成状态
+const generatingCovers = ref<{ [key: number]: boolean }>({});
+const showCoverModal = ref(false);
+const generatedCoverUrl = ref("");
+const currentMotivation = ref("");
+const currentMotivationId = ref<number | null>(null);
+const abortController = ref<AbortController | null>(null);
+
+// 生成封面
+const generateCover = async (motivation: string, motivationId: number) => {
+  if (generatingCovers.value[motivationId]) return;
+  
+  // 设置当前鸡汤文的生成状态
+  generatingCovers.value[motivationId] = true;
+  currentMotivation.value = motivation;
+  currentMotivationId.value = motivationId;
+  
+  // 先显示弹窗
+  showCoverModal.value = true;
+  
+  // 创建AbortController用于取消请求
+  abortController.value = new AbortController();
+  
+  try {
+    // 构造封面生成的提示词
+    const coverPrompt = `励志鸡汤文封面背景：${motivation}，简约现代设计风格，渐变背景，适合作为文字封面，高清图片`;
+    
+    // 参考文生图页面的接口调用方式
+    // 构造查询参数
+    const params = {
+      model: "sdxl", // 使用SDXL模型
+      width: "1024",
+      height: "1024",
+      nologo: "true",
+      seed: Math.floor(Math.random() * 100000000).toString(),
+    };
+
+    // 移除未定义的参数并确保所有值都是字符串
+    const filteredParams = Object.fromEntries(
+      Object.entries(params)
+        .filter(([_, v]) => v !== undefined)
+        .map(([k, v]) => [k, String(v)]) // 确保所有值都是字符串
+    );
+
+    // 添加时间戳避免缓存
+    filteredParams._t = String(Date.now());
+
+    // 将 filteredParams 转成 GET 参数拼接
+    const queryString = new URLSearchParams(filteredParams).toString();
+    const response = await axios.get(
+      `${pollinationsProxyUrl.value}?path=prompt/${encodeURIComponent(coverPrompt)}&target=${pollinationsUrl.value}&params=${queryString}`,
+      {
+        headers: {
+          Authorization: "Bearer " + pollinationsApiKey.value,
+        },
+        responseType: "blob",
+        signal: abortController.value.signal, // 添加取消信号
+      }
+    );
+
+    const blob = new Blob([response.data], { type: "image/png" });
+    const imageUrl = URL.createObjectURL(blob);
+    
+    // 将文字叠加到图片上
+    const finalImageUrl = await addTextToImage(imageUrl, motivation);
+    generatedCoverUrl.value = finalImageUrl;
+    
+    // 生成完成，弹窗内容从loading变为图片展示
+    
+  } catch (error) {
+    // 如果是取消请求导致的错误，不显示错误提示，但需要重置状态
+    if (axios.isCancel(error)) {
+      console.log('请求已取消');
+      // 请求被取消时，状态已经在closeCoverModal中重置，这里不需要额外处理
+      return;
+    }
+    
+    console.error("生成封面失败:", error);
+    alert("封面生成失败，请稍后重试");
+    
+    // 生成失败时也需要重置状态
+    if (currentMotivationId.value !== null) {
+      generatingCovers.value[currentMotivationId.value] = false;
+    }
+  } finally {
+    // 清理AbortController
+    abortController.value = null;
+    // 注意：这里不再重置generatingCovers状态，因为成功时不需要重置，失败时在上面已经重置
+  }
+};
+
+// 将文字叠加到图片上
+const addTextToImage = (imageUrl: string, text: string): Promise<string> => {
+  return new Promise((resolve) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d')!;
+    const img = new Image();
+    
+    img.onload = () => {
+      // 设置canvas尺寸
+      canvas.width = img.width;
+      canvas.height = img.height;
+      
+      // 绘制背景图片
+      ctx.drawImage(img, 0, 0);
+      
+      // 添加半透明遮罩，让文字更清晰
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // 设置文字样式
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      
+      // 根据文字长度调整字体大小
+      const maxWidth = canvas.width * 0.8;
+      let fontSize = Math.min(80, canvas.width / 15);
+      
+      // 分行处理长文本
+      const words = text.split('');
+      const lines: string[] = [];
+      let currentLine = '';
+      
+      for (let i = 0; i < words.length; i++) {
+        const testLine = currentLine + words[i];
+        ctx.font = `${fontSize}px "Microsoft YaHei", sans-serif`;
+        const metrics = ctx.measureText(testLine);
+        
+        if (metrics.width > maxWidth && currentLine !== '') {
+          lines.push(currentLine);
+          currentLine = words[i];
+        } else {
+          currentLine = testLine;
+        }
+      }
+      if (currentLine) {
+        lines.push(currentLine);
+      }
+      
+      // 如果行数太多，减小字体
+      if (lines.length > 4) {
+        fontSize = Math.min(60, canvas.width / 20);
+        ctx.font = `${fontSize}px "Microsoft YaHei", sans-serif`;
+      }
+      
+      // 绘制文字
+      const lineHeight = fontSize * 1.5;
+      const totalHeight = lineHeight * lines.length;
+      const startY = (canvas.height - totalHeight) / 2;
+      
+      lines.forEach((line, index) => {
+        const y = startY + index * lineHeight;
+        
+        // 添加文字阴影
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+        ctx.shadowBlur = 10;
+        ctx.shadowOffsetX = 2;
+        ctx.shadowOffsetY = 2;
+        
+        ctx.fillText(line, canvas.width / 2, y);
+        
+        // 重置阴影
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+      });
+      
+      // 转换为base64
+      const finalImageUrl = canvas.toDataURL('image/png');
+      resolve(finalImageUrl);
+    };
+    
+    img.src = imageUrl;
+  });
+};
+
+// 关闭封面弹窗
+const closeCoverModal = () => {
+  // 如果正在生成中，取消请求
+  if (abortController.value) {
+    abortController.value.abort();
+    abortController.value = null;
+  }
+  
+  // 重置当前鸡汤文的生成状态
+  if (currentMotivationId.value !== null) {
+    generatingCovers.value[currentMotivationId.value] = false;
+  }
+  
+  showCoverModal.value = false;
+  generatedCoverUrl.value = "";
+  currentMotivation.value = "";
+  currentMotivationId.value = null;
+};
+
+// 下载封面
+const downloadCover = () => {
+  if (!generatedCoverUrl.value) return;
+  
+  const link = document.createElement('a');
+  link.download = `鸡汤文封面_${Date.now()}.png`;
+  link.href = generatedCoverUrl.value;
+  link.click();
+};
+
 
 // 组件挂载时自动生成一次
 onMounted(() => {
@@ -232,6 +456,10 @@ const handleIntervalChange = () => {
 const handleStyleChange = () => {
   generateMotivations();
 };
+
+const handleCountChange = () => {
+  generateMotivations();
+};
 </script>
 
 <template>
@@ -243,7 +471,7 @@ const handleStyleChange = () => {
       <div
         class="mb-8 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200"
       >
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <!-- 风格选择 -->
           <div class="space-y-2">
             <label class="text-sm font-medium text-gray-700">鸡汤文风格</label>
@@ -258,6 +486,24 @@ const handleStyleChange = () => {
                 :value="style.value"
               >
                 {{ style.emoji }} {{ style.label }}
+              </option>
+            </select>
+          </div>
+
+          <!-- 生成条数选择 -->
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-gray-700">生成条数</label>
+            <select
+              v-model="generateCount"
+              @change="handleCountChange"
+              class="w-full p-3 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option
+                v-for="count in countOptions"
+                :key="count.value"
+                :value="count.value"
+              >
+                {{ count.label }}
               </option>
             </select>
           </div>
@@ -316,9 +562,7 @@ const handleStyleChange = () => {
               class="w-full p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
             >
               <span v-if="refreshing" class="flex items-center justify-center">
-                <div
-                  class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"
-                ></div>
+                <div class="refresh-spinner mr-2"></div>
                 刷新中...
               </span>
               <span v-else>立即刷新</span>
@@ -328,9 +572,9 @@ const handleStyleChange = () => {
 
         <!-- 状态信息 -->
         <div
-          class="mt-4 flex items-center justify-between text-sm text-gray-600"
+          class="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm text-gray-600 space-y-2 sm:space-y-0"
         >
-          <div class="flex items-center space-x-4">
+          <div class="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
             <span
               >状态:
               {{
@@ -342,7 +586,7 @@ const handleStyleChange = () => {
               {{ formatTime(lastRefreshTime) }}
             </span>
           </div>
-          <div class="flex items-center space-x-2">
+          <div class="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
             <span>当前风格: {{ selectedStyle }}</span>
             <span>刷新间隔: {{ refreshInterval }}分钟</span>
           </div>
@@ -362,8 +606,8 @@ const handleStyleChange = () => {
           </div>
         </div>
 
-        <!-- 加载状态 -->
-        <div v-if="loading" class="text-center py-12">
+        <!-- 加载状态 - 只在首次加载且没有内容时显示 -->
+        <div v-if="loading && motivationList.length === 0" class="text-center py-12">
           <div class="inline-flex items-center space-x-2">
             <div class="loading-spinner-large"></div>
             <span class="text-lg text-gray-600">
@@ -379,8 +623,16 @@ const handleStyleChange = () => {
           </div>
         </div>
 
-        <!-- 鸡汤文列表 -->
-        <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- 刷新状态提示 - 在已有内容时显示 -->
+        <div v-if="refreshing && motivationList.length > 0" class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div class="flex items-center justify-center space-x-2 text-blue-700">
+            <div class="loading-spinner-small"></div>
+            <span>正在刷新鸡汤文，请稍候...</span>
+          </div>
+        </div>
+
+        <!-- 鸡汤文列表 - 始终显示，除非首次加载且没有内容 -->
+        <div v-if="!loading || motivationList.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div
             v-for="motivation in motivationList"
             :key="motivation.id"
@@ -396,14 +648,25 @@ const handleStyleChange = () => {
             </div>
 
             <!-- 鸡汤文内容 -->
-            <div class="mb-4 pr-16">
+            <div class="mb-4 pt-8">
               <p class="text-lg text-gray-800 leading-relaxed font-medium">
                 "{{ motivation.content }}"
               </p>
             </div>
 
             <!-- 底部信息 -->
-            <div class="flex items-center justify-end text-sm text-gray-500">
+            <div class="flex items-center justify-between text-sm text-gray-500">
+              <button
+                @click="generateCover(motivation.content, motivation.id)"
+                :disabled="generatingCovers[motivation.id]"
+                class="px-3 py-1 text-green-600 hover:bg-green-50 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span v-if="generatingCovers[motivation.id]" class="flex items-center">
+                  <div class="refresh-spinner mr-1"></div>
+                  生成中...
+                </span>
+                <span v-else>生成封面</span>
+              </button>
               <button
                 @click="copyMotivation(motivation.content)"
                 class="opacity-0 group-hover:opacity-100 transition-opacity px-3 py-1 text-blue-600 hover:bg-blue-50 rounded-md"
@@ -453,6 +716,74 @@ const handleStyleChange = () => {
       <el-text>{{ info.desc }}</el-text>
     </ToolDetail>
   </div>
+
+  <!-- 修改：封面生成弹窗 -->
+  <div
+    v-if="showCoverModal"
+    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+    @click.self="closeCoverModal"
+  >
+    <div class="bg-white rounded-xl max-w-4xl max-h-[90vh] overflow-hidden">
+      <div class="flex items-center justify-between p-6 border-b">
+        <h3 class="text-xl font-semibold text-gray-800">
+          {{ generatedCoverUrl ? '生成的封面' : '正在生成封面...' }}
+        </h3>
+        <button
+          @click="closeCoverModal"
+          class="text-gray-400 hover:text-gray-600 transition-colors"
+        >
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      
+      <div class="p-6 max-h-[70vh] overflow-y-auto">
+        <!-- 生成中状态 -->
+        <div v-if="!generatedCoverUrl" class="text-center py-12">
+          <div class="inline-flex items-center space-x-2">
+            <div class="loading-spinner-large"></div>
+            <span class="text-lg text-gray-600">AI正在生成封面，请稍候...</span>
+          </div>
+          <div class="mt-4 text-sm text-gray-500">
+            <p>鸡汤文内容：</p>
+            <p class="mt-2 text-lg font-medium text-gray-800">"{{ currentMotivation }}"</p>
+          </div>
+        </div>
+        
+        <!-- 生成完成状态 -->
+        <div v-else class="text-center">
+          <div class="mb-4">
+            <p class="text-gray-600 mb-2">鸡汤文内容：</p>
+            <p class="text-lg font-medium text-gray-800">"{{ currentMotivation }}"</p>
+          </div>
+          
+          <div class="flex justify-center mb-6">
+            <img
+              :src="generatedCoverUrl"
+              alt="生成的封面"
+              class="max-w-full max-h-[60vh] object-contain rounded-lg shadow-lg"
+            />
+          </div>
+          
+          <div class="flex justify-center space-x-4">
+            <button
+              @click="downloadCover"
+              class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              下载封面
+            </button>
+            <button
+              @click="closeCoverModal"
+              class="px-6 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+            >
+              关闭
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <style scoped>
@@ -471,6 +802,16 @@ const handleStyleChange = () => {
   height: 16px;
   border: 2px solid #e5e7eb;
   border-top: 2px solid #2563eb;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* 新增：刷新按钮专用的loading动画 */
+.refresh-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #ffffff;
+  border-top: 2px solid transparent;
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -522,7 +863,8 @@ const handleStyleChange = () => {
 
 /* 确保动画在Safari等浏览器中正常工作 */
 .loading-spinner-large,
-.loading-spinner-small {
+.loading-spinner-small,
+.refresh-spinner {
   -webkit-animation: spin 1s linear infinite;
   -moz-animation: spin 1s linear infinite;
   -o-animation: spin 1s linear infinite;
