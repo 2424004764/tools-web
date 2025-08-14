@@ -22,7 +22,7 @@ const refreshInterval = ref(1); // 默认1分钟
 const selectedStyle = ref("励志");
 const generateCount = ref(5); // 新增：生成条数
 const lastRefreshTime = ref<Date | null>(null);
-const refreshTimer = ref<NodeJS.Timeout | null>(null);
+const refreshTimer = ref<number | null>(null); // 修复：使用number类型
 const retryCount = ref(0); // 新增：重试次数
 
 // 鸡汤文数据
