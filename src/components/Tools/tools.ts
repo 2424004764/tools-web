@@ -555,6 +555,15 @@ export function getToolsCate() {
           cateId: 11,
           cate: '趣味互动',
         },
+        {
+          id: 9,
+          title: 'AI五子棋',
+          logo: '/images/logo/ai_gomoku.png',
+          desc: '智能五子棋游戏，与AI对战，考验策略思维',
+          url: '/ai-gomoku/',
+          cateId: 11,
+          cate: '趣味互动',
+        },
       ]
     },
     {
