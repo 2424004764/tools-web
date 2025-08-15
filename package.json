@@ -29,6 +29,7 @@
     "codemirror": "^5.65.19",
     "codemirror-editor-vue3": "^2.8.0",
     "colord": "^2.9.3",
+    "compressorjs": "^1.2.1",
     "cron-parser": "^5.3.0",
     "csso": "^5.0.5",
     "default-passive-events": "^2.0.0",

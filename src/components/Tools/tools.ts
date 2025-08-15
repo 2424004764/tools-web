@@ -425,6 +425,15 @@ export function getToolsCate() {
           cateId: 5,
           cate: '图片处理',
         },
+        {
+          id: 1,
+          title: '图片压缩',
+          logo: '/images/logo/img_compress.png',
+          desc: '在线图片压缩工具，支持多种格式，可调节压缩质量，减小文件大小',
+          url: '/image-compress/',
+          cateId: 5,
+          cate: '图片处理'
+        },
       ]
     },
     {

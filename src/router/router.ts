@@ -717,4 +717,14 @@ export const constantRoute = [
       description: '智能AI对话助手，支持多轮对话，提供专业、准确的回答，帮助你解决各种问题',
     }
   },
+  {
+    path: '/image-compress',
+    component: () => import('@/components/Tools/ImageCompress/ImageCompress.vue'),
+    name: 'image-compress',
+    meta: {
+      title: "图片压缩",
+      keywords: '图片压缩,在线压缩,图片优化,压缩图片,减小图片大小',
+      description: '在线图片压缩工具，支持JPG、PNG、WebP等格式，可调节压缩质量，有效减小图片文件大小，保持图片质量',
+    }
+  },
 ]
