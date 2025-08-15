@@ -537,6 +537,22 @@ const getStatusText = () => {
             <strong>技术特点：</strong>搜索深度6层，时间限制600ms，搜索半径2格，支持异步计算和超时中断，确保AI既能快速响应又具备足够的策略深度。
           </p>
         </div>
+
+        <div class="bg-gray-50 p-3 rounded-lg border-l-4 border-gray-400">
+          <p class="text-gray-700 text-sm">
+            <strong>源码地址：</strong>
+            <a 
+              href="https://github.com/2424004764/tools-web/blob/master/src/components/Tools/AiGomoku/AiGomoku.vue" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              class="text-blue-600 hover:text-blue-800 underline"
+            >
+              GitHub - AI五子棋组件源码
+            </a>
+            <br>
+            <span class="text-gray-500 text-xs">欢迎查看完整实现，了解算法细节和代码结构</span>
+          </p>
+        </div>
       </div>
     </ToolDetail>
 
