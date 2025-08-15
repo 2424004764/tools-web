@@ -603,8 +603,18 @@ export const constantRoute = [
     name: 'sudoku',
     meta: {
       title: "数独游戏",
-      keywords: '数独,数独游戏,逻辑推理,数字游戏,益智游戏',
-      description: '经典数独游戏，填入数字1-9，使每行、每列和每个3x3宫格都包含1-9且不重复，考验逻辑推理能力',
+      keywords: '数独,数独游戏,在线数独,数独解题',
+      description: '经典数独游戏，考验逻辑推理和数字分析能力',
+    }
+  },
+  {
+    path: '/ai-gomoku',
+    component: () => import('@/components/Tools/AiGomoku/AiGomoku.vue'),
+    name: 'ai-gomoku',
+    meta: {
+      title: "AI五子棋",
+      keywords: '五子棋,AI五子棋,在线五子棋,智能五子棋',
+      description: '智能五子棋游戏，与AI对战，考验策略思维',
     }
   },
   {
