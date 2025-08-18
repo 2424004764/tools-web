@@ -6,7 +6,7 @@ export const constantRoute = [
     component: () => import('@/components/Home/Home.vue'),
     name: 'home',
     meta: {
-      keywords: '在线工具,开发运维,文本处理,图片处理,数据图表,趣味互动,选择随机,教育学术,AI工具,JSON转换,CSV,TSV,随机密码,UUID,时间戳转换,进制转换,单位换算,URL编码,URL参数,正则测试,Markdown,文本对比,文本去重,哈希,HMAC,文件大小转换,HTTP状态码,JWT解析,Cron生成,HTML实体,二维码生成,二维码识别,图片编辑,图片分割,图片转Base64,文本转图片,色板,取色器,柱状图,折线图,饼图,散点图,摩斯电码,贪吃蛇,2048,俄罗斯方块,扫雷,打地鼠,数字华容道,数独,IP查询,网站信息,AI起名,AI变量名,文生图,AI翻译,Postman',
+      keywords: '在线工具,开发运维,文本处理,图片处理,数据图表,趣味互动,选择随机,教育学术,AI工具,好物网站,JSON转换,CSV,TSV,随机密码,UUID,时间戳转换,进制转换,单位换算,URL编码,URL参数,正则测试,Markdown,文本对比,文本去重,哈希,HMAC,文件大小转换,HTTP状态码,JWT解析,Cron生成,HTML实体,二维码生成,二维码识别,图片编辑,图片分割,图片转Base64,文本转图片,色板,取色器,柱状图,折线图,饼图,散点图,摩斯电码,贪吃蛇,2048,俄罗斯方块,扫雷,打地鼠,数字华容道,数独,IP查询,网站信息,AI起名,AI变量名,文生图,AI翻译,Postman',
       description: '一站式在线工具箱：覆盖开发运维、文本处理、图片处理、数据图表、趣味互动、选择随机、教育学术与 AI 工具；提供 JSON/CSV/TSV 互转、随机密码/UUID、时间戳与进制转换、单位换算、URL 编解码/参数解析、正则测试、Markdown、文本对比/去重、哈希校验、文件大小转换、HTTP 状态码、JWT 解析、Cron 表达式、HTML 实体、二维码生成与识别、在线图片编辑/分割/转 Base64、文本转图片、色板取色器、柱状/折线/饼/散点图、摩斯电码，以及贪吃蛇/2048/俄罗斯方块/扫雷/打地鼠/数字华容道/数独等小游戏，另含 IP 查询、网站信息获取、AI 起名/变量名/文生图/翻译与在线请求调试等实用功能。'
     }
   },
@@ -715,6 +715,16 @@ export const constantRoute = [
       title: 'AI每日励志鸡汤文',
       keywords: 'AI鸡汤文,励志鸡汤文,每日鸡汤,正能量,励志语录',
       description: 'AI智能生成每日励志鸡汤文，支持多种风格选择，定时刷新，为你的每一天注入正能量'
+    }
+  },
+  {
+    path: '/good-sites',
+    component: () => import('@/components/Tools/GoodSites/GoodSites.vue'),
+    name: 'good-sites',
+    meta: {
+      title: '好物网站导航',
+      keywords: '好物网站,网站导航,优质网站,实用网站',
+      description: '精选优质网站分类导航，一键直达常用服务与网站',
     }
   },
   {

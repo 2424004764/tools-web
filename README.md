@@ -124,6 +124,7 @@ git add . && git commit -m "新增xx功能" && git push origin master
 - 2025-08-12 新增 AI每日励志鸡汤文 功能
 - 2025-08-14 新增 图片在线压缩 功能
 - 2025-08-15 新增AI五子棋功能
+- 2025-08-15 新增好物网站导航功能
 
 ## 工具列表
 
@@ -199,6 +200,9 @@ git add . && git commit -m "新增xx功能" && git push origin master
   - 数字华容道
   - 数独游戏
   - AI五子棋
+
+- 好物网站
+  - 好物网站导航
 
 - 查询相关
   - IP查询
