@@ -78,6 +78,9 @@
     <priority>0.8</priority>
   </url>
 
+  <!-- 好物网站 -->
+  <url><loc>https://tool.fologde.com/good-sites</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2025-08-15T00:00:00+00:00</lastmod></url>
+
   <!-- URL 参数/命名风格/哈希/Postman 等 -->
   <url><loc>https://tool.fologde.com/postman</loc><changefreq>monthly</changefreq><priority>0.4</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/urlparams</loc><changefreq>monthly</changefreq><priority>0.5</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>

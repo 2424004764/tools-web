@@ -764,6 +764,22 @@ export function getToolsCate() {
         //   cate: 'AI工具'
         // }
       ]
+    },
+    {
+      id: 12,
+      title: '好物网站',
+      icon: '',
+      list:[
+        {
+          id: 1,
+          title: '好物网站导航',
+          logo: '/images/logo/good_sites.png',
+          desc: '精选优质网站分类导航，一键直达常用服务与网站',
+          url: '/good-sites/',
+          cateId: 12,
+          cate: '好物网站'
+        }
+      ]
     }
   ]
 }
