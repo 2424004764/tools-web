@@ -112,6 +112,13 @@ git add . && git commit -m "新增xx功能" && git push origin master
 
 详见我的公众号文章：https://mp.weixin.qq.com/s/kIrz2uAv0cmT3f2rPWbtdQ
 
+## 本地调试functions
+根目录执行命令：
+```
+wrangler pages dev .
+```
+然后会启动一个服务，之后就可以像请求functions一样的方式调用的，只是把请求地址改成本地的
+
 ## 功能开发日志
 - 2025年8月2日 新增文生图
 - 2025年8月5日 新增cron表达式生成器
