@@ -11,7 +11,14 @@ export async function onRequest(context) {
     ]
 
     // 允许代理的目标接口（此处限制只能访问指定目标）
-    const allowedTargets = ['https://image.pollinations.ai', 'https://text.pollinations.ai', 'https://platform.aitools.cfd']
+    const allowedTargets = [
+        'https://image.pollinations.ai', 
+        'https://text.pollinations.ai', 
+        'https://platform.aitools.cfd',
+        'https://api.openai.com',  // 添加 OpenAI API 支持
+        'https://api.azure.com',   // 添加 Azure API 支持
+        'https://openrouter.ai'    // 添加 OpenRouter API 支持
+    ]
 
     // 处理预检请求（OPTIONS）
     if (request.method === 'OPTIONS') {
@@ -101,7 +108,61 @@ export async function onRequest(context) {
         newHeaders.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
     }
 
-    return new Response(response.body, {
+    // 处理不同的 API 响应格式
+    let responseBody = response.body
+    if (request.method === 'POST' && response.headers.get('content-type')?.includes('application/json')) {
+        try {
+            const responseText = await response.text()
+            const responseData = JSON.parse(responseText)
+            
+            // 检查是否是 Azure/OpenRouter 的响应格式
+            if (responseData.error) {
+                // 处理错误响应
+                return new Response(JSON.stringify({
+                    error: responseData.error.message || 'API 调用失败',
+                    details: responseData.error
+                }), {
+                    status: response.status,
+                    headers: newHeaders
+                })
+            }
+            
+            // 标准化响应格式
+            if (responseData.choices && Array.isArray(responseData.choices)) {
+                // OpenAI 兼容格式，直接返回
+                responseBody = responseText
+            } else if (responseData.response) {
+                // Azure 格式，转换为 OpenAI 兼容格式
+                const openaiFormat = {
+                    choices: [{
+                        message: {
+                            content: responseData.response
+                        }
+                    }],
+                    usage: responseData.usage || {},
+                    model: responseData.model || 'unknown'
+                }
+                responseBody = JSON.stringify(openaiFormat)
+            } else {
+                // 其他格式，尝试转换为标准格式
+                const standardFormat = {
+                    choices: [{
+                        message: {
+                            content: responseData.content || responseData.text || String(responseData)
+                        }
+                    }],
+                    usage: responseData.usage || {},
+                    model: responseData.model || 'unknown'
+                }
+                responseBody = JSON.stringify(standardFormat)
+            }
+        } catch (error) {
+            // 如果解析失败，返回原始响应
+            responseBody = response.body
+        }
+    }
+
+    return new Response(responseBody, {
         status: response.status,
         statusText: response.statusText,
         headers: newHeaders
