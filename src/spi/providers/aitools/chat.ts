@@ -21,7 +21,6 @@ export async function chat(
     max_tokens: options?.maxTokens || 2000,
     stream: false
   }
-  console.log('apikey', this.apiKey)
 
   try {
     // 通过代理发送 POST 请求，避免跨域问题
