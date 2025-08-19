@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref, nextTick, computed, onMounted, watch } from "vue";
+import { reactive, ref, nextTick, computed, onMounted } from "vue";
 import DetailHeader from "@/components/Layout/DetailHeader/DetailHeader.vue";
 import ToolDetail from "@/components/Layout/ToolDetail/ToolDetail.vue";
 import ChatMessage from "./components/ChatMessage.vue";
