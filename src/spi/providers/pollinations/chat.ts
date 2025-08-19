@@ -24,7 +24,7 @@ export async function chat(
 
   // 通过代理发送 POST 请求
   const response = await axios.post(
-    `${this.proxyUrl}?target=${this.textUrl}&params=_t=${Date.now()}`,
+    `${this.proxyUrl}?path=openai&target=${this.textUrl}&params=_t=${Date.now()}`,
     requestBody,
     { 
       headers: { 

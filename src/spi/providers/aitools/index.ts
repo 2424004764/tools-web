@@ -8,13 +8,16 @@ export class AiToolsProvider implements AIProvider {
   
   public apiKey: string
   public baseUrl: string
+  public proxyUrl: string // 新增代理URL
   
   constructor(config: {
     apiKey: string
     baseUrl?: string
+    proxyUrl: string // 新增代理URL参数
   }) {
     this.apiKey = config.apiKey
     this.baseUrl = config.baseUrl || 'https://api.aitools.com'
+    this.proxyUrl = config.proxyUrl
   }
   
   // 绑定 chat 方法
@@ -24,6 +27,7 @@ export class AiToolsProvider implements AIProvider {
 export function createAiToolsProvider(config: {
   apiKey: string
   baseUrl?: string
+  proxyUrl: string // 新增代理URL参数
 }) {
   return new AiToolsProvider(config)
 }

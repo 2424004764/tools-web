@@ -6,13 +6,13 @@ export async function chat(
   messages: ChatMessage[], 
   options?: ChatOptions
 ): Promise<ChatResponse> {
-  if (!this.apiKey || !this.baseUrl) {
+  if (!this.apiKey || !this.proxyUrl) {
     throw new Error('API配置不完整')
   }
 
   // 构建 OpenAI 兼容的请求体
   const requestBody = {
-    model: options?.model || 'gpt-3.5-turbo',
+    model: options?.model || 'google/gemma-3-27b',
     messages: messages.map(msg => ({
       role: msg.role,
       content: msg.content
@@ -23,9 +23,9 @@ export async function chat(
   }
 
   try {
-    // 直接调用 AiTools API
+    // 通过代理发送 POST 请求，避免跨域问题
     const response = await axios.post(
-      `${this.baseUrl}/v1/chat/completions`,
+      `${this.proxyUrl}?path=api/v1/chat/completions&target=${this.baseUrl}&params=_t=${Date.now()}`,
       requestBody,
       { 
         headers: { 
