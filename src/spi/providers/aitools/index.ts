@@ -16,7 +16,7 @@ export class AiToolsProvider implements AIProvider {
     proxyUrl: string // 新增代理URL参数
   }) {
     this.apiKey = config.apiKey
-    this.baseUrl = config.baseUrl || 'https://api.aitools.com'
+    this.baseUrl = config.baseUrl || 'https://platform.aitools.cfd'
     this.proxyUrl = config.proxyUrl
   }
   

@@ -466,14 +466,14 @@ const pollinationsModels = ref([
 
 // AI Tools模型数据
 const aitoolsModels = ref([
-  { 
-    name: "moonshotai/kimi-k2", 
-    description: "Moonshot AI Kimi K2 - 强大的对话和推理模型，支持复杂任务处理" 
-  },
-  { 
-    name: "deepseek/deepseek-r1-0528", 
-    description: "DeepSeek R1 0528 - 高性能推理模型，专为逻辑推理优化" 
-  },
+  // { 
+  //   name: "moonshotai/kimi-k2", 
+  //   description: "Moonshot AI Kimi K2 - 强大的对话和推理模型，支持复杂任务处理" 
+  // },
+  // { 
+  //   name: "deepseek/deepseek-r1-0528", 
+  //   description: "DeepSeek R1 0528 - 高性能推理模型，专为逻辑推理优化" 
+  // },
   { 
     name: "deepseek/deepseek-v3-0324", 
     description: "DeepSeek V3 0324 - 最新版本的多模态模型，支持文本和图像" 
@@ -486,34 +486,34 @@ const aitoolsModels = ref([
     name: "deepseek/deepseek-r1-70b", 
     description: "DeepSeek R1 70B - 70B参数超大型模型，顶级AI性能" 
   },
-  { 
-    name: "google/gemini-2.0-flash-exp", 
-    description: "Google Gemini 2.0 Flash - 实验版多模态模型，快速响应" 
-  },
-  { 
-    name: "google/gemma-3-27b", 
-    description: "Google Gemma 3 27B - 开源大语言模型，平衡性能和效率" 
-  },
-  { 
-    name: "qwen/qwq-32b", 
-    description: "Qwen QWQ 32B - 阿里云高性能对话模型，32B参数" 
-  },
+  // { 
+  //   name: "google/gemini-2.0-flash-exp", 
+  //   description: "Google Gemini 2.0 Flash - 实验版多模态模型，快速响应" 
+  // },
+  // { 
+  //   name: "google/gemma-3-27b", 
+  //   description: "Google Gemma 3 27B - 开源大语言模型，平衡性能和效率" 
+  // },
+  // { 
+  //   name: "qwen/qwq-32b", 
+  //   description: "Qwen QWQ 32B - 阿里云高性能对话模型，32B参数" 
+  // },
   { 
     name: "qwen/qwen2.5-7b", 
     description: "Qwen 2.5 7B - 轻量级但功能强大的模型，适合快速部署" 
   },
-  { 
-    name: "qwen/qwen2.5-72b", 
-    description: "Qwen 2.5 72B - 大型高性能模型，72B参数，顶级理解能力" 
-  },
-  { 
-    name: "qwen/qwen2.5-vl-32b", 
-    description: "Qwen 2.5 VL 32B - 多模态模型，支持文本和视觉理解" 
-  },
-  { 
-    name: "qwen/qwen2.5-vl-72b", 
-    description: "Qwen 2.5 VL 72B - 大型多模态模型，72B参数，顶级视觉理解" 
-  },
+  // { 
+  //   name: "qwen/qwen2.5-72b", 
+  //   description: "Qwen 2.5 72B - 大型高性能模型，72B参数，顶级理解能力" 
+  // },
+  // { 
+  //   name: "qwen/qwen2.5-vl-32b", 
+  //   description: "Qwen 2.5 VL 32B - 多模态模型，支持文本和视觉理解" 
+  // },
+  // { 
+  //   name: "qwen/qwen2.5-vl-72b", 
+  //   description: "Qwen 2.5 VL 72B - 大型多模态模型，72B参数，顶级视觉理解" 
+  // },
   { 
     name: "zhipu/glm-4-9b", 
     description: "智谱 GLM-4 9B - 清华智谱AI的对话模型，9B参数" 
@@ -522,38 +522,38 @@ const aitoolsModels = ref([
     name: "zhipu/glm-4-flash", 
     description: "智谱 GLM-4 Flash - 快速响应的对话模型，优化推理速度" 
   },
-  { 
-    name: "zhipu/glm-4v-flash", 
-    description: "智谱 GLM-4V Flash - 多模态模型，支持文本和视觉，快速响应" 
-  },
+  // { 
+  //   name: "zhipu/glm-4v-flash", 
+  //   description: "智谱 GLM-4V Flash - 多模态模型，支持文本和视觉，快速响应" 
+  // },
   { 
     name: "zhipu/glm-4.1v-thinking-flash", 
     description: "智谱 GLM-4.1V Thinking Flash - 思维链推理模型，支持复杂逻辑" 
   },
-  { 
-    name: "qwen/qwen3-30b-a3b", 
-    description: "Qwen 3 30B A3B - 阿里云第三代模型，30B参数，A3B架构" 
-  },
-  { 
-    name: "qwen/qwen3-14b", 
-    description: "Qwen 3 14B - 阿里云第三代模型，14B参数，平衡性能和效率" 
-  },
-  { 
-    name: "qwen/qwen3-coder", 
-    description: "Qwen 3 Coder - 阿里云代码生成专用模型，专为编程优化" 
-  },
+  // { 
+  //   name: "qwen/qwen3-30b-a3b", 
+  //   description: "Qwen 3 30B A3B - 阿里云第三代模型，30B参数，A3B架构" 
+  // },
+  // { 
+  //   name: "qwen/qwen3-14b", 
+  //   description: "Qwen 3 14B - 阿里云第三代模型，14B参数，平衡性能和效率" 
+  // },
+  // { 
+  //   name: "qwen/qwen3-coder", 
+  //   description: "Qwen 3 Coder - 阿里云代码生成专用模型，专为编程优化" 
+  // },
   { 
     name: "zhipu/glm-4.5-flash", 
     description: "智谱 GLM-4.5 Flash - 最新版本快速模型，4.5代架构" 
   },
-  { 
-    name: "openai/gpt-oss-20b", 
-    description: "OpenAI GPT OSS 20B - OpenAI开源模型，20B参数" 
-  },
-  { 
-    name: "tencent/hunyuan-a13b", 
-    description: "腾讯混元 A13B - 腾讯AI实验室大模型，13B参数" 
-  }
+  // { 
+  //   name: "openai/gpt-oss-20b", 
+  //   description: "OpenAI GPT OSS 20B - OpenAI开源模型，20B参数" 
+  // },
+  // { 
+  //   name: "tencent/hunyuan-a13b", 
+  //   description: "腾讯混元 A13B - 腾讯AI实验室大模型，13B参数" 
+  // }
 ])
 
 // 响应式数据
