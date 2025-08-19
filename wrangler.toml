@@ -5,6 +5,5 @@ type = "typescript"  # 或者 "typescript" 根据你使用的语言类型
 functions = "./functions"  # 指定你的函数文件夹
 
 [env.production]
-workers_dev = false  # 禁用 workers_dev 模式
 route = "https://tool.fologde.com/*"  # 你的生产环境路由
 account_id = "974e77b1692d56d57b27a1cef7fcc08c"  # 你的 Cloudflare 帐号 ID

@@ -7,6 +7,7 @@ export async function onRequest(context) {
     const allowedOrigins = [
         'https://tool.fologde.com',  // 生产环境前端
         'http://127.0.0.1:5173',    // 本地开发调试
+        'http://127.0.0.1:8788',    // 本地开发调试
         'http://localhost:5173'      // 本地开发调试
     ]
 
@@ -15,9 +16,6 @@ export async function onRequest(context) {
         'https://image.pollinations.ai', 
         'https://text.pollinations.ai', 
         'https://platform.aitools.cfd',
-        'https://api.openai.com',  // 添加 OpenAI API 支持
-        'https://api.azure.com',   // 添加 Azure API 支持
-        'https://openrouter.ai'    // 添加 OpenRouter API 支持
     ]
 
     // 处理预检请求（OPTIONS）
@@ -99,6 +97,8 @@ export async function onRequest(context) {
 
     // 向目标 API 发起请求
     const response = await fetch(targetUrl, newRequestInit)
+    console.log('response body', response.body)
+    console.log('headers', request.headers)
 
     // 复制目标 API 的响应头并设置 CORS
     const newHeaders = new Headers(response.headers)
