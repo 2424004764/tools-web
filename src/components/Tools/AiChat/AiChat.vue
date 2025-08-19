@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { reactive, ref, nextTick } from 'vue'
-import axios from 'axios'
+import { reactive, ref, nextTick, computed } from 'vue'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import ChatMessage from './components/ChatMessage.vue'
 import ChatInput from './components/ChatInput.vue'
+import { aiManager } from '@/spi'
 
 interface Message {
   id: string
@@ -17,14 +17,12 @@ const info = reactive({
   title: "AI对话",
 })
 
-// API配置
-const pollinationsApiKey = ref(import.meta.env.VITE_POLLINATIONS_API_KEY || '')
-const pollinationsProxyUrl = ref(import.meta.env.VITE_POLLINATIONS_PROXY_URL)
-const pollinationsTextUrl = ref(import.meta.env.VITE_POLLINATIONS_TEXT_URL)
-
 const messages = ref<Message[]>([])
 const loading = ref(false)
 const chatContainer = ref<HTMLElement>()
+
+// 添加防重复提交的状态
+const isSubmitting = ref(false)
 
 // 添加消息
 const addMessage = (type: 'user' | 'assistant', content: string) => {
@@ -46,83 +44,71 @@ const addMessage = (type: 'user' | 'assistant', content: string) => {
 
 // 处理用户输入
 const handleUserInput = async (content: string) => {
-  if (!content.trim()) return
+  if (!content.trim() || loading.value || isSubmitting.value) return  // 多重防重复提交
   
-  // 添加用户消息
-  addMessage('user', content)
+  // 设置提交状态
+  isSubmitting.value = true
   
-  // 调用AI接口
-  loading.value = true
   try {
-    await callAIAPI(content)
+    // 添加用户消息
+    addMessage('user', content)
+    
+    // 调用AI接口
+    loading.value = true
+    await callAIAPI()
   } catch (error) {
     console.error('AI接口调用失败:', error)
     addMessage('assistant', '抱歉，我遇到了一些问题，请稍后再试。')
   } finally {
     loading.value = false
+    isSubmitting.value = false  // 重置提交状态
   }
 }
 
-// 调用AI API
-const callAIAPI = async (userInput: string) => {
-  if (!pollinationsApiKey.value || !pollinationsProxyUrl.value || !pollinationsTextUrl.value) {
-    throw new Error('API配置不完整')
+// 获取AI提供者
+const aiProvider = computed(() => {
+  const provider = aiManager.getProvider('pollinations')
+  if (!provider) {
+    console.error('Pollinations AI提供者未找到')
+    console.log('已注册的提供者:', aiManager.getAllProviders().map(p => p.name))
+  }
+  return provider
+})
+
+// 调用AI接口
+const callAIAPI = async () => {
+  if (!aiProvider.value) {
+    throw new Error('Pollinations AI提供者未配置，请检查环境变量配置')
   }
 
-  // 构建对话提示词
-  const conversationHistory = messages.value
-    .filter(msg => msg.type === 'user' || msg.type === 'assistant')
-    .slice(-6) // 保留最近6条消息作为上下文
-    .map(msg => `${msg.type === 'user' ? '用户' : 'AI助手'}: ${msg.content}`)
-    .join('\n')
-
-  // 修改 callAIAPI 函数中的提示词部分
-  const prompt = `你是一个智能AI助手，请根据以下对话历史和用户的新问题，提供专业、准确、有帮助的回答。
-
-对话历史：
-${conversationHistory}
-
-用户新问题：${userInput}
-
-请使用Markdown格式回答用户的问题，回答要：
-1. 准确理解用户意图
-2. 提供有用的信息和建议
-3. 语言自然友好
-4. 如果问题涉及专业领域，给出专业建议
-5. 如果无法回答，诚实说明并建议其他解决方案
-6. 使用适当的Markdown语法，如：
-   - 标题用 # ## ###
-   - 列表用 - 或 1. 2. 3.
-   - 代码用 \`code\` 或 \`\`\`代码块\`\`\`
-   - 强调用 **粗体** 或 *斜体*
-   - 引用用 > 引用内容
-   - 链接用 [文本](URL)
-
-请直接输出Markdown格式的回答，不要其他解释文字。`
-
-  // 添加随机零宽字符避免缓存
-  const zws = '\u200b'.repeat(1 + Math.floor(Math.random() * 3))
-  const finalPrompt = prompt + zws
-
-  const response = await axios.get(
-    `${pollinationsProxyUrl.value}?path=${encodeURIComponent(finalPrompt)}&target=${pollinationsTextUrl.value}&params=_t=${Date.now()}`,
-    { 
-      headers: { 
-        Authorization: 'Bearer ' + pollinationsApiKey.value 
-      },
-      timeout: 30000 // 30秒超时
-    }
-  )
-
-  const aiResponse = typeof response.data === 'string' ? response.data : String(response.data)
-  
-  // 清理AI回复中的多余内容
-  const cleanResponse = aiResponse
-    .replace(/^回答：/, '') // 移除开头的"回答："
-    .replace(/^AI助手：/, '') // 移除开头的"AI助手："
-    .trim()
-
-  addMessage('assistant', cleanResponse || '抱歉，我没有理解您的问题，请重新描述一下。')
+  try {
+    // 构建完整的对话历史，明确类型映射
+    const conversationHistory = messages.value.map(msg => {
+      let role: 'user' | 'assistant' | 'system'
+      if (msg.type === 'user') {
+        role = 'user'
+      } else if (msg.type === 'assistant') {
+        role = 'assistant'
+      } else {
+        role = 'assistant' // 默认值
+      }
+      
+      return {
+        role,
+        content: msg.content
+      }
+    })
+    
+    const response = await aiProvider.value.chat!(conversationHistory, {
+      model: 'openai',
+      temperature: 0.7
+    })
+    
+    addMessage('assistant', response.content)
+  } catch (error) {
+    console.error('AI接口调用失败:', error)
+    addMessage('assistant', '抱歉，我遇到了一些问题，请稍后再试。')
+  }
 }
 
 // 清空对话
