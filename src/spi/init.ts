@@ -22,7 +22,6 @@ export function initializeAIProviders() {
   if (import.meta.env.VITE_AITOOLS_API_KEY) {
     const aitools = createAiToolsProvider({
       apiKey: import.meta.env.VITE_AITOOLS_API_KEY,
-      baseUrl: import.meta.env.VITE_AITOOLS_BASE_URL || 'https://api.aitools.com',
       proxyUrl: import.meta.env.VITE_POLLINATIONS_PROXY_URL || '' // 使用与Pollinations相同的代理
     })
     aiManager.registerProvider('aitools', aitools)
