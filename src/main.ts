@@ -18,7 +18,10 @@ import pinia from './store'
 import { setupMdEditor } from './plugins/v-md-editor'
 //default-passive-events
 import 'default-passive-events'
+import { initializeAIProviders } from './spi/init'
 
+// 初始化AI提供者
+initializeAIProviders()
 
 const app = createApp(App)
 //安装仓库
