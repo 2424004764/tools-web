@@ -91,7 +91,6 @@ const handleGoogleSignIn = async (response: any) => {
     loading.value = true
     
     try {
-      // 调用Cloudflare Function进行认证
       const authResponse = await fetch('/google-auth', {
         method: 'POST',
         headers: {
@@ -110,13 +109,10 @@ const handleGoogleSignIn = async (response: any) => {
       
       if (result.success) {
         ElMessage.success(`欢迎回来，${result.user.name}！`)
-        
-        // 存储用户信息到本地存储和响应式变量
+        // 保存 JWT & 用户信息
+        localStorage.setItem('TOKEN', result.token)
         user.value = result.user
         localStorage.setItem('user', JSON.stringify(result.user))
-        
-        // 登录成功后的处理逻辑，比如跳转或更新状态
-        // router.push('/dashboard')
       } else {
         throw new Error(result.error || '认证失败')
       }

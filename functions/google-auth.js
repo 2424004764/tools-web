@@ -90,8 +90,6 @@ export async function onRequest(context) {
         exp: currentTime + (24 * 60 * 60) // 24小时过期
       };
   
-      console.log('Created user info:', userInfo);
-  
       // 返回用户信息和认证token，确保正确的Content-Type和编码
       return new Response(JSON.stringify({
         success: true,
