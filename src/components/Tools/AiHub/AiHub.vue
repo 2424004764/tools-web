@@ -29,6 +29,12 @@ const cates: Cate[] = [
     ],
   },
   {
+    title: 'AI 创作平台',
+    list: [
+      { title: 'Media.io', url: 'https://www.media.io/', rating: 4.5, desc: '全能AI创作平台，支持视频、图片、音频的AI生成与编辑，包含Veo3视频生成、AI图像增强、音视频处理等强大功能' },
+    ],
+  },
+  {
     title: '翻译 / 文档',
     list: [
       { title: 'DeepL', url: 'https://www.deepl.com/', rating: 4.5, desc: '广受好评的高质量机器翻译，擅长细腻语义与术语处理' },
