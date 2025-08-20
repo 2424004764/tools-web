@@ -54,7 +54,8 @@ export async function onRequest(context) {
     console.error('Google auth error:', error);
     return new Response(JSON.stringify({
       success: false,
-      error: '认证失败'
+      error: '认证失败',
+      message: error.message
     }), {
       status: 500,
       headers: {
