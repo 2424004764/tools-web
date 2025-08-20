@@ -25,6 +25,8 @@ interface UserInfo {
   email: string
   picture: string
   loginType: string
+  iat?: number
+  exp?: number
 }
 
 const loading = ref(false)
@@ -89,28 +91,35 @@ const handleGoogleSignIn = async (response: any) => {
     loading.value = true
     
     try {
-      // 解码JWT token获取用户信息
-      const payload = JSON.parse(atob(response.credential.split('.')[1]))
+      // 调用Cloudflare Function进行认证
+      const authResponse = await fetch('/google-auth', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          credential: response.credential
+        })
+      })
       
-      // 这里可以发送到后端验证token
-      // const result = await verifyGoogleToken(response.credential)
-      
-      ElMessage.success(`欢迎回来，${payload.name}！`)
-      
-      // 存储用户信息到本地存储和响应式变量
-      const userInfo: UserInfo = {
-        id: payload.sub,
-        name: payload.name,
-        email: payload.email,
-        picture: payload.picture,
-        loginType: 'google'
+      if (!authResponse.ok) {
+        throw new Error('认证请求失败')
       }
       
-      user.value = userInfo
-      localStorage.setItem('user', JSON.stringify(userInfo))
+      const result = await authResponse.json()
       
-      // 登录成功后的处理逻辑，比如跳转或更新状态
-      // router.push('/dashboard')
+      if (result.success) {
+        ElMessage.success(`欢迎回来，${result.user.name}！`)
+        
+        // 存储用户信息到本地存储和响应式变量
+        user.value = result.user
+        localStorage.setItem('user', JSON.stringify(result.user))
+        
+        // 登录成功后的处理逻辑，比如跳转或更新状态
+        // router.push('/dashboard')
+      } else {
+        throw new Error(result.error || '认证失败')
+      }
       
     } catch (error) {
       ElMessage.error('谷歌登录失败，请重试')
