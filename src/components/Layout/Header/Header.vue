@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed, onUnmounted } from 'vue'
 import { Search } from '@element-plus/icons-vue';
+import { ElMessage } from 'element-plus'
 import { useToolsStore } from '@/store/modules/tools'
 import { useComponentStore } from '@/store/modules/component'
+import { getUserFromToken, isTokenExpired, logout } from '@/utils/user'
+import type { UserInfo } from '@/utils/user'
 import 'element-plus/theme-chalk/display.css'
 import { ToolsInfo } from '@/components/Tools/tools.type.ts';
-const gitUrl = ref(import.meta.env.VITE_GIT_URL || '')
 
 import router from '@/router';
 // const isNavDrawer = ref(false)
@@ -14,6 +16,16 @@ const options = ref<ToolsInfo[]>([])
 //store
 const toolsStore = useToolsStore()
 const componentStore = useComponentStore()
+
+// 用户相关状态
+const user = ref<UserInfo | null>(null)
+const userMenuVisible = ref(false)
+
+// 计算属性：判断用户是否已登录
+const isLoggedIn = computed(() => {
+  return user.value && !isTokenExpired()
+})
+
 //查询参数
 const searchParam = reactive({
   cateId: 0,
@@ -49,27 +61,61 @@ const searchTools = async (query: string) => {
   loading.value = false
 }
 
-//保存到桌面
-const createUrlShortcut = async () => {
-  try {
-    const blob = new Blob(
-      [`[InternetShortcut]\nURL=${encodeURI(window.location.href)}`],
-      { type: 'text/plain' }
-    );
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'Tools-Web.url';
-    a.click();
-  } catch (error) {
-    console.error('创建URL快捷方式失败:', error);
-  }
-}
-
 const optionClick = (url: string) => {
   router.push(url)
 }
 
+// 获取用户信息
+const getUserInfo = () => {
+  const userInfo = getUserFromToken()
+  if (userInfo && !isTokenExpired()) {
+    user.value = userInfo
+  }
+}
+
+// 处理退出登录
+const handleLogout = () => {
+  logout()
+  user.value = null
+  userMenuVisible.value = false
+  
+  // 如果当前在用户信息页面，跳转到首页
+  if (router.currentRoute.value.path === '/userinfo') {
+    router.push('/')
+  }
+  
+  // 可以添加提示信息
+  ElMessage.success('已退出登录')
+}
+
+// 跳转到个人中心
+const goToUserInfo = () => {
+  router.push('/userinfo')
+  userMenuVisible.value = false
+}
+
+// 切换用户菜单显示状态
+const toggleUserMenu = () => {
+  userMenuVisible.value = !userMenuVisible.value
+}
+
+// 点击外部区域关闭菜单
+const handleClickOutside = (event: Event) => {
+  const target = event.target as HTMLElement
+  if (!target.closest('.user-menu-container')) {
+    userMenuVisible.value = false
+  }
+}
+
 onMounted(() => {
+  getUserInfo()
+  // 添加全局点击事件监听
+  document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  // 移除事件监听
+  document.removeEventListener('click', handleClickOutside)
 })
 </script>
 
@@ -91,7 +137,7 @@ onMounted(() => {
           <path fill="#444" fill-opacity=".9" d="M128.064 192l768 0.896-0.128 64L128 256l0.064-64z m514.048 294.848a32 32 0 0 0 0 51.2l202.688 152a32 32 0 0 0 51.2-25.6v-304a32 32 0 0 0-51.2-25.6l-202.688 152zM832 424.448v176l-117.312-88L832 424.448zM128 480h416v64H128v-64z m0.064 288l768 0.896-0.128 64L128 832l0.064-64z" p-id="1588"></path>
         </svg>
         <svg v-else @click="componentStore.setLeftComStatus(false)" t="1702978210636" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="7618" width="30" height="30">
-          <path fill="#444" fill-opacity=".9" d="M895.936 256l-768-0.896 0.128-64L896 192l-0.064 64zM179.2 689.152l202.688-152a32 32 0 0 0 0-51.2L179.2 333.952a32 32 0 0 0-51.2 25.6v304a32 32 0 0 0 51.2 25.6z m12.8-89.6v-176l117.312 88L192 599.552zM896 544H480v-64H896v64z m-0.064 288l-768-0.896 0.128-64L896 768l-0.064 64z" p-id="7619"></path>
+          <path fill="#444" fill-opacity=".9" d="M895.936 256l-768-0.896 0.128-64L896 192l-0.064 64zM895.936 256l-768-0.896 0.128-64L896 192l-0.064 64zM179.2 689.152l202.688-152a32 32 0 0 0 0-51.2L179.2 333.952a32 32 0 0 0-51.2 25.6v304a32 32 0 0 0 51.2 25.6z m12.8-89.6v-176l117.312 88L192 599.552zM896 544H480v-64H896v64z m-0.064 288l-768-0.896 0.128-64L896 768l-0.064 64z" p-id="7619"></path>
         </svg>
       </Transition>
 
@@ -142,9 +188,10 @@ onMounted(() => {
 
     <div class=" w-full md:w-auto flex md:block c-xs:w-auto">
       <ul class="flex mt-4 flex-col md:flex-row md:mt-0 justify-end items-center c-xs:mt-0">
-        <!-- 登录按钮 -->
-        <li class="ml-3">
-          <router-link to="/login">
+        <!-- 用户信息区域 -->
+        <li class="ml-3 relative user-menu-container">
+          <!-- 未登录状态：显示登录按钮 -->
+          <router-link v-if="!isLoggedIn" to="/login">
             <el-tooltip
               class="box-item"
               effect="dark"
@@ -156,23 +203,38 @@ onMounted(() => {
               </el-button>
             </el-tooltip>
           </router-link>
-        </li>
-        <!-- github -->
-        <li class="ml-3">
-          <el-tooltip
-              class="box-item"
-              effect="dark"
-              content="GitHub仓库"
-              placement="bottom"
+          
+          <!-- 已登录状态：显示用户名和下拉菜单 -->
+          <div v-else class="relative">
+            <div 
+              class="relative cursor-pointer text-gray-700 hover:text-blue-600 flex items-center gap-1 px-3 py-2 rounded hover:bg-gray-100"
+              @click="toggleUserMenu"
             >
-            <a :href="gitUrl" target="_blank">
-              <svg t="1715594665374" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="4334" width="33" height="33"><path d="M512 85.333333C276.266667 85.333333 85.333333 276.266667 85.333333 512a426.410667 426.410667 0 0 0 291.754667 404.821333c21.333333 3.712 29.312-9.088 29.312-20.309333 0-10.112-0.554667-43.690667-0.554667-79.445333-107.178667 19.754667-134.912-26.112-143.445333-50.133334-4.821333-12.288-25.6-50.133333-43.733333-60.288-14.933333-7.978667-36.266667-27.733333-0.554667-28.245333 33.621333-0.554667 57.6 30.933333 65.621333 43.733333 38.4 64.512 99.754667 46.378667 124.245334 35.2 3.754667-27.733333 14.933333-46.378667 27.221333-57.045333-94.933333-10.666667-194.133333-47.488-194.133333-210.688 0-46.421333 16.512-84.778667 43.733333-114.688-4.266667-10.666667-19.2-54.4 4.266667-113.066667 0 0 35.712-11.178667 117.333333 43.776a395.946667 395.946667 0 0 1 106.666667-14.421333c36.266667 0 72.533333 4.778667 106.666666 14.378667 81.578667-55.466667 117.333333-43.690667 117.333334-43.690667 23.466667 58.666667 8.533333 102.4 4.266666 113.066667 27.178667 29.866667 43.733333 67.712 43.733334 114.645333 0 163.754667-99.712 200.021333-194.645334 210.688 15.445333 13.312 28.8 38.912 28.8 78.933333 0 57.045333-0.554667 102.912-0.554666 117.333334 0 11.178667 8.021333 24.490667 29.354666 20.224A427.349333 427.349333 0 0 0 938.666667 512c0-235.733333-190.933333-426.666667-426.666667-426.666667z" fill="#000000" p-id="4335"></path></svg>
-            </a>
-          </el-tooltip>
-        </li>
-
-        <li class="hover:text-blue-500 c-xs:hidden">
-          <el-button type="primary" class="ml-3 bg-gradient-to-r from-cyan-500 to-blue-500" @click="createUrlShortcut">保存到桌面</el-button>
+              <span class="whitespace-nowrap">{{ user?.username || user?.email || '用户' }}</span>
+              <svg class="w-4 h-4 text-gray-500 transition-transform duration-200" :class="{ 'rotate-180': userMenuVisible }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6,9 12,15 18,9"></polyline>
+              </svg>
+              
+              <!-- 悬浮菜单 -->
+              <div 
+                v-show="userMenuVisible"
+                class="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-2 min-w-[120px] z-50"
+              >
+                <div 
+                  class="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                  @click="goToUserInfo"
+                >
+                  个人中心
+                </div>
+                <div 
+                  class="px-4 py-2 hover:bg-gray-100 cursor-pointer text-red-600"
+                  @click="handleLogout"
+                >
+                  退出登录
+                </div>
+              </div>
+            </div>
+          </div>
         </li>
       </ul>
     </div>
@@ -200,5 +262,36 @@ onMounted(() => {
 .el-select :deep(.el-select__wrapper){
   background-color: rgba(46, 51, 56, 0.05);
   background-color: rgb(255, 255, 255);
+}
+
+/* 用户菜单样式 */
+.user-menu-container {
+  position: relative;
+}
+
+.user-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  z-index: 50;
+}
+
+.user-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  color: #374151;
+  transition: all 0.2s;
+}
+
+.user-menu-item:hover {
+  background-color: #f3f4f6;
+  color: #111827;
 }
 </style>

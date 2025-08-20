@@ -34,6 +34,17 @@ const cates: Cate[] = [
     ],
   },
   {
+    title: '图床/图片托管',
+    list: [
+      { 
+        title: 'PICUI 图床', 
+        url: 'https://picui.cn/upload', 
+        rating: 4.7, 
+        desc: '免费图床，单图≤10MB，最多同时上传5张，拖拽上传，自动生成URL/HTML/BBCode/Markdown等链接格式' 
+      },
+    ],
+  },
+  {
     title: '技术社区',
     list: [
       { 

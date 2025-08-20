@@ -1,5 +1,8 @@
 {
-    "version": 1,
-    "include": ["/proxy/*", "/google-auth"],
-    "exclude": []
-  }
+  "version": 1,
+  "include": [
+    "/proxy/*",
+    "/google-auth"
+  ],
+  "exclude": []
+}

@@ -31,10 +31,7 @@ export async function onRequest(context) {
       }
       const decodedString = new TextDecoder('utf-8').decode(bytes);
       payload = JSON.parse(decodedString);
-      console.log('Decoded payload:', payload);
     } catch (parseError) {
-      console.error('JWT parsing error:', parseError);
-      console.error('Original credential:', credential);
       return new Response(JSON.stringify({
         success: false,
         error: '无效的认证凭据',
@@ -101,18 +98,9 @@ export async function onRequest(context) {
       env.JWT_SECRET
     );
 
-    // const userInfo = {
-    //   id: userId,
-    //   name: username,
-    //   email,
-    //   picture: avatar,
-    //   loginType: 'google',
-    // };
-
     return new Response(JSON.stringify({
       success: true,
       token, // 用户信息从jwt拿
-      // user: userInfo,
       message: '登录成功'
     }), {
       status: 200,
