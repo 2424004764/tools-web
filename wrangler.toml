@@ -1,24 +1,2 @@
 name = "tool-web"
 type = "typescript"  # 或者 "typescript" 根据你使用的语言类型
-
-[build]
-functions = "./functions"  # 指定你的函数文件夹
-
-[env.production]
-route = "https://tool.fologde.com/*"  # 你的生产环境路由
-account_id = "974e77b1692d56d57b27a1cef7fcc08c"  # 你的 Cloudflare 帐号 ID
-
-# 生产环境 D1 绑定（保持与预览一致）
-[[env.production.d1_databases]]
-binding = "DB"
-database_name = "yifang-tool"
-database_id = "afdabfae-6edd-4def-8e77-6a1171009b9c"
-
-[[d1_databases]]
-binding = "DB"
-database_name = "yifang-tool"
-database_id = "afdabfae-6edd-4def-8e77-6a1171009b9c"
-
-# JWT 密钥（生产环境）
-[env.production.vars]
-JWT_SECRET = "uX#VZ8FP4mH%LIBXSHeDdcx3C4tsy$a@ljY143#KRqeIVTfFVnMhr5f52ALKWpGAYw1^1"
