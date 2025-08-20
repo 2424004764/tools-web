@@ -3,6 +3,7 @@
   <!-- 首页与关于 -->
   <url><loc>https://tool.fologde.com/</loc><changefreq>daily</changefreq><priority>1.0</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/about</loc><changefreq>monthly</changefreq><priority>0.3</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
+  <url><loc>https://tool.fologde.com/login</loc><changefreq>monthly</changefreq><priority>0.4</priority><lastmod>2025-08-16T00:00:00+00:00</lastmod></url>
 
   <!-- 开发运维/文本处理/教育学术/图片处理/数据图表/趣味互动/随机/其他/AI工具 等全部工具路由 -->
   <url><loc>https://tool.fologde.com/timetran</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>

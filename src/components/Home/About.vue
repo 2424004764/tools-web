@@ -25,7 +25,7 @@ const siteAddr = ref(import.meta.env.VITE_MY_SITE_ADDR || '')
                 <el-link href="https://pollinations.ai" target="_blank" type="primary">pollinations.ai</el-link>
               </li>
               <li>
-                <el-link href="https://platform.aitools.cfd/" target="_blank" type="primary">https://platform.aitools.cfd/</el-link>
+                <el-link href="https://platform.aitools.cfd/" target="_blank" type="primary">platform.aitools.cfd</el-link>
               </li>
             </ul>
         </p>
