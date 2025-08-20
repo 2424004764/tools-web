@@ -1,2 +1,4 @@
 name = "tool-web"
 type = "typescript"  # 或者 "typescript" 根据你使用的语言类型
+
+# d1数据库需要在pages的设置->绑定->D1数据库（变量名称为DB，数据库为创建的d1数据库）

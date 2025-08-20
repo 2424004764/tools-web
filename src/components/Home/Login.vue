@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Loading } from '@element-plus/icons-vue'
+import { jwtDecode } from 'jwt-decode'
 
 // 谷歌API类型声明
 declare global {
@@ -108,11 +109,12 @@ const handleGoogleSignIn = async (response: any) => {
       const result = await authResponse.json()
       
       if (result.success) {
-        ElMessage.success(`欢迎回来，${result.user.name}！`)
+        const jwt = jwtDecode(result.token)
+        console.log('jwt', jwt)
+        // ElMessage.success(`欢迎回来，${payload.name}！`)
         // 保存 JWT & 用户信息
         localStorage.setItem('TOKEN', result.token)
-        user.value = result.user
-        localStorage.setItem('user', JSON.stringify(result.user))
+        // user.value = result.user
       } else {
         throw new Error(result.error || '认证失败')
       }
