@@ -91,7 +91,7 @@ export async function onRequest(context) {
     }
     const token = await signJWT(
       {
-        sub: userId,
+        uid: userId,
         email,
         avatar,
         username,
@@ -101,18 +101,18 @@ export async function onRequest(context) {
       env.JWT_SECRET
     );
 
-    const userInfo = {
-      id: userId,
-      name: username,
-      email,
-      picture: avatar,
-      loginType: 'google',
-    };
+    // const userInfo = {
+    //   id: userId,
+    //   name: username,
+    //   email,
+    //   picture: avatar,
+    //   loginType: 'google',
+    // };
 
     return new Response(JSON.stringify({
       success: true,
-      token,
-      user: userInfo,
+      token, // 用户信息从jwt拿
+      // user: userInfo,
       message: '登录成功'
     }), {
       status: 200,
