@@ -12,28 +12,73 @@ export async function onRequest(context) {
       return new Response('Missing credential', { status: 400 });
     }
     
-    // 验证谷歌JWT token
-    const payload = JSON.parse(atob(credential.split('.')[1]));
-    
-    // 验证token的有效性（这里可以添加更多验证逻辑）
-    const currentTime = Math.floor(Date.now() / 1000);
-    if (payload.exp < currentTime) {
-      return new Response('Token expired', { status: 401 });
+    // 安全地解析JWT token
+    let payload;
+    try {
+      // 分割JWT token
+      const parts = credential.split('.');
+      if (parts.length !== 3) {
+        throw new Error('Invalid JWT format');
+      }
+      
+      // 解码payload部分
+      const payloadBase64 = parts[1];
+      
+      // 处理base64url编码，将 - 和 _ 替换为 + 和 /
+      let base64 = payloadBase64.replace(/-/g, '+').replace(/_/g, '/');
+      
+      // 添加padding
+      while (base64.length % 4) {
+        base64 += '=';
+      }
+      
+      // 解码
+      const decoded = atob(base64);
+      payload = JSON.parse(decoded);
+      
+      console.log('Decoded payload:', payload);
+      
+    } catch (parseError) {
+      console.error('JWT parsing error:', parseError);
+      console.error('Original credential:', credential);
+      return new Response(JSON.stringify({
+        success: false,
+        error: '无效的认证凭据',
+        message: 'JWT解析失败: ' + parseError.message
+      }), { status: 400 });
     }
     
-    // 创建用户会话或JWT token
+    // 验证token的有效性
+    const currentTime = Math.floor(Date.now() / 1000);
+    if (payload.exp && payload.exp < currentTime) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: '认证凭据已过期',
+        message: '请重新登录'
+      }), { status: 401 });
+    }
+    
+    // 验证必要的字段
+    if (!payload.sub || !payload.email) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: '认证凭据不完整',
+        message: '缺少必要的用户信息'
+      }), { status: 400 });
+    }
+    
+    // 创建用户会话
     const userInfo = {
       id: payload.sub,
-      name: payload.name,
+      name: payload.name || payload.email.split('@')[0],
       email: payload.email,
-      picture: payload.picture,
+      picture: payload.picture || '',
       loginType: 'google',
       iat: currentTime,
       exp: currentTime + (24 * 60 * 60) // 24小时过期
     };
     
-    // 这里可以添加数据库存储逻辑
-    // await storeUserSession(userInfo);
+    console.log('Created user info:', userInfo);
     
     // 返回用户信息和认证token
     return new Response(JSON.stringify({
