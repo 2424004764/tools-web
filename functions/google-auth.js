@@ -24,7 +24,7 @@ export async function onRequest(context) {
       // 解码payload部分
       const payloadBase64 = parts[1];
       
-      // 处理base64url编码，将 - 和 _ 替换为 + 和 /
+      // 处理base64url编码
       let base64 = payloadBase64.replace(/-/g, '+').replace(/_/g, '/');
       
       // 添加padding
@@ -32,25 +32,12 @@ export async function onRequest(context) {
         base64 += '=';
       }
       
-      // 解码
+      // 解码并处理中文字符
       const decoded = atob(base64);
       
-      // 处理中文字符编码问题
-      try {
-        // 尝试直接解析
-        payload = JSON.parse(decoded);
-      } catch (jsonError) {
-        // 如果直接解析失败，尝试处理编码问题
-        const decodedBytes = new Uint8Array(decoded.length);
-        for (let i = 0; i < decoded.length; i++) {
-          decodedBytes[i] = decoded.charCodeAt(i);
-        }
-        
-        // 使用TextDecoder重新解码
-        const textDecoder = new TextDecoder('utf-8');
-        const properlyDecoded = textDecoder.decode(decodedBytes);
-        payload = JSON.parse(properlyDecoded);
-      }
+      // 使用decodeURIComponent处理可能的编码问题
+      const decodedString = decodeURIComponent(escape(decoded));
+      payload = JSON.parse(decodedString);
       
       console.log('Decoded payload:', payload);
       
