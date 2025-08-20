@@ -34,7 +34,23 @@ export async function onRequest(context) {
       
       // 解码
       const decoded = atob(base64);
-      payload = JSON.parse(decoded);
+      
+      // 处理中文字符编码问题
+      try {
+        // 尝试直接解析
+        payload = JSON.parse(decoded);
+      } catch (jsonError) {
+        // 如果直接解析失败，尝试处理编码问题
+        const decodedBytes = new Uint8Array(decoded.length);
+        for (let i = 0; i < decoded.length; i++) {
+          decodedBytes[i] = decoded.charCodeAt(i);
+        }
+        
+        // 使用TextDecoder重新解码
+        const textDecoder = new TextDecoder('utf-8');
+        const properlyDecoded = textDecoder.decode(decodedBytes);
+        payload = JSON.parse(properlyDecoded);
+      }
       
       console.log('Decoded payload:', payload);
       
@@ -67,7 +83,7 @@ export async function onRequest(context) {
       }), { status: 400 });
     }
     
-    // 创建用户会话
+    // 创建用户会话，确保中文字符正确
     const userInfo = {
       id: payload.sub,
       name: payload.name || payload.email.split('@')[0],
@@ -80,7 +96,7 @@ export async function onRequest(context) {
     
     console.log('Created user info:', userInfo);
     
-    // 返回用户信息和认证token
+    // 返回用户信息和认证token，确保正确的Content-Type和编码
     return new Response(JSON.stringify({
       success: true,
       user: userInfo,
@@ -88,7 +104,7 @@ export async function onRequest(context) {
     }), {
       status: 200,
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json; charset=utf-8',
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type'
@@ -104,7 +120,7 @@ export async function onRequest(context) {
     }), {
       status: 500,
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json; charset=utf-8',
         'Access-Control-Allow-Origin': '*'
       }
     });
