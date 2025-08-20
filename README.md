@@ -115,6 +115,7 @@ git add . && git commit -m "新增xx功能" && git push origin master
 ## 本地调试functions
 根目录执行命令：
 ```
+pnpm install wrangler
 wrangler pages dev .
 ```
 然后会启动一个服务，之后就可以像请求functions一样的方式调用的，只是把请求地址改成本地的
@@ -132,6 +133,7 @@ wrangler pages dev .
 - 2025-08-14 新增 图片在线压缩 功能
 - 2025-08-15 新增AI五子棋功能
 - 2025-08-15 新增好物网站导航功能
+- 2025-08-16 新增用户登录功能
 
 ## 工具列表
 
@@ -154,6 +156,9 @@ wrangler pages dev .
   - URL 参数解析/构造
   - 命名风格转换
   - 哈希校验/HMAC
+
+- 用户系统
+  - 用户登录
 
 - 文本处理
   - 文本对比

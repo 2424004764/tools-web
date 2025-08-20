@@ -155,6 +155,21 @@ onMounted(() => {
             </el-tooltip>
           </router-link>
         </li>
+        <!-- 登录按钮 -->
+        <li class="ml-3">
+          <router-link to="/login">
+            <el-tooltip
+              class="box-item"
+              effect="dark"
+              content="用户登录"
+              placement="bottom"
+            >
+              <el-button type="primary" size="small" class="bg-gradient-to-r from-green-500 to-blue-500">
+                登录
+              </el-button>
+            </el-tooltip>
+          </router-link>
+        </li>
         <!-- github -->
         <li class="ml-3">
           <el-tooltip

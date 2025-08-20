@@ -512,6 +512,17 @@ export const constantRoute = [
       description: '',
     }
   },
+  // 登录页面
+  {
+    path: '/login',
+    component: () => import('@/components/Home/Login.vue'),
+    name: 'login',
+    meta: {
+      title: "用户登录",
+      keywords: '用户登录,账号登录,工具箱登录',
+      description: 'Tools-Web工具箱用户登录页面，登录后享受更多个性化功能',
+    }
+  },
   //其他路由
   {
     path: '/404',
