@@ -10,6 +10,17 @@ export const constantRoute = [
       description: '一站式在线工具箱：覆盖开发运维、文本处理、图片处理、数据图表、趣味互动、选择随机、教育学术与 AI 工具；提供 JSON/CSV/TSV 互转、随机密码/UUID、时间戳与进制转换、单位换算、URL 编解码/参数解析、正则测试、Markdown、文本对比/去重、哈希校验、文件大小转换、HTTP 状态码、JWT 解析、Cron 表达式、HTML 实体、二维码生成与识别、在线图片编辑/分割/转 Base64、文本转图片、色板取色器、柱状/折线/饼/散点图、摩斯电码，以及贪吃蛇/2048/俄罗斯方块/扫雷/打地鼠/数字华容道/数独等小游戏，另含 IP 查询、网站信息获取、AI 起名/变量名/文生图/翻译与在线请求调试等实用功能。'
     }
   },
+  // 用户信息页
+  {
+    path: '/userinfo',
+    component: () => import('@/components/Home/UserInfo.vue'),
+    name: 'userinfo',
+    meta: {
+      title: "用户信息",
+      keywords: '用户信息,个人资料,账户详情',
+      description: '查看和管理您的用户信息和个人资料',
+    }
+  },
   //工具
   {
     path: '/timetran',

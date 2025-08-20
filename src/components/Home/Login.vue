@@ -3,6 +3,8 @@ import { ref, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Loading } from '@element-plus/icons-vue'
 import { jwtDecode } from 'jwt-decode'
+import { getUserFromToken, isTokenExpired } from '@/utils/user'
+import type { UserInfo } from '@/utils/user'
 
 // 谷歌API类型声明
 declare global {
@@ -19,35 +21,24 @@ declare global {
   }
 }
 
-// 用户信息类型
-interface UserInfo {
-  uid: string
-  username: string
-  email: string
-  avatar: string
-  iat?: number
-  exp?: number
-}
-
 const loading = ref(false)
 const googleInitialized = ref(false)
 const user = ref<UserInfo | null>(null)
 
 // 谷歌登录配置
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || 'your-google-client-id'
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
 
 // 计算属性检查用户是否已登录
 const isLoggedIn = computed(() => !!user.value)
 
 onMounted(() => {
-  // 检查本地存储中是否有用户信息
-  const savedUser = localStorage.getItem('user')
-  if (savedUser) {
-    try {
-      user.value = JSON.parse(savedUser)
-    } catch (error) {
-      localStorage.removeItem('user')
-    }
+  // 先从 utils/user.ts 获取用户信息
+  const userInfo = getUserFromToken()
+  if (userInfo && !isTokenExpired()) {
+    user.value = userInfo
+    // 已登录则跳转到用户信息页
+    window.location.href = '/userinfo'
+    return
   }
   
   // 加载谷歌登录SDK
@@ -111,8 +102,10 @@ const handleGoogleSignIn = async (response: any) => {
         const jwt = jwtDecode<{ username: string }>(result.token)
         console.log('jwt', jwt)
         ElMessage.success(`欢迎回来，${jwt.username}！`)
-        // 保存 JWT & 用户信息
+        // 保存 JWT
         localStorage.setItem('TOKEN', result.token)
+        // 登录成功后跳转到用户信息页
+        window.location.href = '/userinfo'
       } else {
         throw new Error(result.error || '认证失败')
       }
@@ -132,7 +125,7 @@ const handleSignOut = () => {
   }
   
   user.value = null
-  localStorage.removeItem('user')
+  localStorage.removeItem('TOKEN')
   ElMessage.success('已退出登录')
 }
 </script>
