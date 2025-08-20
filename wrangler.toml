@@ -14,6 +14,11 @@ binding = "DB"
 database_name = "yifang-tool"
 database_id = "afdabfae-6edd-4def-8e77-6a1171009b9c"
 
+[[d1_databases]]
+binding = "DB"
+database_name = "yifang-tool"
+database_id = "afdabfae-6edd-4def-8e77-6a1171009b9c"
+
 # JWT 密钥（生产环境）
 [env.production.vars]
 JWT_SECRET = "uX#VZ8FP4mH%LIBXSHeDdcx3C4tsy$a@ljY143#KRqeIVTfFVnMhr5f52ALKWpGAYw1^1"
