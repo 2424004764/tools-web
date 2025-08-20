@@ -21,11 +21,10 @@ declare global {
 
 // 用户信息类型
 interface UserInfo {
-  id: string
-  name: string
+  uid: string
+  username: string
   email: string
-  picture: string
-  loginType: string
+  avatar: string
   iat?: number
   exp?: number
 }
@@ -109,12 +108,11 @@ const handleGoogleSignIn = async (response: any) => {
       const result = await authResponse.json()
       
       if (result.success) {
-        const jwt = jwtDecode(result.token)
+        const jwt = jwtDecode<{ username: string }>(result.token)
         console.log('jwt', jwt)
-        // ElMessage.success(`欢迎回来，${payload.name}！`)
+        ElMessage.success(`欢迎回来，${jwt.username}！`)
         // 保存 JWT & 用户信息
         localStorage.setItem('TOKEN', result.token)
-        // user.value = result.user
       } else {
         throw new Error(result.error || '认证失败')
       }
