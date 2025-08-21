@@ -1,240 +1,32 @@
+import { ApiResponse, initDatabase } from '../utils/db.js'
+import { NotesRouter } from '../routes/notes.js'
+
 export async function onRequest(context) {
   const { request, env } = context
   const url = new URL(request.url)
   const path = url.pathname.replace('/api/notes', '')
 
-  // CORS headers
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
-    'Access-Control-Max-Age': '86400'
-  }
-  
-  // Handle preflight request - 处理所有 OPTIONS 请求，包括带 ID 的路径
+  // 处理OPTIONS请求
   if (request.method === 'OPTIONS') {
-    return new Response(null, {
-      status: 204,
-      headers: corsHeaders
-    })
+    return ApiResponse.cors()
+  }
+
+  // 初始化数据库
+  const dbInit = initDatabase(env)
+  if (!dbInit.success) {
+    return dbInit.response
   }
 
   try {
-    // 确保D1数据库存在
-    if (!env.DB) {
-      console.error('D1 database not bound. Please check your Cloudflare Pages configuration.')
-      return new Response(JSON.stringify({ 
-        error: 'Database not available',
-        message: 'D1 database is not properly configured. Please check your Cloudflare Pages settings.'
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
-    }
-
-    // 根据HTTP方法和路径处理请求
-    switch (request.method) {
-      case 'GET':
-        if (path === '' || path === '/') {
-          // 获取所有笔记
-          try {
-            const result = await env.DB.prepare(`
-              SELECT id, title, content, 
-                     create_time as createTime, 
-                     update_time as updateTime
-              FROM notes 
-              ORDER BY create_time DESC
-            `).all()
-            
-            return new Response(JSON.stringify({ notes: result.results }), {
-              status: 200,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            })
-          } catch (dbError) {
-            console.error('Database query error:', dbError)
-            return new Response(JSON.stringify({ 
-              error: 'Database query failed',
-              details: dbError.message,
-              suggestion: 'Please check if the notes table exists with correct structure'
-            }), {
-              status: 500,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            })
-          }
-        } else {
-          // 获取单个笔记
-          const id = path.substring(1)
-          try {
-            const result = await env.DB.prepare(`
-              SELECT id, title, content, 
-                     create_time as createTime, 
-                     update_time as updateTime
-              FROM notes 
-              WHERE id = ?
-            `).bind(id).first()
-            
-            if (result) {
-              return new Response(JSON.stringify(result), {
-                status: 200,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-              })
-            } else {
-              return new Response(JSON.stringify({ error: 'Note not found' }), {
-                status: 404,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-              })
-            }
-          } catch (dbError) {
-            console.error('Database query error:', dbError)
-            return new Response(JSON.stringify({ 
-              error: 'Database query failed',
-              details: dbError.message
-            }), {
-              status: 500,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            })
-          }
-        }
-        break
-
-      case 'POST':
-        // 创建新笔记
-        try {
-          const createData = await request.json()
-          const createId = crypto.randomUUID()
-          
-          await env.DB.prepare(`
-            INSERT INTO notes (id, title, content)
-            VALUES (?, ?, ?)
-          `).bind(createId, createData.title, createData.content).run()
-          
-          return new Response(JSON.stringify({ 
-            id: createId, 
-            message: 'Note created successfully' 
-          }), {
-            status: 201,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          })
-        } catch (dbError) {
-          console.error('Database insert error:', dbError)
-          return new Response(JSON.stringify({ 
-            error: 'Failed to create note',
-            details: dbError.message
-          }), {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          })
-        }
-
-      case 'PUT':
-        // 更新笔记
-        if (path === '' || path === '/') {
-          return new Response(JSON.stringify({ error: 'Note ID required' }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          })
-        }
-        
-        try {
-          const updateId = path.substring(1)
-          console.log('updateId', updateId)
-          
-          // 先检查笔记是否存在
-          const existingNote = await env.DB.prepare(`
-            SELECT id FROM notes WHERE id = ?
-          `).bind(updateId).first()
-          
-          if (!existingNote) {
-            return new Response(JSON.stringify({ error: 'Note not found' }), {
-              status: 404,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            })
-          }
-          
-          const updateData = await request.json()
-          
-          await env.DB.prepare(`
-            UPDATE notes 
-            SET title = ?, content = ?, update_time = CURRENT_TIMESTAMP
-            WHERE id = ?
-          `).bind(updateData.title, updateData.content, updateId).run()
-          
-          return new Response(JSON.stringify({ message: 'Note updated successfully' }), {
-            status: 200,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          })
-        } catch (dbError) {
-          console.error('Database update error:', dbError)
-          return new Response(JSON.stringify({ 
-            error: 'Failed to update note',
-            details: dbError.message
-          }), {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          })
-        }
-
-      case 'DELETE':
-        // 删除笔记
-        if (path === '' || path === '/') {
-          return new Response(JSON.stringify({ error: 'Note ID required' }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          })
-        }
-        
-        try {
-          const deleteId = path.substring(1)
-          const deleteResult = await env.DB.prepare(`
-            DELETE FROM notes WHERE id = ?
-          `).bind(deleteId).run()
-          
-          if ((deleteResult.meta?.changes ?? deleteResult.changes ?? 0) > 0) {
-             return new Response(JSON.stringify({ message: 'Note deleted successfully' }), {
-               status: 200,
-               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-             })
-           } else {
-             return new Response(JSON.stringify({ error: 'Note not found' }), {
-               status: 404,
-               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-             })
-           }
-        } catch (dbError) {
-          console.error('Database delete error:', dbError)
-          return new Response(JSON.stringify({ 
-            error: 'Failed to delete note',
-            details: dbError.message
-          }), {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          })
-        }
-
-      default:
-        return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-          status: 405,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        })
-    }
+    // 创建路由实例并处理请求（传入env用于JWT验证）
+    const router = new NotesRouter(dbInit.db)
+    return await router.handle(request, path, env)
   } catch (error) {
     console.error('Notes API error:', error)
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    })
+    return ApiResponse.error('内部服务器错误', 500)
   }
 }
 
 export async function onRequestOptions(context) {
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
-    'Access-Control-Max-Age': '86400'
-  }
-  return new Response(null, {
-    status: 204,
-    headers: corsHeaders
-  })
+  return ApiResponse.cors()
 }

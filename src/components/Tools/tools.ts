@@ -109,15 +109,6 @@ export function getToolsCate() {
         },
         {
           id: 1,
-          title: '笔记备忘录',
-          logo: '/images/logo/notes.png',
-          desc: '在线笔记记录工具，支持创建、编辑、删除笔记，数据安全存储',
-          url: '/notes/',
-          cateId: 2,
-          cate: '开发运维',
-        },
-        {
-          id: 1,
           title: '文件大小转换',
           logo: '/images/logo/file_size.png',
           desc: '文件大小单位转换，支持字节、KB、MB、GB、TB等单位互转',
