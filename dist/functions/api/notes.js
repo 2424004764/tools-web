@@ -97,6 +97,19 @@ export async function onRequest(context) {
         }
         
         const updateId = path.substring(1)
+        
+        // 先检查笔记是否存在
+        const existingNote = await env.DB.prepare(`
+          SELECT id FROM notes WHERE id = ?
+        `).get(updateId)
+        
+        if (!existingNote) {
+          return new Response(JSON.stringify({ error: 'Note not found' }), {
+            status: 404,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          })
+        }
+        
         const updateData = await request.json()
         
         const updateResult = await env.DB.prepare(`
@@ -105,17 +118,10 @@ export async function onRequest(context) {
           WHERE id = ?
         `).bind(updateData.title, updateData.content, updateId).run()
         
-        if (updateResult.changes > 0) {
-          return new Response(JSON.stringify({ message: 'Note updated successfully' }), {
-            status: 200,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          })
-        } else {
-          return new Response(JSON.stringify({ error: 'Note not found' }), {
-            status: 404,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          })
-        }
+        return new Response(JSON.stringify({ message: 'Note updated successfully' }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
 
       case 'DELETE':
         // 删除笔记
