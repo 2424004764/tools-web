@@ -4,6 +4,7 @@ import axios from 'axios'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Plus } from '@element-plus/icons-vue'
 
 interface Note {
   id: string
@@ -27,7 +28,8 @@ const formData = reactive({
   content: ''
 })
 
-const proxyUrl = ref(import.meta.env.VITE_SITE_URL)
+// const proxyUrl = ref(import.meta.env.VITE_SITE_URL)
+const proxyUrl = ref('http://127.0.0.1:8788')
 
 // 获取笔记列表
 const fetchNotes = async () => {
@@ -162,7 +164,7 @@ const formatTime = (timeStr: string) => {
 }
 
 // 添加计算属性
-const showNoteDetail = computed(() => currentNote.value !== null && !showForm.value)
+const showNoteDetail = computed(() => currentNote.value !== null && !showForm.value && !isEditing.value)
 
 onMounted(() => {
   fetchNotes()
@@ -216,6 +218,7 @@ onMounted(() => {
         :title="isEditing ? '编辑笔记' : '新建笔记'"
         width="80%"
         :close-on-click-modal="false"
+        @close="isEditing = false"
       >
         <el-form :model="formData" label-width="80px">
           <el-form-item label="标题" required>
@@ -232,7 +235,7 @@ onMounted(() => {
         </el-form>
         <template #footer>
           <span class="dialog-footer">
-            <el-button @click="showForm = false">取消</el-button>
+            <el-button @click="showForm = false; isEditing = false">取消</el-button>
             <el-button type="primary" @click="isEditing ? updateNote() : createNote()">
               {{ isEditing ? '更新' : '创建' }}
             </el-button>
