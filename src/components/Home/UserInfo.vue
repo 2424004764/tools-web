@@ -40,6 +40,11 @@ const copyUserId = async () => {
     ElMessage.error("复制失败");
   }
 };
+
+// 跳转到笔记页面
+const goToNotes = () => {
+  router.push('/notes');
+};
 </script>
 
 <template>
@@ -122,6 +127,39 @@ const copyUserId = async () => {
                     />
                   </svg>
                 </el-button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 个人功能区域 -->
+        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+          <h3 class="text-lg font-semibold text-gray-800 mb-3 text-center">个人功能</h3>
+          <div class="grid grid-cols-1 gap-3">
+            <!-- 笔记备忘录 -->
+            <div 
+              @click="goToNotes"
+              class="bg-white border border-gray-200 rounded-lg p-3 hover:shadow-md hover:border-blue-300 transition-all duration-200 cursor-pointer group"
+            >
+              <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                  <el-icon class="text-blue-600" :size="20">
+                    <Document />
+                  </el-icon>
+                </div>
+                <div class="flex-1">
+                  <h4 class="font-medium text-gray-800 text-sm c-sm:text-base group-hover:text-blue-600 transition-colors">
+                    笔记备忘录
+                  </h4>
+                  <p class="text-gray-500 text-xs c-sm:text-sm">
+                    记录和管理您的个人笔记
+                  </p>
+                </div>
+                <div class="text-gray-400 group-hover:text-blue-500 transition-colors">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                  </svg>
+                </div>
               </div>
             </div>
           </div>

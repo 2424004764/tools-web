@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { reactive, ref, onMounted, computed } from 'vue'
-import axios from 'axios'
+import functionsRequest from '@/utils/functionsRequest'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -28,8 +28,6 @@ const formData = reactive({
   content: ''
 })
 
-const proxyUrl = ref(import.meta.env.VITE_SITE_URL)
-
 // 添加loading状态
 const loading = ref(false)
 const operationLoading = ref(false) // 用于表单操作的loading
@@ -38,11 +36,13 @@ const operationLoading = ref(false) // 用于表单操作的loading
 const fetchNotes = async () => {
   try {
     loading.value = true
-    const response = await axios.get(`${proxyUrl.value}/api/notes`)
+    const response = await functionsRequest.get('/api/notes')
     if (response.status === 200) {
       const data = response.data
       notes.value = data.notes || []
     }
+  } catch (error) {
+    console.error('获取笔记列表失败:', error)
   } finally {
     loading.value = false
   }
@@ -57,7 +57,7 @@ const createNote = async () => {
 
   try {
     operationLoading.value = true
-    const response = await axios.post(`${proxyUrl.value}/api/notes`, {
+    const response = await functionsRequest.post('/api/notes', {
       title: formData.title.trim(),
       content: formData.content.trim()
     })
@@ -70,6 +70,8 @@ const createNote = async () => {
     } else {
       ElMessage.error('创建失败')
     }
+  } catch (error) {
+    console.error('创建笔记失败:', error)
   } finally {
     operationLoading.value = false
   }
@@ -84,7 +86,7 @@ const updateNote = async () => {
 
   try {
     operationLoading.value = true
-    const response = await axios.put(`${proxyUrl.value}/api/notes/${currentNote.value.id}`, {
+    const response = await functionsRequest.put(`/api/notes/${currentNote.value.id}`, {
       title: formData.title.trim(),
       content: formData.content.trim()
     })
@@ -99,6 +101,8 @@ const updateNote = async () => {
     } else {
       ElMessage.error('更新失败')
     }
+  } catch (error) {
+    console.error('更新笔记失败:', error)
   } finally {
     operationLoading.value = false
   }
@@ -114,7 +118,7 @@ const deleteNote = async (note: Note) => {
 
   try {
     operationLoading.value = true
-    const response = await axios.delete(`${proxyUrl.value}/api/notes/${note.id}`)
+    const response = await functionsRequest.delete(`/api/notes/${note.id}`)
 
     if (response.status === 200) {
       ElMessage.success('删除成功')
@@ -125,6 +129,8 @@ const deleteNote = async (note: Note) => {
     } else {
       ElMessage.error('删除失败')
     }
+  } catch (error) {
+    console.error('删除笔记失败:', error)
   } finally {
     operationLoading.value = false
   }
