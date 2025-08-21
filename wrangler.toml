@@ -1,7 +1,7 @@
 name = "tool-web"
 # type = "typescript"  # 或者 "typescript" 根据你使用的语言类型
 
-account_id = "974e77b1692d56d57b27a1cef7fcc08c"  # 你的 Cloudflare 帐号 ID
+# account_id = "974e77b1692d56d57b27a1cef7fcc08c"  # 你的 Cloudflare 帐号 ID
 
 # 指定静态资源目录
 pages_build_output_dir = "dist"
