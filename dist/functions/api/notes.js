@@ -88,6 +88,13 @@ export async function onRequest(context) {
         })
 
       case 'PUT':
+        const updateId = path.substring(1)
+
+        return new Response(JSON.stringify({ updateId: updateId, path: path }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+
         // 更新笔记
         if (path === '' || path === '/') {
           return new Response(JSON.stringify({ error: 'Note ID required' }), {
@@ -96,7 +103,6 @@ export async function onRequest(context) {
           })
         }
         
-        const updateId = path.substring(1)
         
         // 先检查笔记是否存在
         const existingNote = await env.DB.prepare(`
