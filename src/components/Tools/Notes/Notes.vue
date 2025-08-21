@@ -29,19 +29,22 @@ const formData = reactive({
 })
 
 const proxyUrl = ref(import.meta.env.VITE_SITE_URL)
-// const proxyUrl = ref('http://127.0.0.1:8788')
+
+// 添加loading状态
+const loading = ref(false)
+const operationLoading = ref(false) // 用于表单操作的loading
 
 // 获取笔记列表
 const fetchNotes = async () => {
   try {
+    loading.value = true
     const response = await axios.get(`${proxyUrl.value}/api/notes`)
     if (response.status === 200) {
       const data = response.data
       notes.value = data.notes || []
     }
-  } catch (error) {
-    console.error('获取笔记失败:', error)
-    ElMessage.error('获取笔记失败')
+  } finally {
+    loading.value = false
   }
 }
 
@@ -53,6 +56,7 @@ const createNote = async () => {
   }
 
   try {
+    operationLoading.value = true
     const response = await axios.post(`${proxyUrl.value}/api/notes`, {
       title: formData.title.trim(),
       content: formData.content.trim()
@@ -66,9 +70,8 @@ const createNote = async () => {
     } else {
       ElMessage.error('创建失败')
     }
-  } catch (error) {
-    console.error('创建笔记失败:', error)
-    ElMessage.error('创建笔记失败')
+  } finally {
+    operationLoading.value = false
   }
 }
 
@@ -80,6 +83,7 @@ const updateNote = async () => {
   }
 
   try {
+    operationLoading.value = true
     const response = await axios.put(`${proxyUrl.value}/api/notes/${currentNote.value.id}`, {
       title: formData.title.trim(),
       content: formData.content.trim()
@@ -95,21 +99,21 @@ const updateNote = async () => {
     } else {
       ElMessage.error('更新失败')
     }
-  } catch (error) {
-    console.error('更新笔记失败:', error)
-    ElMessage.error('更新笔记失败')
+  } finally {
+    operationLoading.value = false
   }
 }
 
 // 删除笔记
 const deleteNote = async (note: Note) => {
-  try {
-    await ElMessageBox.confirm('确定要删除这条笔记吗？', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning',
-    })
+  await ElMessageBox.confirm('确定要删除这条笔记吗？', '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning',
+  })
 
+  try {
+    operationLoading.value = true
     const response = await axios.delete(`${proxyUrl.value}/api/notes/${note.id}`)
 
     if (response.status === 200) {
@@ -121,11 +125,8 @@ const deleteNote = async (note: Note) => {
     } else {
       ElMessage.error('删除失败')
     }
-  } catch (error) {
-    if (error !== 'cancel') {
-      console.error('删除笔记失败:', error)
-      ElMessage.error('删除笔记失败')
-    }
+  } finally {
+    operationLoading.value = false
   }
 }
 
@@ -136,10 +137,14 @@ const editNote = (note: Note) => {
   formData.content = note.content
   isEditing.value = true
   showForm.value = true
+  // 确保不显示详情，直接进入编辑模式
 }
 
 // 查看笔记
 const viewNote = (note: Note) => {
+  // 如果正在编辑，不执行查看逻辑
+  if (isEditing.value) return
+  
   currentNote.value = note
   showForm.value = false
 }
@@ -164,7 +169,11 @@ const formatTime = (timeStr: string) => {
 }
 
 // 添加计算属性
-const showNoteDetail = computed(() => currentNote.value !== null && !showForm.value && !isEditing.value)
+const showNoteDetail = computed(() => 
+  currentNote.value !== null && 
+  !showForm.value && 
+  !isEditing.value
+)
 
 onMounted(() => {
   fetchNotes()
@@ -185,7 +194,7 @@ onMounted(() => {
       </div>
 
       <!-- 笔记列表 -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+      <div v-loading="loading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         <div
           v-for="note in notes"
           :key="note.id"
@@ -196,10 +205,22 @@ onMounted(() => {
           <div class="flex justify-between items-start mb-2">
             <h4 class="font-medium text-gray-800 truncate flex-1">{{ note.title }}</h4>
             <div class="flex space-x-2 ml-2">
-              <el-button size="small" type="primary" @click.stop="editNote(note)">
+              <el-button 
+                size="small" 
+                type="primary" 
+                :loading="operationLoading"
+                :disabled="operationLoading"
+                @click.stop="editNote(note)"
+              >
                 编辑
               </el-button>
-              <el-button size="small" type="danger" @click.stop="deleteNote(note)">
+              <el-button 
+                size="small" 
+                type="danger" 
+                :loading="operationLoading"
+                :disabled="operationLoading"
+                @click.stop="deleteNote(note)"
+              >
                 删除
               </el-button>
             </div>
@@ -235,8 +256,18 @@ onMounted(() => {
         </el-form>
         <template #footer>
           <span class="dialog-footer">
-            <el-button @click="showForm = false; isEditing = false">取消</el-button>
-            <el-button type="primary" @click="isEditing ? updateNote() : createNote()">
+            <el-button 
+              :disabled="operationLoading" 
+              @click="showForm = false; isEditing = false"
+            >
+              取消
+            </el-button>
+            <el-button 
+              type="primary" 
+              :loading="operationLoading"
+              :disabled="operationLoading"
+              @click="isEditing ? updateNote() : createNote()"
+            >
               {{ isEditing ? '更新' : '创建' }}
             </el-button>
           </span>
