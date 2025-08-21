@@ -3,8 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Loading } from '@element-plus/icons-vue'
 import { jwtDecode } from 'jwt-decode'
-import { getUserFromToken, isTokenExpired } from '@/utils/user'
-import type { UserInfo } from '@/utils/user'
+import { useUserStore } from '@/store/modules/user'
 
 // 谷歌API类型声明
 declare global {
@@ -23,20 +22,20 @@ declare global {
 
 const loading = ref(false)
 const googleInitialized = ref(false)
-const user = ref<UserInfo | null>(null)
+const userStore = useUserStore()
 
 // 谷歌登录配置
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
 
 // 计算属性检查用户是否已登录
-const isLoggedIn = computed(() => !!user.value)
+const isLoggedIn = computed(() => userStore.getLoginStatus)
 
 onMounted(() => {
-  // 先从 utils/user.ts 获取用户信息
-  const userInfo = getUserFromToken()
-  if (userInfo && !isTokenExpired()) {
-    user.value = userInfo
-    // 已登录则跳转到用户信息页
+  // 初始化用户状态
+  userStore.initUserState()
+  
+  // 如果已登录则跳转到用户信息页
+  if (userStore.getLoginStatus) {
     window.location.href = '/userinfo'
     return
   }
@@ -104,6 +103,8 @@ const handleGoogleSignIn = async (response: any) => {
         ElMessage.success(`欢迎回来，${jwt.username}！`)
         // 保存 JWT
         localStorage.setItem('TOKEN', result.token)
+        // 更新store中的用户状态
+        userStore.initUserState()
         // 登录成功后跳转到用户信息页
         window.location.href = '/userinfo'
       } else {
@@ -124,8 +125,8 @@ const handleSignOut = () => {
     window.google.accounts.id.disableAutoSelect()
   }
   
-  user.value = null
-  localStorage.removeItem('TOKEN')
+  // 使用store的logout方法
+  userStore.logout()
   ElMessage.success('已退出登录')
 }
 </script>
