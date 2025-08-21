@@ -1,121 +1,168 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
-import { ElMessage, ElButton, ElMessageBox } from "element-plus";
-import { getUserFromToken, isTokenExpired, logout } from "@/utils/user";
-import type { UserInfo } from "@/utils/user";
+import { onMounted } from "vue";
+import { useUserStore } from "@/store/modules/user";
 import { useRouter } from "vue-router";
+import { ElMessage, ElMessageBox } from "element-plus";
 
-const user = ref<UserInfo | null>(null);
-const loading = ref(true);
+const userStore = useUserStore();
 const router = useRouter();
 
 onMounted(() => {
-  const userInfo = getUserFromToken();
-  if (userInfo && !isTokenExpired()) {
-    user.value = userInfo;
-  } else {
-    ElMessage.error("用户信息已过期，请重新登录");
-    // 跳转到登录页
-    window.location.href = "/login";
+  // 检查用户是否已登录
+  if (!userStore.getLoginStatus) {
+    router.push("/login");
+    return;
   }
-  loading.value = false;
 });
 
-const handleSignOut = async () => {
-  await ElMessageBox.confirm("确定要退出登录吗？", "确认退出", {
+// 退出登录
+const handleLogout = async () => {
+  await ElMessageBox.confirm("确定要退出登录吗？", "退出确认", {
     confirmButtonText: "确定",
     cancelButtonText: "取消",
     type: "warning",
   });
 
-  // 用户确认后执行退出操作
-  logout();
-  user.value = null;
-  ElMessage.success("已退出登录");
-  // 跳转到首页
+  // 用户确认后执行退出登录
+  userStore.logout();
   router.push("/");
+  ElMessage.success("已退出登录");
 };
 
+// 复制用户ID到剪贴板
 const copyUserId = async () => {
-  await navigator.clipboard.writeText(user.value?.uid || "");
-  ElMessage.success("已复制");
+  try {
+    if (userStore.getUserInfo?.uid) {
+      await navigator.clipboard.writeText(userStore.getUserInfo.uid);
+      ElMessage.success("用户ID已复制到剪贴板");
+    }
+  } catch (err) {
+    ElMessage.error("复制失败");
+  }
 };
 </script>
 
 <template>
-  <div class="flex flex-col mt-8 flex-1 items-center bg-white rounded-md p-4 sm:p-10">
-    <div class="w-full max-w-md sm:w-96">
-      <div class="text-center mb-8">
-        <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">用户信息</h1>
+  <div
+    class="flex flex-col mt-8 flex-1 items-center bg-white rounded-md p-4 c-sm:p-6 c-md:p-10"
+  >
+    <div class="w-full max-w-md c-sm:max-w-lg c-md:max-w-xl">
+      <div class="text-center mb-6 c-sm:mb-8">
+        <h1 class="text-2xl c-sm:text-3xl font-bold text-gray-800 mb-2">
+          用户信息
+        </h1>
       </div>
 
-      <div v-if="loading" class="text-center">
-        <span class="text-gray-600">加载中...</span>
-      </div>
-
-      <div v-else-if="user" class="space-y-4 sm:space-y-6">
-        <!-- 用户头像 -->
-        <div class="text-center">
-          <img
-            :src="user.avatar"
-            :alt="user.username"
-            class="w-20 h-20 sm:w-24 sm:h-24 rounded-full mx-auto mb-4 border-4 border-gray-200"
-          />
-        </div>
-
-        <!-- 用户信息 -->
-        <div class="space-y-3 sm:space-y-4">
-          <div
-            class="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 bg-gray-50 rounded-lg gap-1 sm:gap-0"
-          >
-            <span class="font-medium text-gray-700">用户名：</span>
-            <span class="text-gray-900">{{ user.username }}</span>
+      <div class="space-y-4 c-sm:space-y-6">
+        <!-- 用户信息显示 -->
+        <div v-if="userStore.getUserInfo" class="space-y-3 c-sm:space-y-4">
+          <!-- 用户头像 -->
+          <div class="text-center mb-4 c-sm:mb-6">
+            <img
+              :src="
+                userStore.getUserInfo.avatar || '/src/assets/default_avatar.png'
+              "
+              :alt="userStore.getUserInfo.username"
+              class="w-20 h-20 c-sm:w-24 c-sm:h-24 rounded-full mx-auto border-4 border-gray-200 shadow-lg"
+            />
           </div>
 
-          <div
-            class="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 bg-gray-50 rounded-lg gap-1 sm:gap-0"
-          >
-            <span class="font-medium text-gray-700">邮箱：</span>
-            <span class="text-gray-900 text-sm break-all">{{ user.email }}</span>
-          </div>
-
-          <div
-            class="flex flex-col p-3 bg-gray-50 rounded-lg gap-2"
-          >
-            <span class="font-medium text-gray-700">用户ID：</span>
-            <div class="flex items-center">
-              <span class="text-gray-900 text-sm break-all flex-1">{{ user.uid }}</span>
-              <ElButton
-                type="primary"
-                size="small"
-                @click="copyUserId"
-                class="px-2 py-1 text-xs ml-1 flex-shrink-0"
+          <!-- 用户名 -->
+          <div class="bg-white border border-gray-200 rounded-lg p-3 c-sm:p-4">
+            <div
+              class="flex flex-col c-sm:flex-row c-sm:justify-between c-sm:items-center gap-2 c-sm:gap-0"
+            >
+              <span class="text-gray-700 font-medium text-sm c-sm:text-base"
+                >用户名:</span
               >
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                </svg>
-              </ElButton>
+              <span class="text-gray-600 text-sm c-sm:text-base break-all">{{
+                userStore.getUserInfo.username
+              }}</span>
+            </div>
+          </div>
+
+          <!-- 邮箱 -->
+          <div class="bg-white border border-gray-200 rounded-lg p-3 c-sm:p-4">
+            <div
+              class="flex flex-col c-sm:flex-row c-sm:justify-between c-sm:items-center gap-2 c-sm:gap-0"
+            >
+              <span class="text-gray-700 font-medium text-sm c-sm:text-base"
+                >邮箱:</span
+              >
+              <span class="text-gray-600 text-sm c-sm:text-base break-all">{{
+                userStore.getUserInfo.email
+              }}</span>
+            </div>
+          </div>
+
+          <!-- 用户ID -->
+          <div class="bg-white border border-gray-200 rounded-lg p-3 c-sm:p-4">
+            <div
+              class="flex flex-col c-sm:flex-row c-sm:justify-between c-sm:items-start c-sm:items-center gap-2 c-sm:gap-0"
+            >
+              <span class="text-gray-700 font-medium text-sm c-sm:text-base"
+                >用户ID:</span
+              >
+              <div
+                class="flex flex-col c-sm:flex-row c-sm:items-center gap-2 w-full c-sm:w-auto"
+              >
+                <span class="text-gray-600 text-xs c-sm:text-sm break-all">{{
+                  userStore.getUserInfo.uid
+                }}</span>
+                <el-button
+                  type="primary"
+                  size="small"
+                  @click="copyUserId"
+                  class="px-2 py-1 self-start c-sm:self-center"
+                >
+                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
+                    <path
+                      d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"
+                    />
+                  </svg>
+                </el-button>
+              </div>
             </div>
           </div>
         </div>
 
         <!-- 退出登录按钮 -->
-        <div class="text-center pt-4">
-          <ElButton type="danger" @click="handleSignOut"> 退出登录 </ElButton>
+        <div class="text-center pt-2">
+          <el-button
+            type="danger"
+            size="small"
+            @click="handleLogout"
+            class="w-full c-sm:w-auto"
+          >
+            退出登录
+          </el-button>
         </div>
-      </div>
-
-      <div v-else class="text-center text-gray-500">
-        <p>未找到用户信息</p>
-        <ElButton
-          type="primary"
-          class="mt-4"
-          @click="() => router.push('/login')"
-        >
-          去登录
-        </ElButton>
       </div>
     </div>
   </div>
 </template>
+
+<style scoped>
+/* 头像样式 */
+.user-avatar {
+  transition: transform 0.2s ease-in-out;
+}
+
+.user-avatar:hover {
+  transform: scale(1.05);
+}
+
+/* 响应式断点样式 */
+@media (max-width: 640px) {
+  /* 小屏幕样式 */
+}
+
+@media (min-width: 641px) and (max-width: 768px) {
+  /* 中等屏幕样式 */
+}
+
+@media (min-width: 769px) {
+  /* 大屏幕样式 */
+}
+</style>

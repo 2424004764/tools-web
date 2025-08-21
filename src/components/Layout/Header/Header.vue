@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed, onUnmounted } from 'vue'
+import { ref, reactive, onMounted, computed, onUnmounted, nextTick } from 'vue'
 import { Search } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus'
 import { useToolsStore } from '@/store/modules/tools'
 import { useComponentStore } from '@/store/modules/component'
-import { getUserFromToken, isTokenExpired, logout } from '@/utils/user'
-import type { UserInfo } from '@/utils/user'
+import { useUserStore } from '@/store/modules/user'
 import 'element-plus/theme-chalk/display.css'
 import { ToolsInfo } from '@/components/Tools/tools.type.ts';
 
@@ -16,15 +15,17 @@ const options = ref<ToolsInfo[]>([])
 //store
 const toolsStore = useToolsStore()
 const componentStore = useComponentStore()
+const userStore = useUserStore()
 
 // 用户相关状态
-const user = ref<UserInfo | null>(null)
 const userMenuVisible = ref(false)
+const hideTimeout = ref<number | null>(null)
 
 // 计算属性：判断用户是否已登录
-const isLoggedIn = computed(() => {
-  return user.value && !isTokenExpired()
-})
+const isLoggedIn = computed(() => userStore.getLoginStatus)
+
+// 计算属性：获取用户信息
+const user = computed(() => userStore.getUserInfo)
 
 //查询参数
 const searchParam = reactive({
@@ -65,18 +66,10 @@ const optionClick = (url: string) => {
   router.push(url)
 }
 
-// 获取用户信息
-const getUserInfo = () => {
-  const userInfo = getUserFromToken()
-  if (userInfo && !isTokenExpired()) {
-    user.value = userInfo
-  }
-}
-
 // 处理退出登录
-const handleLogout = () => {
-  logout()
-  user.value = null
+const handleLogout = async () => {
+  userStore.logout()
+  await nextTick()
   userMenuVisible.value = false
   
   // 如果当前在用户信息页面，跳转到首页
@@ -89,9 +82,10 @@ const handleLogout = () => {
 }
 
 // 跳转到个人中心
-const goToUserInfo = () => {
-  router.push('/userinfo')
+const goToUserInfo = async () => {
   userMenuVisible.value = false
+  await nextTick()
+  router.push('/userinfo')
 }
 
 // 切换用户菜单显示状态
@@ -99,16 +93,45 @@ const toggleUserMenu = () => {
   userMenuVisible.value = !userMenuVisible.value
 }
 
+// 显示用户菜单
+const showUserMenu = () => {
+  // 清除之前的隐藏定时器
+  if (hideTimeout.value) {
+    clearTimeout(hideTimeout.value)
+    hideTimeout.value = null
+  }
+  userMenuVisible.value = true
+}
+
+// 隐藏用户菜单（延迟）
+const hideUserMenu = () => {
+  // 设置延迟隐藏，给用户时间移动到菜单
+  hideTimeout.value = window.setTimeout(() => {
+    userMenuVisible.value = false
+    hideTimeout.value = null
+  }, 150) // 150ms延迟
+}
+
+// 立即隐藏用户菜单
+const hideUserMenuImmediately = () => {
+  if (hideTimeout.value) {
+    clearTimeout(hideTimeout.value)
+    hideTimeout.value = null
+  }
+  userMenuVisible.value = false
+}
+
 // 点击外部区域关闭菜单
 const handleClickOutside = (event: Event) => {
   const target = event.target as HTMLElement
   if (!target.closest('.user-menu-container')) {
-    userMenuVisible.value = false
+    hideUserMenuImmediately()
   }
 }
 
 onMounted(() => {
-  getUserInfo()
+  // 初始化用户状态
+  userStore.initUserState()
   // 添加全局点击事件监听
   document.addEventListener('click', handleClickOutside)
 })
@@ -116,6 +139,10 @@ onMounted(() => {
 onUnmounted(() => {
   // 移除事件监听
   document.removeEventListener('click', handleClickOutside)
+  // 清理定时器
+  if (hideTimeout.value) {
+    clearTimeout(hideTimeout.value)
+  }
 })
 </script>
 
@@ -209,6 +236,8 @@ onUnmounted(() => {
             <div 
               class="relative cursor-pointer text-gray-700 hover:text-blue-600 flex items-center gap-1 px-3 py-2 rounded hover:bg-gray-100"
               @click="toggleUserMenu"
+              @mouseenter="showUserMenu"
+              @mouseleave="hideUserMenu"
             >
               <span class="whitespace-nowrap">{{ user?.username || user?.email || '用户' }}</span>
               <svg class="w-4 h-4 text-gray-500 transition-transform duration-200" :class="{ 'rotate-180': userMenuVisible }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -219,16 +248,18 @@ onUnmounted(() => {
               <div 
                 v-show="userMenuVisible"
                 class="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-2 min-w-[120px] z-50"
+                @mouseenter="showUserMenu"
+                @mouseleave="hideUserMenu"
               >
                 <div 
                   class="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                  @click="goToUserInfo"
+                  @click.stop="goToUserInfo"
                 >
                   个人中心
                 </div>
                 <div 
                   class="px-4 py-2 hover:bg-gray-100 cursor-pointer text-red-600"
-                  @click="handleLogout"
+                  @click.stop="handleLogout"
                 >
                   退出登录
                 </div>
