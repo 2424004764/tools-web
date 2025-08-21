@@ -3,8 +3,6 @@ name = "tool-web"
 
 # account_id = "974e77b1692d56d57b27a1cef7fcc08c"  # 你的 Cloudflare 帐号 ID
 
-# 指定静态资源目录
-pages_build_output_dir = "dist"
 
 # D1 数据库配置 仅用以本地调试，线上走pages绑定的db
 [[d1_databases]]
