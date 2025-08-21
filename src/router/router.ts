@@ -408,8 +408,18 @@ export const constantRoute = [
     name: 'jwt',
     meta: {
       title: "JWT解析",
-      keywords: 'jwt解析,jwt解码，JSON Web Token解析',
+      keywords: 'jwt解析，jwt解码，json web token',
       description: '解析和解码JSON Web Token（jwt）',
+    }
+  },
+  {
+    path: '/notes',
+    component: () => import('@/components/Tools/Notes/Notes.vue'),
+    name: 'notes',
+    meta: {
+      title: "笔记备忘录",
+      keywords: '在线笔记,备忘录,笔记记录,在线记事本',
+      description: '在线笔记记录工具，支持创建、编辑、删除笔记，数据安全存储',
     }
   },
   {
