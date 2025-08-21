@@ -13,6 +13,7 @@ dist-ssr
 .env.development
 .env.production
 .vscode
+.wrangler
 
 # Editor directories and files
 .vscode/*
