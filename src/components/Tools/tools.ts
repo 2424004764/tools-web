@@ -110,7 +110,7 @@ export function getToolsCate() {
         {
           id: 1,
           title: '笔记备忘录',
-          logo: '/images/logo/memory.png',
+          logo: '/images/logo/notes.png',
           desc: '在线笔记记录工具，支持创建、编辑、删除笔记，数据安全存储',
           url: '/notes/',
           cateId: 2,
