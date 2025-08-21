@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { reactive, ref, onMounted, computed } from 'vue'
+import axios from 'axios'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -26,12 +27,14 @@ const formData = reactive({
   content: ''
 })
 
+const proxyUrl = ref(import.meta.env.VITE_SITE_URL)
+
 // 获取笔记列表
 const fetchNotes = async () => {
   try {
-    const response = await fetch('/api/notes')
-    if (response.ok) {
-      const data = await response.json()
+    const response = await axios.get(`${proxyUrl.value}/api/notes`)
+    if (response.status === 200) {
+      const data = response.data
       notes.value = data.notes || []
     }
   } catch (error) {
@@ -48,18 +51,12 @@ const createNote = async () => {
   }
 
   try {
-    const response = await fetch('/api/notes', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        title: formData.title.trim(),
-        content: formData.content.trim()
-      })
+    const response = await axios.post(`${proxyUrl.value}/api/notes`, {
+      title: formData.title.trim(),
+      content: formData.content.trim()
     })
 
-    if (response.ok) {
+    if (response.status === 201) {
       ElMessage.success('创建成功')
       showForm.value = false
       resetForm()
@@ -81,18 +78,12 @@ const updateNote = async () => {
   }
 
   try {
-    const response = await fetch(`/api/notes/${currentNote.value.id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        title: formData.title.trim(),
-        content: formData.content.trim()
-      })
+    const response = await axios.put(`${proxyUrl.value}/api/notes/${currentNote.value.id}`, {
+      title: formData.title.trim(),
+      content: formData.content.trim()
     })
 
-    if (response.ok) {
+    if (response.status === 200) {
       ElMessage.success('更新成功')
       showForm.value = false
       isEditing.value = false
@@ -117,11 +108,9 @@ const deleteNote = async (note: Note) => {
       type: 'warning',
     })
 
-    const response = await fetch(`/api/notes/${note.id}`, {
-      method: 'DELETE'
-    })
+    const response = await axios.delete(`${proxyUrl.value}/api/notes/${note.id}`)
 
-    if (response.ok) {
+    if (response.status === 200) {
       ElMessage.success('删除成功')
       if (currentNote.value?.id === note.id) {
         currentNote.value = null
