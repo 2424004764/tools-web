@@ -7,15 +7,15 @@ export class NotesController {
     this.notesService = new NotesService(db)
   }
 
-  // 获取当前用户的所有笔记
-  async index(user) {
-    const result = await this.notesService.getAllNotes(user.id)
+  // 获取当前用户的所有笔记（支持分页）
+  async index(user, pager) {
+    const result = await this.notesService.getAllNotes(user.id, pager)
     
     if (!result.success) {
       return ApiResponse.error(result.error, 500)
     }
     
-    return ApiResponse.success({ notes: result.data })
+    return ApiResponse.success(result.data)
   }
 
   // 根据ID获取当前用户的笔记

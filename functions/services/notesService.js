@@ -5,15 +5,25 @@ export class NotesService {
     this.noteModel = new NoteModel(db)
   }
 
-  // 获取当前用户的所有笔记
-  async getAllNotes(uid) {
+  // 获取当前用户的所有笔记（支持分页）
+  async getAllNotes(uid, pager) {
     try {
-      const notes = await this.noteModel.findAll(
-        new QueryBuilder()
-          .where('uid', '=', uid)
-          .orderBy('createTime', 'DESC')
-      )
-      return { success: true, data: notes }
+      const queryBuilder = new QueryBuilder()
+        .where('uid', '=', uid)
+        .orderBy('createTime', 'DESC')
+      
+      // 应用分页
+      pager.applyTo(queryBuilder)
+      
+      // 获取总数和数据
+      const countQuery = new QueryBuilder().where('uid', '=', uid)
+      const total = await this.noteModel.count(countQuery)
+      const notes = await this.noteModel.findAll(queryBuilder)
+      
+      return { 
+        success: true, 
+        data: pager.createResult(notes, total)
+      }
     } catch (error) {
       console.error('获取用户笔记失败:', error)
       return { success: false, error: '获取笔记列表失败' }
