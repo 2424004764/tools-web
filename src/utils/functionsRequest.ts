@@ -1,6 +1,7 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
 import { ElMessage } from 'element-plus'
-import { getLocalToken, logout } from './user'
+import { getLocalToken } from './user'
+import { handleHttpError } from './errorHandler'
 
 // 创建functions代理专用的axios实例
 class FunctionsRequest {
@@ -13,7 +14,7 @@ class FunctionsRequest {
     
     this.instance = axios.create({
       baseURL: this.proxyUrl,
-      timeout: 10000
+      timeout: 30000, // 30秒超时
     })
 
     // 请求拦截器 - 自动添加TOKEN
@@ -38,37 +39,19 @@ class FunctionsRequest {
         return response
       },
       (error) => {
-        let message = '请求失败'
-        
         if (error.response) {
           const status = error.response.status
-          switch (status) {
-            case 401:
-              message = '登录已过期，请重新登录'
-              // 清空本地登录态
-              logout()
-              // 跳转到登录页面
-              setTimeout(() => {
-                window.location.href = '/login'
-              }, 1000)
-              break
-            case 403:
-              message = '无权限访问'
-              break
-            case 404:
-              message = '接口不存在'
-              break
-            case 500:
-              message = '服务器内部错误'
-              break
-            default:
-              message = `请求失败: ${status}`
-          }
+          const isNotesApi = error.config?.url?.includes('/api/notes')
+          
+          // 使用统一错误处理
+          handleHttpError(status, {
+            isSpecialApi: isNotesApi,
+            autoRedirectLogin: !isNotesApi
+          })
         } else if (error.request) {
-          message = '网络连接失败'
+          ElMessage.error('网络连接失败')
         }
 
-        ElMessage.error(message)
         return Promise.reject(error)
       }
     )

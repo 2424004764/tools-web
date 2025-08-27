@@ -4,7 +4,7 @@ import functionsRequest from '@/utils/functionsRequest'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+import { Refresh, Plus } from '@element-plus/icons-vue'
 
 interface Note {
   id: string
@@ -194,9 +194,20 @@ onMounted(() => {
       <!-- 操作按钮 -->
       <div class="flex justify-between items-center mb-4">
         <h3 class="text-lg font-semibold text-gray-800">我的笔记</h3>
-        <el-button type="primary" @click="newNote" :icon="Plus">
-          新建笔记
-        </el-button>
+        <div class="flex space-x-2">
+          <el-button 
+            type="default" 
+            @click="fetchNotes" 
+            :icon="Refresh"
+            :loading="loading"
+            :disabled="loading"
+          >
+            刷新
+          </el-button>
+          <el-button type="primary" @click="newNote" :icon="Plus">
+            新建笔记
+          </el-button>
+        </div>
       </div>
 
       <!-- 笔记列表 -->
