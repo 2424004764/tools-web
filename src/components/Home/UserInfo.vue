@@ -143,9 +143,11 @@ const goToNotes = () => {
             >
               <div class="flex items-center space-x-3">
                 <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-blue-200 transition-colors">
-                  <el-icon class="text-blue-600" :size="20">
-                    <Document />
-                  </el-icon>
+                  <img 
+                    src="/images/logo/notes.png" 
+                    alt="笔记备忘录" 
+                    class="w-10 h-10 object-contain"
+                  />
                 </div>
                 <div class="flex-1">
                   <h4 class="font-medium text-gray-800 text-sm c-sm:text-base group-hover:text-blue-600 transition-colors">
