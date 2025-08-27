@@ -41,13 +41,15 @@ class FunctionsRequest {
       (error) => {
         if (error.response) {
           const status = error.response.status
-          const isNotesApi = error.config?.url?.includes('/api/notes')
           
-          // 使用统一错误处理
-          handleHttpError(status, {
-            isSpecialApi: isNotesApi,
-            autoRedirectLogin: !isNotesApi
-          })
+          if (status === 401) {
+            ElMessage.error('登录已过期，即将跳转到登录页')
+            setTimeout(() => {
+              window.location.href = '/login'
+            }, 1000)
+          } else {
+            handleHttpError(status)
+          }
         } else if (error.request) {
           ElMessage.error('网络连接失败')
         }
