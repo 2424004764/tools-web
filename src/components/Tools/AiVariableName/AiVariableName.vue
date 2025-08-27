@@ -80,6 +80,15 @@ const generate = async () => {
 
 const copyOne = (s: string) => copy(s)
 const copyAll = () => results.value.length && copy(results.value.join('\n'))
+
+// 添加按下效果的方法
+const handleButtonPress = (event: Event) => {
+  const button = event.target as HTMLElement
+  button.classList.add('button-pressed')
+  setTimeout(() => {
+    button.classList.remove('button-pressed')
+  }, 150)
+}
 </script>
 
 <template>
@@ -139,9 +148,11 @@ const copyAll = () => results.value.length && copy(results.value.join('\n'))
           <div class="flex items-center justify-between">
             <div class="text-sm text-gray-600">生成结果</div>
             <button
-              class="px-3 py-1 text-sm bg-emerald-500 text-white rounded"
+              class="px-3 py-1 text-sm bg-emerald-500 text-white rounded transition-all duration-150 hover:bg-emerald-600"
               :disabled="!results.length"
               @click="copyAll"
+              @mousedown="handleButtonPress"
+              @touchstart="handleButtonPress"
             >
               复制全部
             </button>
@@ -152,7 +163,14 @@ const copyAll = () => results.value.length && copy(results.value.join('\n'))
             <ul v-else class="space-y-2">
               <li v-for="(r, i) in results" :key="i" class="flex items-center justify-between bg-white p-2 rounded border">
                 <span class="truncate mr-3">{{ r }}</span>
-                <button class="px-2 py-1 text-xs bg-blue-500 text-white rounded" @click="copyOne(r)">复制</button>
+                <button 
+                  class="px-2 py-1 text-xs bg-blue-500 text-white rounded transition-all duration-150 hover:bg-blue-600" 
+                  @click="copyOne(r)"
+                  @mousedown="handleButtonPress"
+                  @touchstart="handleButtonPress"
+                >
+                  复制
+                </button>
               </li>
               <div v-if="!results.length" class="text-gray-400 text-sm">暂无结果</div>
             </ul>
@@ -168,4 +186,8 @@ const copyAll = () => results.value.length && copy(results.value.join('\n'))
 </template>
 
 <style scoped>
+.button-pressed {
+  transform: scale(0.95) !important;
+  filter: brightness(0.9) !important;
+}
 </style>
