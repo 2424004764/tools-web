@@ -71,7 +71,7 @@ export class AuthMiddleware {
       // 从Authorization header中提取token
       const authHeader = request.headers.get('Authorization')
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return { success: false, error: '缺少认证token' }
+        return { success: false, error: '请先登录' }
       }
 
       const token = authHeader.substring(7) // 移除 "Bearer " 前缀
