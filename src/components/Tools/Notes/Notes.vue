@@ -315,7 +315,7 @@ onMounted(() => {
         <template #footer>
           <span class="dialog-footer">
             <el-button @click="currentNote = null">关闭</el-button>
-            <el-button type="primary" @click="editNote(currentNote!)">编辑</el-button>
+            <el-button type="primary" @click="currentNote && editNote(currentNote)">编辑</el-button>
           </span>
         </template>
       </el-dialog>
