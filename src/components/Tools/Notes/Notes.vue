@@ -22,6 +22,7 @@ const notes = ref<Note[]>([])
 const currentNote = ref<Note | null>(null)
 const isEditing = ref(false)
 const showForm = ref(false)
+const editingNoteId = ref<string | null>(null)
 
 const formData = reactive({
   title: '',
@@ -77,16 +78,16 @@ const createNote = async () => {
   }
 }
 
-// 更新笔记
+// 修改更新笔记函数
 const updateNote = async () => {
-  if (!currentNote.value || !formData.title.trim() || !formData.content.trim()) {
+  if (!editingNoteId.value || !formData.title.trim() || !formData.content.trim()) {
     ElMessage.warning('标题和内容不能为空')
     return
   }
 
   try {
     operationLoading.value = true
-    const response = await functionsRequest.put(`/api/notes/${currentNote.value.id}`, {
+    const response = await functionsRequest.put(`/api/notes/${editingNoteId.value}`, {
       title: formData.title.trim(),
       content: formData.content.trim()
     })
@@ -95,7 +96,7 @@ const updateNote = async () => {
       ElMessage.success('更新成功')
       showForm.value = false
       isEditing.value = false
-      currentNote.value = null
+      editingNoteId.value = null
       resetForm()
       await fetchNotes()
     } else {
@@ -138,12 +139,11 @@ const deleteNote = async (note: Note) => {
 
 // 编辑笔记
 const editNote = (note: Note) => {
-  currentNote.value = note
+  isEditing.value = true
+  editingNoteId.value = note.id
   formData.title = note.title
   formData.content = note.content
-  isEditing.value = true
   showForm.value = true
-  // 确保不显示详情，直接进入编辑模式
 }
 
 // 查看笔记
