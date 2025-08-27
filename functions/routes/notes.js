@@ -1,6 +1,6 @@
 import { NotesController } from '../controllers/notesController.js'
 import { AuthMiddleware } from '../middlewares/auth.js'
-import { ApiResponse } from '../utils/db.js'
+import { ApiResponse, Pager } from '../utils/db.js'
 
 export class NotesRouter {
   constructor(db) {
@@ -22,8 +22,9 @@ export class NotesRouter {
     switch (request.method) {
       case 'GET':
         if (!hasId) {
-          // GET /api/notes - 获取当前用户的所有笔记
-          return await this.controller.index(user)
+          // GET /api/notes - 获取当前用户的所有笔记（支持分页）
+          const pager = Pager.fromRequest(request)
+          return await this.controller.index(user, pager)
         } else {
           // GET /api/notes/{id} - 根据ID获取当前用户的笔记
           return await this.controller.show(id, user)

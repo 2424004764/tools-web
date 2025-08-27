@@ -338,6 +338,56 @@ export class ApiResponse {
   }
 }
 
+// 分页工具类
+export class Pager {
+  constructor(request, defaultPageSize = 10) {
+    if (request) {
+      const url = new URL(request.url)
+      this.page = Math.max(1, parseInt(url.searchParams.get('page')) || 1)
+      this.pageSize = Math.max(1, parseInt(url.searchParams.get('pageSize')) || defaultPageSize)
+    } else {
+      this.page = 1
+      this.pageSize = defaultPageSize
+    }
+  }
+
+  // 静态方法：从请求创建分页器
+  static fromRequest(request, defaultPageSize = 10) {
+    return new Pager(request, defaultPageSize)
+  }
+
+  // 静态方法：创建默认分页器
+  static default(defaultPageSize = 10) {
+    return new Pager(null, defaultPageSize)
+  }
+
+  // 获取偏移量
+  get offset() {
+    return (this.page - 1) * this.pageSize
+  }
+
+  // 应用到查询构建器
+  applyTo(queryBuilder) {
+    return queryBuilder.limit(this.pageSize).offset(this.offset)
+  }
+
+  // 创建分页结果
+  createResult(data, total) {
+    const totalPages = Math.ceil(total / this.pageSize)
+    return {
+      data,
+      pagination: {
+        total,
+        page: this.page,
+        pageSize: this.pageSize,
+        totalPages,
+        hasNext: this.page < totalPages,
+        hasPrev: this.page > 1
+      }
+    }
+  }
+}
+
 // 数据库初始化函数 - 公共逻辑
 export function initDatabase(env) {
   // 确保D1数据库存在
