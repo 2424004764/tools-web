@@ -255,7 +255,6 @@ onMounted(() => {
         v-model="showForm"
         :title="isEditing ? '编辑笔记' : '新建笔记'"
         width="80%"
-        :close-on-click-modal="false"
         @close="isEditing = false"
       >
         <el-form :model="formData" label-width="80px">
@@ -296,7 +295,7 @@ onMounted(() => {
         v-model="showNoteDetail"
         title="笔记详情"
         width="80%"
-        :close-on-click-modal="false"
+        @close="currentNote = null"
       >
         <div v-if="currentNote" class="space-y-4">
           <div>

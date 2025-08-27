@@ -16,7 +16,7 @@ dist-ssr
 .wrangler
 .dist/.wrangler
 .dist/node_modules
-.wrangler/state
+.wrangler/state/
 
 
 # Editor directories and files
