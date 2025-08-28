@@ -35,7 +35,7 @@
     "csso": "^5.0.5",
     "default-passive-events": "^2.0.0",
     "echarts": "^5.5.0",
-    "element-plus": "^2.4.3",
+    "element-plus": "^2.11.1",
     "figlet": "^1.7.0",
     "googleapis": "^156.0.0",
     "highlight.js": "^11.9.0",

@@ -84,8 +84,8 @@ importers:
         specifier: ^5.5.0
         version: 5.6.0
       element-plus:
-        specifier: ^2.4.3
-        version: 2.4.3(vue@3.5.18(typescript@5.9.2))
+        specifier: ^2.11.1
+        version: 2.11.1(vue@3.5.18(typescript@5.9.2))
       figlet:
         specifier: ^1.7.0
         version: 1.8.2
@@ -167,10 +167,10 @@ importers:
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: ^4.5.1
-        version: 4.6.2(vite@4.5.14(@types/node@24.2.0)(less@4.4.0)(sass@1.89.2)(terser@5.43.1))(vue@3.5.18(typescript@5.9.2))
+        version: 4.6.2(vite@4.5.14(@types/node@24.3.0)(less@4.4.0)(sass@1.89.2)(terser@5.43.1))(vue@3.5.18(typescript@5.9.2))
       autoprefixer:
         specifier: ^10.4.16
-        version: 10.4.21(postcss@5.2.18)
+        version: 10.4.21(postcss@8.5.6)
       fast-glob:
         specifier: ^3.3.2
         version: 3.3.3
@@ -191,13 +191,13 @@ importers:
         version: 5.9.2
       vite:
         specifier: ^4.5.1
-        version: 4.5.14(@types/node@24.2.0)(less@4.4.0)(sass@1.89.2)(terser@5.43.1)
+        version: 4.5.14(@types/node@24.3.0)(less@4.4.0)(sass@1.89.2)(terser@5.43.1)
       vite-plugin-html:
         specifier: ^3.2.0
-        version: 3.2.2(vite@4.5.14(@types/node@24.2.0)(less@4.4.0)(sass@1.89.2)(terser@5.43.1))
+        version: 3.2.2(vite@4.5.14(@types/node@24.3.0)(less@4.4.0)(sass@1.89.2)(terser@5.43.1))
       vite-plugin-svg-icons:
         specifier: ^2.0.1
-        version: 2.0.1(vite@4.5.14(@types/node@24.2.0)(less@4.4.0)(sass@1.89.2)(terser@5.43.1))
+        version: 2.0.1(vite@4.5.14(@types/node@24.3.0)(less@4.4.0)(sass@1.89.2)(terser@5.43.1))
       vue-router:
         specifier: ^4.2.5
         version: 4.5.1(vue@3.5.18(typescript@5.9.2))
@@ -448,8 +448,14 @@ packages:
   '@jridgewell/sourcemap-codec@1.5.4':
     resolution: {integrity: sha512-VT2+G1VQs/9oz078bLrYbecdZKs912zQlkelYpuf+SXF+QvZDYJlbx/LSx+meSAwdDFnF8FVXW92AVjjkVmgFw==, tarball: https://registry.npmmirror.com/@jridgewell/sourcemap-codec/-/sourcemap-codec-1.5.4.tgz}
 
+  '@jridgewell/sourcemap-codec@1.5.5':
+    resolution: {integrity: sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==, tarball: https://registry.npmmirror.com/@jridgewell/sourcemap-codec/-/sourcemap-codec-1.5.5.tgz}
+
   '@jridgewell/trace-mapping@0.3.29':
     resolution: {integrity: sha512-uw6guiW/gcAGPDhLmd77/6lW8QLeiV5RUTsAX46Db6oLhGaVj4lhnPwb184s1bkc8kdVg/+h988dro8GRDpmYQ==, tarball: https://registry.npmmirror.com/@jridgewell/trace-mapping/-/trace-mapping-0.3.29.tgz}
+
+  '@jridgewell/trace-mapping@0.3.30':
+    resolution: {integrity: sha512-GQ7Nw5G2lTu/BtHTKfXhKHok2WGetd4XYcVKGx00SjAk8GMwgJM3zr6zORiPGuOE+/vkc90KtTosSSvaCjKb2Q==, tarball: https://registry.npmmirror.com/@jridgewell/trace-mapping/-/trace-mapping-0.3.30.tgz}
 
   '@kangc/v-md-editor@2.3.18':
     resolution: {integrity: sha512-wjI9lUQs4Ktn3gYru3C1hauOuOo2na5cF4ycHCgBZmIk08RjQVNbHO169yqkt9PMj6Djnl8W6ZknCBhTQfFbzQ==, tarball: https://registry.npmmirror.com/@kangc/v-md-editor/-/v-md-editor-2.3.18.tgz}
@@ -670,8 +676,8 @@ packages:
   '@types/node@24.1.0':
     resolution: {integrity: sha512-ut5FthK5moxFKH2T1CUOC6ctR67rQRvvHdFLCD2Ql6KXmMuCrjsSsRI9UsLCm9M18BMwClv4pn327UvB7eeO1w==, tarball: https://registry.npmmirror.com/@types/node/-/node-24.1.0.tgz}
 
-  '@types/node@24.2.0':
-    resolution: {integrity: sha512-3xyG3pMCq3oYCNg7/ZP+E1ooTaGB4cG8JWRsqqOYQdbWNY4zbaV0Ennrd7stjiJEFZCaybcIgpTjJWHRfBSIDw==, tarball: https://registry.npmmirror.com/@types/node/-/node-24.2.0.tgz}
+  '@types/node@24.3.0':
+    resolution: {integrity: sha512-aPTXCrfwnDLj4VvXrm+UUCQjNEvJgNA8s5F1cvwQU+3KNltTOkBm1j30uNLyqqPNe7gE3KFzImYoZEfLhp4Yow==, tarball: https://registry.npmmirror.com/@types/node/-/node-24.3.0.tgz}
 
   '@types/svgo@2.6.4':
     resolution: {integrity: sha512-l4cmyPEckf8moNYHdJ+4wkHvFxjyW6ulm9l4YGaOxeyBWPhBOT0gvni1InpFPdzx1dKf/2s62qGITwxNWnPQng==, tarball: https://registry.npmmirror.com/@types/svgo/-/svgo-2.6.4.tgz}
@@ -1243,6 +1249,11 @@ packages:
     engines: {node: ^6 || ^7 || ^8 || ^9 || ^10 || ^11 || ^12 || >=13.7}
     hasBin: true
 
+  browserslist@4.25.3:
+    resolution: {integrity: sha512-cDGv1kkDI4/0e5yON9yM5G/0A5u8sf5TnmdX5C9qHzI9PPu++sQ9zjm1k9NiOrf3riY4OkK0zSGqfvJyJsgCBQ==, tarball: https://registry.npmmirror.com/browserslist/-/browserslist-4.25.3.tgz}
+    engines: {node: ^6 || ^7 || ^8 || ^9 || ^10 || ^11 || ^12 || >=13.7}
+    hasBin: true
+
   buffer-crc32@0.2.13:
     resolution: {integrity: sha512-VO9Ht/+p3SN7SKWqcrgEzjGbRSJYTx+Q1pTQC0wrWqHx0vpJraQ6GtHx8tvcg1rlK1byhU5gccxgOgj7B0TDkQ==, tarball: https://registry.npmmirror.com/buffer-crc32/-/buffer-crc32-0.2.13.tgz}
 
@@ -1290,6 +1301,9 @@ packages:
 
   caniuse-lite@1.0.30001731:
     resolution: {integrity: sha512-lDdp2/wrOmTRWuoB5DpfNkC0rJDU8DqRa6nYL6HK6sytw70QMopt/NIc/9SM7ylItlBWfACXk0tEn37UWM/+mg==, tarball: https://registry.npmmirror.com/caniuse-lite/-/caniuse-lite-1.0.30001731.tgz}
+
+  caniuse-lite@1.0.30001737:
+    resolution: {integrity: sha512-BiloLiXtQNrY5UyF0+1nSJLXUENuhka2pzy2Fx5pGxqavdrxSCW4U6Pn/PoG3Efspi2frRbHpBV2XsrPE6EDlw==, tarball: https://registry.npmmirror.com/caniuse-lite/-/caniuse-lite-1.0.30001737.tgz}
 
   canvas@2.11.2:
     resolution: {integrity: sha512-ItanGBMrmRV7Py2Z+Xhs7cT+FNt5K0vPL4p9EZ/UX/Mu7hFbkxSjKF2KVtPwX7UYWp7dRKnrTvReflgrItJbdw==, tarball: https://registry.npmmirror.com/canvas/-/canvas-2.11.2.tgz}
@@ -1924,8 +1938,11 @@ packages:
   electron-to-chromium@1.5.194:
     resolution: {integrity: sha512-SdnWJwSUot04UR51I2oPD8kuP2VI37/CADR1OHsFOUzZIvfWJBO6q11k5P/uKNyTT3cdOsnyjkrZ+DDShqYqJA==, tarball: https://registry.npmmirror.com/electron-to-chromium/-/electron-to-chromium-1.5.194.tgz}
 
-  element-plus@2.4.3:
-    resolution: {integrity: sha512-b3q26j+lM4SBqiyzw8HybybGnP2pk4MWgrnzzzYW5qKQUgV6EG1Zg7nMCfgCVccI8tNvZoTiUHb2mFaiB9qT8w==, tarball: https://registry.npmmirror.com/element-plus/-/element-plus-2.4.3.tgz}
+  electron-to-chromium@1.5.211:
+    resolution: {integrity: sha512-IGBvimJkotaLzFnwIVgW9/UD/AOJ2tByUmeOrtqBfACSbAw5b1G0XpvdaieKyc7ULmbwXVx+4e4Be8pOPBrYkw==, tarball: https://registry.npmmirror.com/electron-to-chromium/-/electron-to-chromium-1.5.211.tgz}
+
+  element-plus@2.11.1:
+    resolution: {integrity: sha512-weYFIniyNXTAe9vJZnmZpYzurh4TDbdKhBsJwhbzuo0SDZ8PLwHVll0qycJUxc6SLtH+7A9F7dvdDh5CnqeIVA==, tarball: https://registry.npmmirror.com/element-plus/-/element-plus-2.11.1.tgz}
     peerDependencies:
       vue: ^3.2.0
 
@@ -1948,8 +1965,8 @@ packages:
   end-of-stream@1.4.5:
     resolution: {integrity: sha512-ooEGc6HP26xXq/N+GCGOT0JKCLDGrq2bQUZrQ7gyrJiZANJ/8YDTxTpQBXGMn+WbIQXNVpyWymm7KYVICQnyOg==, tarball: https://registry.npmmirror.com/end-of-stream/-/end-of-stream-1.4.5.tgz}
 
-  enhanced-resolve@5.18.2:
-    resolution: {integrity: sha512-6Jw4sE1maoRJo3q8MsSIn2onJFbLTOjY9hlx4DZXmOKvLRd1Ok2kXmAGXaafL2+ijsJZ1ClYbl/pmqr9+k4iUQ==, tarball: https://registry.npmmirror.com/enhanced-resolve/-/enhanced-resolve-5.18.2.tgz}
+  enhanced-resolve@5.18.3:
+    resolution: {integrity: sha512-d4lC8xfavMeBjzGr2vECC3fsGXziXZQyJxD868h2M/mBI3PwAuODxAkLkq5HYuvrPYcUtiLzsTo8U3PgX3Ocww==, tarball: https://registry.npmmirror.com/enhanced-resolve/-/enhanced-resolve-5.18.3.tgz}
     engines: {node: '>=10.13.0'}
 
   entities@1.1.2:
@@ -2138,8 +2155,8 @@ packages:
   fast-levenshtein@2.0.6:
     resolution: {integrity: sha512-DCXu6Ifhqcks7TZKY3Hxp3y6qphY5SJZmrWMDrKcERSOXWQdMhU9Ig/PYrzyw/ul9jOIyh0N4M0tbC5hodg8dw==, tarball: https://registry.npmmirror.com/fast-levenshtein/-/fast-levenshtein-2.0.6.tgz}
 
-  fast-uri@3.0.6:
-    resolution: {integrity: sha512-Atfo14OibSv5wAp4VWNsFYE1AchQRTv9cBGWET4pZWHzYshFSS9NQI6I57rdKn9croWVMbYFbLhJ+yJvmZIIHw==, tarball: https://registry.npmmirror.com/fast-uri/-/fast-uri-3.0.6.tgz}
+  fast-uri@3.1.0:
+    resolution: {integrity: sha512-iPeeDKJSWf4IEOasVVrknXpaBV0IApz/gp7S2bb7Z4Lljbl2MGJRqInZiUrQwV16cpzw/D3S5j5Julj/gT52AA==, tarball: https://registry.npmmirror.com/fast-uri/-/fast-uri-3.1.0.tgz}
 
   fastq@1.19.1:
     resolution: {integrity: sha512-GwLTyxkCXjXbxqIhTsMI2Nui8huMPtnxg7krajPJAjnEG/iiOS7i+zCtWGZR9G0NBKbXKh6X9m9UIsYX/N6vvQ==, tarball: https://registry.npmmirror.com/fastq/-/fastq-1.19.1.tgz}
@@ -4226,8 +4243,8 @@ packages:
     engines: {node: '>=14.0.0'}
     hasBin: true
 
-  tapable@2.2.2:
-    resolution: {integrity: sha512-Re10+NauLTMCudc7T5WLFLAwDhQ0JWdrMK+9B2M8zR5hRExKmsRDCBA7/aV/pNJFltmBFO5BAMlQFi/vq3nKOg==, tarball: https://registry.npmmirror.com/tapable/-/tapable-2.2.2.tgz}
+  tapable@2.2.3:
+    resolution: {integrity: sha512-ZL6DDuAlRlLGghwcfmSn9sK3Hr6ArtyudlSAiCqQ6IfE+b+HHbydbYDIG15IfS5do+7XQQBdBiubF/cV2dnDzg==, tarball: https://registry.npmmirror.com/tapable/-/tapable-2.2.3.tgz}
     engines: {node: '>=6'}
 
   tar-fs@3.0.4:
@@ -4985,10 +5002,17 @@ snapshots:
 
   '@jridgewell/sourcemap-codec@1.5.4': {}
 
+  '@jridgewell/sourcemap-codec@1.5.5': {}
+
   '@jridgewell/trace-mapping@0.3.29':
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.4
+
+  '@jridgewell/trace-mapping@0.3.30':
+    dependencies:
+      '@jridgewell/resolve-uri': 3.1.2
+      '@jridgewell/sourcemap-codec': 1.5.5
 
   '@kangc/v-md-editor@2.3.18(@vue/compiler-sfc@3.5.18)(vue@3.5.18(typescript@5.9.2))':
     dependencies:
@@ -5226,7 +5250,7 @@ snapshots:
     dependencies:
       undici-types: 7.8.0
 
-  '@types/node@24.2.0':
+  '@types/node@24.3.0':
     dependencies:
       undici-types: 7.10.0
 
@@ -5282,9 +5306,9 @@ snapshots:
     dependencies:
       vue: 3.5.18(typescript@5.9.2)
 
-  '@vitejs/plugin-vue@4.6.2(vite@4.5.14(@types/node@24.2.0)(less@4.4.0)(sass@1.89.2)(terser@5.43.1))(vue@3.5.18(typescript@5.9.2))':
+  '@vitejs/plugin-vue@4.6.2(vite@4.5.14(@types/node@24.3.0)(less@4.4.0)(sass@1.89.2)(terser@5.43.1))(vue@3.5.18(typescript@5.9.2))':
     dependencies:
-      vite: 4.5.14(@types/node@24.2.0)(less@4.4.0)(sass@1.89.2)(terser@5.43.1)
+      vite: 4.5.14(@types/node@24.3.0)(less@4.4.0)(sass@1.89.2)(terser@5.43.1)
       vue: 3.5.18(typescript@5.9.2)
 
   '@volar/language-core@2.4.20':
@@ -5692,7 +5716,7 @@ snapshots:
   ajv@8.17.1:
     dependencies:
       fast-deep-equal: 3.1.3
-      fast-uri: 3.0.6
+      fast-uri: 3.1.0
       json-schema-traverse: 1.0.0
       require-from-string: 2.0.2
 
@@ -5802,14 +5826,14 @@ snapshots:
 
   atob@2.1.2: {}
 
-  autoprefixer@10.4.21(postcss@5.2.18):
+  autoprefixer@10.4.21(postcss@8.5.6):
     dependencies:
       browserslist: 4.25.1
       caniuse-lite: 1.0.30001731
       fraction.js: 4.3.7
       normalize-range: 0.1.2
       picocolors: 1.1.1
-      postcss: 5.2.18
+      postcss: 8.5.6
       postcss-value-parser: 4.2.0
 
   available-typed-arrays@1.0.7:
@@ -5924,6 +5948,13 @@ snapshots:
       node-releases: 2.0.19
       update-browserslist-db: 1.1.3(browserslist@4.25.1)
 
+  browserslist@4.25.3:
+    dependencies:
+      caniuse-lite: 1.0.30001737
+      electron-to-chromium: 1.5.211
+      node-releases: 2.0.19
+      update-browserslist-db: 1.1.3(browserslist@4.25.3)
+
   buffer-crc32@0.2.13: {}
 
   buffer-equal-constant-time@1.0.1: {}
@@ -5978,6 +6009,8 @@ snapshots:
   camelcase-css@2.0.1: {}
 
   caniuse-lite@1.0.30001731: {}
+
+  caniuse-lite@1.0.30001737: {}
 
   canvas@2.11.2(encoding@0.1.13):
     dependencies:
@@ -6644,7 +6677,9 @@ snapshots:
 
   electron-to-chromium@1.5.194: {}
 
-  element-plus@2.4.3(vue@3.5.18(typescript@5.9.2)):
+  electron-to-chromium@1.5.211: {}
+
+  element-plus@2.11.1(vue@3.5.18(typescript@5.9.2)):
     dependencies:
       '@ctrl/tinycolor': 3.6.1
       '@element-plus/icons-vue': 2.3.1(vue@3.5.18(typescript@5.9.2))
@@ -6681,10 +6716,10 @@ snapshots:
     dependencies:
       once: 1.4.0
 
-  enhanced-resolve@5.18.2:
+  enhanced-resolve@5.18.3:
     dependencies:
       graceful-fs: 4.2.11
-      tapable: 2.2.2
+      tapable: 2.2.3
 
   entities@1.1.2: {}
 
@@ -6983,7 +7018,7 @@ snapshots:
   fast-levenshtein@2.0.6:
     optional: true
 
-  fast-uri@3.0.6: {}
+  fast-uri@3.1.0: {}
 
   fastq@1.19.1:
     dependencies:
@@ -7738,7 +7773,7 @@ snapshots:
 
   jest-worker@27.5.1:
     dependencies:
-      '@types/node': 24.2.0
+      '@types/node': 24.3.0
       merge-stream: 2.0.0
       supports-color: 8.1.1
 
@@ -9446,7 +9481,7 @@ snapshots:
     transitivePeerDependencies:
       - ts-node
 
-  tapable@2.2.2: {}
+  tapable@2.2.3: {}
 
   tar-fs@3.0.4:
     dependencies:
@@ -9472,7 +9507,7 @@ snapshots:
 
   terser-webpack-plugin@5.3.14(webpack@5.101.0):
     dependencies:
-      '@jridgewell/trace-mapping': 0.3.29
+      '@jridgewell/trace-mapping': 0.3.30
       jest-worker: 27.5.1
       schema-utils: 4.3.2
       serialize-javascript: 6.0.2
@@ -9696,6 +9731,12 @@ snapshots:
       escalade: 3.2.0
       picocolors: 1.1.1
 
+  update-browserslist-db@1.1.3(browserslist@4.25.3):
+    dependencies:
+      browserslist: 4.25.3
+      escalade: 3.2.0
+      picocolors: 1.1.1
+
   uri-js@4.4.1:
     dependencies:
       punycode: 2.3.1
@@ -9753,7 +9794,7 @@ snapshots:
       extsprintf: 1.3.0
     optional: true
 
-  vite-plugin-html@3.2.2(vite@4.5.14(@types/node@24.2.0)(less@4.4.0)(sass@1.89.2)(terser@5.43.1)):
+  vite-plugin-html@3.2.2(vite@4.5.14(@types/node@24.3.0)(less@4.4.0)(sass@1.89.2)(terser@5.43.1)):
     dependencies:
       '@rollup/pluginutils': 4.2.1
       colorette: 2.0.20
@@ -9767,7 +9808,7 @@ snapshots:
       html-minifier-terser: 6.1.0
       node-html-parser: 5.4.2
       pathe: 0.2.0
-      vite: 4.5.14(@types/node@24.2.0)(less@4.4.0)(sass@1.89.2)(terser@5.43.1)
+      vite: 4.5.14(@types/node@24.3.0)(less@4.4.0)(sass@1.89.2)(terser@5.43.1)
 
   vite-plugin-seo-prerender@0.5.0(encoding@0.1.13)(typescript@5.9.2):
     dependencies:
@@ -9780,7 +9821,7 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  vite-plugin-svg-icons@2.0.1(vite@4.5.14(@types/node@24.2.0)(less@4.4.0)(sass@1.89.2)(terser@5.43.1)):
+  vite-plugin-svg-icons@2.0.1(vite@4.5.14(@types/node@24.3.0)(less@4.4.0)(sass@1.89.2)(terser@5.43.1)):
     dependencies:
       '@types/svgo': 2.6.4
       cors: 2.8.5
@@ -9790,17 +9831,17 @@ snapshots:
       pathe: 0.2.0
       svg-baker: 1.7.0
       svgo: 2.8.0
-      vite: 4.5.14(@types/node@24.2.0)(less@4.4.0)(sass@1.89.2)(terser@5.43.1)
+      vite: 4.5.14(@types/node@24.3.0)(less@4.4.0)(sass@1.89.2)(terser@5.43.1)
     transitivePeerDependencies:
       - supports-color
 
-  vite@4.5.14(@types/node@24.2.0)(less@4.4.0)(sass@1.89.2)(terser@5.43.1):
+  vite@4.5.14(@types/node@24.3.0)(less@4.4.0)(sass@1.89.2)(terser@5.43.1):
     dependencies:
       esbuild: 0.18.20
       postcss: 8.5.6
       rollup: 3.29.5
     optionalDependencies:
-      '@types/node': 24.2.0
+      '@types/node': 24.3.0
       fsevents: 2.3.3
       less: 4.4.0
       sass: 1.89.2
@@ -9895,9 +9936,9 @@ snapshots:
       '@webassemblyjs/wasm-parser': 1.14.1
       acorn: 8.15.0
       acorn-import-phases: 1.0.4(acorn@8.15.0)
-      browserslist: 4.25.1
+      browserslist: 4.25.3
       chrome-trace-event: 1.0.4
-      enhanced-resolve: 5.18.2
+      enhanced-resolve: 5.18.3
       es-module-lexer: 1.7.0
       eslint-scope: 5.1.1
       events: 3.3.0
@@ -9908,7 +9949,7 @@ snapshots:
       mime-types: 2.1.35
       neo-async: 2.6.2
       schema-utils: 4.3.2
-      tapable: 2.2.2
+      tapable: 2.2.3
       terser-webpack-plugin: 5.3.14(webpack@5.101.0)
       watchpack: 2.4.4
       webpack-sources: 3.3.3
