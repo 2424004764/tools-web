@@ -1176,7 +1176,13 @@ const shouldHighlight = (text: string | undefined) => {
           readonly
         />
         <div class="mt-2">
-          <el-button type="primary" @click="copyResult">复制结果</el-button>
+          <el-button 
+            type="primary" 
+            @click="copyResult"
+            :disabled="!state.result.trim()"
+          >
+            复制结果{{ state.result.trim() ? '' : '(无结果)' }}
+          </el-button>
         </div>
       </div>
     </div>
