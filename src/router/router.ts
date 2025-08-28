@@ -720,6 +720,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/cookie',
+    component: () => import('@/components/Tools/Cookie/Cookie.vue'),
+    name: 'cookie',
+    meta: {
+      title: 'Cookie解析/构造',
+      keywords: 'Cookie解析,Cookie构造,Set-Cookie,请求头Cookie,Domain,Path,Expires,HttpOnly,Secure,SameSite',
+      description: 'Cookie字符串解析与构造工具，支持请求头和响应头格式，包含Domain、Path、Expires、HttpOnly、Secure、SameSite等属性编辑',
+    }
+  },
+  {
     path: '/ai-translate',
     component: () => import('@/components/Tools/AiTranslate/AiTranslate.vue'),
     name: 'ai-translate',
