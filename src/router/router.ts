@@ -779,4 +779,14 @@ export const constantRoute = [
       description: '在线图片压缩工具，支持JPG、PNG、WebP等格式，可调节压缩质量，有效减小图片文件大小，保持图片质量',
     }
   },
+  {
+    path: '/radiation-sample',
+    component: () => import('@/components/Tools/RadiationSample/RadiationSample.vue'),
+    name: 'radiation-sample',
+    meta: {
+      title: "物品辐射量示例",
+      keywords: '辐射量,辐射水平,物品辐射,辐射示例,辐射参考,核辐射',
+      description: '展示常见物品的辐射量参考数据，包括食品、日用品、医疗设备等的辐射水平对比',
+    }
+  },
 ]

@@ -373,6 +373,15 @@ export function getToolsCate() {
           cateId: 4,
           cate: '教育学术'
         },
+        {
+          id: 1,
+          title: '物品辐射量示例',
+          logo: '/images/logo/radiation_sample.png',
+          desc: '展示常见物品的辐射量参考数据，帮助了解日常生活中的辐射水平',
+          url: '/radiation-sample/',
+          cateId: 4,
+          cate: '教育学术'
+        }
       ]
     },
     {
