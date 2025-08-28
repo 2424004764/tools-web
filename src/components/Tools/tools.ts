@@ -197,6 +197,15 @@ export function getToolsCate() {
           cateId: 2,
           cate: '开发运维',
         },
+        {
+          id: 1,
+          title: 'Cookie解析/构造',
+          logo: '/images/logo/cookie.png',
+          desc: 'Cookie字符串解析与构造，支持请求头和响应头格式，包含Domain、Path、Expires等属性编辑',
+          url: '/cookie/',
+          cateId: 2,
+          cate: '开发运维',
+        },
       ]
     },
     {
