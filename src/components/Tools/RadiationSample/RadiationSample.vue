@@ -129,14 +129,14 @@ const getRadiationLevel = (radiation: string) => {
   <div class="flex flex-col mt-3 flex-1">
     <DetailHeader :title="info.title"></DetailHeader>
 
-    <div class="p-4 rounded-2xl bg-white mb-4">
+    <div class="p-3 md:p-4 rounded-2xl bg-white mb-4">
       <div class="mb-4">
-        <h3 class="text-lg font-semibold mb-2">辐射量单位说明</h3>
-        <div class="bg-blue-50 p-3 rounded-lg">
-          <p class="text-sm text-blue-800 mb-2">
+        <h3 class="text-base md:text-lg font-semibold mb-2">辐射量单位说明</h3>
+        <div class="bg-blue-50 p-2 md:p-3 rounded-lg">
+          <p class="text-xs md:text-sm text-blue-800 mb-2">
             <strong>mSv (毫希沃特)</strong>：衡量辐射对人体影响的单位，考虑了不同类型辐射的生物效应
           </p>
-          <p class="text-sm text-blue-800">
+          <p class="text-xs md:text-sm text-blue-800">
             <strong>参考标准</strong>：国际原子能机构建议公众年辐射限值为1mSv，职业人员为20mSv
           </p>
         </div>
@@ -144,13 +144,13 @@ const getRadiationLevel = (radiation: string) => {
 
       <!-- 分类筛选 -->
       <div class="mb-4">
-        <div class="flex flex-wrap gap-2">
+        <div class="flex flex-wrap gap-1 md:gap-2">
           <button 
             v-for="category in ['全部', ...categories]" 
             :key="category"
             @click="selectedCategory = category"
             :class="[
-              'px-3 py-1 text-sm rounded-full transition-all',
+              'px-2 md:px-3 py-1 text-xs md:text-sm rounded-full transition-all',
               selectedCategory === category 
                 ? 'bg-blue-500 text-white' 
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -161,8 +161,8 @@ const getRadiationLevel = (radiation: string) => {
         </div>
       </div>
 
-      <!-- 辐射量数据表格 -->
-      <div class="overflow-x-auto">
+      <!-- 桌面端表格 -->
+      <div class="hidden md:block overflow-x-auto">
         <table class="w-full border-collapse border border-gray-300">
           <thead>
             <tr class="bg-gray-50">
@@ -206,10 +206,48 @@ const getRadiationLevel = (radiation: string) => {
         </table>
       </div>
 
+      <!-- 手机端卡片 -->
+      <div class="md:hidden space-y-3">
+        <div 
+          v-for="(item, index) in filteredData" 
+          :key="index" 
+          class="bg-gray-50 rounded-lg p-3 border border-gray-200"
+        >
+          <div class="flex items-start justify-between mb-2">
+            <h4 class="font-medium text-sm text-gray-900 flex-1 pr-2">{{ item.item }}</h4>
+            <span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800 flex-shrink-0">
+              {{ item.category }}
+            </span>
+          </div>
+          
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center space-x-2">
+              <span :class="getRadiationColor(item.radiation)" class="font-semibold text-sm">
+                {{ item.radiation }} {{ item.unit }}
+              </span>
+              <span 
+                :class="[
+                  'px-2 py-1 text-xs rounded-full',
+                  getRadiationLevel(item.radiation) === '极低' ? 'bg-green-100 text-green-800' :
+                  getRadiationLevel(item.radiation) === '很低' ? 'bg-blue-100 text-blue-800' :
+                  getRadiationLevel(item.radiation) === '低' ? 'bg-yellow-100 text-yellow-800' :
+                  getRadiationLevel(item.radiation) === '中' ? 'bg-orange-100 text-orange-800' :
+                  'bg-red-100 text-red-800'
+                ]"
+              >
+                {{ getRadiationLevel(item.radiation) }}
+              </span>
+            </div>
+          </div>
+          
+          <p class="text-xs text-gray-600">{{ item.desc }}</p>
+        </div>
+      </div>
+
       <!-- 安全提示 -->
-      <div class="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-        <h4 class="text-lg font-semibold text-yellow-800 mb-2">安全提示</h4>
-        <ul class="text-sm text-yellow-700 space-y-1">
+      <div class="mt-4 md:mt-6 p-3 md:p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+        <h4 class="text-base md:text-lg font-semibold text-yellow-800 mb-2">安全提示</h4>
+        <ul class="text-xs md:text-sm text-yellow-700 space-y-1">
           <li>• 以上数据仅供参考，实际辐射量可能因设备、环境等因素而有所差异</li>
           <li>• 短期少量辐射暴露一般不会对健康造成显著影响</li>
           <li>• 孕妇和儿童对辐射更敏感，应避免不必要的医疗辐射检查</li>
@@ -229,17 +267,5 @@ const getRadiationLevel = (radiation: string) => {
 </template>
 
 <style scoped>
-.table-responsive {
-  @apply overflow-x-auto;
-}
-
-@media (max-width: 768px) {
-  .table-responsive table {
-    @apply text-sm;
-  }
-  .table-responsive td,
-  .table-responsive th {
-    @apply px-2 py-1;
-  }
-}
+/* 移除原有的简单响应式样式，新的布局已经通过Tailwind类实现 */
 </style>
