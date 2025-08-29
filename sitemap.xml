@@ -54,6 +54,7 @@
   <url><loc>https://tool.fologde.com/puzzle</loc><changefreq>monthly</changefreq><priority>0.3</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/sudoku</loc><changefreq>monthly</changefreq><priority>0.3</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/ai-gomoku</loc><changefreq>monthly</changefreq><priority>0.3</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
+  <url><loc>https://tool.fologde.com/guess-number</loc><changefreq>monthly</changefreq><priority>0.3</priority><lastmod>2025-08-29T00:00:00+00:00</lastmod></url>
 
   <!-- 其余工具 -->
   <url><loc>https://tool.fologde.com/textremoveduplicate</loc><changefreq>monthly</changefreq><priority>0.4</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>

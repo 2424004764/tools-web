@@ -799,4 +799,14 @@ export const constantRoute = [
       description: '展示常见物品的辐射量参考数据，包括食品、日用品、医疗设备等的辐射水平对比',
     }
   },
+  {
+    path: '/guess-number',
+    component: () => import('@/components/Tools/GuessNumber/GuessNumber.vue'),
+    name: 'guess-number',
+    meta: {
+      title: "猜数字游戏",
+      keywords: '猜数字,数字游戏,在线游戏,益智游戏',
+      description: '经典猜数字游戏，在1-100范围内猜出系统随机数字，考验逻辑推理能力',
+    }
+  },
 ]
