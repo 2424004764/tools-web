@@ -32,6 +32,9 @@ const cates: Cate[] = [
     title: 'AI 创作平台',
     list: [
       { title: 'Media.io', url: 'https://www.media.io/', rating: 4.5, desc: '全能AI创作平台，支持视频、图片、音频的AI生成与编辑，包含Veo3视频生成、AI图像增强、音视频处理等强大功能' },
+      { title: 'v0', url: 'https://v0.app/', rating: 4.0, desc: 'Vercel推出的AI界面生成工具，通过自然语言描述快速生成React组件和现代化UI界面' },
+      { title: 'CodeBuddy', url: 'https://copilot.tencent.com/', rating: 4.5, desc: '腾讯推出的全栈AI编程助手，支持自然语言需求规划、设计到代码转换、全栈代码生成与优化等功能' },
+      { title: 'Trae.cn', url: 'https://trae.cn/', rating: 4.0, desc: '字节推出的AI代码编辑器，提供智能代码补全、代码评审、单元测试生成等功能，助力开发者高效编程' },
     ],
   },
   {
