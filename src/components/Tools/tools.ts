@@ -582,6 +582,15 @@ export function getToolsCate() {
           cateId: 11,
           cate: '趣味互动',
         },
+        {
+          id: 10,
+          title: '猜数字游戏',
+          logo: '/images/logo/guess_number.png',
+          desc: '经典猜数字游戏，在1-100范围内猜出系统随机数字',
+          url: '/guess-number/',
+          cateId: 11,
+          cate: '趣味互动',
+        },
       ]
     },
     {
