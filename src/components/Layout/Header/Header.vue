@@ -283,11 +283,11 @@ onUnmounted(() => {
       </ul>
     </div>
   </header>
-  <!-- 在template中添加全局加载状态 -->
-  <div v-if="routeLoading" class="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg p-4 flex items-center">
-      <el-icon class="is-loading mr-2"><Loading /></el-icon>
-      <span>加载中...</span>
+  <!-- 更新加载状态样式 -->
+  <div v-if="routeLoading" class="fixed top-0 left-0 w-full h-full bg-black bg-opacity-40 flex items-center justify-center z-50 loading-overlay">
+    <div class="loading-container">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">加载中...</div>
     </div>
   </div>
 </template>
@@ -344,5 +344,85 @@ onUnmounted(() => {
 .user-menu-item:hover {
   background-color: #f3f4f6;
   color: #111827;
+}
+
+/* 加载动画样式 */
+.loading-overlay {
+  backdrop-filter: blur(2px);
+  animation: fadeIn 0.3s ease-out;
+}
+
+.loading-container {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+  padding: 32px 40px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #f3f4f6;
+  border-top: 4px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  position: relative;
+}
+
+.loading-spinner::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  right: -4px;
+  bottom: -4px;
+  border: 2px solid transparent;
+  border-top: 2px solid #10b981;
+  border-radius: 50%;
+  animation: spin 2s linear infinite reverse;
+}
+
+.loading-text {
+  font-size: 16px;
+  font-weight: 500;
+  color: #374151;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* 响应式适配 */
+@media (max-width: 640px) {
+  .loading-container {
+    padding: 24px 32px;
+  }
+  
+  .loading-spinner {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .loading-text {
+    font-size: 14px;
+  }
 }
 </style>
