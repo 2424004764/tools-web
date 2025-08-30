@@ -399,6 +399,15 @@ export function getToolsCate() {
           url: '/math-equation-3d/',
           cateId: 4,
           cate: '教育学术'
+        },
+        {
+          id: 1,
+          title: '算法可视化',
+          logo: '/images/logo/algorithm_visualization.png',
+          desc: '排序算法、搜索算法等算法处理过程的可视化展示，帮助理解算法原理',
+          url: '/algorithm-visualization/',
+          cateId: 4,
+          cate: '教育学术'
         }
       ]
     },

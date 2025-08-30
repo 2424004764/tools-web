@@ -819,4 +819,14 @@ export const constantRoute = [
       description: '3D数学方程式可视化工具，支持参数方程、隐式方程、函数图像的三维交互式展示，帮助理解复杂数学概念',
     }
   },
+  {
+    path: '/algorithm-visualization',
+    component: () => import('@/components/Tools/AlgorithmVisualization/AlgorithmVisualization.vue'),
+    name: 'algorithm-visualization',
+    meta: {
+      title: "算法可视化",
+      keywords: '算法可视化,排序算法,搜索算法,冒泡排序,快速排序,二分查找,算法演示,数据结构',
+      description: '算法可视化工具，支持冒泡排序、快速排序、归并排序、二分查找等算法的动态演示，帮助理解算法原理和执行过程',
+    }
+  },
 ]
