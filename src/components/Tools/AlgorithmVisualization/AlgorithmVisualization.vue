@@ -7,20 +7,23 @@ const info = reactive({
   title: "算法可视化",
 })
 
-// 算法类型 - 只保留排序算法
+// 算法类型 - 添加新的排序算法
 const algorithmTypes = [
   { label: '冒泡排序', value: 'bubbleSort' },
   { label: '选择排序', value: 'selectionSort' },
   { label: '插入排序', value: 'insertionSort' },
   { label: '快速排序', value: 'quickSort' },
   { label: '归并排序', value: 'mergeSort' },
-  { label: '堆排序', value: 'heapSort' }
+  { label: '堆排序', value: 'heapSort' },
+  { label: '希尔排序', value: 'shellSort' },
+  { label: '计数排序', value: 'countingSort' },
+  { label: '基数排序', value: 'radixSort' }
 ]
 
 // 状态管理 - 移除搜索相关状态
 const state = reactive({
   selectedAlgorithm: 'bubbleSort',
-  arraySize: 20,
+  arraySize: 25,
   animationSpeed: 100,
   isRunning: false,
   isPaused: false,
@@ -40,7 +43,7 @@ const state = reactive({
 })
 
 // 时间更新定时器
-let timeUpdateInterval: NodeJS.Timeout | null = null
+let timeUpdateInterval: number | null = null
 
 // 时间格式化
 const formatTime = (milliseconds: number) => {
@@ -77,8 +80,33 @@ const arrayData = ref<number[]>([])
 const arrayStates = ref<string[]>([]) // 'normal', 'comparing', 'swapping', 'sorted', 'found'
 const animationSteps = ref<any[]>([])
 
-// 生成随机数组 - 确保统计重置
+// 添加响应式计算属性
+const isMobile = computed(() => {
+  return window.innerWidth < 768
+})
+
+const maxArraySizeForMobile = computed(() => {
+  return isMobile.value ? 15 : 50
+})
+
+const barWidth = computed(() => {
+  const screenWidth = window.innerWidth
+  if (screenWidth < 640) { // sm
+    return Math.max(12, Math.floor((screenWidth - 80) / state.arraySize))
+  } else if (screenWidth < 768) { // md
+    return Math.max(16, Math.floor((screenWidth - 100) / state.arraySize))
+  } else {
+    return 32 // 默认宽度
+  }
+})
+
+// 修改生成随机数组函数，限制手机端数组大小
 const generateRandomArray = () => {
+  const maxSize = isMobile.value ? 15 : 50
+  if (state.arraySize > maxSize) {
+    state.arraySize = maxSize
+  }
+  
   arrayData.value = Array.from({ length: state.arraySize }, () => Math.floor(Math.random() * 100) + 1)
   arrayStates.value = Array(state.arraySize).fill('normal')
   state.currentStep = 0
@@ -87,8 +115,8 @@ const generateRandomArray = () => {
   state.elapsedTime = 0
   state.currentRound = 0
   state.totalRounds = 0
-  state.comparisons = 0  // 重置比较次数
-  state.swaps = 0        // 重置交换次数
+  state.comparisons = 0
+  state.swaps = 0
   state.pausedTime = 0
   state.pauseStartTime = 0
   animationSteps.value = []
@@ -506,7 +534,7 @@ const merge = (arr: number[], left: number, mid: number, right: number, steps: a
     // 添加比较步骤
     steps.push({
       type: 'compare',
-      indices: [left + i, mid + 1 + j],
+      indices: [k], // 显示当前要放置的位置
       leftValue: leftArr[i],
       rightValue: rightArr[j],
       description: `比较 ${leftArr[i]} 和 ${rightArr[j]}`
@@ -518,7 +546,6 @@ const merge = (arr: number[], left: number, mid: number, right: number, steps: a
         type: 'place',
         indices: [k],
         value: leftArr[i],
-        fromIndex: left + i,
         description: `将 ${leftArr[i]} 放置到位置 ${k}`
       })
       i++
@@ -528,7 +555,6 @@ const merge = (arr: number[], left: number, mid: number, right: number, steps: a
         type: 'place',
         indices: [k],
         value: rightArr[j],
-        fromIndex: mid + 1 + j,
         description: `将 ${rightArr[j]} 放置到位置 ${k}`
       })
       j++
@@ -543,7 +569,6 @@ const merge = (arr: number[], left: number, mid: number, right: number, steps: a
       type: 'place',
       indices: [k],
       value: leftArr[i],
-      fromIndex: left + i,
       description: `将剩余元素 ${leftArr[i]} 放置到位置 ${k}`
     })
     i++
@@ -557,7 +582,6 @@ const merge = (arr: number[], left: number, mid: number, right: number, steps: a
       type: 'place',
       indices: [k],
       value: rightArr[j],
-      fromIndex: mid + 1 + j,
       description: `将剩余元素 ${rightArr[j]} 放置到位置 ${k}`
     })
     j++
@@ -749,7 +773,245 @@ const heapify = (arr: number[], n: number, i: number, steps: any[]) => {
   }
 }
 
-// 获取算法步骤 - 只保留排序算法
+// 希尔排序算法
+const shellSort = (arr: number[]) => {
+  const steps: any[] = []
+  const n = arr.length
+  const sortedArray = [...arr]
+  let roundCount = 0
+  
+  // 生成间隔序列（使用Knuth序列）
+  for (let gap = Math.floor(n / 2); gap > 0; gap = Math.floor(gap / 2)) {
+    roundCount++
+    steps.push({
+      type: 'round',
+      round: roundCount,
+      description: `第 ${roundCount} 轮：间隔为 ${gap}`
+    })
+    
+    steps.push({
+      type: 'gap_highlight',
+      gap: gap,
+      description: `当前间隔: ${gap}`
+    })
+    
+    // 对每个间隔进行插入排序
+    for (let i = gap; i < n; i++) {
+      const temp = sortedArray[i]
+      let j = i
+      
+      steps.push({
+        type: 'current',
+        indices: [i],
+        description: `处理元素 ${temp} 在位置 ${i}`
+      })
+      
+      while (j >= gap && sortedArray[j - gap] > temp) {
+        steps.push({
+          type: 'compare',
+          indices: [j - gap, j],
+          gap: gap,
+          description: `比较间隔为${gap}的元素: ${sortedArray[j - gap]} 和 ${temp}`
+        })
+        
+        steps.push({
+          type: 'swap',
+          indices: [j - gap, j],
+          description: `移动 ${sortedArray[j - gap]} 到位置 ${j}`
+        })
+        
+        sortedArray[j] = sortedArray[j - gap]
+        j -= gap
+      }
+      
+      sortedArray[j] = temp
+      if (j !== i) {
+        steps.push({
+          type: 'insert',
+          indices: [j],
+          value: temp,
+          description: `将 ${temp} 插入到位置 ${j}`
+        })
+      }
+    }
+  }
+  
+  steps.push({
+    type: 'complete',
+    indices: Array.from({ length: n }, (_, i) => i),
+    description: '希尔排序完成'
+  })
+  
+  return steps
+}
+
+// 计数排序算法 - 修复步骤
+const countingSort = (arr: number[]) => {
+  const steps: any[] = []
+  const n = arr.length
+  const sortedArray = [...arr]
+  
+  // 找到最大值
+  const max = Math.max(...sortedArray)
+  const min = Math.min(...sortedArray)
+  const range = max - min + 1
+  
+  steps.push({
+    type: 'round',
+    round: 1,
+    description: `第 1 阶段：统计每个元素出现次数`
+  })
+  
+  steps.push({
+    type: 'find_range',
+    indices: Array.from({ length: n }, (_, i) => i),
+    description: `数组范围: ${min} ~ ${max}，需要 ${range} 个计数桶`
+  })
+  
+  // 创建计数数组
+  const count = new Array(range).fill(0)
+  
+  // 统计每个元素出现的次数
+  for (let i = 0; i < n; i++) {
+    steps.push({
+      type: 'counting',
+      indices: [i],
+      value: sortedArray[i],
+      countIndex: sortedArray[i] - min,
+      description: `统计元素 ${sortedArray[i]}，计数桶[${sortedArray[i] - min}] += 1`
+    })
+    count[sortedArray[i] - min]++
+  }
+  
+  steps.push({
+    type: 'count_complete',
+    indices: [], // 提供空数组而不是undefined
+    countArray: [...count],
+    description: '统计完成，开始重建数组'
+  })
+  
+  steps.push({
+    type: 'round',
+    round: 2,
+    description: `第 2 阶段：根据计数重建有序数组`
+  })
+  
+  // 重建数组
+  let index = 0
+  for (let i = 0; i < range; i++) {
+    while (count[i] > 0) {
+      steps.push({
+        type: 'rebuild',
+        indices: [index],
+        value: i + min,
+        countIndex: i,
+        description: `从计数桶[${i}]取出 ${i + min} 放到位置 ${index}`
+      })
+      
+      sortedArray[index] = i + min
+      count[i]--
+      index++
+    }
+  }
+  
+  steps.push({
+    type: 'complete',
+    indices: Array.from({ length: n }, (_, i) => i),
+    description: '计数排序完成'
+  })
+  
+  return steps
+}
+
+// 基数排序算法
+const radixSort = (arr: number[]) => {
+  const steps: any[] = []
+  const n = arr.length
+  const sortedArray = [...arr]
+  
+  // 找到最大值以确定位数
+  const max = Math.max(...sortedArray)
+  const maxDigits = max.toString().length
+  
+  steps.push({
+    type: 'find_digits',
+    indices: Array.from({ length: n }, (_, i) => i),
+    description: `最大值 ${max} 有 ${maxDigits} 位，需要进行 ${maxDigits} 轮排序`
+  })
+  
+  // 对每一位进行计数排序
+  for (let digit = 0; digit < maxDigits; digit++) {
+    const digitPosition = Math.pow(10, digit)
+    
+    steps.push({
+      type: 'round',
+      round: digit + 1,
+      description: `第 ${digit + 1} 轮：按第 ${digit + 1} 位（${digit === 0 ? '个' : digit === 1 ? '十' : digit === 2 ? '百' : digit + 1}位）排序`
+    })
+    
+    // 显示当前位的值
+    for (let i = 0; i < n; i++) {
+      const currentDigit = Math.floor(sortedArray[i] / digitPosition) % 10
+      steps.push({
+        type: 'show_digit',
+        indices: [i],
+        digit: currentDigit,
+        digitPosition: digit + 1,
+        description: `${sortedArray[i]} 的第 ${digit + 1} 位是 ${currentDigit}`
+      })
+    }
+    
+    // 创建桶（0-9）
+    const buckets: number[][] = Array.from({ length: 10 }, () => [])
+    
+    // 将元素分配到桶中
+    for (let i = 0; i < n; i++) {
+      const currentDigit = Math.floor(sortedArray[i] / digitPosition) % 10
+      buckets[currentDigit].push(sortedArray[i])
+      
+      steps.push({
+        type: 'bucket_assign',
+        indices: [i],
+        value: sortedArray[i],
+        bucket: currentDigit,
+        description: `将 ${sortedArray[i]} 放入桶 ${currentDigit}`
+      })
+    }
+    
+    // 从桶中收集元素
+    let index = 0
+    for (let bucket = 0; bucket < 10; bucket++) {
+      for (let i = 0; i < buckets[bucket].length; i++) {
+        steps.push({
+          type: 'bucket_collect',
+          indices: [index],
+          value: buckets[bucket][i],
+          bucket: bucket,
+          description: `从桶 ${bucket} 收集 ${buckets[bucket][i]} 到位置 ${index}`
+        })
+        
+        sortedArray[index] = buckets[bucket][i]
+        index++
+      }
+    }
+    
+    steps.push({
+      type: 'digit_complete',
+      indices: Array.from({ length: n }, (_, i) => i),
+      description: `第 ${digit + 1} 位排序完成`
+    })
+  }
+  
+  steps.push({
+    type: 'complete',
+    indices: Array.from({ length: n }, (_, i) => i),
+    description: '基数排序完成'
+  })
+  
+  return steps
+}
+
+// 获取算法步骤 - 添加新算法
 const getAlgorithmSteps = () => {
   const arr = [...arrayData.value]
   
@@ -766,12 +1028,18 @@ const getAlgorithmSteps = () => {
       return mergeSort([...arr])
     case 'heapSort':
       return heapSort(arr)
+    case 'shellSort':
+      return shellSort(arr)
+    case 'countingSort':
+      return countingSort(arr)
+    case 'radixSort':
+      return radixSort(arr)
     default:
       return []
   }
 }
 
-// 执行动画步骤 - 移除搜索相关状态处理
+// 执行动画步骤 - 修复forEach错误
 const executeStep = (step: any) => {
   // 统计操作次数 - 在处理步骤前统计
   switch (step.type) {
@@ -782,10 +1050,13 @@ const executeStep = (step: any) => {
       state.swaps++
       break
     case 'move':
-      state.swaps++ // move操作也算作交换
+    case 'rebuild':
+    case 'bucket_assign':
+    case 'bucket_collect':
+      state.swaps++
       break
     case 'place':
-      state.swaps++ // place操作也算作交换
+      state.swaps++
       break
     case 'round':
       state.currentRound = step.round || state.currentRound
@@ -805,134 +1076,165 @@ const executeStep = (step: any) => {
     arrayStates.value[index] = 'sorted'
   })
   
+  // 确保indices存在且是数组
+  const indices = step.indices || []
+  
   switch (step.type) {
     case 'compare':
-      step.indices.forEach((index: number) => {
+      indices.forEach((index: number) => {
         if (arrayStates.value[index] !== 'sorted') {
           arrayStates.value[index] = 'comparing'
         }
       })
       break
     case 'swap':
-      step.indices.forEach((index: number) => {
+      indices.forEach((index: number) => {
         if (arrayStates.value[index] !== 'sorted') {
           arrayStates.value[index] = 'swapping'
         }
       })
       // 执行实际交换
-      if (step.indices.length === 2) {
-        const [i, j] = step.indices
+      if (indices.length === 2) {
+        const [i, j] = indices
         const temp = arrayData.value[i]
         arrayData.value[i] = arrayData.value[j]
         arrayData.value[j] = temp
       }
       break
-    case 'move':
-      step.indices.forEach((index: number) => {
+    case 'gap_highlight':
+      // 希尔排序：高亮显示间隔
+      if (step.gap) {
+        for (let i = 0; i < arrayData.value.length; i += step.gap) {
+          if (arrayStates.value[i] !== 'sorted') {
+            arrayStates.value[i] = 'gap_highlight'
+          }
+        }
+      }
+      break
+    case 'find_range':
+    case 'find_digits':
+      indices.forEach((index: number) => {
         if (arrayStates.value[index] !== 'sorted') {
-          arrayStates.value[index] = 'moving'
+          arrayStates.value[index] = 'analyzing'
         }
       })
-      // 执行实际移动 - 向右移动一位
-      if (step.indices.length === 1) {
-        const index = step.indices[0]
-        if (index > 0) {
-          const temp = arrayData.value[index - 1]
-          arrayData.value[index - 1] = arrayData.value[index]
-          arrayData.value[index] = temp
+      break
+    case 'counting':
+      indices.forEach((index: number) => {
+        arrayStates.value[index] = 'counting'
+      })
+      break
+    case 'count_complete':
+      // 计数完成，显示所有元素为统计状态
+      arrayStates.value.fill('analyzing')
+      break
+    case 'rebuild':
+      indices.forEach((index: number) => {
+        arrayStates.value[index] = 'rebuilding'
+      })
+      // 执行实际重建
+      if (step.value !== undefined && indices.length === 1) {
+        arrayData.value[indices[0]] = step.value
+      }
+      break
+    case 'show_digit':
+      indices.forEach((index: number) => {
+        if (arrayStates.value[index] !== 'sorted') {
+          arrayStates.value[index] = 'digit_highlight'
         }
+      })
+      break
+    case 'bucket_assign':
+      indices.forEach((index: number) => {
+        arrayStates.value[index] = 'bucket_assign'
+      })
+      break
+    case 'bucket_collect':
+      indices.forEach((index: number) => {
+        arrayStates.value[index] = 'bucket_collect'
+      })
+      // 执行实际收集
+      if (step.value !== undefined && indices.length === 1) {
+        arrayData.value[indices[0]] = step.value
       }
       break
     case 'insert':
-      step.indices.forEach((index: number) => {
+      indices.forEach((index: number) => {
         arrayStates.value[index] = 'inserting'
       })
-      // 如果有指定值，设置到指定位置
-      if (step.value !== undefined && step.indices.length === 1) {
-        arrayData.value[step.indices[0]] = step.value
+      if (step.value !== undefined && indices.length === 1) {
+        arrayData.value[indices[0]] = step.value
       }
       break
     case 'place':
-      step.indices.forEach((index: number) => {
+      indices.forEach((index: number) => {
         if (arrayStates.value[index] !== 'sorted') {
           arrayStates.value[index] = 'placing'
         }
       })
       // 执行实际放置操作
-      if (step.value !== undefined && step.indices.length === 1) {
-        arrayData.value[step.indices[0]] = step.value
+      if (step.value !== undefined && indices.length === 1) {
+        arrayData.value[indices[0]] = step.value
       }
       break
     case 'sorted':
     case 'subsorted':
-      step.indices.forEach((index: number) => {
+    case 'digit_complete':
+      indices.forEach((index: number) => {
         arrayStates.value[index] = 'sorted'
       })
       break
-    // 移除所有搜索相关的case：
-    // - found
-    // - eliminate
-    // - eliminate_left  
-    // - eliminate_right
-    // - searching
-    // - sort_start
-    // - sort_swap
-    // - sort_complete
-    // - search_start
-    // - search_range
-    // - search_complete
-    // - notfound
     case 'pivot':
-      step.indices.forEach((index: number) => {
+      indices.forEach((index: number) => {
         if (arrayStates.value[index] !== 'sorted') {
           arrayStates.value[index] = 'pivot'
         }
       })
       break
     case 'current':
-      step.indices.forEach((index: number) => {
+      indices.forEach((index: number) => {
         if (arrayStates.value[index] !== 'sorted') {
           arrayStates.value[index] = 'current'
         }
       })
       break
     case 'newmin':
-      step.indices.forEach((index: number) => {
+      indices.forEach((index: number) => {
         if (arrayStates.value[index] !== 'sorted') {
           arrayStates.value[index] = 'newmin'
         }
       })
       break
     case 'newmax':
-      step.indices.forEach((index: number) => {
+      indices.forEach((index: number) => {
         if (arrayStates.value[index] !== 'sorted') {
           arrayStates.value[index] = 'newmax'
         }
       })
       break
     case 'divide':
-      step.indices.forEach((index: number) => {
+      indices.forEach((index: number) => {
         if (arrayStates.value[index] !== 'sorted') {
           arrayStates.value[index] = 'dividing'
         }
       })
       break
     case 'merge':
-      step.indices.forEach((index: number) => {
+      indices.forEach((index: number) => {
         if (arrayStates.value[index] !== 'sorted') {
           arrayStates.value[index] = 'merging'
         }
       })
       break
     case 'heap_built':
-      step.indices.forEach((index: number) => {
+      indices.forEach((index: number) => {
         if (arrayStates.value[index] !== 'sorted') {
           arrayStates.value[index] = 'heap'
         }
       })
       break
     case 'complete':
-      step.indices.forEach((index: number) => {
+      indices.forEach((index: number) => {
         arrayStates.value[index] = 'sorted'
       })
       break
@@ -1032,18 +1334,13 @@ const stopVisualization = () => {
   resetVisualization()
 }
 
-// 获取柱子颜色 - 移除搜索相关颜色
+// 获取柱子颜色 - 添加新算法的颜色
 const getBarColor = (index: number) => {
   const state_type = arrayStates.value[index]
   switch (state_type) {
     case 'comparing': return '#3b82f6' // 蓝色
     case 'swapping': return '#ef4444' // 红色
     case 'sorted': return '#10b981' // 绿色
-    // 移除搜索相关颜色：
-    // - found
-    // - eliminated  
-    // - searching
-    // - sorting
     case 'pivot': return '#8b5cf6' // 紫色
     case 'current': return '#06b6d4' // 青色
     case 'newmin': return '#f97316' // 橙色
@@ -1053,7 +1350,15 @@ const getBarColor = (index: number) => {
     case 'dividing': return '#a855f7' // 紫色
     case 'merging': return '#0ea5e9' // 天蓝色
     case 'placing': return '#22c55e' // 绿色
-    case 'heap': return '#f59e0b' // 黄色 - 堆状态
+    case 'heap': return '#f59e0b' // 黄色
+    // 新增颜色
+    case 'gap_highlight': return '#8b5cf6' // 紫色 - 希尔排序间隔
+    case 'analyzing': return '#06b6d4' // 青色 - 分析阶段
+    case 'counting': return '#f59e0b' // 黄色 - 计数中
+    case 'rebuilding': return '#10b981' // 绿色 - 重建中
+    case 'digit_highlight': return '#ec4899' // 粉色 - 数位高亮
+    case 'bucket_assign': return '#f97316' // 橙色 - 分桶
+    case 'bucket_collect': return '#22c55e' // 绿色 - 收集
     default: return '#e5e7eb' // 默认灰色
   }
 }
@@ -1080,6 +1385,24 @@ const startButtonText = computed(() => {
 // 初始化
 onMounted(() => {
   generateRandomArray()
+  
+  // 监听窗口大小变化
+  const handleResize = () => {
+    // 触发响应式更新
+    nextTick(() => {
+      if (isMobile.value && state.arraySize > 15) {
+        state.arraySize = 15
+        generateRandomArray()
+      }
+    })
+  }
+  
+  window.addEventListener('resize', handleResize)
+  
+  // 组件卸载时移除监听器
+  onUnmounted(() => {
+    window.removeEventListener('resize', handleResize)
+  })
 })
 
 // 组件卸载时清理定时器
@@ -1093,7 +1416,7 @@ onUnmounted(() => {
     <DetailHeader :title="info.title"></DetailHeader>
 
     <div class="p-6 rounded-2xl bg-white space-y-6">
-      <!-- 控制面板 -->
+      <!-- 控制面板 - 响应式数组大小限制 -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <div>
           <label class="block text-sm font-medium mb-2">算法类型</label>
@@ -1108,11 +1431,14 @@ onUnmounted(() => {
         </div>
         
         <div>
-          <label class="block text-sm font-medium mb-2">数组大小: {{ state.arraySize }}</label>
+          <label class="block text-sm font-medium mb-2">
+            数组大小: {{ state.arraySize }}
+            <span v-if="isMobile" class="text-xs text-gray-500">(手机端最大15)</span>
+          </label>
           <el-slider
             v-model="state.arraySize"
             :min="5"
-            :max="50"
+            :max="maxArraySizeForMobile"
             :disabled="state.isRunning"
             :show-tooltip="false"
             @change="generateRandomArray"
@@ -1197,62 +1523,96 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- 可视化区域 -->
-      <div class="bg-gray-50 p-6 rounded-lg min-h-[400px]">
-        <div class="flex items-end justify-center space-x-1 h-80">
-          <div
-            v-for="(value, index) in arrayData"
-            :key="index"
-            class="flex flex-col items-center transition-all duration-300"
+      <!-- 可视化区域 - 响应式设计 -->
+      <div class="bg-gray-50 p-3 sm:p-6 rounded-lg min-h-[350px] sm:min-h-[400px]">
+        <!-- 添加水平滚动容器 -->
+        <div class="overflow-x-auto">
+          <div 
+            class="flex items-end justify-center space-x-1 h-64 sm:h-80 min-w-full"
+            :style="{ minWidth: `${Math.max(320, state.arraySize * (barWidth + 4))}px` }"
           >
-            <!-- 数值显示 -->
-            <div class="text-xs mb-1 font-mono">{{ value }}</div>
-            
-            <!-- 柱状图 -->
             <div
-              class="w-6 md:w-8 transition-all duration-300 rounded-t-sm"
-              :style="{
-                height: `${(value / 100) * 250}px`,
-                backgroundColor: getBarColor(index),
-                minHeight: '20px'
-              }"
-            ></div>
-            
-            <!-- 索引显示 -->
-            <div class="text-xs mt-1 text-gray-500">{{ index }}</div>
+              v-for="(value, index) in arrayData"
+              :key="index"
+              class="flex flex-col items-center transition-all duration-300 flex-shrink-0"
+            >
+              <!-- 数值显示 - 响应式字体 -->
+              <div 
+                class="text-xs mb-1 font-mono"
+                :class="{ 'text-[10px]': isMobile && state.arraySize > 10 }"
+              >
+                {{ value }}
+              </div>
+              
+              <!-- 柱状图 - 动态宽度 -->
+              <div
+                class="transition-all duration-300 rounded-t-sm"
+                :style="{
+                  width: `${barWidth}px`,
+                  height: `${(value / 100) * (isMobile ? 200 : 250)}px`,
+                  backgroundColor: getBarColor(index),
+                  minHeight: '15px'
+                }"
+              ></div>
+              
+              <!-- 索引显示 - 响应式字体 -->
+              <div 
+                class="text-xs mt-1 text-gray-500"
+                :class="{ 'text-[10px]': isMobile && state.arraySize > 10 }"
+              >
+                {{ index }}
+              </div>
+            </div>
           </div>
+        </div>
+        
+        <!-- 手机端提示 -->
+        <div v-if="isMobile && state.arraySize > 10" class="text-xs text-gray-500 text-center mt-2">
+          💡 可以左右滑动查看完整图表
         </div>
       </div>
 
-      <!-- 颜色说明 - 移除搜索相关颜色 -->
-      <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 text-sm">
-        <div class="flex items-center space-x-2">
-          <div class="w-4 h-4 bg-gray-300 rounded"></div>
-          <span>未处理</span>
+      <!-- 颜色说明 - 添加新算法的颜色说明 -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-10 gap-2 sm:gap-3 text-xs sm:text-sm">
+        <div class="flex items-center space-x-1 sm:space-x-2">
+          <div class="w-3 h-3 sm:w-4 sm:h-4 bg-gray-300 rounded flex-shrink-0"></div>
+          <span class="truncate">未处理</span>
         </div>
-        <div class="flex items-center space-x-2">
-          <div class="w-4 h-4 bg-blue-500 rounded"></div>
-          <span>比较中</span>
+        <div class="flex items-center space-x-1 sm:space-x-2">
+          <div class="w-3 h-3 sm:w-4 sm:h-4 bg-blue-500 rounded flex-shrink-0"></div>
+          <span class="truncate">比较中</span>
         </div>
-        <div class="flex items-center space-x-2">
-          <div class="w-4 h-4 bg-red-500 rounded"></div>
-          <span>交换中</span>
+        <div class="flex items-center space-x-1 sm:space-x-2">
+          <div class="w-3 h-3 sm:w-4 sm:h-4 bg-red-500 rounded flex-shrink-0"></div>
+          <span class="truncate">交换中</span>
         </div>
-        <div class="flex items-center space-x-2">
-          <div class="w-4 h-4 bg-green-500 rounded"></div>
-          <span>已排序</span>
+        <div class="flex items-center space-x-1 sm:space-x-2">
+          <div class="w-3 h-3 sm:w-4 sm:h-4 bg-green-500 rounded flex-shrink-0"></div>
+          <span class="truncate">已排序</span>
         </div>
-        <div class="flex items-center space-x-2">
-          <div class="w-4 h-4 bg-purple-500 rounded"></div>
-          <span>基准值</span>
+        <div class="flex items-center space-x-1 sm:space-x-2">
+          <div class="w-3 h-3 sm:w-4 sm:h-4 bg-purple-500 rounded flex-shrink-0"></div>
+          <span class="truncate">基准值/间隔</span>
         </div>
-        <div class="flex items-center space-x-2">
-          <div class="w-4 h-4 bg-cyan-500 rounded"></div>
-          <span>当前处理</span>
+        <div class="flex items-center space-x-1 sm:space-x-2">
+          <div class="w-3 h-3 sm:w-4 sm:h-4 bg-cyan-500 rounded flex-shrink-0"></div>
+          <span class="truncate">当前处理</span>
         </div>
-        <div class="flex items-center space-x-2">
-          <div class="w-4 h-4 bg-orange-500 rounded"></div>
-          <span>最小/最大值</span>
+        <div class="flex items-center space-x-1 sm:space-x-2">
+          <div class="w-3 h-3 sm:w-4 sm:h-4 bg-orange-500 rounded flex-shrink-0"></div>
+          <span class="truncate">计数/分桶</span>
+        </div>
+        <div class="flex items-center space-x-1 sm:space-x-2">
+          <div class="w-3 h-3 sm:w-4 sm:h-4 bg-yellow-500 rounded flex-shrink-0"></div>
+          <span class="truncate">统计中</span>
+        </div>
+        <div class="flex items-center space-x-1 sm:space-x-2">
+          <div class="w-3 h-3 sm:w-4 sm:h-4 bg-pink-500 rounded flex-shrink-0"></div>
+          <span class="truncate">数位高亮</span>
+        </div>
+        <div class="flex items-center space-x-1 sm:space-x-2">
+          <div class="w-3 h-3 sm:w-4 sm:h-4 bg-lime-500 rounded flex-shrink-0"></div>
+          <span class="truncate">重建/收集</span>
         </div>
       </div>
     </div>
@@ -1269,6 +1629,9 @@ onUnmounted(() => {
             <li><strong>快速排序：</strong>选择基准值，将数组分为小于和大于基准值的两部分，递归排序</li>
             <li><strong>归并排序：</strong>将数组分为两半，分别排序后合并</li>
             <li><strong>堆排序：</strong>构建最大堆，重复提取最大元素</li>
+            <li><strong>希尔排序：</strong>改进的插入排序，通过间隔序列进行多轮插入排序</li>
+            <li><strong>计数排序：</strong>统计每个元素出现次数，然后重建有序数组（非比较排序）</li>
+            <li><strong>基数排序：</strong>按数位进行多轮计数排序，从低位到高位依次排序</li>
           </ul>
         </div>
         
