@@ -8,7 +8,20 @@ import { useUserStore } from '@/store/modules/user'
 import 'element-plus/theme-chalk/display.css'
 import { ToolsInfo } from '@/components/Tools/tools.type.ts';
 
-import router from '@/router';
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+const routeLoading = ref(false)
+
+// 监听路由变化，显示加载状态
+router.beforeEach((_to, _from, next) => {
+  routeLoading.value = true
+  next()
+})
+
+router.afterEach(() => {
+  routeLoading.value = false
+})
 // const isNavDrawer = ref(false)
 const loading = ref(false)
 const options = ref<ToolsInfo[]>([])
@@ -270,6 +283,13 @@ onUnmounted(() => {
       </ul>
     </div>
   </header>
+  <!-- 在template中添加全局加载状态 -->
+  <div v-if="routeLoading" class="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-4 flex items-center">
+      <el-icon class="is-loading mr-2"><Loading /></el-icon>
+      <span>加载中...</span>
+    </div>
+  </div>
 </template>
 
 <style scoped>
