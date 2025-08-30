@@ -390,6 +390,15 @@ export function getToolsCate() {
           url: '/radiation-sample/',
           cateId: 4,
           cate: '教育学术'
+        },
+        {
+          id: 1,
+          title: '3D数学方程式',
+          logo: '/images/logo/math_equation_3d.png',
+          desc: '3D数学方程式可视化工具，支持参数方程、隐式方程、函数图像的三维展示',
+          url: '/math-equation-3d/',
+          cateId: 4,
+          cate: '教育学术'
         }
       ]
     },

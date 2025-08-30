@@ -809,4 +809,14 @@ export const constantRoute = [
       description: '经典猜数字游戏，在1-100范围内猜出系统随机数字，考验逻辑推理能力',
     }
   },
+  {
+    path: '/math-equation-3d',
+    component: () => import('@/components/Tools/MathEquation3D/MathEquation3D.vue'),
+    name: 'math-equation-3d',
+    meta: {
+      title: "3D数学方程式",
+      keywords: '3D数学,方程式可视化,三维图形,参数方程,隐式方程,数学建模,3D绘图',
+      description: '3D数学方程式可视化工具，支持参数方程、隐式方程、函数图像的三维交互式展示，帮助理解复杂数学概念',
+    }
+  },
 ]

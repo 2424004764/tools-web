@@ -93,6 +93,12 @@
 
   <!-- 格式 -->
   <url><loc>https://tool.fologde.com/radiation-sample</loc><changefreq>monthly</changefreq><priority>0.5</priority><lastmod>2025-01-26T00:00:00+00:00</lastmod></url>
+  <url>
+    <loc>https://tools.aitool5.com/math-equation-3d/</loc>
+    <lastmod>2024-01-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
 
   <!-- 用户信息页 -->
   <url>
