@@ -4,6 +4,7 @@ import { ElMessage } from 'element-plus'
 import { Loading } from '@element-plus/icons-vue'
 import { jwtDecode } from 'jwt-decode'
 import { useUserStore } from '@/store/modules/user'
+const appTitle = ref(import.meta.env.VITE_APP_TITLE || '')
 
 // 谷歌API类型声明
 declare global {
@@ -136,7 +137,7 @@ const handleSignOut = () => {
     <div class="w-96">
       <div class="text-center mb-8">
         <h1 class="text-3xl font-bold text-gray-800 mb-2">用户登录</h1>
-        <p class="text-gray-600">欢迎使用Tools-Web工具箱</p>
+        <p class="text-gray-600">欢迎使用{{appTitle}}</p>
       </div>
       
       <div class="space-y-6">
