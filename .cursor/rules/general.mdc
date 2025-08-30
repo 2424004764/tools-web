@@ -2,7 +2,6 @@
 alwaysApply: true
 ---
 ## 共识
-
 - 这是一个vue3项目，使用ts语法
 - 如果需要新建一个组件功能，则需要在components/Tools/tools.ts文件中添加工具信息、在router/router.ts中添加路由、拷贝示例目录components/Tools/Example修改名称，在这个拷贝出来的目录中开发工具即可，生成的工具logo需要根据工具名真实生成，如：AI翻译，那logo就是ai_translate.png，新增的功能页面需要在sitemap.xml注册、并且在README.md的功能开发日志、工具列表声明
 - 返回中文
@@ -29,3 +28,6 @@ alwaysApply: true
     - 技术实现创新高效，结构清晰、易扩展。
     - 性能优化到位（懒加载、按需引入、内存友好）。
     - 符合工程化最佳实践，便于长期维护。
+
+## 前端界面优化
+- 适当使用毛玻璃效果、脉冲文字、渐入动画
