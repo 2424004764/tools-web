@@ -149,7 +149,32 @@ const handleLinuxdoLogin = async () => {
 
 // 处理Linux.do登录窗口消息
 const handleLinuxdoMessage = (event: MessageEvent) => {
+  // 验证消息来源 - 只接受来自可信域名的消息
+  const trustedOrigins = [
+    'https://connect.linux.do', // Linux.do官方域名
+  ];
+  
+  if (!trustedOrigins.some(origin => event.origin.startsWith(origin))) {
+    return; // 忽略不可信来源的消息
+  }
+
+  // 验证消息格式
+  if (!event.data || typeof event.data !== 'object') {
+    return; // 忽略格式不正确的消息
+  }
+
+  // 验证消息类型
+  if (!['success', 'error'].includes(event.data?.type)) {
+    return; // 忽略非Linux.do登录相关的消息
+  }
+
   if (event.data?.type === "success") {
+    // 验证成功消息的数据结构
+    if (!event.data.data?.token || !event.data.data?.user) {
+      console.warn('Linux.do success message missing required data');
+      return;
+    }
+
     linuxdoLoading.value = false;
 
     const { token, user, message } = event.data.data;
