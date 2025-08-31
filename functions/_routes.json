@@ -3,7 +3,8 @@
   "include": [
     "/proxy/*",
     "/google-auth",
-    "/api/notes/*"
+    "/api/notes/*",
+    "/linuxdo-auth"
   ],
   "exclude": []
 }

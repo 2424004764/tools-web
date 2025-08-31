@@ -17,7 +17,8 @@ const TimeUtils = {
   Jh_isBetweenTimesByCurrentAndEndTime,
   getEndTime,
   startOfDay,
-  endOfDay
+  endOfDay,
+  Jh_getUtcISO8601
 }
 
 export default TimeUtils
@@ -313,6 +314,24 @@ export function Jh_compareTimes(time1: string, time2: string): boolean {
   } else {
     return false // 第二个大
   }
+}
+
+/**
+ * 获取UTC时间的ISO 8601格式：YYYYMMDD'T'HHMMSS'Z'
+ * @param timestamp 时间戳（毫秒），不传则使用当前时间
+ * @returns UTC时间的ISO 8601格式字符串
+ */
+export function Jh_getUtcISO8601(timestamp?: number): string {
+  const date = timestamp ? new Date(timestamp) : new Date()
+  
+  const year = date.getUTCFullYear()
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(date.getUTCDate()).padStart(2, '0')
+  const hour = String(date.getUTCHours()).padStart(2, '0')
+  const minute = String(date.getUTCMinutes()).padStart(2, '0')
+  const second = String(date.getUTCSeconds()).padStart(2, '0')
+  
+  return `${year}${month}${day}T${hour}${minute}${second}Z`
 }
 
 /*

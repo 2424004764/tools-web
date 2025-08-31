@@ -839,4 +839,14 @@ export const constantRoute = [
       description: '假如你有100亿人民币的购物模拟器，体验富翁生活，购买房产、汽车、产业等',
     }
   },
+  {
+    path: '/ai-prompt',
+    component: () => import('@/components/Tools/AiPrompt/AiPrompt.vue'),
+    name: 'ai-prompt',
+    meta: {
+      title: 'AI提示词仓库',
+      keywords: 'AI提示词,提示词库,prompt,AI指令,创意提示词,编程提示词,写作提示词',
+      description: '精选顶级AI提示词库，涵盖写作、编程、创意、分析等多个领域的优质提示词，助力提升AI对话效果'
+    }
+  },
 ]

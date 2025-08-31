@@ -1,3 +1,4 @@
+// 谷歌登录回调
 export async function onRequest(context) {
   const { request, env } = context;
 
@@ -61,25 +62,37 @@ export async function onRequest(context) {
     const email = payload.email;
     const avatar = payload.picture || '';
     const username = payload.name || email.split('@')[0];
+    const thirdPartyUid = payload.sub;
 
     // D1: user 表写入/更新
     const db = env.DB;
     const nowStr = formatNow();
 
     // 查是否已有用户
-    const found = await db.prepare('SELECT id FROM user WHERE google_sub = ?').bind(payload.sub).first();
+    const found = await db.prepare(`
+      SELECT id FROM user 
+      WHERE third_party_uid = ? AND third_party_type = 'google'
+    `).bind(thirdPartyUid).first();
 
     let userId;
     if (found && found.id) {
       userId = found.id;
-      await db.prepare('UPDATE user SET avatar = ?, last_login = ? WHERE id = ?')
-        .bind(avatar, nowStr, userId)
-        .run();
+      // 更新用户信息
+      await db.prepare(`
+        UPDATE user SET 
+          avatar = ?, 
+          last_login = ?, 
+          email = ?,
+          username = ?,
+          user_level = ?
+        WHERE id = ?
+      `).bind(avatar, nowStr, email, username, 0, userId).run();
     } else {
       userId = crypto.randomUUID();
-      await db.prepare('INSERT INTO user (id, email, avatar, reg_type, created_at, last_login, google_sub) VALUES (?, ?, ?, ?, ?, ?, ?)')
-        .bind(userId, email, avatar, 'google', nowStr, nowStr, payload.sub)
-        .run();
+      await db.prepare(`
+        INSERT INTO user (id, email, avatar, created_at, last_login, third_party_uid, username, user_level, third_party_type) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(userId, email, avatar, nowStr, nowStr, thirdPartyUid, username, 0, 'google').run();
     }
 
     // 生成JWT（HS256）
@@ -92,6 +105,9 @@ export async function onRequest(context) {
         email,
         avatar,
         username,
+        thirdPartyType: 'google',
+        thirdPartyUid,
+        thirdPartyLevel: 0,  // Google没有等级概念，默认0
         iat: Math.floor(Date.now() / 1000),
         exp: Math.floor(Date.now() / 1000) + 24 * 60 * 60 * 7
       },
@@ -100,7 +116,7 @@ export async function onRequest(context) {
 
     return new Response(JSON.stringify({
       success: true,
-      token, // 用户信息从jwt拿
+      token,
       message: '登录成功'
     }), {
       status: 200,

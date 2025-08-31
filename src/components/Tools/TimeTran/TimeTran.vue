@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, reactive } from 'vue'
 import { VideoPause,VideoPlay,CopyDocument } from '@element-plus/icons-vue'
-import { Jh_getTimeStamp,Jh_timeStampToTime,Jh_convertTimeStamp } from '@/utils/time'
+import { Jh_getTimeStamp,Jh_timeStampToTime,Jh_convertTimeStamp,Jh_getUtcISO8601 } from '@/utils/time'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { copy } from '@/utils/string'
 const info = reactive({
   title: "时间戳转换",
   nowTime: Jh_getTimeStamp(),
+  nowUtcTime: Jh_getUtcISO8601(), // 新增UTC时间
   isPlay: true,
   waitTimeStamp: Jh_getTimeStamp(),//待转换的时间戳
   tranTimeStamp: 0, //转换后的时间戳
@@ -33,6 +34,7 @@ const start = () => {
   if (!timer) {
     timer = setInterval(() => {
       info.nowTime = Jh_getTimeStamp()
+      info.nowUtcTime = Jh_getUtcISO8601() // 更新UTC时间
     }, 1000)
   }
 }
@@ -80,6 +82,11 @@ const timeTran = (type: string) => {
 const copyRes = async () => {
   copy('' + info.nowTime)
 }
+
+//复制UTC时间
+const copyUtcTime = async () => {
+  copy(info.nowUtcTime)
+}
 </script>
 
 <template>
@@ -91,6 +98,13 @@ const copyRes = async () => {
         <el-button class="mr-3" link @click="copyRes()">{{ info.nowTime }} <el-icon class="ml-1 mr-1"><CopyDocument /></el-icon></el-button>
         <el-button v-if="info.isPlay" type="danger" link class="flex items-center" @click="isPlayChange()"><el-icon class="mr-1" size="16"><VideoPlay/></el-icon>停止</el-button>
         <el-button v-else="info.isPlay" type="primary" link class="flex items-center" @click="isPlayChange()"><el-icon class="mr-1" size="16"><VideoPause /></el-icon>开始</el-button>
+      </div>
+
+      <!-- 新增UTC时间显示 -->
+      <div class="flex flex-direction mt-2">
+        <el-text class="mr-2 w-12">UTC</el-text>
+        <el-button class="mr-3" link @click="copyUtcTime()">{{ info.nowUtcTime }} <el-icon class="ml-1 mr-1"><CopyDocument /></el-icon></el-button>
+        <el-text class="text-gray-500 text-sm flex items-center">ISO 8601 标准格式</el-text>
       </div>
 
       <div class="flex flex-direction mt-4 justify-start">
@@ -124,6 +138,8 @@ const copyRes = async () => {
     <ToolDetail title="描述">
       <el-text>
         时间戳，是从1970年1月1日（UTC/GMT的午夜）开始所经过的秒数（不考虑闰秒），用于表示一个时间点。然而，这种格式对于人类阅读并不友好，因此需要转换成可读的日期和时间格式。这个工具能够将时间戳快速转换为人类可读的日期时间格式，同时也支持反向转换，即将日期时间转换为时间戳。<br>
+        <br>
+        现在还支持显示UTC时间的ISO 8601标准格式（YYYYMMDD'T'HHMMSS'Z'），这种格式常用于国际化应用和API接口中。
       </el-text> 
     </ToolDetail>
 
