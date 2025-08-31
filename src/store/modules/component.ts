@@ -5,6 +5,7 @@ export const useComponentStore = defineStore('component', {
   state: () => ({
     leftCom: false,
     leftComDrawer: false,
+    activeCategory: '', // 新增：当前活跃的分类ID
   }),
   //方法
   actions: {
@@ -17,6 +18,10 @@ export const useComponentStore = defineStore('component', {
     setleftComDrawerStatus(status: boolean) {
       // console.log(2)
       this.leftComDrawer = status
+    },
+    //设置当前活跃的分类
+    setActiveCategory(categoryId: string) {
+      this.activeCategory = categoryId
     }
   }
 })
