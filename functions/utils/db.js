@@ -1,3 +1,5 @@
+import { getCORSHeaders } from './cors.js'
+
 // 查询构建器
 export class QueryBuilder {
   constructor() {

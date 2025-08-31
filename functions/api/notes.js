@@ -5,10 +5,11 @@ export async function onRequest(context) {
   const { request, env } = context
   const url = new URL(request.url)
   const path = url.pathname.replace('/api/notes', '')
+  const origin = request.headers.get('Origin')
 
   // 处理OPTIONS请求
   if (request.method === 'OPTIONS') {
-    return ApiResponse.cors()
+    return ApiResponse.cors(origin)
   }
 
   // 初始化数据库
@@ -20,13 +21,14 @@ export async function onRequest(context) {
   try {
     // 创建路由实例并处理请求（传入env用于JWT验证）
     const router = new NotesRouter(dbInit.db)
-    return await router.handle(request, path, env)
+    return await router.handle(request, path, env, origin)
   } catch (error) {
     console.error('Notes API error:', error)
-    return ApiResponse.error('内部服务器错误', 500)
+    return ApiResponse.error('内部服务器错误', origin, 500)
   }
 }
 
 export async function onRequestOptions(context) {
-  return ApiResponse.cors()
+  const origin = context.request.headers.get('Origin')
+  return ApiResponse.cors(origin)
 }

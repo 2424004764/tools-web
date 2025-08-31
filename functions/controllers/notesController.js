@@ -8,18 +8,18 @@ export class NotesController {
   }
 
   // 获取当前用户的所有笔记（支持分页）
-  async index(user, pager) {
+  async index(user, pager, origin) {
     const result = await this.notesService.getAllNotes(user.id, pager)
     
     if (!result.success) {
-      return ApiResponse.error(result.error, 500)
+      return ApiResponse.error(result.error, origin, 500)
     }
     
-    return ApiResponse.success(result.data)
+    return ApiResponse.success(result.data, origin)
   }
 
   // 根据ID获取当前用户的笔记
-  async show(id, user) {
+  async show(id, user, origin) {
     // 验证ID参数
     const validation = Validator.validateId(id)
     if (!validation.isValid) {
@@ -29,14 +29,14 @@ export class NotesController {
     const result = await this.notesService.getNoteById(id, user.id)
     
     if (!result.success) {
-      return ApiResponse.error(result.error, 500)
+      return ApiResponse.error(result.error, origin, 500)
     }
     
-    return ApiResponse.success(result.data)
+    return ApiResponse.success(result.data, origin)
   }
 
   // 为当前用户创建笔记
-  async store(data, user) {
+  async store(data, user, origin) {
     // 验证创建数据
     const validation = Validator.validateCreateNote(data)
     if (!validation.isValid) {
@@ -46,14 +46,14 @@ export class NotesController {
     const result = await this.notesService.createNote(data, user.id)
     
     if (!result.success) {
-      return ApiResponse.error(result.error, 500)
+      return ApiResponse.error(result.error, origin, 500)
     }
     
-    return ApiResponse.success(result.data, 201)
+    return ApiResponse.success(result.data, origin, 201)
   }
 
   // 更新当前用户的笔记
-  async update(id, data, user) {
+  async update(id, data, user, origin) {
     // 验证ID参数
     const idValidation = Validator.validateId(id)
     if (!idValidation.isValid) {
@@ -69,14 +69,14 @@ export class NotesController {
     const result = await this.notesService.updateNote(id, data, user.id)
     
     if (!result.success) {
-      return ApiResponse.error(result.error, 500)
+      return ApiResponse.error(result.error, origin, 500)
     }
     
-    return ApiResponse.success(result.data)
+    return ApiResponse.success(result.data, origin)
   }
 
   // 删除当前用户的笔记
-  async destroy(id, user) {
+  async destroy(id, user, origin) {
     // 验证ID参数
     const validation = Validator.validateId(id)
     if (!validation.isValid) {
@@ -86,9 +86,9 @@ export class NotesController {
     const result = await this.notesService.deleteNote(id, user.id)
     
     if (!result.success) {
-      return ApiResponse.error(result.error, 500)
+      return ApiResponse.error(result.error, origin, 500)
     }
     
-    return ApiResponse.success(result.data)
+    return ApiResponse.success(result.data, origin)
   }
 }
