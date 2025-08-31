@@ -609,6 +609,15 @@ export function getToolsCate() {
           cateId: 11,
           cate: '趣味互动',
         },
+        {
+          id: 11,
+          title: '假如你有100亿',
+          logo: '/images/logo/hundred_billion.png',
+          desc: '假如你有100亿人民币，看看你会买什么？房产、汽车、产业任你选择',
+          url: '/hundred-billion/',
+          cateId: 11,
+          cate: '趣味互动',
+        },
       ]
     },
     {
