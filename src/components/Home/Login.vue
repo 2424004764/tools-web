@@ -152,6 +152,8 @@ const handleLinuxdoMessage = (event: MessageEvent) => {
   // 验证消息来源 - 只接受来自可信域名的消息
   const trustedOrigins = [
     'https://connect.linux.do', // Linux.do官方域名
+    siteUrl.value, // 添加当前站点域名
+    window.location.origin, // 添加当前页面域名
   ];
   
   if (!trustedOrigins.some(origin => event.origin.startsWith(origin))) {
