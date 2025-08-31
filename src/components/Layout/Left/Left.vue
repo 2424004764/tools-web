@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // import { Tools } from '@element-plus/icons-vue'
-import { onMounted, ref, watch, nextTick } from "vue";
+import { onMounted, ref, watch, nextTick, computed } from "vue";
 import { rtrim } from "@/utils/string";
 import { useToolsStore } from "@/store/modules/tools";
 import { useComponentStore } from "@/store/modules/component";
@@ -18,6 +18,17 @@ const defaultOpeneds = ["cate"];
 const toolsStore = useToolsStore();
 const componentStore = useComponentStore();
 const menuReady = ref(false);
+
+// 计算当前活跃分类
+const computedActiveCategory = computed(() => {
+  // 如果在首页且有滚动激活的分类，使用滚动激活的分类
+  if (route.path === '/' && componentStore.activeCategory) {
+    return componentStore.activeCategory
+  }
+  // 否则使用原有逻辑
+  return defaultActive.value
+})
+
 //获取分类
 const getToolCates = async () => {
   try {
@@ -69,6 +80,9 @@ const updateActive = async () => {
   const rawPath = route.path;
   const path = rawPath === "/" ? "/" : rtrim(rawPath, "/");
 
+  // 先清除activeCategory状态，避免干扰
+  componentStore.setActiveCategory('');
+
   if (path === "/about") {
     defaultActive.value = "about";
     return;
@@ -81,18 +95,25 @@ const updateActive = async () => {
     return;
   }
 
-  if (toolsStore.cates.length === 0) return;
+  if (toolsStore.cates.length === 0) {
+    defaultActive.value = "";
+    return;
+  }
+  
   await nextTick();
 
+  // 重置为空
+  defaultActive.value = "";
+  
+  // 精确匹配工具路径
   for (const cate of toolsStore.cates) {
     for (const tool of cate.list || []) {
       if (rtrim(tool.url, "/") === path) {
         defaultActive.value = `cate_${cate.id}`;
-        return;
+        return; // 找到匹配项后立即返回，避免继续匹配
       }
     }
   }
-  defaultActive.value = "";
 };
 
 watch(
@@ -149,12 +170,13 @@ onMounted(async () => {
       <el-menu
         v-if="menuReady"
         class="w-[200px]"
-        :key="`menu-${defaultActive}`"
-        :default-active="defaultActive"
+        :key="`menu-${computedActiveCategory}-${route.path}`"
+        :default-active="computedActiveCategory"
         :default-openeds="defaultOpeneds"
         background-color="transparent"
         @open="handleOpen"
         @close="handleClose"
+        unique-opened
       >
         <el-sub-menu index="cate">
           <template #title>
@@ -180,7 +202,6 @@ onMounted(async () => {
             <el-menu-item
               @click="gotoAnchor('cate_' + item.id)"
               :index="'cate_' + item.id"
-              :class="{ 'is-active': defaultActive === 'cate_' + item.id }"
               v-for="item in toolsStore.cates"
               :key="item.id"
             >

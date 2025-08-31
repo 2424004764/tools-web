@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { onMounted, watch, nextTick } from 'vue';
+import { onMounted, watch, nextTick, onUnmounted, ref } from 'vue';
 import { RouterLink } from "vue-router"
 // import { Star } from '@element-plus/icons-vue'
 import { useToolsStore } from '@/store/modules/tools'
+import { useComponentStore } from '@/store/modules/component'
 // import { ElMessage } from 'element-plus'
-import { useRoute } from "vue-router"
+import { useRoute, useRouter } from "vue-router"
 //store
 const toolsStore = useToolsStore()
+const componentStore = useComponentStore()
 const route = useRoute()
+const router = useRouter()
 // const getToolsCate = async () => {
 //   try {
 //     await toolsStore.getToolCate()
@@ -31,12 +34,112 @@ const scrollToAnchor = async () => {
   })
 }
 
+// 滚动监听相关
+const isScrollListenerActive = ref(false)
+
+// 滚动监听函数
+const handleScroll = () => {
+  if (!isScrollListenerActive.value) return
+  
+  const categories = toolsStore.cates
+  if (categories.length === 0) return
+
+  // 获取当前滚动位置
+  const scrollTop = window.pageYOffset || document.documentElement.scrollTop
+
+  // 查找当前可视区域内的分类
+  let activeCategory = ''
+  
+  for (const cate of categories) {
+    const element = document.getElementById(`cate_${cate.id}`)
+    if (element) {
+      const rect = element.getBoundingClientRect()
+      const elementTop = scrollTop + rect.top
+      
+      // 如果分类标题在视窗顶部以下100px范围内，则认为是当前活跃分类
+      if (elementTop <= scrollTop + 100) {
+        activeCategory = `cate_${cate.id}`
+      } else {
+        break
+      }
+    }
+  }
+  
+  // 更新活跃分类
+  if (activeCategory && activeCategory !== componentStore.activeCategory) {
+    componentStore.setActiveCategory(activeCategory)
+  }
+}
+
+// 防抖处理
+let scrollTimer: number | null = null
+const throttledHandleScroll = () => {
+  if (scrollTimer) return
+  scrollTimer = window.requestAnimationFrame(() => {
+    handleScroll()
+    scrollTimer = null
+  })
+}
+
+//跳转锚点 - 复用Left.vue的逻辑
+const gotoAnchor = async (anchor: string) => {
+  const q = route.query?.value as any
+  const current = Array.isArray(q) ? q[0] : q
+
+  if (route.path === "/") {
+    if (current === anchor) {
+      await nextTick()
+      document?.getElementById(anchor)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+        inline: 'start',
+      })
+      return
+    }
+    await router.replace({
+      path: "/",
+      query: { value: anchor },
+    })
+  } else {
+    await router.push({
+      path: "/",
+      query: { value: anchor },
+    })
+  }
+}
+
 onMounted(async () => {
   await nextTick()
   if (route.query && route.query.value) {
     scrollToAnchor()
   } else {
     document?.querySelector('#collect')?.scrollIntoView()
+  }
+  
+  // 只在首页激活滚动监听
+  if (route.path === '/') {
+    isScrollListenerActive.value = true
+    window.addEventListener('scroll', throttledHandleScroll)
+  }
+})
+
+onUnmounted(() => {
+  // 清理滚动监听
+  isScrollListenerActive.value = false
+  window.removeEventListener('scroll', throttledHandleScroll)
+  if (scrollTimer) {
+    cancelAnimationFrame(scrollTimer)
+  }
+})
+
+// 监听路由变化
+watch(() => route.path, (newPath) => {
+  if (newPath === '/') {
+    isScrollListenerActive.value = true
+    window.addEventListener('scroll', throttledHandleScroll)
+  } else {
+    isScrollListenerActive.value = false
+    window.removeEventListener('scroll', throttledHandleScroll)
   }
 })
 
@@ -54,7 +157,11 @@ watch(() => toolsStore.cates.length, () => {
     <!-- list -->
     <div v-for="(cate, index) in toolsStore.cates" :key="index">
       <!-- cate title -->
-      <div class="mt-8 mb-3 text-xl font-bold text-[--base-black]" :id="'cate_' + cate.id">
+      <div 
+        class="mt-8 mb-3 text-xl font-bold text-[--base-black] cursor-pointer hover:text-blue-600 transition-colors duration-200" 
+        :id="'cate_' + cate.id"
+        @click="gotoAnchor('cate_' + cate.id)"
+      >
         {{ cate.title }}
       </div>
       <!-- card -->
