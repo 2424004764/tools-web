@@ -829,4 +829,14 @@ export const constantRoute = [
       description: '算法可视化工具，支持冒泡排序、快速排序、归并排序、二分查找等算法的动态演示，帮助理解算法原理和执行过程',
     }
   },
+  {
+    path: '/hundred-billion',
+    component: () => import('@/components/Tools/HundredBillion/HundredBillion.vue'),
+    name: 'hundredbillion',
+    meta: {
+      title: "假如你有100亿",
+      keywords: '100亿人民币,假如有钱,富翁模拟,购物模拟,趣味互动',
+      description: '假如你有100亿人民币的购物模拟器，体验富翁生活，购买房产、汽车、产业等',
+    }
+  },
 ]
