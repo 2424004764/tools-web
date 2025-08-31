@@ -808,6 +808,15 @@ export function getToolsCate() {
           cateId: 10,
           cate: 'AI工具'
         },
+        {
+          id: 9,
+          title: 'AI提示词仓库',
+          logo: '/images/logo/ai_prompt.png',
+          desc: '精选顶级AI提示词库，涵盖写作、编程、创意、分析等多个领域，助力提升AI对话效果',
+          url: '/ai-prompt/',
+          cateId: 10,
+          cate: 'AI工具'
+        },
         // {
         //   id: 2,
         //   title: '在线文本转语音',

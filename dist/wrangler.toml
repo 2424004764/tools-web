@@ -12,7 +12,7 @@ database_id = "afdabfae-6edd-4def-8e77-6a1171009b9c"
 # 本地调试指定线上数据库 wrangler pages dev --local --d1 yifang-tool:afdabfae-6edd-4def-8e77-6a1171009b9c
 # 本地调试的话  也需要在本地建表：
 #  notes表： wrangler d1 execute yifang-tool --command="CREATE TABLE notes (id TEXT PRIMARY KEY,uid TEXT NOT NULL,title TEXT NOT NULL,content TEXT NOT NULL,create_time DATETIME DEFAULT CURRENT_TIMESTAMP,update_time DATETIME DEFAULT CURRENT_TIMESTAMP);"
-#  user表：wrangler d1 execute yifang-tool --command="CREATE TABLE [user] ("id" text PRIMARY KEY,"email" text,"avatar" text,"reg_type" integer,"created_at" text,"last_login" text, "google_sub" TEXT)"
+#  user表：wrangler d1 execute yifang-tool --command="CREATE TABLE [user] ("id" text PRIMARY KEY,"email" text,"avatar" text,"created_at" text,"last_login" text, third_party_uid TEXT, username TEXT, user_level INTEGER DEFAULT 0, third_party_type TEXT)"
 
 # 使用该命令查看本地有哪些表：wrangler d1 execute yifang-tool --command="SELECT name FROM sqlite_master WHERE type='table';"
 
@@ -20,3 +20,5 @@ database_id = "afdabfae-6edd-4def-8e77-6a1171009b9c"
 # 本地调试设置环境变量（线上的环境变量是绑定在pages的变量和机密里）：
 [vars]
 JWT_SECRET = "6197upXX81DUXMF9I8f@IqVOi3NEYYR@FBTDmyMf1mY5A4ExMiiTz2!hr%5tpPZfXE^d^"
+LINUXDO_CLIENT_ID = "ndZjdtb3uuqsdQsLXVP9EryepP4g9p1C"
+LINUXDO_CLIENT_SECRET = "tPD2IZxu5SeG9HfoF3CkwVc3CrllVQXt"

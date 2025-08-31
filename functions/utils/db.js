@@ -272,10 +272,12 @@ export class UserModel extends Model {
         id: { type: 'string', primaryKey: true },
         email: { type: 'string' },
         avatar: { type: 'string' },
-        reg_type: { type: 'string', dbField: 'reg_type' },
         created_at: { type: 'datetime', dbField: 'created_at' },
         last_login: { type: 'datetime', dbField: 'last_login' },
-        google_sub: { type: 'string', dbField: 'google_sub' }
+        third_party_uid: { type: 'string', dbField: 'third_party_uid' },
+        username: { type: 'string', dbField: 'username' },
+        user_level: { type: 'integer', dbField: 'user_level' },
+        third_party_type: { type: 'string', dbField: 'third_party_type' }
       }
     }
   }
@@ -301,39 +303,30 @@ export class NoteModel extends Model {
 
 // API响应工具
 export class ApiResponse {
-  static success(data, status = 200) {
+  static success(data, origin, status = 200) {
     return new Response(JSON.stringify(data), {
       status,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+        ...getCORSHeaders(origin)
       }
     })
   }
 
-  static error(message, status = 500) {
+  static error(message, origin, status = 500) {
     return new Response(JSON.stringify({ error: message }), {
       status,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+        ...getCORSHeaders(origin)
       }
     })
   }
 
-  static cors() {
+  static cors(origin) {
     return new Response(null, {
       status: 204,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
-        'Access-Control-Max-Age': '86400'
-      }
+      headers: getCORSHeaders(origin)
     })
   }
 }
