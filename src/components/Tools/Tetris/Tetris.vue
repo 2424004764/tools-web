@@ -10,6 +10,7 @@ const info = reactive({
 // 游戏状态
 const gameState = reactive({
   isPlaying: false,
+  isPaused: false, // 新增暂停状态
   score: 0,
   highScore: 0,
   level: 1,
@@ -19,11 +20,19 @@ const gameState = reactive({
 
 // 游戏配置
 const config = reactive({
-  boardWidth: window.innerWidth < 768 ? 10 : 12, // 移动端10列，桌面端12列
-  boardHeight: window.innerWidth < 768 ? 20 : 22, // 移动端20行，桌面端22行
+  boardWidth: window.innerWidth < 768 ? 10 : 12,
+  boardHeight: window.innerWidth < 768 ? 20 : 22,
   cellSize: window.innerWidth < 768 ? 25 : 30,
-  speed: window.innerWidth < 768 ? 800 : 600, // H5端默认慢速，PC端默认正常
+  speedLevel: 3, // 速度等级 1-10（1最慢，10最快）
+  minSpeedLevel: 1,
+  maxSpeedLevel: 10,
 })
+
+// 速度等级转换为毫秒
+const getSpeedFromLevel = (level: number) => {
+  // 等级1=1000ms，等级10=100ms，线性递减
+  return 1100 - (level * 100)
+}
 
 // 游戏板
 const board = ref<number[][]>([])
@@ -163,7 +172,8 @@ const checkLines = () => {
       // 加快速度
       if (gameTimer) {
         clearInterval(gameTimer)
-        gameTimer = setInterval(gameLoop, Math.max(100, config.speed - gameState.level * 50))
+        const currentSpeed = getSpeedFromLevel(config.speedLevel)
+        gameTimer = setInterval(gameLoop, Math.max(100, currentSpeed - gameState.level * 50))
       }
     }
   }
@@ -205,9 +215,41 @@ const rotatePiece = () => {
   }
 }
 
+// 暂停/继续游戏
+const togglePause = () => {
+  if (!gameState.isPlaying) return
+  
+  gameState.isPaused = !gameState.isPaused
+  
+  if (gameState.isPaused) {
+    // 暂停游戏
+    if (gameTimer) {
+      clearInterval(gameTimer)
+      gameTimer = null
+    }
+  } else {
+    // 继续游戏
+    const currentSpeed = getSpeedFromLevel(config.speedLevel)
+    gameTimer = setInterval(gameLoop, Math.max(100, currentSpeed - gameState.level * 50))
+  }
+}
+
+// 调节游戏速度等级
+const changeSpeedLevel = (delta: number) => {
+  const newLevel = Math.max(config.minSpeedLevel, Math.min(config.maxSpeedLevel, config.speedLevel + delta))
+  config.speedLevel = newLevel
+  
+  // 如果游戏正在进行且未暂停，重新设置定时器
+  if (gameState.isPlaying && !gameState.isPaused && gameTimer) {
+    clearInterval(gameTimer)
+    const currentSpeed = getSpeedFromLevel(config.speedLevel)
+    gameTimer = setInterval(gameLoop, Math.max(100, currentSpeed - gameState.level * 50))
+  }
+}
+
 // 游戏主循环
 const gameLoop = () => {
-  if (!gameState.isPlaying || !currentPiece.value) return
+  if (!gameState.isPlaying || gameState.isPaused || !currentPiece.value) return
   
   if (!movePiece(0, 1)) {
     placePiece()
@@ -217,6 +259,7 @@ const gameLoop = () => {
 // 开始游戏
 const startGame = () => {
   gameState.isPlaying = true
+  gameState.isPaused = false
   gameState.gameOver = false
   gameState.score = 0
   gameState.level = 1
@@ -227,7 +270,8 @@ const startGame = () => {
   nextPiece.value = generatePiece()
   
   // 开始计时
-  gameTimer = setInterval(gameLoop, config.speed)
+  const currentSpeed = getSpeedFromLevel(config.speedLevel)
+  gameTimer = setInterval(gameLoop, currentSpeed)
 }
 
 // 游戏结束
@@ -259,7 +303,18 @@ const restartGame = () => {
 const handleKeydown = (event: KeyboardEvent) => {
   if (!gameState.isPlaying) return
   
+  // 暂停键（P键或空格键，但空格键在游戏中优先用于旋转）
+  if (event.key === 'p' || event.key === 'P') {
+    event.preventDefault()
+    togglePause()
+    return
+  }
+  
+  // 如果游戏暂停，不处理其他按键
+  if (gameState.isPaused) return
+  
   switch (event.key) {
+    // 原有方向键控制
     case 'ArrowLeft':
       event.preventDefault()
       movePiece(-1, 0)
@@ -277,6 +332,28 @@ const handleKeydown = (event: KeyboardEvent) => {
       event.preventDefault()
       rotatePiece()
       break
+    
+    // 新增WASD控制
+    case 'a':
+    case 'A':
+      event.preventDefault()
+      movePiece(-1, 0)
+      break
+    case 'd':
+    case 'D':
+      event.preventDefault()
+      movePiece(1, 0)
+      break
+    case 's':
+    case 'S':
+      event.preventDefault()
+      movePiece(0, 1)
+      break
+    case 'w':
+    case 'W':
+      event.preventDefault()
+      rotatePiece()
+      break
   }
 }
 
@@ -287,6 +364,12 @@ onMounted(() => {
   if (savedHighScore) {
     gameState.highScore = parseInt(savedHighScore)
   }
+  
+  // 初始化游戏板
+  initBoard()
+  
+  // 初始化下一个方块预览（即使游戏未开始也显示）
+  nextPiece.value = generatePiece()
   
   // 添加键盘事件监听
   window.addEventListener('keydown', handleKeydown)
@@ -330,7 +413,56 @@ onUnmounted(() => {
           </div>
           <div class="text-center bg-red-50 p-3 rounded-lg border border-red-200">
             <h3 class="text-sm font-medium text-red-900">速度</h3>
-            <p class="text-xl font-bold text-red-600">{{ config.speed }}ms</p>
+            <p class="text-xl font-bold text-red-600">{{ config.speedLevel }}级</p>
+          </div>
+        </div>
+
+        <!-- 速度控制和暂停按钮 -->
+        <div class="flex flex-col sm:flex-row justify-center items-center gap-4 mb-6">
+          <!-- 速度控制 -->
+          <div class="flex items-center gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
+            <span class="text-sm font-medium text-gray-700">速度等级:</span>
+            <el-button 
+              size="small" 
+              @click="changeSpeedLevel(-1)"
+              :disabled="config.speedLevel <= config.minSpeedLevel"
+              class="bg-blue-500 hover:bg-blue-600"
+            >
+              慢
+            </el-button>
+            <span class="text-sm font-bold text-gray-800 min-w-[40px] text-center">{{ config.speedLevel }}</span>
+            <el-button 
+              size="small" 
+              @click="changeSpeedLevel(1)"
+              :disabled="config.speedLevel >= config.maxSpeedLevel"
+              class="bg-red-500 hover:bg-red-600"
+            >
+              快
+            </el-button>
+            <span class="text-xs text-gray-500">(1慢-10快)</span>
+          </div>
+          
+          <!-- 游戏控制按钮 -->
+          <div class="flex gap-3">
+            <!-- 暂停按钮 -->
+            <el-button 
+              v-if="gameState.isPlaying"
+              @click="togglePause"
+              :type="gameState.isPaused ? 'success' : 'warning'"
+              :class="gameState.isPaused ? 'bg-green-500 hover:bg-green-600' : 'bg-yellow-500 hover:bg-yellow-600'"
+            >
+              {{ gameState.isPaused ? '继续 (P)' : '暂停 (P)' }}
+            </el-button>
+            
+            <!-- 重新开始按钮 -->
+            <el-button 
+              v-if="gameState.isPlaying"
+              @click="restartGame" 
+              type="danger"
+              class="bg-red-500 hover:bg-red-600 border-red-600"
+            >
+              重新开始
+            </el-button>
           </div>
         </div>
 
@@ -352,6 +484,14 @@ onUnmounted(() => {
           >
             重新开始
           </el-button>
+        </div>
+
+        <!-- 暂停提示 -->
+        <div v-if="gameState.isPaused && gameState.isPlaying" class="text-center mb-6">
+          <div class="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-4 shadow-md">
+            <h3 class="text-lg font-medium text-yellow-900 mb-2">游戏已暂停</h3>
+            <p class="text-yellow-600">按 P 键或点击继续按钮恢复游戏</p>
+          </div>
         </div>
 
         <!-- 游戏区域 -->
@@ -457,10 +597,12 @@ onUnmounted(() => {
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
             <div class="bg-white p-3 rounded border border-gray-200">
               <p><strong class="text-blue-600">游戏目标：</strong>消除完整的横行，获得高分</p>
-              <p><strong class="text-blue-600">操作方式：</strong>方向键控制移动，空格键旋转</p>
+              <p><strong class="text-blue-600">操作方式：</strong>方向键或WASD控制，空格键/W键旋转</p>
+              <p><strong class="text-blue-600">游戏控制：</strong>P键暂停/继续，可调节下落速度</p>
             </div>
             <div class="bg-white p-3 rounded border border-gray-200">
-              <p><strong class="text-green-600">得分规则：</strong>每消除一行+100分×当前等级</p>
+              <p><strong class="text-green-600">键盘操作：</strong>A/←左移，D/→右移，S/↓快降，W/↑/空格旋转</p>
+              <p><strong class="text-purple-600">得分规则：</strong>每消除一行+100分×当前等级</p>
               <p><strong class="text-red-600">升级机制：</strong>每消除10行升一级，速度加快</p>
             </div>
           </div>
