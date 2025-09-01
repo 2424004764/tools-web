@@ -12,6 +12,7 @@ interface Message {
   type: "user" | "assistant";
   content: string;
   timestamp: number;
+  failed?: boolean
 }
 
 interface ProviderSelection {
@@ -139,6 +140,31 @@ const handleProviderChange = (selection: ProviderSelection) => {
   }
 }
 
+// 处理重试
+const handleRetry = async (messageId: string) => {
+  // 找到要重试的消息
+  const messageIndex = messages.value.findIndex(msg => msg.id === messageId)
+  if (messageIndex === -1) return
+  
+  // 删除该消息及之后的所有消息
+  messages.value.splice(messageIndex)
+  
+  // 找到最后一条用户消息
+  const lastUserMessage = [...messages.value].reverse().find(msg => msg.type === 'user')
+  if (!lastUserMessage) return
+  
+  // 重新调用AI接口
+  try {
+    loading.value = true
+    await callAIAPI()
+  } catch (error) {
+    console.error("重试失败:", error)
+    addMessage("assistant", "抱歉，重试失败，请稍后再试。")
+  } finally {
+    loading.value = false
+  }
+}
+
 // 组件挂载时，如果没有选择，可以设置默认值
 onMounted(() => {
   // 组件会自动从本地存储加载选择，或者使用默认值
@@ -185,6 +211,7 @@ onMounted(() => {
               v-for="message in messages"
               :key="message.id"
               :message="message"
+              @retry="handleRetry"
             />
           </div>
 
@@ -288,5 +315,10 @@ onMounted(() => {
 
 .animate-spin {
   animation: spin 1s linear infinite;
+}
+
+/* Markdown内容样式 */
+.markdown-content {
+  line-height: 1.6;
 }
 </style>

@@ -1,5 +1,16 @@
 <template>
   <div class="ai-provider-selector">
+    <!-- 添加加载提示 -->
+    <div v-if="isLoadingModels" class="loading-indicator">
+      <span>正在加载模型列表...</span>
+    </div>
+    
+    <!-- 添加错误提示 -->
+    <div v-if="modelsLoadError" class="error-indicator">
+      <span>⚠️ {{ modelsLoadError }}</span>
+      <button @click="fetchPollinationsModels" class="retry-button">重试</button>
+    </div>
+
     <div class="selector-row">
       <!-- 供应商选择 -->
       <div class="selector-item">
@@ -28,9 +39,11 @@
           v-model="selectedModel" 
           @change="handleModelChange"
           class="selector-select"
-          :disabled="!selectedProvider"
+          :disabled="!selectedProvider || isLoadingModels"
         >
-          <option value="">请选择模型</option>
+          <option value="">
+            {{ isLoadingModels ? '正在加载模型...' : '请选择模型' }}
+          </option>
           <option 
             v-for="model in availableModels" 
             :key="model.name" 
@@ -39,7 +52,9 @@
             {{ model.name }}
           </option>
         </select>
-        <div class="selector-desc">{{ getSelectedModelDesc() }}</div>
+        <div class="selector-desc">
+          {{ isLoadingModels && selectedProvider === 'pollinations' ? '正在获取最新模型列表...' : getSelectedModelDesc() }}
+        </div>
       </div>
     </div>
 
@@ -55,6 +70,21 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
+import axios from 'axios'
+const pollinationsTextUrl = ref(import.meta.env.VITE_POLLINATIONS_TEXT_URL);
+
+// 定义模型接口类型
+interface ModelData {
+  name: string
+  description?: string
+  provider?: string
+  reasoning?: boolean
+  vision?: boolean
+  audio?: boolean
+  tools?: boolean
+  community?: boolean
+  [key: string]: any
+}
 
 // 定义组件的props和emits
 interface Props {
@@ -93,387 +123,98 @@ const availableProviders = ref([
   }
 ])
 
-// Pollinations模型数据
-const pollinationsModels = ref([
-  {
-    name: "claude",
-    original_name: "us.anthropic.claude-3-5-haiku-20241022-v1:0",
-    description: "Claude 3.5 Haiku (Bedrock) - 快速响应的对话模型，支持工具调用",
-    provider: "bedrock",
-    tier: "seed",
-    community: false,
-    aliases: "claude-3-5-haiku",
-    input_modalities: ["text"],
-    output_modalities: ["text"],
-    tools: true,
-    vision: false,
-    audio: false
-  },
-  {
-    name: "deepseek-reasoning",
-    original_name: "us.deepseek.r1-v1:0",
-    description: "DeepSeek R1 0528 (Bedrock) - 专为推理任务优化的模型",
-    maxInputChars: 10000,
-    reasoning: true,
-    provider: "bedrock",
-    tier: "seed",
-    community: false,
-    aliases: "deepseek-r1-0528",
-    input_modalities: ["text"],
-    output_modalities: ["text"],
-    tools: false,
-    vision: false,
-    audio: false
-  },
-  {
-    name: "gemini",
-    original_name: "google/gemini-2.5-flash-lite",
-    description: "Gemini 2.5 Flash Lite (api.navy) - Google的多模态AI模型",
-    provider: "api.navy",
-    tier: "anonymous",
-    community: false,
-    aliases: "gemini-2.5-flash-lite",
-    input_modalities: ["text"],
-    output_modalities: ["text"],
-    tools: true,
-    vision: false,
-    audio: false
-  },
-  {
-    name: "gpt-5-nano",
-    description: "OpenAI GPT-5 Nano - OpenAI最新一代模型，支持图像和文本",
-    original_name: "gpt-5-nano-2025-08-07",
-    provider: "azure",
-    tier: "anonymous",
-    community: false,
-    aliases: "gpt-5-nano",
-    input_modalities: ["text", "image"],
-    output_modalities: ["text"],
-    tools: true,
-    vision: true,
-    audio: false
-  },
-  {
-    name: "llama-fast-roblox",
-    original_name: "@cf/meta/llama-3.2-11b-vision-instruct",
-    description: "Llama 3.2 1B - Meta开源模型，支持视觉和工具",
-    provider: "cloudflare",
-    tier: "anonymous",
-    community: false,
-    aliases: "llama-3.2-1b-instruct",
-    input_modalities: ["text", "image"],
-    output_modalities: ["text"],
-    tools: true,
-    vision: true,
-    audio: false
-  },
-  {
-    name: "llama-roblox",
-    original_name: "meta-llama/Meta-Llama-3.1-8B-Instruct-fast",
-    description: "Llama 3.1 8B Instruct - Meta高性能对话模型",
-    provider: "nebius",
-    tier: "anonymous",
-    community: false,
-    aliases: "llama-3.1-8b-instruct",
-    input_modalities: ["text"],
-    output_modalities: ["text"],
-    tools: true,
-    vision: false,
-    audio: false
-  },
-  {
-    name: "llamascout",
-    original_name: "@cf/meta/llama-4-scout-17b-16e-instruct",
-    description: "Llama 4 Scout 17B - Meta大型推理模型",
-    provider: "cloudflare",
-    tier: "anonymous",
-    community: false,
-    aliases: "llama-4-scout-17b-16e-instruct",
-    input_modalities: ["text"],
-    output_modalities: ["text"],
-    tools: false,
-    vision: false,
-    audio: false
-  },
-  {
-    name: "mistral",
-    original_name: "mistral-small-3.1-24b-instruct-2503",
-    description: "Mistral Small 3.1 24B - 高性能推理模型，支持工具调用",
-    provider: "scaleway",
-    tier: "anonymous",
-    community: false,
-    aliases: "mistral-small-3.1-24b-instruct",
-    input_modalities: ["text"],
-    output_modalities: ["text"],
-    tools: true,
-    vision: false,
-    audio: false
-  },
-  {
-    name: "mistral-nemo-roblox",
-    original_name: "mistralai/Mistral-Nemo-Instruct-2407",
-    description: "Mistral Nemo Instruct 2407 - 专业指令模型",
-    provider: "nebius",
-    tier: "anonymous",
-    community: false,
-    aliases: "mistral-nemo-instruct-2407",
-    input_modalities: ["text"],
-    output_modalities: ["text"],
-    tools: true,
-    vision: false,
-    audio: false
-  },
-  {
-    name: "mistral-roblox",
-    original_name: "@cf/mistralai/mistral-small-3.1-24b-instruct",
-    description: "Mistral Small 3.1 24B - Cloudflare版本，支持视觉",
-    provider: "cloudflare",
-    tier: "anonymous",
-    community: false,
-    aliases: "mistral-small-cloudflare",
-    input_modalities: ["text", "image"],
-    output_modalities: ["text"],
-    tools: true,
-    vision: true,
-    audio: false
-  },
-  {
-    name: "nova-fast",
-    description: "Amazon Nova Micro (Bedrock) - 亚马逊轻量级模型",
-    original_name: "amazon.nova-micro-v1:0",
-    provider: "bedrock",
-    community: false,
-    tier: "anonymous",
-    aliases: "nova-micro-v1",
-    input_modalities: ["text"],
-    output_modalities: ["text"],
-    tools: true,
-    vision: false,
-    audio: false
-  },
-  {
-    name: "openai",
-    description: "OpenAI GPT-4.1 Nano - OpenAI高性能对话模型，支持多模态",
-    provider: "azure",
-    tier: "anonymous",
-    community: false,
-    aliases: "gpt-4.1-nano",
-    input_modalities: ["text", "image"],
-    output_modalities: ["text"],
-    tools: true,
-    vision: true,
-    audio: false,
-    original_name: "gpt-4.1-nano-2025-04-14"
-  },
-  {
-    name: "openai-audio",
-    original_name: "gpt-4o-mini-audio-preview-2024-12-17",
-    description: "OpenAI GPT-4o Mini Audio Preview - 支持音频输入输出的多模态模型",
-    maxInputChars: 2000,
-    voices: ["alloy", "echo", "fable", "onyx", "nova", "shimmer", "coral", "verse", "ballad", "ash", "sage", "amuch", "dan"],
-    provider: "azure",
-    tier: "seed",
-    community: false,
-    aliases: "gpt-4o-mini-audio-preview",
-    input_modalities: ["text", "image", "audio"],
-    output_modalities: ["audio", "text"],
-    tools: true,
-    vision: true,
-    audio: true
-  },
-  {
-    name: "openai-fast",
-    description: "OpenAI GPT-4.1 Nano - 快速响应版本",
-    provider: "azure",
-    tier: "anonymous",
-    community: false,
-    aliases: "gpt-4.1-nano",
-    input_modalities: ["text", "image"],
-    output_modalities: ["text"],
-    tools: true,
-    vision: true,
-    audio: false
-  },
-  {
-    name: "openai-large",
-    original_name: "gpt-4.1-2025-04-14",
-    description: "OpenAI GPT-4.1 - 大型高性能模型，支持长文本",
-    maxInputChars: 5000,
-    provider: "azure",
-    tier: "flower",
-    community: false,
-    aliases: "gpt-4.1",
-    input_modalities: ["text", "image"],
-    output_modalities: ["text"],
-    tools: true,
-    vision: true,
-    audio: false
-  },
-  {
-    name: "openai-reasoning",
-    original_name: "openai/o3",
-    description: "OpenAI o3 (api.navy) - 专为推理优化的模型",
-    provider: "api.navy",
-    tier: "seed",
-    community: false,
-    aliases: "o3",
-    reasoning: true,
-    input_modalities: ["text"],
-    output_modalities: ["text"],
-    tools: true,
-    vision: false,
-    audio: false
-  },
-  {
-    name: "openai-roblox",
-    description: "OpenAI GPT-4.1 Nano - Roblox专用版本",
-    provider: "azure",
-    tier: "anonymous",
-    community: false,
-    aliases: "gpt-4.1-nano",
-    input_modalities: ["text", "image"],
-    output_modalities: ["text"],
-    tools: true,
-    vision: true,
-    audio: false
-  },
-  {
-    name: "qwen-coder",
-    original_name: "qwen2.5-coder-32b-instruct",
-    description: "Qwen 2.5 Coder 32B - 阿里云代码生成专用模型",
-    provider: "scaleway",
-    tier: "anonymous",
-    community: false,
-    aliases: "qwen2.5-coder-32b-instruct",
-    input_modalities: ["text"],
-    output_modalities: ["text"],
-    tools: true,
-    vision: false,
-    audio: false
-  },
-  {
-    name: "roblox-rp",
-    description: "Roblox RP Multi-Model - 多模型随机选择",
-    original_name: "mistral.mistral-small-2402-v1:0",
-    provider: "bedrock",
-    tier: "anonymous",
-    community: false,
-    input_modalities: ["text"],
-    output_modalities: ["text"],
-    tools: true,
-    vision: false,
-    audio: false
-  },
-  {
-    name: "bidara",
-    description: "BIDARA - NASA生物仿生设计助手，支持图像和文本",
-    provider: "azure",
-    tier: "anonymous",
-    community: true,
-    input_modalities: ["text", "image"],
-    output_modalities: ["text"],
-    tools: true,
-    vision: true,
-    audio: false
-  },
-  {
-    name: "elixposearch",
-    description: "Elixpo Search - 专业搜索助手",
-    provider: "azure",
-    tier: "anonymous",
-    community: true,
-    input_modalities: ["text"],
-    output_modalities: ["text"],
-    tools: false,
-    vision: false,
-    audio: false
-  },
-  {
-    name: "evil",
-    description: "Evil - 无审查AI助手，支持图像和文本",
-    provider: "scaleway",
-    uncensored: true,
-    tier: "seed",
-    community: true,
-    input_modalities: ["text", "image"],
-    output_modalities: ["text"],
-    tools: true,
-    vision: true,
-    audio: false
-  },
-  {
-    name: "midijourney",
-    description: "MIDIjourney - 音乐创作AI助手",
-    provider: "azure",
-    tier: "anonymous",
-    community: true,
-    input_modalities: ["text"],
-    output_modalities: ["text"],
-    tools: true,
-    vision: false,
-    audio: false
-  },
-  {
-    name: "mirexa",
-    description: "Mirexa AI Companion - AI伴侣助手，支持图像和文本",
-    provider: "azure",
-    tier: "seed",
-    community: true,
-    input_modalities: ["text", "image"],
-    output_modalities: ["text"],
-    tools: true,
-    vision: true,
-    audio: false
-  },
-  {
-    name: "rtist",
-    description: "Rtist - 艺术家AI助手",
-    provider: "azure",
-    tier: "seed",
-    community: true,
-    input_modalities: ["text"],
-    output_modalities: ["text"],
-    tools: true,
-    vision: false,
-    audio: false
-  },
-  {
-    name: "sur",
-    description: "Sur AI Assistant - Sur AI助手，支持图像和文本",
-    provider: "scaleway",
-    tier: "seed",
-    community: true,
-    input_modalities: ["text", "image"],
-    output_modalities: ["text"],
-    tools: true,
-    vision: true,
-    audio: false
-  },
-  {
-    name: "unity",
-    description: "Unity Unrestricted Agent - Unity无限制AI代理，支持图像和文本",
-    provider: "scaleway",
-    uncensored: true,
-    tier: "seed",
-    community: true,
-    input_modalities: ["text", "image"],
-    output_modalities: ["text"],
-    tools: true,
-    vision: true,
-    audio: false
+// 添加加载状态
+const isLoadingModels = ref(false)
+const modelsLoadError = ref('')
+
+// Pollinations模型数据（改为响应式数据，支持动态更新）
+const pollinationsModels = ref<ModelData[]>([])
+
+// 获取Pollinations模型列表
+const fetchPollinationsModels = async () => {
+  try {
+    isLoadingModels.value = true
+    modelsLoadError.value = ''
+    
+    // 获取代理URL和目标URL
+    const proxyUrl = import.meta.env.VITE_POLLINATIONS_PROXY_URL || ''
+    const targetUrl = `${pollinationsTextUrl.value}/models`
+    
+    if (!proxyUrl) {
+      throw new Error('代理URL未配置，请检查环境变量 VITE_POLLINATIONS_PROXY_URL')
+    }
+    
+    // 使用代理请求模型列表
+    const response = await axios.get(
+      `${proxyUrl}?path=models&target=${targetUrl}&params=_t=${Date.now()}`,
+      { 
+        timeout: 30000,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    )
+    
+    // 处理响应数据
+    let models: any[] = []
+    if (Array.isArray(response.data)) {
+      models = response.data
+    } else if (response.data && Array.isArray(response.data.models)) {
+      models = response.data.models
+    } else {
+      throw new Error('接口返回数据格式不正确')
+    }
+    
+    // 转换数据格式，添加中文描述
+    pollinationsModels.value = models.map((model: any) => ({
+      ...model,
+      // 如果没有 description，根据模型名称生成描述
+      description: model.description || generateModelDescription(model)
+    }))
+    
+    console.log('成功获取Pollinations模型列表:', pollinationsModels.value.length, '个模型')
+    
+  } catch (error) {
+    console.error('获取Pollinations模型列表失败:', error)
+    modelsLoadError.value = (error as Error).message || '获取模型列表失败'
+  } finally {
+    isLoadingModels.value = false
   }
-])
+}
+
+// 生成模型描述（根据模型信息）
+const generateModelDescription = (model: any): string => {
+  let description = model.name || '未知模型'
+  
+  if (model.provider) {
+    description += ` (${model.provider})`
+  }
+  
+  if (model.reasoning) {
+    description += ' - 专为推理任务优化'
+  }
+  
+  if (model.vision) {
+    description += ' - 支持图像理解'
+  }
+  
+  if (model.audio) {
+    description += ' - 支持音频处理'
+  }
+  
+  if (model.tools) {
+    description += ' - 支持工具调用'
+  }
+  
+  if (model.community) {
+    description += ' - 社区模型'
+  }
+  
+  return description
+}
 
 // AI Tools模型数据
-const aitoolsModels = ref([
-  // { 
-  //   name: "moonshotai/kimi-k2", 
-  //   description: "Moonshot AI Kimi K2 - 强大的对话和推理模型，支持复杂任务处理" 
-  // },
-  // { 
-  //   name: "deepseek/deepseek-r1-0528", 
-  //   description: "DeepSeek R1 0528 - 高性能推理模型，专为逻辑推理优化" 
-  // },
+const aitoolsModels = ref<ModelData[]>([
   { 
     name: "deepseek/deepseek-v3-0324", 
     description: "DeepSeek V3 0324 - 最新版本的多模态模型，支持文本和图像" 
@@ -486,34 +227,10 @@ const aitoolsModels = ref([
     name: "deepseek/deepseek-r1-70b", 
     description: "DeepSeek R1 70B - 70B参数超大型模型，顶级AI性能" 
   },
-  // { 
-  //   name: "google/gemini-2.0-flash-exp", 
-  //   description: "Google Gemini 2.0 Flash - 实验版多模态模型，快速响应" 
-  // },
-  // { 
-  //   name: "google/gemma-3-27b", 
-  //   description: "Google Gemma 3 27B - 开源大语言模型，平衡性能和效率" 
-  // },
-  // { 
-  //   name: "qwen/qwq-32b", 
-  //   description: "Qwen QWQ 32B - 阿里云高性能对话模型，32B参数" 
-  // },
   { 
     name: "qwen/qwen2.5-7b", 
     description: "Qwen 2.5 7B - 轻量级但功能强大的模型，适合快速部署" 
   },
-  // { 
-  //   name: "qwen/qwen2.5-72b", 
-  //   description: "Qwen 2.5 72B - 大型高性能模型，72B参数，顶级理解能力" 
-  // },
-  // { 
-  //   name: "qwen/qwen2.5-vl-32b", 
-  //   description: "Qwen 2.5 VL 32B - 多模态模型，支持文本和视觉理解" 
-  // },
-  // { 
-  //   name: "qwen/qwen2.5-vl-72b", 
-  //   description: "Qwen 2.5 VL 72B - 大型多模态模型，72B参数，顶级视觉理解" 
-  // },
   { 
     name: "zhipu/glm-4-9b", 
     description: "智谱 GLM-4 9B - 清华智谱AI的对话模型，9B参数" 
@@ -522,38 +239,14 @@ const aitoolsModels = ref([
     name: "zhipu/glm-4-flash", 
     description: "智谱 GLM-4 Flash - 快速响应的对话模型，优化推理速度" 
   },
-  // { 
-  //   name: "zhipu/glm-4v-flash", 
-  //   description: "智谱 GLM-4V Flash - 多模态模型，支持文本和视觉，快速响应" 
-  // },
   { 
     name: "zhipu/glm-4.1v-thinking-flash", 
     description: "智谱 GLM-4.1V Thinking Flash - 思维链推理模型，支持复杂逻辑" 
   },
-  // { 
-  //   name: "qwen/qwen3-30b-a3b", 
-  //   description: "Qwen 3 30B A3B - 阿里云第三代模型，30B参数，A3B架构" 
-  // },
-  // { 
-  //   name: "qwen/qwen3-14b", 
-  //   description: "Qwen 3 14B - 阿里云第三代模型，14B参数，平衡性能和效率" 
-  // },
-  // { 
-  //   name: "qwen/qwen3-coder", 
-  //   description: "Qwen 3 Coder - 阿里云代码生成专用模型，专为编程优化" 
-  // },
   { 
     name: "zhipu/glm-4.5-flash", 
     description: "智谱 GLM-4.5 Flash - 最新版本快速模型，4.5代架构" 
-  },
-  // { 
-  //   name: "openai/gpt-oss-20b", 
-  //   description: "OpenAI GPT OSS 20B - OpenAI开源模型，20B参数" 
-  // },
-  // { 
-  //   name: "tencent/hunyuan-a13b", 
-  //   description: "腾讯混元 A13B - 腾讯AI实验室大模型，13B参数" 
-  // }
+  }
 ])
 
 // 响应式数据
@@ -720,7 +413,7 @@ const initializeSelection = () => {
       // 如果本地存储也没有数据，使用默认值（第一个供应商和第一个模型）
       const defaultProvider = availableProviders.value[0]
       const defaultModel = pollinationsModels.value[0] // 默认使用pollinations的第一个模型
-      
+
       if (defaultProvider && defaultModel) {
         selectedProvider.value = defaultProvider.name
         selectedModel.value = defaultModel.name
@@ -738,6 +431,9 @@ const initializeSelection = () => {
         saveToLocalStorage(defaultSelection)
         
         console.log('使用默认选择:', defaultSelection)
+      } else if (defaultProvider) {
+        // 如果没有模型数据，至少设置供应商
+        selectedProvider.value = defaultProvider.name
       }
     }
   }
@@ -752,7 +448,9 @@ watch(() => props.modelValue, (newValue) => {
 }, { deep: true })
 
 // 组件挂载时初始化
-onMounted(() => {
+onMounted(async () => {
+  // 先获取模型列表，再初始化选择
+  await fetchPollinationsModels()
   initializeSelection()
 })
 </script>
@@ -805,6 +503,40 @@ onMounted(() => {
   background: #f9fafb;
   color: #9ca3af;
   cursor: not-allowed;
+  position: relative;
+}
+
+/* 添加loading时的样式 */
+.selector-select[disabled] {
+  background: linear-gradient(90deg, #f9fafb 25%, #f1f5f9 50%, #f9fafb 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* 加载指示器添加动画 */
+.loading-indicator::before {
+  content: '';
+  width: 16px;
+  height: 16px;
+  border: 2px solid #e5e7eb;
+  border-top: 2px solid #0ea5e9;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-right: 8px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .selector-desc {
@@ -850,5 +582,47 @@ onMounted(() => {
   .ai-provider-selector {
     padding: 12px;
   }
+}
+
+/* 新增加载和错误提示样式 */
+.loading-indicator {
+  padding: 8px 12px;
+  background: #f0f9ff;
+  border: 1px solid #0ea5e9;
+  border-radius: 6px;
+  color: #0c4a6e;
+  font-size: 14px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.error-indicator {
+  padding: 8px 12px;
+  background: #fef2f2;
+  border: 1px solid #f87171;
+  border-radius: 6px;
+  color: #dc2626;
+  font-size: 14px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.retry-button {
+  padding: 4px 8px;
+  background: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.retry-button:hover {
+  background: #b91c1c;
 }
 </style>
