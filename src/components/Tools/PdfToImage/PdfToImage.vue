@@ -3,6 +3,11 @@ import { ref, reactive, onMounted } from 'vue'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { ElMessage } from 'element-plus'
+import { GlobalWorkerOptions } from "pdfjs-dist"
+import worker from "pdfjs-dist/build/pdf.worker?url"
+
+// 设置PDF.js worker
+GlobalWorkerOptions.workerSrc = worker
 
 // PDF.js 相关
 let pdfjsLib: any = null
@@ -32,9 +37,6 @@ const loadPDFJS = async () => {
     console.log('开始加载PDF.js...')
     const pdfjs = await import('pdfjs-dist')
     
-    // 使用你放置的本地worker文件
-    pdfjs.GlobalWorkerOptions.workerSrc = '/js/pdf.min.mjs'
-    
     pdfjsLib = pdfjs
     console.log('PDF.js 加载成功, version:', pdfjs.version)
     
@@ -54,6 +56,21 @@ const handleFileSelect = (files: FileList | null) => {
   if (!files || files.length === 0) return
   
   const file = files[0]
+  if (file.type !== 'application/pdf') {
+    ElMessage.error('请选择PDF文件')
+    return
+  }
+  
+  console.log('选择的PDF文件:', file.name, '大小:', file.size)
+  currentPdfName.value = file.name
+  convertPdfToImages(file)
+}
+
+// 修复文件选择函数的类型问题
+const handleFileChange = (uploadFile: any) => {
+  if (!uploadFile?.raw) return
+  
+  const file = uploadFile.raw as File
   if (file.type !== 'application/pdf') {
     ElMessage.error('请选择PDF文件')
     return
@@ -192,21 +209,6 @@ const handleDragLeave = () => {
 const clearResults = () => {
   convertedImages.value = []
   currentPdfName.value = ''
-}
-
-// 修复文件选择函数的类型问题
-const handleFileChange = (uploadFile: any) => {
-  if (!uploadFile?.raw) return
-  
-  const file = uploadFile.raw as File
-  if (file.type !== 'application/pdf') {
-    ElMessage.error('请选择PDF文件')
-    return
-  }
-  
-  console.log('选择的PDF文件:', file.name, '大小:', file.size)
-  currentPdfName.value = file.name
-  convertPdfToImages(file)
 }
 </script>
 
