@@ -849,4 +849,14 @@ export const constantRoute = [
       description: '精选顶级AI提示词库，涵盖写作、编程、创意、分析等多个领域的优质提示词，助力提升AI对话效果'
     }
   },
+  {
+    path: '/pdf-to-image',
+    component: () => import('@/components/Tools/PdfToImage/PdfToImage.vue'),
+    name: 'pdf-to-image',
+    meta: {
+      title: "PDF转图片",
+      keywords: 'PDF转图片,PDF转PNG,PDF转JPG,在线PDF转换,高清转换',
+      description: '在线将PDF文件转换为高清图片，支持多页转换，保持原始清晰度，支持自定义分辨率',
+    }
+  },
 ]

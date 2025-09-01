@@ -418,6 +418,15 @@ export function getToolsCate() {
       list: [
         {
           id: 1,
+          title: 'PDF转图片',
+          logo: '/images/logo/pdf_to_image.png',
+          desc: '在线将PDF文件转换为高清图片，支持多页转换，保持原始清晰度',
+          url: '/pdf-to-image/',
+          cateId: 5,
+          cate: '图片处理'
+        },
+        {
+          id: 1,
           title: '二维码生成',
           logo: '/images/logo/qrcode.png',
           desc: '在线生成二维码，支持带logo、透明、艺术的二维码生成',
