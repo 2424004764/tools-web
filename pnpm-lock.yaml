@@ -152,6 +152,12 @@ importers:
       v-code-diff:
         specifier: ^1.8.0
         version: 1.13.1(vue@3.5.18(typescript@5.9.2))
+      v-viewer:
+        specifier: ^3.0.22
+        version: 3.0.22(viewerjs@1.11.7)(vue@3.5.18(typescript@5.9.2))
+      viewerjs:
+        specifier: ^1.11.7
+        version: 1.11.7
       vite-plugin-seo-prerender:
         specifier: ^0.5.0
         version: 0.5.0(encoding@0.1.13)(typescript@5.9.2)
@@ -4603,6 +4609,12 @@ packages:
       '@vue/composition-api':
         optional: true
 
+  v-viewer@3.0.22:
+    resolution: {integrity: sha512-uYyP5FPT4K/Sd5D1mhB2HMVV8jnf6zYy2HD1PHCNAO6s2Iway+Wls60pwh7y4F3e2Nlc9549Pvy2HXaq8PKrAg==, tarball: https://registry.npmmirror.com/v-viewer/-/v-viewer-3.0.22.tgz}
+    peerDependencies:
+      viewerjs: ^1.11.0
+      vue: ^3.0.0
+
   vant@3.6.16:
     resolution: {integrity: sha512-9pZao0NEeZQ0ZEb6N7SZxtqcdTp24o8IizhZS1G+FtStlXeKOFzCl+Nf1pIWRneQ9Kn+K+mNrfi2eiIZjVVppw==, tarball: https://registry.npmmirror.com/vant/-/vant-3.6.16.tgz}
     peerDependencies:
@@ -4615,6 +4627,9 @@ packages:
   verror@1.10.0:
     resolution: {integrity: sha512-ZZKSmDAEFOijERBLkmYfJ+vmk3w+7hOLYDNkRCuRuMJGEmqYNCNLyBBFwWKVMhfwaEF3WOd0Zlw86U/WC/+nYw==, tarball: https://registry.npmmirror.com/verror/-/verror-1.10.0.tgz}
     engines: {'0': node >=0.6.0}
+
+  viewerjs@1.11.7:
+    resolution: {integrity: sha512-0JuVqOmL5v1jmEAlG5EBDR3XquxY8DWFQbFMprOXgaBB0F7Q/X9xWdEaQc59D8xzwkdUgXEMSSknTpriq95igg==, tarball: https://registry.npmmirror.com/viewerjs/-/viewerjs-1.11.7.tgz}
 
   vite-plugin-html@3.2.2:
     resolution: {integrity: sha512-vb9C9kcdzcIo/Oc3CLZVS03dL5pDlOFuhGlZYDCJ840BhWl/0nGeZWf3Qy7NlOayscY4Cm/QRgULCQkEZige5Q==, tarball: https://registry.npmmirror.com/vite-plugin-html/-/vite-plugin-html-3.2.2.tgz}
@@ -9943,6 +9958,12 @@ snapshots:
       vue: 3.5.18(typescript@5.9.2)
       vue-demi: 0.14.10(vue@3.5.18(typescript@5.9.2))
 
+  v-viewer@3.0.22(viewerjs@1.11.7)(vue@3.5.18(typescript@5.9.2)):
+    dependencies:
+      lodash-es: 4.17.21
+      viewerjs: 1.11.7
+      vue: 3.5.18(typescript@5.9.2)
+
   vant@3.6.16(vue@3.5.18(typescript@5.9.2)):
     dependencies:
       '@vant/icons': 1.8.0
@@ -9958,6 +9979,8 @@ snapshots:
       core-util-is: 1.0.2
       extsprintf: 1.3.0
     optional: true
+
+  viewerjs@1.11.7: {}
 
   vite-plugin-html@3.2.2(vite@4.5.14(@types/node@24.3.0)(less@4.4.0)(sass@1.89.2)(terser@5.43.1)):
     dependencies:

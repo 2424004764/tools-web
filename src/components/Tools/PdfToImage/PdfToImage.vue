@@ -5,6 +5,9 @@ import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { ElMessage } from 'element-plus'
 import { GlobalWorkerOptions } from "pdfjs-dist"
 import worker from "pdfjs-dist/build/pdf.worker?url"
+// 引入v-viewer
+import 'viewerjs/dist/viewer.css'
+import { directive as viewer } from 'v-viewer'
 
 // 设置PDF.js worker
 GlobalWorkerOptions.workerSrc = worker
@@ -304,30 +307,31 @@ const clearResults = () => {
           </div>
         </div>
         
-        <!-- 图片列表 -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- 图片列表 - 添加v-viewer指令 -->
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3" v-viewer>
           <div 
             v-for="(imageUrl, index) in convertedImages" 
             :key="index"
             class="border rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
           >
-            <div class="aspect-[3/4] bg-gray-100">
+            <div class="aspect-[3/4] bg-gray-100 cursor-pointer">
               <img 
                 :src="imageUrl" 
                 :alt="`第${index + 1}页`"
-                class="w-full h-full object-contain"
+                class="w-full h-full object-contain hover:opacity-90 transition-opacity"
+                :title="`点击查看第${index + 1}页大图`"
               />
             </div>
-            <div class="p-3 bg-white">
-              <p class="text-sm text-gray-600 mb-2">第 {{ index + 1 }} 页</p>
+            <div class="p-2 bg-white">
+              <p class="text-xs text-gray-600 mb-2">第 {{ index + 1 }} 页</p>
               <el-button 
                 @click="downloadImage(imageUrl, index)" 
                 size="small" 
                 type="primary" 
-                class="w-full"
+                class="w-full text-xs"
               >
-                <el-icon><Download /></el-icon>
-                下载此页
+                <el-icon class="text-xs"><Download /></el-icon>
+                下载
               </el-button>
             </div>
           </div>
@@ -344,6 +348,7 @@ const clearResults = () => {
           <li>• <strong>多页处理</strong>：自动转换PDF中的所有页面</li>
           <li>• <strong>格式选择</strong>：支持PNG和JPG格式输出</li>
           <li>• <strong>质量控制</strong>：可调节图片质量，平衡文件大小和清晰度</li>
+          <li>• <strong>图片预览</strong>：点击图片可放大预览，支持缩放和全屏查看</li>
           <li>• <strong>批量下载</strong>：支持单页下载和批量下载</li>
           <li>• <strong>本地处理</strong>：所有转换在浏览器本地完成，保护文件隐私</li>
         </ul>
@@ -356,7 +361,7 @@ const clearResults = () => {
           <li>1. 选择转换设置（分辨率、格式、质量）</li>
           <li>2. 拖拽或点击上传PDF文件</li>
           <li>3. 等待自动转换完成</li>
-          <li>4. 预览转换结果</li>
+          <li>4. 点击图片放大预览或直接下载</li>
           <li>5. 下载单页图片或批量下载所有图片</li>
         </ol>
       </el-text>

@@ -18,6 +18,9 @@ import pinia from './store'
 import { setupMdEditor } from './plugins/v-md-editor'
 //default-passive-events
 import 'default-passive-events'
+// v-viewer
+import 'viewerjs/dist/viewer.css'
+import VueViewer from 'v-viewer'
 import { initializeAIProviders } from './spi/init'
 
 // 初始化AI提供者
@@ -30,6 +33,8 @@ app.use(router)
 app.use(ElementPlus, {
   locale: zhCn
 })
+// 注册v-viewer
+app.use(VueViewer)
 // 新增：放在 app.use(router) 之后、app.mount 之前
 router.afterEach((to) => {
   const base = (import.meta.env.VITE_SITE_URL as string) || window.location.origin;
