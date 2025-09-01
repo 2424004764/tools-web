@@ -43,6 +43,7 @@
     "imorse": "^1.0.0",
     "jwt-decode": "^4.0.0",
     "lodash": "^4.17.21",
+    "pdfjs-dist": "^4.0.379",
     "prettier": "^3.3.2",
     "prismjs": "^1.29.0",
     "qrcode-reader-vue3": "^3.1.4",
