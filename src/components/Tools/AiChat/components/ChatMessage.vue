@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import MarkdownIt from 'markdown-it'
+import { copy } from '@/utils/string'
 
 interface Message {
   id: string
@@ -29,6 +30,11 @@ const handleRetry = () => {
   emit('retry', props.message.id)
 }
 
+// 复制消息内容
+const handleCopy = () => {
+  copy(props.message.content)
+}
+
 // 创建Markdown渲染器
 const md = new MarkdownIt({
   html: true,
@@ -47,9 +53,9 @@ const renderedContent = computed(() => {
 </script>
 
 <template>
-  <div class="flex" :class="message.type === 'user' ? 'justify-end' : 'justify-start'">
+  <div class="flex group" :class="message.type === 'user' ? 'justify-end' : 'justify-start'">
     <div 
-      class="max-w-[80%] rounded-lg px-4 py-2"
+      class="max-w-[80%] rounded-lg px-4 py-2 relative"
       :class="message.type === 'user' 
         ? 'bg-blue-500 text-white' 
         : 'bg-white text-gray-800 border shadow-sm'"
@@ -64,7 +70,45 @@ const renderedContent = computed(() => {
         v-html="renderedContent"
       ></div>
       
-      <!-- 重试按钮 - 只在AI消息失败时显示 -->
+      <!-- 操作按钮组 -->
+      <div class="flex items-center justify-between mt-2">
+        <!-- 时间戳 -->
+        <div 
+          class="text-xs opacity-70"
+          :class="message.type === 'user' ? 'text-blue-100' : 'text-gray-500'"
+        >
+          {{ formatTime(message.timestamp) }}
+        </div>
+        
+        <!-- 操作按钮 -->
+        <div class="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          <!-- 复制按钮 -->
+          <button
+            @click="handleCopy"
+            class="p-1 rounded hover:bg-gray-100 transition-colors"
+            :class="message.type === 'user' ? 'hover:bg-blue-400' : ''"
+            title="复制消息"
+          >
+            <svg class="w-4 h-4" :class="message.type === 'user' ? 'text-blue-100' : 'text-gray-500'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+            </svg>
+          </button>
+          
+          <!-- 重试按钮 - 只在AI消息时显示 -->
+          <button
+            v-if="message.type === 'assistant'"
+            @click="handleRetry"
+            class="p-1 rounded hover:bg-gray-100 transition-colors"
+            title="重新生成"
+          >
+            <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+      
+      <!-- 失败状态的重试按钮（保留原有的显眼重试按钮） -->
       <div v-if="message.type === 'assistant' && message.failed" class="mt-2">
         <button
           @click="handleRetry"
@@ -72,13 +116,6 @@ const renderedContent = computed(() => {
         >
           🔄 重试
         </button>
-      </div>
-      
-      <div 
-        class="text-xs mt-1 opacity-70"
-        :class="message.type === 'user' ? 'text-blue-100' : 'text-gray-500'"
-      >
-        {{ formatTime(message.timestamp) }}
       </div>
     </div>
   </div>
