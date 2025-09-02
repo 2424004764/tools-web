@@ -12,7 +12,7 @@ export class NotesRouter {
     // 提取用户信息
     const authResult = await AuthMiddleware.extractUserFromRequest(request, env)
     if (!authResult.success) {
-      return AuthMiddleware.createAuthErrorResponse(authResult.error)
+      return AuthMiddleware.createAuthErrorResponse(authResult.error, origin)
     }
 
     const user = authResult.user

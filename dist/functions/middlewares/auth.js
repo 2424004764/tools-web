@@ -1,4 +1,5 @@
 import { ApiResponse } from '../utils/db.js'
+import { getCORSHeaders } from '../utils/cors.js'
 
 export class AuthMiddleware {
   // 验证JWT Token
@@ -102,8 +103,21 @@ export class AuthMiddleware {
   }
 
   // 创建认证失败响应
-  static createAuthErrorResponse(message, status = 401) {
-    return ApiResponse.error(message, status)
+  static createAuthErrorResponse(message, origin, status = 401) {
+    return new Response(JSON.stringify({ 
+      error: message, 
+      code: 'AUTH_REQUIRED' // 添加特殊code字段，告诉前端需要跳转登录页
+    }), {
+      status,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(origin ? {
+          'Access-Control-Allow-Origin': origin,
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+        } : {})
+      }
+    })
   }
 
   // 认证中间件装饰器
