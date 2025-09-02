@@ -25,6 +25,7 @@ declare global {
 
 const loading = ref(false);
 const linuxdoLoading = ref(false);
+const qqLoading = ref(false);
 const googleInitialized = ref(false);
 const userStore = useUserStore();
 
@@ -55,8 +56,8 @@ onMounted(() => {
   };
   document.head.appendChild(script);
 
-  // 监听Linux.do登录窗口消息
-  window.addEventListener("message", handleLinuxdoMessage);
+  // 监听登录窗口消息
+  window.addEventListener("message", handleLoginMessage);
 });
 
 const initializeGoogleSignIn = () => {
@@ -147,11 +148,45 @@ const handleLinuxdoLogin = async () => {
   }
 };
 
-// 处理Linux.do登录窗口消息
-const handleLinuxdoMessage = (event: MessageEvent) => {
+// QQ登录处理
+const handleQQLogin = async () => {
+  try {
+    qqLoading.value = true;
+
+    // 请求获取QQ授权URL
+    const result = await axios.post(siteUrl.value + "/qq-auth", {
+      params: {
+        action: "getAuthUrl",
+      },
+    });
+
+    if (!result.data.success) {
+      throw new Error("QQ登录配置错误");
+    }
+
+    // 打开授权页面
+    const authWindow = window.open(
+      result.data.auth_url,
+      "qq-auth",
+      "width=600,height=600,scrollbars=yes,resizable=yes"
+    );
+
+    if (!authWindow) {
+      throw new Error("无法打开登录窗口，请检查浏览器弹窗设置");
+    }
+  } catch (error) {
+    console.error("QQ login error:", error);
+    ElMessage.error("QQ登录失败，请重试");
+    qqLoading.value = false;
+  }
+};
+
+// 处理登录窗口消息 - 统一处理所有第三方登录
+const handleLoginMessage = (event: MessageEvent) => {
   // 验证消息来源 - 只接受来自可信域名的消息
   const trustedOrigins = [
     'https://connect.linux.do', // Linux.do官方域名
+    'https://graph.qq.com', // QQ官方域名
     siteUrl.value, // 添加当前站点域名
     window.location.origin, // 添加当前页面域名
   ];
@@ -167,17 +202,19 @@ const handleLinuxdoMessage = (event: MessageEvent) => {
 
   // 验证消息类型
   if (!['success', 'error'].includes(event.data?.type)) {
-    return; // 忽略非Linux.do登录相关的消息
+    return; // 忽略非登录相关的消息
   }
 
   if (event.data?.type === "success") {
     // 验证成功消息的数据结构
     if (!event.data.data?.token || !event.data.data?.user) {
-      console.warn('Linux.do success message missing required data');
+      console.warn('Login success message missing required data');
       return;
     }
 
+    // 停止所有登录加载状态
     linuxdoLoading.value = false;
+    qqLoading.value = false;
 
     const { token, user, message } = event.data.data;
 
@@ -194,11 +231,13 @@ const handleLinuxdoMessage = (event: MessageEvent) => {
       window.location.href = "/userinfo";
     }, 1000);
   } else {
+    // 停止所有登录加载状态
     linuxdoLoading.value = false;
+    qqLoading.value = false;
 
     const { error, message } = event.data;
-    console.error("Linux.do auth error:", error, message);
-    ElMessage.error(message || "Linux.do登录失败，请重试");
+    console.error("Login auth error:", error, message);
+    ElMessage.error(message || "登录失败，请重试");
   }
 };
 
@@ -252,6 +291,31 @@ const handleSignOut = () => {
           </button>
         </div>
 
+        <!-- QQ登录按钮 -->
+        <div class="flex justify-center">
+          <button
+            @click="handleQQLogin"
+            :disabled="qqLoading"
+            class="flex items-center justify-center w-full max-w-[400px] h-[40px] border border-gray-300 rounded-md bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <img
+              src="https://qq-web.cdn-go.cn//im.qq.com_new/7bce6d6d/asset/favicon.ico"
+              alt="QQ"
+              class="w-5 h-5 mr-3"
+            />
+            <span
+              v-if="!qqLoading"
+              class="text-sm font-medium text-gray-600"
+            >
+              使用 QQ 登录
+            </span>
+            <div v-else class="flex items-center">
+              <el-icon class="is-loading mr-2"><Loading /></el-icon>
+              <span class="text-sm text-gray-600">登录中...</span>
+            </div>
+          </button>
+        </div>
+
         <!-- 或者分隔线 -->
         <div class="flex items-center">
           <div class="flex-1 border-t border-gray-200"></div>
@@ -267,7 +331,7 @@ const handleSignOut = () => {
 
         <!-- 登录说明 -->
         <div class="text-center text-gray-500 text-sm">
-          <p>支持谷歌账号和Linux.do账号登录</p>
+          <p>支持谷歌账号、Linux.do账号和QQ账号登录</p>
           <p class="mt-2">登录后可以享受更多个性化功能</p>
         </div>
 
