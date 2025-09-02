@@ -4,7 +4,8 @@
     "/proxy/*",
     "/google-auth",
     "/api/notes/*",
-    "/linuxdo-auth"
+    "/linuxdo-auth",
+    "/gitee-auth"
   ],
   "exclude": []
 }
