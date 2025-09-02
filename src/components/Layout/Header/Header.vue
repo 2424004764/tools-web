@@ -81,17 +81,27 @@ const optionClick = (url: string) => {
 
 // 处理退出登录
 const handleLogout = async () => {
-  userStore.logout()
-  await nextTick()
-  userMenuVisible.value = false
-  
-  // 如果当前在用户信息页面，跳转到首页
-  if (router.currentRoute.value.path === '/userinfo') {
-    router.push('/')
+  try {
+    // 先清除用户状态
+    userStore.logout()
+    
+    // 关闭菜单
+    userMenuVisible.value = false
+    
+    // 等待DOM更新
+    await nextTick()
+    
+    // 强制跳转到首页，使用replace避免历史记录问题
+    await router.replace('/')
+    
+    // 显示成功消息
+    ElMessage.success('已退出登录')
+  } catch (error) {
+    console.error('退出登录失败:', error)
+    // 即使出错也要跳转到首页
+    await router.replace('/')
+    ElMessage.success('已退出登录')
   }
-  
-  // 可以添加提示信息
-  ElMessage.success('已退出登录')
 }
 
 // 跳转到个人中心
