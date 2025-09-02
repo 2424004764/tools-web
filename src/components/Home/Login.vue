@@ -26,6 +26,7 @@ declare global {
 const loading = ref(false);
 const linuxdoLoading = ref(false);
 const giteeLoading = ref(false);  // 替换 qqLoading 为 giteeLoading
+const githubLoading = ref(false);  // 新增GitHub loading状态
 const googleInitialized = ref(false);
 const userStore = useUserStore();
 
@@ -181,12 +182,46 @@ const handleGiteeLogin = async () => {
   }
 };
 
+// GitHub登录处理
+const handleGithubLogin = async () => {
+  try {
+    githubLoading.value = true;
+
+    // 请求获取GitHub授权URL
+    const result = await axios.post(siteUrl.value + "/github-auth", {
+      params: {
+        action: "getAuthUrl",
+      },
+    });
+
+    if (!result.data.success) {
+      throw new Error("GitHub登录配置错误");
+    }
+
+    // 打开授权页面
+    const authWindow = window.open(
+      result.data.auth_url,
+      "github-auth",
+      "width=600,height=600,scrollbars=yes,resizable=yes"
+    );
+
+    if (!authWindow) {
+      throw new Error("无法打开登录窗口，请检查浏览器弹窗设置");
+    }
+  } catch (error) {
+    console.error("GitHub login error:", error);
+    ElMessage.error("GitHub登录失败，请重试");
+    githubLoading.value = false;
+  }
+};
+
 // 处理登录窗口消息 - 统一处理所有第三方登录
 const handleLoginMessage = (event: MessageEvent) => {
   // 验证消息来源 - 只接受来自可信域名的消息
   const trustedOrigins = [
     'https://connect.linux.do', // Linux.do官方域名
     'https://gitee.com', // Gitee官方域名 (替换QQ域名)
+    'https://github.com', // GitHub官方域名
     siteUrl.value, // 添加当前站点域名
     window.location.origin, // 添加当前页面域名
   ];
@@ -205,40 +240,25 @@ const handleLoginMessage = (event: MessageEvent) => {
     return; // 忽略非登录相关的消息
   }
 
-  if (event.data?.type === "success") {
-    // 验证成功消息的数据结构
-    if (!event.data.data?.token || !event.data.data?.user) {
-      console.warn('Login success message missing required data');
-      return;
-    }
-
-    // 停止所有登录加载状态
-    linuxdoLoading.value = false;
-    giteeLoading.value = false;  // 替换 qqLoading
-
-    const { token, user, message } = event.data.data;
-
-    ElMessage.success(message || `欢迎回来，${user.username}！`);
-
+  // 处理登录结果
+  if (event.data.type === 'success' && event.data.success) {
     // 保存 JWT
-    localStorage.setItem("TOKEN", token);
-
+    localStorage.setItem("TOKEN", event.data.data.token);
     // 更新store中的用户状态
     userStore.initUserState();
-
-    // 登录成功后跳转到用户信息页
-    setTimeout(() => {
-      window.location.href = "/userinfo";
-    }, 1000);
-  } else {
-    // 停止所有登录加载状态
-    linuxdoLoading.value = false;
-    giteeLoading.value = false;  // 替换 qqLoading
-
-    const { error, message } = event.data;
-    console.error("Login auth error:", error, message);
-    ElMessage.error(message || "登录失败，请重试");
+    // 显示成功消息
+    ElMessage.success(event.data.message || "登录成功");
+    // 跳转到用户信息页
+    window.location.href = "/userinfo";
+  } else if (event.data.type === 'error' || !event.data.success) {
+    // 显示错误消息
+    ElMessage.error(event.data.message || "登录失败，请重试");
   }
+
+  // 重置加载状态
+  linuxdoLoading.value = false;
+  giteeLoading.value = false;
+  githubLoading.value = false;  // 新增
 };
 
 const handleSignOut = () => {
@@ -264,6 +284,31 @@ const handleSignOut = () => {
         <!-- 谷歌登录按钮 -->
         <div class="flex justify-center">
           <div id="google-signin-button"></div>
+        </div>
+
+        <!-- GitHub登录按钮 -->
+        <div class="flex justify-center">
+          <button
+            @click="handleGithubLogin"
+            :disabled="githubLoading"
+            class="flex items-center justify-center w-full max-w-[400px] h-[40px] border border-gray-300 rounded-md bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <img
+              src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
+              alt="GitHub"
+              class="h-5 w-auto mr-3"
+            />
+            <span
+              v-if="!githubLoading"
+              class="text-sm font-medium text-gray-600"
+            >
+              使用 GitHub 登录
+            </span>
+            <div v-else class="flex items-center">
+              <el-icon class="is-loading mr-2"><Loading /></el-icon>
+              <span class="text-sm text-gray-600">登录中...</span>
+            </div>
+          </button>
         </div>
 
         <!-- Linux.do登录按钮 -->
@@ -331,7 +376,7 @@ const handleSignOut = () => {
 
         <!-- 登录说明 -->
         <div class="text-center text-gray-500 text-sm">
-          <p>支持谷歌账号、Linux.do账号和Gitee账号登录</p>
+          <p>支持谷歌账号、GitHub账号、Linux.do账号和Gitee账号登录</p>
           <p class="mt-2">登录后可以享受更多个性化功能</p>
         </div>
 
