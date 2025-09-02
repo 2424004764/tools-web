@@ -488,42 +488,40 @@ async function processUserLogin(userData, env) {
         const username = userData.name || userData.login || '用户' + userData.id;
         const email = userData.email || `${userData.login}@github.user`;
         const avatar = userData.avatar_url || '';
-        const bio = userData.bio || '';
-        const location = userData.location || '';
-        const blog = userData.blog || userData.html_url || '';
 
         console.log('处理后的用户信息:', {
             thirdPartyUid,
             username,
             email,
-            avatar,
-            bio,
-            location,
-            blog
+            avatar
         });
 
-        // 检查用户是否已存在
+        // 查询是否已有用户
         console.log('检查用户是否已存在...');
-        const existingUser = await db.prepare('SELECT id, username, email, avatar, bio, location, blog, is_active, created_at FROM users WHERE third_party_type = ? AND third_party_uid = ?')
-            .bind('github', thirdPartyUid)
-            .first();
+        const found = await db.prepare(`
+            SELECT id FROM user 
+            WHERE third_party_uid = ? AND third_party_type = 'github'
+        `).bind(thirdPartyUid).first();
 
-        console.log('现有用户查询结果:', existingUser);
+        console.log('现有用户查询结果:', found);
 
         let userId;
         let isNewUser = false;
 
-        if (existingUser) {
+        if (found && found.id) {
             // 用户已存在，更新信息
-            userId = existingUser.id;
+            userId = found.id;
             console.log('用户已存在，更新信息，userId:', userId);
 
             // 更新用户信息
             const updateResult = await db.prepare(`
-                UPDATE users 
-                SET username = ?, email = ?, avatar = ?, bio = ?, location = ?, blog = ?, last_login_at = ?
+                UPDATE user SET 
+                    avatar = ?,
+                    last_login = ?,
+                    email = ?,
+                    username = ?
                 WHERE id = ?
-            `).bind(username, email, avatar, bio, location, blog, nowStr, userId).run();
+            `).bind(avatar, nowStr, email, username, userId).run();
 
             console.log('用户信息更新结果:', updateResult);
         } else {
@@ -534,7 +532,7 @@ async function processUserLogin(userData, env) {
             // 检查邮箱是否已被其他账号使用
             if (email && email.indexOf('@') > -1 && !email.endsWith('@github.user')) {
                 console.log('检查邮箱是否已被使用:', email);
-                const emailExists = await db.prepare('SELECT id FROM users WHERE email = ? AND third_party_type != ?')
+                const emailExists = await db.prepare('SELECT id FROM user WHERE email = ? AND third_party_type != ?')
                     .bind(email, 'github')
                     .first();
 
@@ -544,27 +542,29 @@ async function processUserLogin(userData, env) {
                 }
             }
 
+            // 生成新用户ID
+            userId = crypto.randomUUID();
+            
             // 插入新用户
             const insertResult = await db.prepare(`
-                INSERT INTO users (username, email, avatar, bio, location, blog, third_party_type, third_party_uid, is_active, created_at, last_login_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
-            `).bind(username, email, avatar, bio, location, blog, 'github', thirdPartyUid, nowStr, nowStr).run();
+                INSERT INTO user (id, email, avatar, created_at, last_login, third_party_uid, username, user_level, third_party_type)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).bind(userId, email, avatar, nowStr, nowStr, thirdPartyUid, username, 0, 'github').run();
 
             console.log('新用户插入结果:', insertResult);
-            userId = insertResult.meta.last_row_id;
             console.log('新用户ID:', userId);
         }
 
         // 生成JWT令牌
         console.log('生成JWT令牌...');
         const jwtSecret = env.JWT_SECRET || 'your-secret-key';
-        const header = {
-            alg: 'HS256',
-            typ: 'JWT'
-        };
+        
+        if (!jwtSecret || jwtSecret === 'your-secret-key') {
+            throw new Error('缺少 JWT_SECRET 环境变量');
+        }
 
         const payload = {
-            userId: userId,
+            uid: userId,
             username: username,
             email: email,
             thirdPartyType: 'github',
@@ -574,12 +574,12 @@ async function processUserLogin(userData, env) {
 
         console.log('JWT载荷:', payload);
 
-        const token = await generateJWT(header, payload, jwtSecret);
+        const token = await signJWT(payload, jwtSecret);
         console.log('JWT令牌生成成功，长度:', token.length);
 
         // 获取完整的用户信息
         console.log('获取完整用户信息...');
-        const userInfo = await db.prepare('SELECT id, username, email, avatar, bio, location, blog, third_party_type, is_active, created_at FROM users WHERE id = ?')
+        const userInfo = await db.prepare('SELECT id, username, email, avatar, third_party_type, user_level, created_at FROM user WHERE id = ?')
             .bind(userId)
             .first();
 
@@ -609,35 +609,20 @@ function formatNow() {
     return new Date().toISOString().slice(0, 19).replace('T', ' ');
 }
 
-// 工具函数：生成JWT
-async function generateJWT(header, payload, secret) {
+// 工具函数：生成JWT (使用与linuxdo-auth相同的实现)
+async function signJWT(payload, secret) {
     const encoder = new TextEncoder();
-
-    // Base64URL编码
-    const base64UrlEncode = (obj) => {
-        const jsonString = JSON.stringify(obj);
-        const uint8Array = encoder.encode(jsonString);
-        const base64 = btoa(String.fromCharCode(...uint8Array));
-        return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-    };
-
-    const encodedHeader = base64UrlEncode(header);
-    const encodedPayload = base64UrlEncode(payload);
-
-    const signatureInput = `${encodedHeader}.${encodedPayload}`;
-    const keyData = encoder.encode(secret);
-
-    const cryptoKey = await crypto.subtle.importKey(
+    const data = encoder.encode(JSON.stringify(payload));
+    const key = await crypto.subtle.importKey(
         'raw',
-        keyData,
+        encoder.encode(secret),
         { name: 'HMAC', hash: 'SHA-256' },
         false,
         ['sign']
     );
-
-    const signature = await crypto.subtle.sign('HMAC', cryptoKey, encoder.encode(signatureInput));
-    const base64Signature = btoa(String.fromCharCode(...new Uint8Array(signature)));
-    const encodedSignature = base64Signature.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-
-    return `${encodedHeader}.${encodedPayload}.${encodedSignature}`;
+    
+    const signature = await crypto.subtle.sign('HMAC', key, data);
+    const token = btoa(String.fromCharCode(...new Uint8Array(signature)));
+    
+    return `${btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))}.${btoa(JSON.stringify(payload))}.${token.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')}`;
 }
