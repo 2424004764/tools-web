@@ -557,9 +557,9 @@ async function processUserLogin(userData, env) {
 
         // 生成JWT令牌
         console.log('生成JWT令牌...');
-        const jwtSecret = env.JWT_SECRET || 'your-secret-key';
+        const jwtSecret = env.JWT_SECRET;
         
-        if (!jwtSecret || jwtSecret === 'your-secret-key') {
+        if (!jwtSecret) {
             throw new Error('缺少 JWT_SECRET 环境变量');
         }
 
@@ -609,20 +609,27 @@ function formatNow() {
     return new Date().toISOString().slice(0, 19).replace('T', ' ');
 }
 
-// 工具函数：生成JWT (使用与linuxdo-auth相同的实现)
+// 工具函数：生成JWT (修正为标准实现)
 async function signJWT(payload, secret) {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(JSON.stringify(payload));
+    const enc = new TextEncoder();
+    const header = { alg: 'HS256', typ: 'JWT' };
+    const base64url = (buf) =>
+        btoa(String.fromCharCode(...new Uint8Array(buf)))
+            .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+
+    const headerB64 = base64url(enc.encode(JSON.stringify(header)));
+    const payloadB64 = base64url(enc.encode(JSON.stringify(payload)));
+    const data = `${headerB64}.${payloadB64}`;
+
     const key = await crypto.subtle.importKey(
         'raw',
-        encoder.encode(secret),
+        enc.encode(secret),
         { name: 'HMAC', hash: 'SHA-256' },
         false,
         ['sign']
     );
-    
-    const signature = await crypto.subtle.sign('HMAC', key, data);
-    const token = btoa(String.fromCharCode(...new Uint8Array(signature)));
-    
-    return `${btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))}.${btoa(JSON.stringify(payload))}.${token.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')}`;
+    const sig = await crypto.subtle.sign('HMAC', key, enc.encode(data));
+    const sigB64 = base64url(sig);
+
+    return `${data}.${sigB64}`;
 }
