@@ -25,7 +25,7 @@ declare global {
 
 const loading = ref(false);
 const linuxdoLoading = ref(false);
-const qqLoading = ref(false);
+const giteeLoading = ref(false);  // 替换 qqLoading 为 giteeLoading
 const googleInitialized = ref(false);
 const userStore = useUserStore();
 
@@ -148,26 +148,26 @@ const handleLinuxdoLogin = async () => {
   }
 };
 
-// QQ登录处理
-const handleQQLogin = async () => {
+// Gitee登录处理 (替换原QQ登录处理)
+const handleGiteeLogin = async () => {
   try {
-    qqLoading.value = true;
+    giteeLoading.value = true;
 
-    // 请求获取QQ授权URL
-    const result = await axios.post(siteUrl.value + "/qq-auth", {
+    // 请求获取Gitee授权URL
+    const result = await axios.post(siteUrl.value + "/gitee-auth", {
       params: {
         action: "getAuthUrl",
       },
     });
 
     if (!result.data.success) {
-      throw new Error("QQ登录配置错误");
+      throw new Error("Gitee登录配置错误");
     }
 
     // 打开授权页面
     const authWindow = window.open(
       result.data.auth_url,
-      "qq-auth",
+      "gitee-auth",
       "width=600,height=600,scrollbars=yes,resizable=yes"
     );
 
@@ -175,9 +175,9 @@ const handleQQLogin = async () => {
       throw new Error("无法打开登录窗口，请检查浏览器弹窗设置");
     }
   } catch (error) {
-    console.error("QQ login error:", error);
-    ElMessage.error("QQ登录失败，请重试");
-    qqLoading.value = false;
+    console.error("Gitee login error:", error);
+    ElMessage.error("Gitee登录失败，请重试");
+    giteeLoading.value = false;
   }
 };
 
@@ -186,7 +186,7 @@ const handleLoginMessage = (event: MessageEvent) => {
   // 验证消息来源 - 只接受来自可信域名的消息
   const trustedOrigins = [
     'https://connect.linux.do', // Linux.do官方域名
-    'https://graph.qq.com', // QQ官方域名
+    'https://gitee.com', // Gitee官方域名 (替换QQ域名)
     siteUrl.value, // 添加当前站点域名
     window.location.origin, // 添加当前页面域名
   ];
@@ -214,7 +214,7 @@ const handleLoginMessage = (event: MessageEvent) => {
 
     // 停止所有登录加载状态
     linuxdoLoading.value = false;
-    qqLoading.value = false;
+    giteeLoading.value = false;  // 替换 qqLoading
 
     const { token, user, message } = event.data.data;
 
@@ -233,7 +233,7 @@ const handleLoginMessage = (event: MessageEvent) => {
   } else {
     // 停止所有登录加载状态
     linuxdoLoading.value = false;
-    qqLoading.value = false;
+    giteeLoading.value = false;  // 替换 qqLoading
 
     const { error, message } = event.data;
     console.error("Login auth error:", error, message);
@@ -291,23 +291,23 @@ const handleSignOut = () => {
           </button>
         </div>
 
-        <!-- QQ登录按钮 -->
+        <!-- Gitee登录按钮 (替换QQ登录) -->
         <div class="flex justify-center">
           <button
-            @click="handleQQLogin"
-            :disabled="qqLoading"
+            @click="handleGiteeLogin"
+            :disabled="giteeLoading"
             class="flex items-center justify-center w-full max-w-[400px] h-[40px] border border-gray-300 rounded-md bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <img
-              src="https://qq-web.cdn-go.cn//im.qq.com_new/7bce6d6d/asset/favicon.ico"
-              alt="QQ"
-              class="w-5 h-5 mr-3"
+              src="https://gitee.com/static/images/logo-black.svg?t=158106664"
+              alt="Gitee"
+              class="h-5 w-auto mr-3"
             />
             <span
-              v-if="!qqLoading"
+              v-if="!giteeLoading"
               class="text-sm font-medium text-gray-600"
             >
-              使用 QQ 登录
+              使用 Gitee 登录
             </span>
             <div v-else class="flex items-center">
               <el-icon class="is-loading mr-2"><Loading /></el-icon>
@@ -331,7 +331,7 @@ const handleSignOut = () => {
 
         <!-- 登录说明 -->
         <div class="text-center text-gray-500 text-sm">
-          <p>支持谷歌账号、Linux.do账号和QQ账号登录</p>
+          <p>支持谷歌账号、Linux.do账号和Gitee账号登录</p>
           <p class="mt-2">登录后可以享受更多个性化功能</p>
         </div>
 
