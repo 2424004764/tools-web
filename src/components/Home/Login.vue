@@ -27,6 +27,7 @@ const loading = ref(false);
 const linuxdoLoading = ref(false);
 const giteeLoading = ref(false);  // 替换 qqLoading 为 giteeLoading
 const githubLoading = ref(false);  // 新增GitHub loading状态
+const qqLoading = ref(false);  // 添加QQ登录loading状态
 const googleInitialized = ref(false);
 const userStore = useUserStore();
 
@@ -215,6 +216,39 @@ const handleGithubLogin = async () => {
   }
 };
 
+// QQ登录处理
+const handleQQLogin = async () => {
+  try {
+    qqLoading.value = true;
+
+    // 请求获取QQ授权URL
+    const result = await axios.post(siteUrl.value + "/qq-auth", {
+      params: {
+        action: "getAuthUrl",
+      },
+    });
+
+    if (!result.data.success) {
+      throw new Error("QQ登录配置错误");
+    }
+
+    // 打开授权页面
+    const authWindow = window.open(
+      result.data.auth_url,
+      "qq-auth",
+      "width=600,height=600,scrollbars=yes,resizable=yes"
+    );
+
+    if (!authWindow) {
+      throw new Error("无法打开登录窗口，请检查浏览器弹窗设置");
+    }
+  } catch (error) {
+    console.error("QQ login error:", error);
+    ElMessage.error("QQ登录失败，请重试");
+    qqLoading.value = false;
+  }
+};
+
 // 处理登录窗口消息 - 统一处理所有第三方登录
 const handleLoginMessage = (event: MessageEvent) => {
   // 验证消息来源 - 只接受来自可信域名的消息
@@ -222,6 +256,7 @@ const handleLoginMessage = (event: MessageEvent) => {
     'https://connect.linux.do', // Linux.do官方域名
     'https://gitee.com', // Gitee官方域名 (替换QQ域名)
     'https://github.com', // GitHub官方域名
+    'https://graph.qq.com', // QQ官方域名
     siteUrl.value, // 添加当前站点域名
     window.location.origin, // 添加当前页面域名
   ];
@@ -259,6 +294,7 @@ const handleLoginMessage = (event: MessageEvent) => {
   linuxdoLoading.value = false;
   giteeLoading.value = false;
   githubLoading.value = false;  // 新增
+  qqLoading.value = false;  // 添加QQ loading重置
 };
 
 const handleSignOut = () => {
@@ -303,6 +339,31 @@ const handleSignOut = () => {
               class="text-sm font-medium text-gray-600"
             >
               使用 GitHub 登录
+            </span>
+            <div v-else class="flex items-center">
+              <el-icon class="is-loading mr-2"><Loading /></el-icon>
+              <span class="text-sm text-gray-600">登录中...</span>
+            </div>
+          </button>
+        </div>
+
+        <!-- QQ登录按钮 -->
+        <div class="flex justify-center">
+          <button
+            @click="handleQQLogin"
+            :disabled="qqLoading"
+            class="flex items-center justify-center w-full max-w-[400px] h-[40px] border border-gray-300 rounded-md bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <img
+              src="https://qzonestyle.gtimg.cn/qzone/vas/opensns/res/img/Connect_logo_7.png"
+              alt="QQ"
+              class="h-5 w-auto mr-3"
+            />
+            <span
+              v-if="!qqLoading"
+              class="text-sm font-medium text-gray-600"
+            >
+              使用 QQ 登录
             </span>
             <div v-else class="flex items-center">
               <el-icon class="is-loading mr-2"><Loading /></el-icon>
@@ -376,7 +437,7 @@ const handleSignOut = () => {
 
         <!-- 登录说明 -->
         <div class="text-center text-gray-500 text-sm">
-          <p>支持谷歌账号、GitHub账号、Linux.do账号和Gitee账号登录</p>
+          <p>支持谷歌账号、GitHub账号、QQ账号、Linux.do账号和Gitee账号登录</p>
           <p class="mt-2">登录后可以享受更多个性化功能</p>
         </div>
 
