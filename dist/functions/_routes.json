@@ -6,7 +6,9 @@
     "/api/notes/*",
     "/linuxdo-auth",
     "/gitee-auth",
-    "/github-auth"
+    "/github-auth",
+
+    "/cron/test"
   ],
   "exclude": []
 }
