@@ -248,7 +248,7 @@ onUnmounted(() => {
               content="用户登录"
               placement="bottom"
             >
-              <el-button type="primary" size="small" class="bg-gradient-to-r from-green-500 to-blue-500">
+              <el-button type="primary" size="large" class="bg-gradient-to-r from-green-500 to-blue-500 w-20">
                 登录
               </el-button>
             </el-tooltip>

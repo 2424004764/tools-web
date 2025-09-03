@@ -17,6 +17,7 @@ declare global {
           initialize: (config: any) => void;
           renderButton: (element: HTMLElement | string, options: any) => void;
           disableAutoSelect: () => void;
+          prompt: (callback: (notification: any) => void) => void; // 添加 prompt 方法
         };
       };
     };
@@ -62,6 +63,47 @@ onMounted(() => {
   window.addEventListener("message", handleLoginMessage);
 });
 
+// 添加自定义谷歌登录处理函数
+const handleCustomGoogleLogin = () => {
+  if (typeof window.google !== "undefined") {
+    // 触发Google One Tap登录
+    window.google.accounts.id.prompt((notification) => {
+      if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+        // 如果One Tap不可用，则显示弹窗登录
+        showGoogleLoginPopup();
+      }
+    });
+  } else {
+    ElMessage.error("Google登录服务未加载，请刷新页面重试");
+  }
+};
+
+// 显示Google登录弹窗
+const showGoogleLoginPopup = () => {
+  if (typeof window.google !== "undefined") {
+    // 创建一个临时的隐藏按钮来触发弹窗
+    const tempDiv = document.createElement('div');
+    tempDiv.style.display = 'none';
+    document.body.appendChild(tempDiv);
+    
+    window.google.accounts.id.renderButton(tempDiv, {
+      theme: "outline",
+      size: "large",
+      type: "standard",
+    });
+    
+    // 模拟点击来触发登录弹窗
+    setTimeout(() => {
+      const button = tempDiv.querySelector('[role="button"]') as HTMLElement;
+      if (button) {
+        button.click();
+      }
+      // 清理临时元素
+      document.body.removeChild(tempDiv);
+    }, 100);
+  }
+};
+
 const initializeGoogleSignIn = () => {
   if (typeof window.google !== "undefined") {
     window.google.accounts.id.initialize({
@@ -71,6 +113,7 @@ const initializeGoogleSignIn = () => {
       cancel_on_tap_outside: true,
     });
 
+    // 仍然初始化隐藏的按钮作为备用
     const buttonElement = document.getElementById("google-signin-button");
     if (buttonElement) {
       window.google.accounts.id.renderButton(buttonElement, {
@@ -80,7 +123,6 @@ const initializeGoogleSignIn = () => {
         text: "signin_with",
         shape: "rectangular",
         logo_alignment: "left",
-        width: 400,
       });
     }
   }
@@ -309,59 +351,29 @@ const handleSignOut = () => {
 </script>
 
 <template>
-  <div class="flex flex-col mt-8 flex-1 items-center bg-white rounded-md p-10">
-    <div class="w-96">
+  <div class="flex flex-col mt-8 flex-1 items-center bg-white rounded-md p-4 sm:p-10">
+    <div class="w-full max-w-sm sm:max-w-md">
       <div class="text-center mb-8">
-        <h1 class="text-3xl font-bold text-gray-800 mb-2">用户登录</h1>
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">用户登录</h1>
         <p class="text-gray-600">欢迎使用{{ appTitle }}</p>
       </div>
 
-      <div class="space-y-6">
-        <!-- 谷歌登录按钮 -->
-        <div class="flex justify-center">
-          <div id="google-signin-button"></div>
-        </div>
-
-        <!-- GitHub登录按钮 -->
-        <div class="flex justify-center">
-          <button
-            @click="handleGithubLogin"
-            :disabled="githubLoading"
-            class="flex items-center justify-center w-full max-w-[400px] h-[40px] border border-gray-300 rounded-md bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            <img
-              src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
-              alt="GitHub"
-              class="h-5 w-auto mr-3"
-            />
-            <span
-              v-if="!githubLoading"
-              class="text-sm font-medium text-gray-600"
-            >
-              使用 GitHub 登录
-            </span>
-            <div v-else class="flex items-center">
-              <el-icon class="is-loading mr-2"><Loading /></el-icon>
-              <span class="text-sm text-gray-600">登录中...</span>
-            </div>
-          </button>
-        </div>
-
+      <div class="space-y-4 sm:space-y-6">
         <!-- QQ登录按钮 -->
         <div class="flex justify-center">
           <button
             @click="handleQQLogin"
             :disabled="qqLoading"
-            class="flex items-center justify-center w-full max-w-[400px] h-[40px] border border-gray-300 rounded-md bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            class="flex items-center justify-center w-full h-[40px] border border-gray-300 rounded-md bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors px-4"
           >
             <img
-              src="https://qzonestyle.gtimg.cn/qzone/vas/opensns/res/img/Connect_logo_7.png"
+              src="/images/logo/qq.png"
               alt="QQ"
-              class="h-5 w-auto mr-3"
+              class="h-5 w-auto mr-3 flex-shrink-0"
             />
             <span
               v-if="!qqLoading"
-              class="text-sm font-medium text-gray-600"
+              class="text-sm font-medium text-gray-600 truncate"
             >
               使用 QQ 登录
             </span>
@@ -377,16 +389,16 @@ const handleSignOut = () => {
           <button
             @click="handleLinuxdoLogin"
             :disabled="linuxdoLoading"
-            class="flex items-center justify-center w-full max-w-[400px] h-[40px] border border-gray-300 rounded-md bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            class="flex items-center justify-center w-full h-[40px] border border-gray-300 rounded-md bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors px-4"
           >
             <img
               src="https://linux.do/uploads/default/original/4X/c/c/d/ccd8c210609d498cbeb3d5201d4c259348447562.png"
               alt="Linux.do"
-              class="w-5 h-5 mr-3"
+              class="w-5 h-5 mr-3 flex-shrink-0"
             />
             <span
               v-if="!linuxdoLoading"
-              class="text-sm font-medium text-gray-600"
+              class="text-sm font-medium text-gray-600 truncate"
             >
               使用 Linux.do 登录
             </span>
@@ -397,21 +409,21 @@ const handleSignOut = () => {
           </button>
         </div>
 
-        <!-- Gitee登录按钮 (替换QQ登录) -->
+        <!-- Gitee登录按钮 -->
         <div class="flex justify-center">
           <button
             @click="handleGiteeLogin"
             :disabled="giteeLoading"
-            class="flex items-center justify-center w-full max-w-[400px] h-[40px] border border-gray-300 rounded-md bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            class="flex items-center justify-center w-full h-[40px] border border-gray-300 rounded-md bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors px-4"
           >
             <img
               src="https://gitee.com/static/images/logo-black.svg?t=158106664"
               alt="Gitee"
-              class="h-5 w-auto mr-3"
+              class="h-5 w-auto mr-3 flex-shrink-0"
             />
             <span
               v-if="!giteeLoading"
-              class="text-sm font-medium text-gray-600"
+              class="text-sm font-medium text-gray-600 truncate"
             >
               使用 Gitee 登录
             </span>
@@ -429,6 +441,61 @@ const handleSignOut = () => {
           <div class="flex-1 border-t border-gray-200"></div>
         </div>
 
+        <!-- 自定义谷歌登录按钮 -->
+        <div class="flex justify-center">
+          <button
+            @click="handleCustomGoogleLogin"
+            :disabled="loading"
+            class="flex items-center justify-center w-full h-[40px] border border-gray-300 rounded-md bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors px-4"
+          >
+            <img
+              src="https://developers.google.com/identity/images/g-logo.png"
+              alt="Google"
+              class="h-5 w-auto mr-3 flex-shrink-0"
+            />
+            <span
+              v-if="!loading"
+              class="text-sm font-medium text-gray-600 truncate"
+            >
+              使用 Google 登录
+            </span>
+            <div v-else class="flex items-center">
+              <el-icon class="is-loading mr-2"><Loading /></el-icon>
+              <span class="text-sm text-gray-600">登录中...</span>
+            </div>
+          </button>
+        </div>
+
+        <!-- 隐藏的Google SDK按钮 -->
+        <div style="display: none;">
+          <div id="google-signin-button"></div>
+        </div>
+
+        <!-- GitHub登录按钮 -->
+        <div class="flex justify-center">
+          <button
+            @click="handleGithubLogin"
+            :disabled="githubLoading"
+            class="flex items-center justify-center w-full h-[40px] border border-gray-300 rounded-md bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors px-4"
+          >
+            <img
+              src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
+              alt="GitHub"
+              class="h-5 w-auto mr-3 flex-shrink-0"
+            />
+            <span
+              v-if="!githubLoading"
+              class="text-sm font-medium text-gray-600 truncate"
+            >
+              使用 GitHub 登录
+            </span>
+            <div v-else class="flex items-center">
+              <el-icon class="is-loading mr-2"><Loading /></el-icon>
+              <span class="text-sm text-gray-600">登录中...</span>
+            </div>
+          </button>
+        </div>
+
         <!-- 加载状态 -->
         <div v-if="loading" class="text-center">
           <el-icon class="is-loading"><Loading /></el-icon>
@@ -436,7 +503,7 @@ const handleSignOut = () => {
         </div>
 
         <!-- 登录说明 -->
-        <div class="text-center text-gray-500 text-sm">
+        <div class="text-center text-gray-500 text-xs sm:text-sm px-2">
           <p>支持谷歌账号、GitHub账号、QQ账号、Linux.do账号和Gitee账号登录</p>
           <p class="mt-2">登录后可以享受更多个性化功能</p>
         </div>
@@ -453,13 +520,6 @@ const handleSignOut = () => {
 </template>
 
 <style scoped>
-/* 自定义谷歌登录按钮样式 */
-#google-signin-button {
-  display: flex;
-  justify-content: center;
-}
-
-#google-signin-button > div {
-  margin: 0 auto;
-}
+/* 移除所有复杂的Google按钮样式，因为现在使用自定义按钮 */
 </style>
+
