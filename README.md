@@ -139,9 +139,10 @@ wrangler pages dev .
 - 2025-08-28 新增物品辐射量示例功能、Cookie解析功能
 - 2025-08-19 新增猜数字游戏
 - 2025-08-30 点击功能时，增加loading效果、新增3D数学方程式、算法可视化功能
-- 2025-08-31 新增假如你有100亿、AI提示词仓库功能、接入linux.do登录方式
+- 2025-08-31 新增假如你有100亿、AI提示词仓库功能、接入linux.do（https://connect.linux.do/dash/sso）登录方式
  - 2025-09-01 新增pdf转图片功能
- - 2025-09-02 接入gitee、github登录方式
+ - 2025-09-02 接入gitee（https://gitee.com/oauth/applications）、github（https://github.com/settings/developers）登录方式
+ - 2025-09-02 接入QQ（https://connect.qq.com/manage.html#/）登录方式
 
 ## 工具列表
 
