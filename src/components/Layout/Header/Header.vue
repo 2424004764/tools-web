@@ -170,11 +170,11 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <header class="h-24 w-full flex justify-between pt-2 pb-2 c-xs:h-16 c-xs:border-b-[1px] items-center">
+  <header class="h-24 w-full flex justify-between pt-2 pb-2 c-xs:h-16 c-xs:border-b-[1px] border-warm-200 items-center">
     <div class="flex items-center w-full">
       <Transition name="fold" class="hidden c-sm:block c-md:hidden c-xs:block">
         <svg v-if="!componentStore.leftComDrawer" @click="componentStore.setleftComDrawerStatus(true)" t="1702978210636" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="7618" width="30" height="30">
-          <path fill="#444" fill-opacity=".9" d="M895.936 256l-768-0.896 0.128-64L896 192l-0.064 64zM179.2 689.152l202.688-152a32 32 0 0 0 0-51.2L179.2 333.952a32 32 0 0 0-51.2 25.6v304a32 32 0 0 0 51.2 25.6z m12.8-89.6v-176l117.312 88L192 599.552zM896 544H480v-64H896v64z m-0.064 288l-768-0.896 0.128-64L896 768l-0.064 64z" p-id="7619"></path>
+          <path fill="#7c2d12" fill-opacity=".9" d="M895.936 256l-768-0.896 0.128-64L896 192l-0.064 64zM179.2 689.152l202.688-152a32 32 0 0 0 0-51.2L179.2 333.952a32 32 0 0 0-51.2 25.6v304a32 32 0 0 0 51.2 25.6z m12.8-89.6v-176l117.312 88L192 599.552zM896 544H480v-64H896v64z m-0.064 288l-768-0.896 0.128-64L896 768l-0.064 64z" p-id="7619"></path>
         </svg>
         <svg v-else @click="componentStore.setleftComDrawerStatus(false)" t="1702978577170" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="1587" width="30" height="30">
           <path fill="#444" fill-opacity=".9" d="M128.064 192l768 0.896-0.128 64L128 256l0.064-64z m514.048 294.848a32 32 0 0 0 0 51.2l202.688 152a32 32 0 0 0 51.2-25.6v-304a32 32 0 0 0-51.2-25.6l-202.688 152zM832 424.448v176l-117.312-88L832 424.448zM128 480h416v64H128v-64z m0.064 288l768 0.896-0.128 64L128 832l0.064-64z" p-id="1588"></path>
@@ -248,7 +248,7 @@ onUnmounted(() => {
               content="用户登录"
               placement="bottom"
             >
-              <el-button type="primary" size="large" class="bg-gradient-to-r from-green-500 to-blue-500 w-20">
+              <el-button type="primary" size="large" class="bg-gradient-to-r from-warm-500 to-orange-500 hover:from-warm-600 hover:to-orange-600 w-20 border-none">
                 登录
               </el-button>
             </el-tooltip>
@@ -257,7 +257,7 @@ onUnmounted(() => {
           <!-- 已登录状态：显示用户名和下拉菜单 -->
           <div v-else class="relative">
             <div 
-              class="relative cursor-pointer text-gray-700 hover:text-blue-600 flex items-center gap-1 px-3 py-2 rounded hover:bg-gray-100"
+              class="relative cursor-pointer text-warm-700 hover:text-warm-600 flex items-center gap-1 px-3 py-2 rounded hover:bg-warm-100"
               @click="toggleUserMenu"
               @mouseenter="showUserMenu"
               @mouseleave="hideUserMenu"
@@ -270,18 +270,18 @@ onUnmounted(() => {
               <!-- 悬浮菜单 -->
               <div 
                 v-show="userMenuVisible"
-                class="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-2 min-w-[120px] z-50"
+                class="absolute top-full right-0 mt-1 bg-warm-50 border border-warm-200 rounded-lg shadow-lg py-2 min-w-[120px] z-50"
                 @mouseenter="showUserMenu"
                 @mouseleave="hideUserMenu"
               >
                 <div 
-                  class="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                  class="px-4 py-2 hover:bg-warm-100 cursor-pointer text-warm-700"
                   @click.stop="goToUserInfo"
                 >
                   个人中心
                 </div>
                 <div 
-                  class="px-4 py-2 hover:bg-gray-100 cursor-pointer text-red-600"
+                  class="px-4 py-2 hover:bg-warm-100 cursor-pointer text-red-600"
                   @click.stop="handleLogout"
                 >
                   退出登录
@@ -294,7 +294,7 @@ onUnmounted(() => {
     </div>
   </header>
   <!-- 更新加载状态样式 -->
-  <div v-if="routeLoading" class="fixed top-0 left-0 w-full h-full bg-black bg-opacity-40 flex items-center justify-center z-50 loading-overlay">
+  <div v-if="routeLoading" class="fixed top-0 left-0 w-full h-full bg-warm-900 bg-opacity-40 flex items-center justify-center z-50 loading-overlay">
     <div class="loading-container">
       <div class="loading-spinner"></div>
       <div class="loading-text">加载中...</div>
@@ -321,8 +321,8 @@ onUnmounted(() => {
 }
 
 .el-select :deep(.el-select__wrapper){
-  background-color: rgba(46, 51, 56, 0.05);
-  background-color: rgb(255, 255, 255);
+  background-color: rgba(254, 247, 237, 0.9);
+  border-color: var(--warm-border);
 }
 
 /* 用户菜单样式 */
@@ -362,8 +362,10 @@ onUnmounted(() => {
   animation: fadeIn 0.3s ease-out;
 }
 
+/* 加载动画样式 - 暖色主题 */
 .loading-container {
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(254, 247, 237, 0.95);
+  border: 1px solid var(--warm-border);
   border-radius: 16px;
   padding: 32px 40px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
@@ -378,8 +380,8 @@ onUnmounted(() => {
 .loading-spinner {
   width: 48px;
   height: 48px;
-  border: 4px solid #f3f4f6;
-  border-top: 4px solid #3b82f6;
+  border: 4px solid var(--warm-muted);
+  border-top: 4px solid var(--warm-primary);
   border-radius: 50%;
   animation: spin 1s linear infinite;
   position: relative;
@@ -393,7 +395,7 @@ onUnmounted(() => {
   right: -4px;
   bottom: -4px;
   border: 2px solid transparent;
-  border-top: 2px solid #10b981;
+  border-top: 2px solid var(--warm-secondary);
   border-radius: 50%;
   animation: spin 2s linear infinite reverse;
 }
@@ -401,7 +403,7 @@ onUnmounted(() => {
 .loading-text {
   font-size: 16px;
   font-weight: 500;
-  color: #374151;
+  color: var(--warm-text);
   animation: pulse 1.5s ease-in-out infinite;
 }
 

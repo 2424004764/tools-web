@@ -160,8 +160,8 @@ onMounted(async () => {
           :alt="appNet"
         />
         <div class="flex flex-col mt-auto mb-auto">
-          <div class="text-2xl">{{ appName }}</div>
-          <div class="text-sm text-gray-500">{{ appNet }}</div>
+          <div class="text-2xl text-warm-800">{{ appName }}</div>
+          <div class="text-sm text-warm-600">{{ appNet }}</div>
         </div>
       </router-link>
     </div>
@@ -264,7 +264,7 @@ onMounted(async () => {
 .el-sub-menu :deep(.el-sub-menu__title:hover) {
   /* padding-left: 0 !important; */
   color: #fff;
-  background-color: #409eff;
+  background-color: var(--warm-primary);
   border-radius: 1rem;
 }
 
@@ -277,12 +277,12 @@ onMounted(async () => {
 }
 .el-menu-item.is-active {
   color: #fff;
-  background-color: #409eff;
+  background-color: var(--warm-primary);
   border-radius: 1rem;
 }
 .el-menu-item:hover {
   color: #fff;
-  background-color: #409eff;
+  background-color: var(--warm-primary);
   border-radius: 1rem;
 }
 </style>
