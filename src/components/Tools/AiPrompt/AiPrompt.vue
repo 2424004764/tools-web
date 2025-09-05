@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref, computed } from 'vue'
+import { reactive, ref, computed, watch, onUnmounted, onMounted, nextTick } from 'vue'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { copy } from '@/utils/string'
@@ -252,6 +252,58 @@ const expandedGroups = ref<Set<string>>(new Set(['content'])) // 默认展开第
 // 侧边栏是否展开（移动端）
 const sidebarExpanded = ref(false)
 
+// 检测是否为移动端
+const isMobile = ref(false)
+
+// 悬浮按钮位置 - 使用更精确的初始值
+const buttonTop = ref('6.5rem') // 直接设置正确的初始位置
+
+// 检测屏幕尺寸和计算按钮位置
+const checkMobile = () => {
+  const newIsMobile = window.innerWidth < 768
+  isMobile.value = newIsMobile
+  
+  // 只有在移动端状态发生变化时才重新计算位置
+  if (newIsMobile) {
+    buttonTop.value = '6.5rem'
+  }
+  
+  // 如果切换到桌面端，确保侧边栏状态正确
+  if (!newIsMobile) {
+    sidebarExpanded.value = false
+    document.body.style.overflow = ''
+  }
+}
+
+// 使用nextTick确保DOM完全渲染后再计算位置
+onMounted(async () => {
+  // 等待DOM渲染完成
+  await nextTick()
+  
+  // 延迟一帧确保所有样式都已应用
+  window.requestAnimationFrame(() => {
+    checkMobile()
+  })
+  
+  window.addEventListener('resize', checkMobile)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
+  document.body.style.overflow = ''
+})
+
+// 监听侧边栏展开状态，处理滚动穿透
+watch(sidebarExpanded, (newVal) => {
+  if (newVal && isMobile.value) {
+    // 展开时阻止body滚动
+    document.body.style.overflow = 'hidden'
+  } else {
+    // 收起时恢复body滚动
+    document.body.style.overflow = ''
+  }
+})
+
 // 对话框状态
 const dialogVisible = ref(false)
 const currentDialogPrompt = ref('')
@@ -428,12 +480,16 @@ const handleActionAndClose = (prompt: string, type: string) => {
 </script>
 
 <template>
-  <div class="flex flex-col mt-3 flex-1">
+  <div class="flex flex-col mt-3 flex-1 relative">
     <DetailHeader :title="info.title"></DetailHeader>
 
-    <div class="flex flex-1 gap-4">
+    <div class="flex flex-1 gap-4 relative">
       <!-- 移动端菜单按钮 -->
-      <div class="md:hidden fixed top-20 left-4 z-50">
+      <div 
+        v-if="isMobile"
+        class="fixed left-4 z-50"
+        :style="{ top: buttonTop }"
+      >
         <el-button 
           type="primary" 
           circle 
@@ -444,29 +500,38 @@ const handleActionAndClose = (prompt: string, type: string) => {
         </el-button>
       </div>
 
+      <!-- 移动端遮罩 -->
+      <div 
+        v-if="sidebarExpanded && isMobile" 
+        class="fixed inset-0 bg-black bg-opacity-50 z-40"
+        @click="sidebarExpanded = false"
+        @touchmove.prevent
+      ></div>
+
       <!-- 左侧分类栏 -->
-      <div :class="[
-        'transition-all duration-300 bg-white rounded-2xl border border-gray-200',
-        'md:w-80 md:relative md:translate-x-0',
-        sidebarExpanded 
-          ? 'fixed inset-y-0 left-0 w-80 z-40 translate-x-0' 
-          : 'fixed inset-y-0 left-0 w-80 z-40 -translate-x-full md:translate-x-0'
-      ]">
-        <!-- 移动端遮罩 -->
-        <div 
-          v-if="sidebarExpanded" 
-          class="md:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
-          @click="sidebarExpanded = false"
-        ></div>
-        
-        <div class="h-full overflow-y-auto p-4">
+      <div 
+        v-show="!isMobile || sidebarExpanded"
+        :class="[
+          'bg-white rounded-2xl border border-gray-200 overflow-hidden',
+          {
+            // 桌面端样式
+            'w-80 relative': !isMobile,
+            // 移动端样式
+            'fixed inset-y-0 left-0 w-80 z-50': isMobile,
+            // 动画
+            'transition-transform duration-300 ease-in-out': isMobile,
+            'translate-x-0': isMobile && sidebarExpanded,
+            '-translate-x-full': isMobile && !sidebarExpanded
+          }
+        ]"
+      >
+        <div class="h-full overflow-y-auto p-4" @touchmove.stop>
           <h3 class="text-lg font-semibold mb-4 text-gray-700 flex items-center justify-between">
             <span>分类导航</span>
             <el-button 
-              v-if="sidebarExpanded" 
+              v-if="isMobile && sidebarExpanded" 
               type="text" 
               @click="sidebarExpanded = false"
-              class="md:hidden"
             >
               <el-icon><Close /></el-icon>
             </el-button>
@@ -510,7 +575,7 @@ const handleActionAndClose = (prompt: string, type: string) => {
               <!-- 子分类 -->
               <div 
                 v-if="expandedGroups.has(group.id)" 
-                class="border-t border-gray-100 bg-gray-25"
+                class="border-t border-gray-100 bg-gray-50"
               >
                 <div 
                   v-for="child in group.children" 
@@ -520,7 +585,7 @@ const handleActionAndClose = (prompt: string, type: string) => {
                     'flex items-center justify-between p-3 pl-6 cursor-pointer transition-colors',
                     activeCategory === child.id && activeCategoryType === 'sub'
                       ? 'bg-blue-50 border-r-2 border-blue-500' 
-                      : 'hover:bg-gray-50'
+                      : 'hover:bg-white'
                   ]"
                 >
                   <div class="flex items-center gap-2">
@@ -543,7 +608,12 @@ const handleActionAndClose = (prompt: string, type: string) => {
       </div>
 
       <!-- 右侧内容区 -->
-      <div class="flex-1 bg-white rounded-2xl border border-gray-200 p-6 overflow-auto">
+      <div 
+        :class="[
+          'flex-1 bg-white rounded-2xl border border-gray-200 p-6 overflow-auto',
+          isMobile ? 'w-full' : ''
+        ]"
+      >
         <!-- 标题 -->
         <div class="mb-6">
           <h2 class="text-xl font-semibold text-gray-800 mb-2">{{ getCurrentCategoryName }}</h2>
