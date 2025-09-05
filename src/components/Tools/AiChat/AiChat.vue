@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { reactive, ref, nextTick, computed, onMounted } from "vue";
+import { reactive, ref, nextTick, computed, onMounted, watch } from "vue";
+import { useRoute } from 'vue-router';
 import DetailHeader from "@/components/Layout/DetailHeader/DetailHeader.vue";
 import ToolDetail from "@/components/Layout/ToolDetail/ToolDetail.vue";
 import ChatMessage from "./components/ChatMessage.vue";
@@ -20,6 +21,8 @@ interface ProviderSelection {
   model: string;
 }
 
+const route = useRoute();
+
 const info = reactive({
   title: "AI对话",
 });
@@ -31,6 +34,9 @@ const selectedProvider = ref<ProviderSelection>({ provider: '', model: '' });
 
 // 添加防重复提交的状态
 const isSubmitting = ref(false);
+
+// 新增：用于跟踪是否已经处理URL参数
+const urlParamsProcessed = ref(false);
 
 // 添加消息
 const addMessage = (type: "user" | "assistant", content: string) => {
@@ -94,6 +100,13 @@ const callAIAPI = async () => {
     );
   }
 
+  // 检查chat方法是否存在
+  if (!aiProvider.value.chat) {
+    throw new Error(
+      `${selectedProvider.value.provider} AI提供者不支持对话功能`
+    );
+  }
+
   try {
     // 构建完整的对话历史，明确类型映射
     const conversationHistory = messages.value.map((msg) => {
@@ -103,50 +116,86 @@ const callAIAPI = async () => {
       } else if (msg.type === "assistant") {
         role = "assistant";
       } else {
-        role = "assistant"; // 默认值
+        role = "system";
       }
 
       return {
-        role,
+        role: role,
         content: msg.content,
       };
     });
 
-    const response = await aiProvider.value.chat!(conversationHistory, {
-      model: selectedProvider.value.model,
-      temperature: 0.7,
-    });
+    const response = await aiProvider.value.chat(
+      conversationHistory,
+      {
+        model: selectedProvider.value.model,
+        temperature: 0.7,
+        maxTokens: 2000,
+        stream: false
+      }
+    );
 
-    addMessage("assistant", response.content);
+    // 修复：确保提取的是字符串内容
+    const content = typeof response === 'string' ? response : (response?.content || '抱歉，没有收到有效回复');
+    addMessage("assistant", content);
   } catch (error) {
-    console.error("AI接口调用失败:", error);
-    addMessage("assistant", "抱歉，我遇到了一些问题，请稍后再试。");
+    console.error("AI接口调用出错:", error);
+    
+    // 标记最后一条assistant消息为失败状态
+    const lastMessage = messages.value[messages.value.length - 1];
+    if (lastMessage && lastMessage.type === 'assistant') {
+      lastMessage.failed = true;
+    } else {
+      // 如果没有assistant消息，创建一个失败消息
+      const failedMessage: Message = {
+        id: Date.now().toString(),
+        type: 'assistant',
+        content: "抱歉，我遇到了一些问题，请点击重试按钮重新获取回答。",
+        timestamp: Date.now(),
+        failed: true
+      };
+      messages.value.push(failedMessage);
+    }
+    
+    throw error;
   }
 };
 
-// 清空对话
+// 清空聊天记录
 const clearChat = () => {
   messages.value = [];
 };
 
-// 处理供应商选择变化
-const handleProviderChange = (selection: ProviderSelection) => {
-  selectedProvider.value = selection
-  console.log('供应商选择已更新:', selection)
-  
-  // 如果用户清空了选择，可以在这里处理
-  if (!selection.provider || !selection.model) {
-    console.log('用户清空了供应商选择')
+// 监听selectedProvider的变化，当选择完成后处理URL参数
+watch(() => selectedProvider.value, (newProvider) => {
+  // 当供应商和模型都选择完成，且URL中有prompt参数时，自动发送
+  if (newProvider.provider && newProvider.model && !urlParamsProcessed.value) {
+    const prompt = route.query.prompt as string;
+    if (prompt) {
+      console.log('供应商选择完成，开始处理URL参数自动发送');
+      // 使用nextTick确保组件完全渲染
+      nextTick(() => {
+        processUrlParams();
+      });
+    }
   }
-}
+}, { deep: true });
 
-// 处理重试
-const handleRetry = async (messageId: string) => {
-  // 找到要重试的消息
+// 处理供应商变更
+const handleProviderChange = (selection: ProviderSelection) => {
+  selectedProvider.value = selection;
+  console.log('供应商已更新:', selection);
+  
+  // 这个逻辑移到watch中处理，避免重复
+};
+
+// 重试功能
+const handleRetry = (messageId: string) => {
+  // 找到失败的消息
   const messageIndex = messages.value.findIndex(msg => msg.id === messageId)
   if (messageIndex === -1) return
   
-  // 删除该消息及之后的所有消息
+  // 删除失败的消息及其之后的所有消息
   messages.value.splice(messageIndex)
   
   // 找到最后一条用户消息
@@ -156,7 +205,7 @@ const handleRetry = async (messageId: string) => {
   // 重新调用AI接口
   try {
     loading.value = true
-    await callAIAPI()
+    callAIAPI()
   } catch (error) {
     console.error("重试失败:", error)
     addMessage("assistant", "抱歉，重试失败，请稍后再试。")
@@ -165,12 +214,52 @@ const handleRetry = async (messageId: string) => {
   }
 }
 
-// 组件挂载时，如果没有选择，可以设置默认值
+// 修改processUrlParams函数，添加更多日志
+const processUrlParams = async () => {
+  if (urlParamsProcessed.value) {
+    console.log('URL参数已处理过，跳过');
+    return;
+  }
+  
+  const prompt = route.query.prompt as string;
+  const autoSend = route.query.autoSend as string;
+  
+  console.log('开始处理URL参数:', { prompt, autoSend });
+  
+  if (prompt) {
+    const decodedPrompt = decodeURIComponent(prompt);
+    console.log('解码后的提示词:', decodedPrompt);
+    
+    if (autoSend === 'true' || autoSend === undefined) { // 默认为true
+      // 自动发送提示词
+      if (selectedProvider.value.provider && selectedProvider.value.model) {
+        console.log('开始自动发送提示词');
+        await nextTick(); // 确保组件完全渲染
+        handleUserInput(decodedPrompt);
+      } else {
+        console.log('供应商或模型未选择，无法自动发送');
+      }
+    } else {
+      console.log('autoSend为false，仅预填充');
+      // 仅预填充输入框（如果有ChatInput组件支持的话）
+      // 这里可以添加预填充逻辑
+    }
+    
+    urlParamsProcessed.value = true;
+  }
+};
+
+// 组件挂载时的逻辑简化
 onMounted(() => {
-  // 组件会自动从本地存储加载选择，或者使用默认值
-  // 这里不需要额外处理，因为AiProviderSelector组件会自动处理
-  console.log('AI对话页面已加载，供应商选择器会自动初始化')
-})
+  console.log('AI对话页面已加载，供应商选择器会自动初始化');
+  
+  // 检查URL参数
+  if (route.query.prompt) {
+    console.log('检测到提示词参数:', route.query.prompt);
+    console.log('等待供应商选择完成...');
+    // 具体处理逻辑已移到watch中
+  }
+});
 </script>
 
 <template>
@@ -250,35 +339,24 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- desc -->
-    <ToolDetail title="描述">
+    <!-- 描述 -->
+    <ToolDetail title="功能说明" class="mt-4">
       <el-text>
-        AI对话助手是一个智能聊天机器人，支持多轮对话，能够回答各种问题，提供专业、准确的建议和帮助。
-        无论是学习、工作还是生活中的问题，都可以与AI助手进行交流。您可以选择不同的AI供应商和模型来获得不同的体验。
+        智能AI对话助手，支持多轮对话，提供专业、准确的回答。
+        <br>• <strong>多供应商支持</strong>：支持多个AI服务供应商，可自由选择
+        <br>• <strong>模型选择</strong>：每个供应商提供多种模型选择，满足不同需求
+        <br>• <strong>对话记忆</strong>：支持上下文对话，AI能记住之前的对话内容
+        <br>• <strong>重试机制</strong>：遇到问题时可以重试，确保对话的连续性
+        <br>• <strong>提示词支持</strong>：支持从其他页面携带提示词自动发起对话
+        <br>• <strong>响应式设计</strong>：完美适配PC和移动设备
+        <br><br>
+        <strong>使用建议：</strong>
+        <br>1. 选择合适的AI供应商和模型
+        <br>2. 输入您的问题或需求
+        <br>3. AI会根据上下文提供针对性回答
+        <br>4. 可以继续追问或深入讨论
+        <br>5. 使用清空按钮开始新话题
       </el-text>
-    </ToolDetail>
-
-    <ToolDetail title="功能特点">
-      <ul class="list-disc list-inside space-y-2 text-gray-700">
-        <li>智能对话：支持自然语言交互，理解用户意图</li>
-        <li>多轮对话：保持对话上下文，提供连贯的回答</li>
-        <li>专业回答：涵盖学习、工作、生活等多个领域</li>
-        <li>实时响应：快速响应用户问题，提供即时帮助</li>
-        <li>友好界面：简洁美观的聊天界面，操作简单</li>
-        <li>多供应商支持：支持Pollinations和AI Tools等多种AI服务</li>
-        <li>模型选择：可根据需求选择不同的AI模型</li>
-      </ul>
-    </ToolDetail>
-
-    <ToolDetail title="使用说明">
-      <ol class="list-decimal list-inside space-y-2 text-gray-700">
-        <li>在AI供应商选择器中选择您想要使用的AI供应商和模型</li>
-        <li>在输入框中输入您的问题或需求</li>
-        <li>点击发送按钮或按回车键提交问题</li>
-        <li>AI助手会分析您的问题并给出回答</li>
-        <li>您可以继续提问，进行多轮对话</li>
-        <li>使用"清空对话"按钮可以开始新的对话</li>
-      </ol>
     </ToolDetail>
   </div>
 </template>

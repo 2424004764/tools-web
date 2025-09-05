@@ -46,10 +46,14 @@ const md = new MarkdownIt({
 // 渲染Markdown内容
 const renderedContent = computed(() => {
   if (props.message.type === 'assistant') {
-    return md.render(props.message.content)
+    // 确保content是字符串类型
+    const content = typeof props.message.content === 'string' 
+      ? props.message.content 
+      : String(props.message.content || '');
+    return md.render(content);
   }
-  return props.message.content
-})
+  return props.message.content;
+});
 </script>
 
 <template>
