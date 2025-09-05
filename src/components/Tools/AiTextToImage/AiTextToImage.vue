@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from "vue";
+import { ref, reactive, onMounted, computed, watch } from "vue";
+import { useRoute } from 'vue-router'
 import axios from "axios";
 
 import DetailHeader from "@/components/Layout/DetailHeader/DetailHeader.vue";
@@ -95,6 +96,8 @@ const showGeneratedImageModal = ref(false);
 const modelsLoading = ref(false); // 新增：模型加载状态
 const modelsLoadError = ref(false); // 新增：模型加载错误状态
 
+const route = useRoute()
+
 // 获取可用模型
 const fetchModels = async () => {
   modelsLoading.value = true;
@@ -124,8 +127,35 @@ const fetchModels = async () => {
   }
 };
 
+// 检查URL参数中的提示词
+const checkUrlPrompt = () => {
+  const urlPrompt = route.query.prompt as string
+  if (urlPrompt) {
+    prompt.value = decodeURIComponent(urlPrompt)
+  }
+}
+
+// 监听模型加载完成后自动生图
+const autoGenerateIfPromptFromUrl = () => {
+  const urlPrompt = route.query.prompt as string
+  if (urlPrompt && selectedModel.value && !modelsLoading.value) {
+    // 延迟一下确保界面渲染完成
+    setTimeout(() => {
+      generateImage()
+    }, 500)
+  }
+}
+
+// 监听模型选择变化，如果是从URL带来的提示词则自动生图
+watch(selectedModel, (newModel) => {
+  if (newModel) {
+    autoGenerateIfPromptFromUrl()
+  }
+})
+
 onMounted(() => {
-  fetchModels();
+  checkUrlPrompt()
+  fetchModels()
 });
 
 // 生成随机种子
@@ -507,7 +537,7 @@ const copyPrompt = async (text: string) => {
             </div>
 
             <button
-              @click="generateImage"
+              @click="generateImage()"
               :disabled="!canGenerateImage"
               :class="[
                 'generate-btn py-3 px-6 rounded-lg shadow-md transition w-full flex items-center justify-center',
