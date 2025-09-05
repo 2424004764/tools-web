@@ -166,20 +166,20 @@ watch(() => toolsStore.cates.length, () => {
       </div>
       <!-- card -->
       <div class="flex justify-between flex-wrap self-card-div c-xs:ml-0" :gutter="10">
-          <router-link v-for="(item, index) in cate.list" :key="index" :to="item.url" class="flex flex-col mt-5 border-solid rounded-2xl border-warm-200 w-[24%] p-2 bg-warm-50 hover:bg-warm-100 hover:shadow-lg c-xs:w-[99.5%] c-md:w-[24%] c-sm:w-[32%] p-5 hover:-translate-y-2 duration-300 transition-all">
-            <div class="flex items-center border-b border-warm-200 pb-2">
+          <router-link v-for="(item, index) in cate.list" :key="index" :to="item.url" class="flex flex-col mt-5 border-solid rounded-2xl border-warm-300 w-[24%] p-2 bg-white shadow-md hover:bg-warm-50 hover:shadow-xl hover:border-warm-400 c-xs:w-[99.5%] c-md:w-[24%] c-sm:w-[32%] p-5 hover:-translate-y-3 duration-300 transition-all">
+            <div class="flex items-center border-b border-warm-300 pb-2">
               <el-image :src="item.logo" class="w-10 h-10 min-h-[2.5rem] min-w-[2.5rem]"></el-image>
               <div class="flex flex-col ml-2 w-full">
                 <div class="flex">
-                  <div class="font-semibold text-lg line-clamp-1 text-warm-800">{{ item.title }}</div>
+                  <div class="font-semibold text-lg line-clamp-1 text-warm-900">{{ item.title }}</div>
                 </div>
                 <div class="flex justify-between">
-                  <el-text size="small" class="text-warm-600">{{ item.cate }}</el-text>
+                  <el-text size="small" class="text-warm-700">{{ item.cate }}</el-text>
                 </div>
               </div>
             </div>
             <div class="flex items-center justify-between mt-2">
-              <el-text line-clamp="2" class="text-warm-700">{{ item.desc }}</el-text>
+              <el-text line-clamp="2" class="text-warm-800">{{ item.desc }}</el-text>
             </div>
           </router-link>
           <!-- 占位 div -->
