@@ -859,4 +859,14 @@ export const constantRoute = [
       description: '在线将PDF文件转换为高清图片，支持多页转换，保持原始清晰度，支持自定义分辨率',
     }
   },
+  {
+    path: '/mysql-to-go',
+    component: () => import('@/components/Tools/MySQLToGo/MySQLToGo.vue'),
+    name: 'mysql-to-go',
+    meta: {
+      title: "MySQL转Go结构体",
+      keywords: 'MySQL转Go,DDL转结构体,Go结构体生成,数据库转代码,MySQL代码生成',
+      description: '将MySQL数据表字段转换为Go语言结构体，支持字段类型映射、标签生成和命名规范转换',
+    }
+  },
 ]

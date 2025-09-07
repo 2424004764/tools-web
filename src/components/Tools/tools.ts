@@ -206,6 +206,15 @@ export function getToolsCate() {
           cateId: 2,
           cate: '开发运维',
         },
+        {
+          id: 1,
+          title: 'MySQL转Go结构体',
+          logo: '/images/logo/mysql_to_go.png',
+          desc: '将MySQL数据表字段转换为Go语言结构体，支持字段类型映射、标签生成和命名规范转换',
+          url: '/mysql-to-go/',
+          cateId: 2,
+          cate: '开发运维',
+        },
       ]
     },
     {
