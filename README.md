@@ -143,6 +143,7 @@ wrangler pages dev .
  - 2025-09-01 新增pdf转图片功能
  - 2025-09-02 接入gitee（https://gitee.com/oauth/applications）、github（https://github.com/settings/developers）登录方式
  - 2025-09-02 接入QQ（https://connect.qq.com/manage.html#/）登录方式
+ - 2025-09-06 新增MySQL转Go结构体功能
 
 ## 工具列表
 
@@ -171,6 +172,7 @@ wrangler pages dev .
   - 哈希校验/HMAC
   - Cookie解析
   - 算法可视化
+  - MySQL转Go结构体
 
 - 文本处理
   - 文本对比
