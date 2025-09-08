@@ -52,10 +52,10 @@ const componentStore = useComponentStore();
 </template>
 
 <style scoped>
-/* 过度动画配置代码 */
+/* 优化过度动画配置代码 */
 .animation-enter-from,
 .animation-leave-to {
-  transform: translateX(20px);
+  transform: translateX(10px); /* 减少移动距离 */
   opacity: 0;
 }
 .animation-enter-to,
@@ -63,9 +63,9 @@ const componentStore = useComponentStore();
   opacity: 1;
 }
 .animation-enter-active {
-  transition: all 0.7s ease;
+  transition: all 0.3s ease-out; /* 减少到0.3s */
 }
 .animation-leave-active {
-  transition: all 0.3s cubic-bezier(1, 0.6, 0.6, 1);
+  transition: all 0.2s ease-in; /* 减少到0.2s */
 }
 </style>
