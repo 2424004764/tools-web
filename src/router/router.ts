@@ -879,4 +879,14 @@ export const constantRoute = [
       description: '将MySQL数据表字段转换为Go语言结构体，支持字段类型映射、标签生成和命名规范转换',
     }
   },
+  {
+    path: '/resume',
+    component: () => import('@/components/Tools/Resume/Resume.vue'),
+    name: 'resume',
+    meta: {
+      title: "简历管理",
+      keywords: '在线简历,简历制作,简历模板,简历管理,个人简历',
+      description: '在线简历制作与管理工具，提供多种精美模板，支持个人信息、工作经历、教育背景等全方位简历信息管理',
+    }
+  },
 ]

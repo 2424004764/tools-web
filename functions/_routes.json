@@ -4,6 +4,7 @@
     "/proxy/*",
     "/google-auth",
     "/api/notes/*",
+    "/api/resumes/*",
     "/linuxdo-auth",
     "/gitee-auth",
     "/github-auth",
