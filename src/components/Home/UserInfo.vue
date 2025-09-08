@@ -44,6 +44,11 @@ const copyUserId = async () => {
 // 跳转到笔记页面
 const goToNotes = () => {
   router.push('/notes');
+}
+
+// 跳转到简历页面
+const goToResume = () => {
+  router.push('/resume');
 };
 </script>
 
@@ -158,6 +163,34 @@ const goToNotes = () => {
                   </p>
                 </div>
                 <div class="text-gray-400 group-hover:text-blue-500 transition-colors">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <!-- 简历管理 -->
+            <div 
+              @click="goToResume"
+              class="bg-white border border-gray-200 rounded-lg p-3 hover:shadow-md hover:border-green-300 transition-all duration-200 cursor-pointer group"
+            >
+              <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center group-hover:bg-green-200 transition-colors">
+                  <img 
+                    src="/images/logo/resume.png" 
+                    alt="简历管理" 
+                    class="w-10 h-10 object-contain"
+                  />
+                </div>
+                <div class="flex-1">
+                  <h4 class="font-medium text-gray-800 text-sm c-sm:text-base group-hover:text-green-600 transition-colors">
+                    简历管理
+                  </h4>
+                  <p class="text-gray-500 text-xs c-sm:text-sm">
+                    制作和管理您的个人简历
+                  </p>
+                </div>
+                <div class="text-gray-400 group-hover:text-green-500 transition-colors">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                   </svg>

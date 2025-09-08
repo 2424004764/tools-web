@@ -59,6 +59,50 @@ export class Validator {
     }
   }
 
+  // 验证简历创建数据
+  static validateCreateResume(data) {
+    const errors = []
+    
+    if (!data.name || typeof data.name !== 'string' || data.name.trim().length === 0) {
+      errors.push('简历名称不能为空')
+    }
+    
+    if (data.name && data.name.length > 100) {
+      errors.push('简历名称长度不能超过100个字符')
+    }
+
+    if (data.template && typeof data.template !== 'string') {
+      errors.push('模板参数格式错误')
+    }
+    
+    return {
+      isValid: errors.length === 0,
+      errors
+    }
+  }
+
+  // 验证简历更新数据
+  static validateUpdateResume(data) {
+    const errors = []
+    
+    if (data.name !== undefined && (typeof data.name !== 'string' || data.name.trim().length === 0)) {
+      errors.push('简历名称不能为空')
+    }
+    
+    if (data.name && data.name.length > 100) {
+      errors.push('简历名称长度不能超过100个字符')
+    }
+
+    if (data.template !== undefined && typeof data.template !== 'string') {
+      errors.push('模板参数格式错误')
+    }
+    
+    return {
+      isValid: errors.length === 0,
+      errors
+    }
+  }
+
   // 创建验证错误响应
   static createValidationErrorResponse(errors) {
     return ApiResponse.error(`参数验证失败: ${errors.join(', ')}`, 400)

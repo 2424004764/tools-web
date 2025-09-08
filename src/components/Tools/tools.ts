@@ -755,6 +755,15 @@ export function getToolsCate() {
           url: '/colorpicker/',
           cateId: 7,
           cate: '其他工具'
+        },
+        {
+          id: 1,
+          title: '简历管理',
+          logo: '/images/logo/resume.png',
+          desc: '在线简历制作与管理，支持多种模板，安全存储个人简历信息',
+          url: '/resume/',
+          cateId: 7,
+          cate: '其他工具',
         }
       ]
     },
