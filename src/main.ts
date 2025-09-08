@@ -29,32 +29,15 @@ initializeAIProviders()
 const app = createApp(App)
 //安装仓库
 app.use(pinia)
+//安装路由
 app.use(router)
+//安装element-plus插件
 app.use(ElementPlus, {
-  locale: zhCn
+  locale: zhCn,//element-plus国际化配置
 })
-// 注册v-viewer
-app.use(VueViewer)
-// 新增：放在 app.use(router) 之后、app.mount 之前
-router.afterEach((to) => {
-  const base = (import.meta.env.VITE_SITE_URL as string) || window.location.origin;
-  const href = `${base.replace(/\/$/, '')}${to.fullPath}`;
-  let link = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
-  if (!link) {
-    link = document.createElement('link');
-    link.setAttribute('rel', 'canonical');
-    document.head.appendChild(link);
-  }
-  if (link.href !== href) link.setAttribute('href', href);
-
-  // 新增：与 canonical 一起设置
-  let meta = document.querySelector('meta[property="og:url"]') as HTMLMetaElement | null;
-  if (!meta) {
-    meta = document.createElement('meta');
-    meta.setAttribute('property', 'og:url');
-    document.head.appendChild(meta);
-  }
-  meta.setAttribute('content', href); // href 为该页完整绝对地址
-});
+//安装v-md-editor
 setupMdEditor(app)
+// 安装 v-viewer
+app.use(VueViewer)
+//挂载应用
 app.mount('#app')

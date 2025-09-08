@@ -5,9 +5,9 @@ import Floor from "@/components/Layout/Floor/Floor.vue";
 // import Right from '@/components/Layout/Right/Right.vue'
 import { useComponentStore } from "@/store/modules/component";
 import SimilarRecommend from "@/components/Layout/SimilarRecommend/SimilarRecommend.vue";
-
 //store
 const componentStore = useComponentStore();
+
 </script>
 
 <template>
@@ -38,7 +38,7 @@ const componentStore = useComponentStore();
       </el-header>
       <el-main>
         <router-view v-slot="{ Component, route }">
-          <transition name="animation" mode="out-in">
+          <transition name="fade" mode="out-in">
             <component :is="Component" :key="route.path"></component>
           </transition>
         </router-view>
@@ -52,20 +52,22 @@ const componentStore = useComponentStore();
 </template>
 
 <style scoped>
-/* 优化过度动画配置代码 */
-.animation-enter-from,
-.animation-leave-to {
-  transform: translateX(10px); /* 减少移动距离 */
+/* 更轻量的淡入淡出动画 */
+.fade-enter-from,
+.fade-leave-to {
   opacity: 0;
 }
-.animation-enter-to,
-.animation-leave-from {
+
+.fade-enter-to,
+.fade-leave-from {
   opacity: 1;
 }
-.animation-enter-active {
-  transition: all 0.3s ease-out; /* 减少到0.3s */
+
+.fade-enter-active {
+  transition: opacity 0.15s ease-out;
 }
-.animation-leave-active {
-  transition: all 0.2s ease-in; /* 减少到0.2s */
+
+.fade-leave-active {
+  transition: opacity 0.1s ease-in;
 }
 </style>
