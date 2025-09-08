@@ -1,6 +1,7 @@
 //通过vue-router插件实现模板路由配置
 import { createRouter, createWebHistory } from 'vue-router'
 import { constantRoute } from './router'
+
 //创建路由器
 const router = createRouter({
   //路由模式hash
@@ -14,14 +15,61 @@ const router = createRouter({
     return { left: 0, top: 0 }
   },
 })
-// _form: ‘_’表示占位变量，可以不被使用
+
+// 路由预加载策略
+const preloadedRoutes = new Set()
+
+// 预加载常用路由
+const commonRoutes = ['/', '/json', '/md5', '/timetran', '/qrcode', '/uuid']
+
+// 预加载函数
+function preloadRoute(path: string) {
+  if (preloadedRoutes.has(path)) return
+  
+  const route = constantRoute.find(r => r.path === path)
+  if (route && typeof route.component === 'function') {
+    route.component().then(() => {
+      preloadedRoutes.add(path)
+    }).catch(() => {
+      // 预加载失败时静默处理
+    })
+  }
+}
+
+// 在空闲时预加载常用路由
+if (typeof requestIdleCallback !== 'undefined') {
+  requestIdleCallback(() => {
+    commonRoutes.forEach(preloadRoute)
+  })
+} else {
+  // 降级方案
+  setTimeout(() => {
+    commonRoutes.forEach(preloadRoute)
+  }, 2000)
+}
+
 router.beforeEach((to, _from, next) => {
+  // 预加载目标路由的相邻路由
+  if (to.path && !preloadedRoutes.has(to.path)) {
+    const currentIndex = constantRoute.findIndex(r => r.path === to.path)
+    if (currentIndex > -1) {
+      // 预加载前后两个路由
+      if (currentIndex > 0) {
+        preloadRoute(constantRoute[currentIndex - 1].path)
+      }
+      if (currentIndex < constantRoute.length - 1) {
+        preloadRoute(constantRoute[currentIndex + 1].path)
+      }
+    }
+  }
+
   if (to.meta.title && to.meta.title != '') {
     let oldTitle = document.title
     document.title = <string>to.meta.title + '-' + oldTitle
   }
   next()
 })
+
 //路由后置卫士
 router.afterEach((to) => {
   //填充mate元信息
@@ -43,4 +91,5 @@ router.afterEach((to) => {
   document.querySelector('meta[property="og:site_name"]')?.setAttribute("content", `${document.title}`)
   document.querySelector('meta[property="og:description"]')?.setAttribute("content", `${description}`)
 })
+
 export default router

@@ -14,18 +14,59 @@ export default defineConfig(({command, mode}) => {
     plugins: [
       vue(),
       createSvgIconsPlugin({
-        // Specify the icon folder to be cached
         iconDirs: [path.resolve(process.cwd(), 'src/assets/icons')],
-        // Specify symbolId format
         symbolId: 'icon-[dir]-[name]',
       }),
       seoperender()
     ],
     resolve: {
       alias: {
-        "@": path.resolve("./src"),  //相对路径别名配置， 使用@替代src
+        "@": path.resolve("./src"),
         'v-code-diff': path.resolve(__dirname, 'node_modules/v-code-diff/src/CodeDiff.vue'),
       }
+    },
+    // 新增构建优化配置
+    build: {
+      target: 'es2015',
+      cssCodeSplit: true,
+      sourcemap: false,
+      minify: 'terser',
+      terserOptions: {
+        compress: {
+          drop_console: true,
+          drop_debugger: true,
+        },
+      },
+      rollupOptions: {
+        output: {
+          // 手动分包，优化加载性能
+          manualChunks: {
+            // 将 Vue 相关库打包到一个 chunk
+            vue: ['vue', 'vue-router', 'pinia'],
+            // Element Plus 单独打包
+            'element-plus': ['element-plus'],
+            // 编辑器相关库
+            editors: ['@wangeditor/editor', '@wangeditor/editor-for-vue', '@kangc/v-md-editor'],
+            // 图表库
+            charts: ['echarts'],
+            // 工具库
+            utils: ['lodash', 'axios', 'uuid'],
+            // 代码相关库
+            codemirror: ['codemirror', '@codemirror/commands', '@codemirror/lang-javascript', '@codemirror/lang-json'],
+            // 图片处理库
+            image: ['html2canvas', 'compressorjs', 'tui-image-editor'],
+          },
+          // 为 chunk 文件名添加 hash
+          chunkFileNames: (chunkInfo) => {
+            const facadeModuleId = chunkInfo.facadeModuleId
+            ? chunkInfo.facadeModuleId.split('/').pop().replace(/\.\w+$/, '')
+            : 'chunk'
+            return `js/${facadeModuleId}-[hash].js`
+          }
+        }
+      },
+      // 设置 chunk 大小警告限制
+      chunkSizeWarningLimit: 1000,
     },
     server: {
       host: env.VITE_HOST,
@@ -33,11 +74,6 @@ export default defineConfig(({command, mode}) => {
         [env.VITE_APP_BASE_API] : {
           target: env.VITE_SERVE,
           changeOrigin: true,
-          // bypass(req, res, options) {
-          //   const proxyUrl = new URL(options.rewrite(req.url) || '', (options.target) as string)?.href || ''
-          //   req.headers['x-req-proxyUrl'] = proxyUrl;
-          //   res.setHeader("x-res-proxyUrl", proxyUrl)
-          // }
         },
         '/api/pollinations': {
           target: 'https://image.pollinations.ai',
