@@ -144,6 +144,7 @@ wrangler pages dev .
  - 2025-09-02 接入gitee（https://gitee.com/oauth/applications）、github（https://github.com/settings/developers）登录方式
  - 2025-09-02 接入QQ（https://connect.qq.com/manage.html#/）登录方式
  - 2025-09-06 新增MySQL转Go结构体功能
+ - 2025-09-07 新增数字序号记忆小游戏
 
 ## 工具列表
 
@@ -230,6 +231,7 @@ wrangler pages dev .
   - 数独游戏
   - AI五子棋
   - 假如你有100亿
+  - 数字序号记忆
 
 - 好物网站
   - 好物网站导航
