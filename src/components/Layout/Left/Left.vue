@@ -274,15 +274,150 @@ onMounted(async () => {
   height: 38px !important;
   margin: 10px 0;
   border-radius: 1rem !important;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 2px solid transparent;
 }
+
+.el-menu-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 1rem;
+  padding: 2px;
+  background: linear-gradient(
+    45deg,
+    transparent,
+    var(--warm-primary),
+    var(--warm-secondary),
+    var(--warm-accent),
+    transparent
+  );
+  background-size: 300% 300%;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: xor;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  opacity: 0;
+  transition: all 0.4s ease;
+  animation: borderMove 3s linear infinite;
+}
+
+.el-menu-item:hover::before {
+  opacity: 0.6;
+  background-size: 150% 150%;
+}
+
+.el-menu-item::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: radial-gradient(
+    circle,
+    rgba(249, 115, 22, 0.06) 0%,
+    rgba(249, 115, 22, 0.03) 50%,
+    transparent 70%
+  );
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+.el-menu-item:hover::after {
+  width: 200px;
+  height: 200px;
+}
+
 .el-menu-item.is-active {
   color: #fff;
   background-color: var(--warm-primary);
   border-radius: 1rem;
+  box-shadow: 
+    0 4px 12px rgba(249, 115, 22, 0.2),
+    0 0 15px rgba(249, 115, 22, 0.1);
+  border: 2px solid rgba(251, 191, 36, 0.4);
 }
+
+.el-menu-item.is-active::before {
+  opacity: 0.7;
+  background: linear-gradient(
+    45deg,
+    var(--warm-accent),
+    var(--warm-secondary),
+    var(--warm-primary),
+    var(--warm-accent)
+  );
+  background-size: 200% 200%;
+}
+
 .el-menu-item:hover {
   color: #fff;
   background-color: var(--warm-primary);
   border-radius: 1rem;
+  transform: translateY(-1px);
+  box-shadow: 
+    0 6px 18px rgba(249, 115, 22, 0.25),
+    0 0 20px rgba(249, 115, 22, 0.15);
+}
+
+@keyframes borderMove {
+  0% {
+    background-position: 0% 0%;
+  }
+  50% {
+    background-position: 100% 100%;
+  }
+  100% {
+    background-position: 0% 0%;
+  }
+}
+
+/* 添加脉冲效果 */
+.el-menu-item:hover {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 
+      0 6px 18px rgba(249, 115, 22, 0.25),
+      0 0 20px rgba(249, 115, 22, 0.15);
+  }
+  50% {
+    box-shadow: 
+      0 6px 22px rgba(249, 115, 22, 0.3),
+      0 0 25px rgba(249, 115, 22, 0.2);
+  }
+  100% {
+    box-shadow: 
+      0 6px 18px rgba(249, 115, 22, 0.25),
+      0 0 20px rgba(249, 115, 22, 0.15);
+  }
+}
+
+/* 增强激活状态的视觉效果 */
+.el-menu-item.is-active {
+  animation: activeGlow 3s ease-in-out infinite alternate;
+}
+
+@keyframes activeGlow {
+  from {
+    box-shadow: 
+      0 4px 12px rgba(249, 115, 22, 0.2),
+      0 0 15px rgba(249, 115, 22, 0.1);
+  }
+  to {
+    box-shadow: 
+      0 4px 16px rgba(249, 115, 22, 0.3),
+      0 0 20px rgba(249, 115, 22, 0.15);
+  }
 }
 </style>
