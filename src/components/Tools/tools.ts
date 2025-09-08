@@ -629,6 +629,15 @@ export function getToolsCate() {
         },
         {
           id: 11,
+          title: '数字序号记忆',
+          logo: '/images/logo/number_memory.png',
+          desc: '测试记忆力的趣味游戏，先显示数字位置，隐藏后按顺序点击，挑战你的瞬时记忆',
+          url: '/number-memory/',
+          cateId: 11,
+          cate: '趣味互动',
+        },
+        {
+          id: 12,
           title: '假如你有100亿',
           logo: '/images/logo/hundred_billion.png',
           desc: '假如你有100亿人民币，看看你会买什么？房产、汽车、产业任你选择',

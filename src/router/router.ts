@@ -810,6 +810,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/number-memory',
+    component: () => import('@/components/Tools/NumberMemory/NumberMemory.vue'),
+    name: 'number-memory',
+    meta: {
+      title: "数字序号记忆",
+      keywords: '记忆游戏,数字记忆,瞬时记忆,记忆力训练,益智游戏',
+      description: '测试记忆力的趣味游戏，先显示数字位置，隐藏后按顺序点击，挑战你的瞬时记忆力',
+    }
+  },
+  {
     path: '/math-equation-3d',
     component: () => import('@/components/Tools/MathEquation3D/MathEquation3D.vue'),
     name: 'math-equation-3d',
