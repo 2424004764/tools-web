@@ -303,6 +303,31 @@ export class NoteModel extends Model {
   }
 }
 
+// Resume 模型 - 简历模型
+export class ResumeModel extends Model {
+  constructor(db) {
+    super(db)
+    this.config = {
+      tableName: 'resumes',
+      fields: {
+        id: { type: 'string', primaryKey: true },
+        uid: { type: 'string' }, // 用户ID
+        name: { type: 'string' }, // 简历名称
+        template: { type: 'string' }, // 简历模板
+        personalInfo: { type: 'text', dbField: 'personal_info' }, // 个人信息JSON
+        workExperience: { type: 'text', dbField: 'work_experience' }, // 工作经历JSON
+        education: { type: 'text' }, // 教育经历JSON
+        skills: { type: 'text' }, // 技能JSON
+        projects: { type: 'text' }, // 项目经历JSON
+        certificates: { type: 'text' }, // 证书JSON
+        others: { type: 'text' }, // 其他信息JSON
+        createTime: { type: 'datetime', dbField: 'create_time' },
+        updateTime: { type: 'datetime', dbField: 'update_time' }
+      }
+    }
+  }
+}
+
 // API响应工具
 export class ApiResponse {
   static success(data, origin, status = 200) {

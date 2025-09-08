@@ -4,7 +4,10 @@ import functionsRequest from '@/utils/functionsRequest'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Refresh, Plus, Edit, Delete, View, Briefcase } from '@element-plus/icons-vue'
+import { Refresh, Plus, Edit, Delete, View, Briefcase, Picture, Document } from '@element-plus/icons-vue'
+import html2canvas from 'html2canvas'
+import jsPDF from 'jspdf'
+import type { FormRules } from 'element-plus'
 
 interface Resume {
   id: string
@@ -62,7 +65,8 @@ const degreeOptions = [
   { value: '其他', label: '其他' }
 ]
 
-const formData = reactive({
+// 1. 优化：抽取默认表单数据函数
+const getDefaultFormData = () => ({
   name: '',
   personalInfo: {
     name: '',
@@ -112,36 +116,55 @@ const formData = reactive({
   }
 })
 
+const formData = reactive(getDefaultFormData())
+
 // loading状态
 const loading = ref(false)
-const operationLoading = ref(false)
+// 2. 优化：独立化操作loading状态
+const operationLoadings = ref<Record<string, boolean>>({})
 
-// 解析简历数据中的JSON字段
+// 3. 优化：表单校验规则 - 修复类型错误
+const formRules: FormRules = {
+  name: [
+    { required: true, message: '请输入简历名称', trigger: 'blur' },
+    { min: 1, max: 100, message: '简历名称长度在 1 到 100 个字符', trigger: 'blur' }
+  ],
+  'personalInfo.name': [
+    { max: 50, message: '姓名长度不能超过 50 个字符', trigger: 'blur' }
+  ],
+  'personalInfo.phone': [
+    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号码', trigger: 'blur' }
+  ],
+  'personalInfo.email': [
+    { type: 'email' as const, message: '请输入正确的邮箱地址', trigger: 'blur' }
+  ]
+}
+
+// 4. 优化：统一JSON字段解析函数
+const parseJsonField = (field: any, defaultValue: any) => {
+  if (typeof field === 'string') {
+    try {
+      return JSON.parse(field || JSON.stringify(defaultValue))
+    } catch (error) {
+      console.error('JSON解析失败:', error)
+      return defaultValue
+    }
+  }
+  return field || defaultValue
+}
+
+// 5. 优化：简化parseResumeData函数
 const parseResumeData = (resume: any) => {
   try {
     return {
       ...resume,
-      personalInfo: typeof resume.personalInfo === 'string' 
-        ? JSON.parse(resume.personalInfo || '{}') 
-        : resume.personalInfo || {},
-      workExperience: typeof resume.workExperience === 'string'
-        ? JSON.parse(resume.workExperience || '[]')
-        : resume.workExperience || [],
-      education: typeof resume.education === 'string'
-        ? JSON.parse(resume.education || '[]')
-        : resume.education || [],
-      skills: typeof resume.skills === 'string'
-        ? JSON.parse(resume.skills || '[]')
-        : resume.skills || [],
-      projects: typeof resume.projects === 'string'
-        ? JSON.parse(resume.projects || '[]')
-        : resume.projects || [],
-      certificates: typeof resume.certificates === 'string'
-        ? JSON.parse(resume.certificates || '[]')
-        : resume.certificates || [],
-      others: typeof resume.others === 'string'
-        ? JSON.parse(resume.others || '{}')
-        : resume.others || {}
+      personalInfo: parseJsonField(resume.personalInfo, {}),
+      workExperience: parseJsonField(resume.workExperience, []),
+      education: parseJsonField(resume.education, []),
+      skills: parseJsonField(resume.skills, []),
+      projects: parseJsonField(resume.projects, []),
+      certificates: parseJsonField(resume.certificates, []),
+      others: parseJsonField(resume.others, {})
     }
   } catch (error) {
     console.error('解析简历数据失败:', error)
@@ -149,7 +172,7 @@ const parseResumeData = (resume: any) => {
   }
 }
 
-// 获取简历列表（支持分页）
+// 6. 优化：分页逻辑，处理删除最后一页最后一条数据的情况
 const fetchResumes = async (page = 1, pageSize = 12) => {
   try {
     loading.value = true
@@ -161,6 +184,12 @@ const fetchResumes = async (page = 1, pageSize = 12) => {
       resumes.value = (data.data || []).map(parseResumeData)
       if (data.pagination) {
         pagination.value = data.pagination
+        
+        // 如果当前页没有数据且不是第一页，回退到上一页
+        if (data.data.length === 0 && page > 1) {
+          await fetchResumes(page - 1, pageSize)
+          return
+        }
       }
     }
   } catch (error) {
@@ -182,15 +211,24 @@ const handleSizeChange = (pageSize: number) => {
   fetchResumes(1, pageSize)
 }
 
+// 7. 优化：表单验证
+const formRef = ref()
+const validateForm = async () => {
+  if (!formRef.value) return true
+  try {
+    await formRef.value.validate()
+    return true
+  } catch (error) {
+    return false
+  }
+}
+
 // 创建简历
 const createResume = async () => {
-  if (!formData.name.trim()) {
-    ElMessage.warning('简历名称不能为空')
-    return
-  }
+  if (!await validateForm()) return
 
   try {
-    operationLoading.value = true
+    operationLoadings.value['create'] = true
     const response = await functionsRequest.post('/api/resumes', formData)
 
     if (response.status === 201) {
@@ -205,19 +243,16 @@ const createResume = async () => {
     console.error('创建简历失败:', error)
     ElMessage.error('创建失败')
   } finally {
-    operationLoading.value = false
+    operationLoadings.value['create'] = false
   }
 }
 
 // 更新简历
 const updateResume = async () => {
-  if (!editingResumeId.value || !formData.name.trim()) {
-    ElMessage.warning('简历名称不能为空')
-    return
-  }
+  if (!editingResumeId.value || !await validateForm()) return
 
   try {
-    operationLoading.value = true
+    operationLoadings.value[editingResumeId.value] = true
     const response = await functionsRequest.put(`/api/resumes/${editingResumeId.value}`, formData)
 
     if (response.status === 200) {
@@ -234,11 +269,13 @@ const updateResume = async () => {
     console.error('更新简历失败:', error)
     ElMessage.error('更新失败')
   } finally {
-    operationLoading.value = false
+    if (editingResumeId.value) {
+      operationLoadings.value[editingResumeId.value] = false
+    }
   }
 }
 
-// 删除简历
+// 8. 优化：独立loading状态的删除函数
 const deleteResume = async (resume: Resume) => {
   try {
     await ElMessageBox.confirm(
@@ -252,7 +289,7 @@ const deleteResume = async (resume: Resume) => {
       }
     )
 
-    operationLoading.value = true
+    operationLoadings.value[resume.id] = true
     const response = await functionsRequest.delete(`/api/resumes/${resume.id}`)
 
     if (response.status === 200) {
@@ -267,7 +304,7 @@ const deleteResume = async (resume: Resume) => {
       ElMessage.error('删除失败')
     }
   } finally {
-    operationLoading.value = false
+    operationLoadings.value[resume.id] = false
   }
 }
 
@@ -277,42 +314,33 @@ const viewResume = (resume: Resume) => {
   showPreview.value = true
 }
 
-// 编辑简历
+// 9. 优化：简化editResume函数，复用parseResumeData
 const editResume = (resume: Resume) => {
   editingResumeId.value = resume.id
   isEditing.value = true
   
-  // 填充表单数据
-  formData.name = resume.name
+  // 使用parseResumeData统一解析
+  const parsedResume = parseResumeData(resume)
   
-  // 解析JSON字段
-  try {
-    formData.personalInfo = typeof resume.personalInfo === 'string' 
-      ? JSON.parse(resume.personalInfo) 
-      : resume.personalInfo || {}
-    formData.workExperience = typeof resume.workExperience === 'string'
-      ? JSON.parse(resume.workExperience)
-      : resume.workExperience || [{ company: '', position: '', startDate: '', endDate: '', description: '' }]
-    formData.education = typeof resume.education === 'string'
-      ? JSON.parse(resume.education)
-      : resume.education || [{ school: '', major: '', degree: '', startDate: '', endDate: '' }]
-    formData.skills = typeof resume.skills === 'string'
-      ? JSON.parse(resume.skills)
-      : resume.skills || ['']
-    formData.projects = typeof resume.projects === 'string'
-      ? JSON.parse(resume.projects)
-      : resume.projects || [{ name: '', description: '', technologies: '', startDate: '', endDate: '' }]
-    formData.certificates = typeof resume.certificates === 'string'
-      ? JSON.parse(resume.certificates)
-      : resume.certificates || [{ name: '', issuer: '', date: '' }]
-    formData.others = typeof resume.others === 'string'
-      ? JSON.parse(resume.others)
-      : resume.others || { hobbies: '', languages: '' }
-  } catch (error) {
-    console.error('解析简历数据失败:', error)
-    ElMessage.error('简历数据格式错误')
-    return
-  }
+  // 填充表单数据
+  formData.name = parsedResume.name
+  formData.personalInfo = { ...parsedResume.personalInfo }
+  formData.workExperience = parsedResume.workExperience.length > 0 
+    ? [...parsedResume.workExperience] 
+    : [getDefaultFormData().workExperience[0]]
+  formData.education = parsedResume.education.length > 0 
+    ? [...parsedResume.education] 
+    : [getDefaultFormData().education[0]]
+  formData.skills = parsedResume.skills.length > 0 
+    ? [...parsedResume.skills] 
+    : ['']
+  formData.projects = parsedResume.projects.length > 0 
+    ? [...parsedResume.projects] 
+    : [getDefaultFormData().projects[0]]
+  formData.certificates = parsedResume.certificates.length > 0 
+    ? [...parsedResume.certificates] 
+    : [getDefaultFormData().certificates[0]]
+  formData.others = { ...parsedResume.others }
   
   showForm.value = true
 }
@@ -325,151 +353,212 @@ const newResume = () => {
   showForm.value = true
 }
 
-// 重置表单
+// 10. 优化：简化重置表单函数
 const resetForm = () => {
-  formData.name = ''
-  formData.personalInfo = {
-    name: '',
-    phone: '',
-    email: '',
-    address: '',
-    summary: ''
-  }
-  formData.workExperience = [
-    {
-      company: '',
-      position: '',
-      startDate: '',
-      endDate: '',
-      description: ''
-    }
-  ]
-  formData.education = [
-    {
-      school: '',
-      major: '',
-      degree: '',
-      startDate: '',
-      endDate: ''
-    }
-  ]
-  formData.skills = ['']
-  formData.projects = [
-    {
-      name: '',
-      description: '',
-      technologies: '',
-      startDate: '',
-      endDate: ''
-    }
-  ]
-  formData.certificates = [
-    {
-      name: '',
-      issuer: '',
-      date: ''
-    }
-  ]
-  formData.others = {
-    hobbies: '',
-    languages: ''
+  const defaultData = getDefaultFormData()
+  Object.assign(formData, defaultData)
+  // 清除表单验证状态
+  if (formRef.value) {
+    formRef.value.clearValidate()
   }
 }
 
-// 添加工作经历
-const addWorkExperience = () => {
-  formData.workExperience.push({
-    company: '',
-    position: '',
-    startDate: '',
-    endDate: '',
-    description: ''
-  })
+// 11. 优化：抽取通用的数组操作函数
+const addArrayItem = (array: any[], defaultItem: any) => {
+  array.push({ ...defaultItem })
 }
 
-// 删除工作经历
-const removeWorkExperience = (index: number) => {
-  if (formData.workExperience.length > 1) {
-    formData.workExperience.splice(index, 1)
+const removeArrayItem = (array: any[], index: number, minLength = 1) => {
+  if (array.length > minLength) {
+    array.splice(index, 1)
   }
 }
 
-// 添加教育经历
-const addEducation = () => {
-  formData.education.push({
-    school: '',
-    major: '',
-    degree: '',
-    startDate: '',
-    endDate: ''
-  })
-}
+// 简化的添加/删除函数
+const addWorkExperience = () => addArrayItem(formData.workExperience, getDefaultFormData().workExperience[0])
+const removeWorkExperience = (index: number) => removeArrayItem(formData.workExperience, index)
 
-// 删除教育经历
-const removeEducation = (index: number) => {
-  if (formData.education.length > 1) {
-    formData.education.splice(index, 1)
-  }
-}
+const addEducation = () => addArrayItem(formData.education, getDefaultFormData().education[0])
+const removeEducation = (index: number) => removeArrayItem(formData.education, index)
 
-// 添加技能
-const addSkill = () => {
-  formData.skills.push('')
-}
+const addSkill = () => formData.skills.push('')
+const removeSkill = (index: number) => removeArrayItem(formData.skills, index)
 
-// 删除技能
-const removeSkill = (index: number) => {
-  if (formData.skills.length > 1) {
-    formData.skills.splice(index, 1)
-  }
-}
+const addProject = () => addArrayItem(formData.projects, getDefaultFormData().projects[0])
+const removeProject = (index: number) => removeArrayItem(formData.projects, index)
 
-// 添加项目经历
-const addProject = () => {
-  formData.projects.push({
-    name: '',
-    description: '',
-    technologies: '',
-    startDate: '',
-    endDate: ''
-  })
-}
+const addCertificate = () => addArrayItem(formData.certificates, getDefaultFormData().certificates[0])
+const removeCertificate = (index: number) => removeArrayItem(formData.certificates, index)
 
-// 删除项目经历
-const removeProject = (index: number) => {
-  if (formData.projects.length > 1) {
-    formData.projects.splice(index, 1)
-  }
-}
-
-// 添加证书
-const addCertificate = () => {
-  formData.certificates.push({
-    name: '',
-    issuer: '',
-    date: ''
-  })
-}
-
-// 删除证书
-const removeCertificate = (index: number) => {
-  if (formData.certificates.length > 1) {
-    formData.certificates.splice(index, 1)
-  }
-}
-
-// 格式化时间显示
+// 12. 优化：日期格式化函数
 const formatTime = (timeStr: string) => {
   if (!timeStr) return ''
-  return new Date(timeStr).toLocaleString('zh-CN')
+  try {
+    return new Date(timeStr).toLocaleString('zh-CN')
+  } catch (error) {
+    return timeStr
+  }
 }
 
-// 格式化工作日期
 const formatWorkDate = (dateStr: string) => {
   if (!dateStr) return ''
-  const date = new Date(dateStr)
-  if (isNaN(date.getTime())) return dateStr
-  return `${date.getFullYear()}年${String(date.getMonth() + 1).padStart(2, '0')}月`
+  try {
+    const date = new Date(dateStr)
+    if (isNaN(date.getTime())) return dateStr
+    return `${date.getFullYear()}年${String(date.getMonth() + 1).padStart(2, '0')}月`
+  } catch (error) {
+    return dateStr
+  }
+}
+
+// 13. 优化：检查loading状态的辅助函数 - 修复返回值类型
+const isOperationLoading = (id: string): boolean => {
+  return operationLoadings.value[id] || false
+}
+
+const isAnyOperationLoading = (): boolean => {
+  return Object.values(operationLoadings.value).some(loading => loading)
+}
+
+// 导出相关状态
+const exportLoading = ref(false)
+
+// 导出为图片
+const exportAsImage = async () => {
+  if (!currentResume.value) {
+    ElMessage.warning('没有可导出的简历内容')
+    return
+  }
+
+  exportLoading.value = true
+  try {
+    const element = document.querySelector('.resume-preview') as HTMLElement
+    if (!element) {
+      ElMessage.error('无法找到简历预览内容')
+      return
+    }
+
+    // 创建高质量的canvas
+    const canvas = await html2canvas(element, {
+      scale: 2, // 提高分辨率
+      useCORS: true,
+      allowTaint: false,
+      backgroundColor: '#ffffff',
+      width: element.scrollWidth,
+      height: element.scrollHeight
+    })
+
+    // 生成文件名：简历名称_姓名
+    const resumeName = currentResume.value.name || '简历'
+    const personName = currentResume.value.personalInfo?.name || '未知姓名'
+    const fileName = `${resumeName}_${personName}.png`
+
+    // 创建下载链接
+    const link = document.createElement('a')
+    link.download = fileName
+    link.href = canvas.toDataURL('image/png')
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
+    ElMessage.success('图片导出成功')
+  } catch (error) {
+    console.error('导出图片失败:', error)
+    ElMessage.error('导出图片失败，请重试')
+  } finally {
+    exportLoading.value = false
+  }
+}
+
+// 导出为PDF
+const exportAsPDF = async () => {
+  if (!currentResume.value) {
+    ElMessage.warning('没有可导出的简历内容')
+    return
+  }
+
+  exportLoading.value = true
+  try {
+    const element = document.querySelector('.resume-preview') as HTMLElement
+    if (!element) {
+      ElMessage.error('无法找到简历预览内容')
+      return
+    }
+
+    // 创建高质量的canvas
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: false,
+      backgroundColor: '#ffffff',
+      width: element.scrollWidth,
+      height: element.scrollHeight
+    })
+
+    const imgData = canvas.toDataURL('image/png')
+    
+    // 计算PDF尺寸（A4纸张）
+    const pdfWidth = 210 // A4宽度(mm)
+    const pdfHeight = 297 // A4高度(mm)
+    
+    // 计算图片在PDF中的尺寸
+    const imgWidth = pdfWidth
+    const imgHeight = (canvas.height * pdfWidth) / canvas.width
+    
+    // 创建PDF
+    const pdf = new jsPDF('p', 'mm', 'a4')
+    
+    // 如果内容高度超过一页，需要分页
+    if (imgHeight <= pdfHeight) {
+      // 单页
+      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight)
+    } else {
+      // 多页处理
+      let position = 0
+      const pageHeight = (canvas.width * pdfHeight) / pdfWidth
+      
+      while (position < canvas.height) {
+        // 创建当前页的canvas
+        const pageCanvas = document.createElement('canvas')
+        const pageCtx = pageCanvas.getContext('2d')!
+        
+        pageCanvas.width = canvas.width
+        pageCanvas.height = Math.min(pageHeight, canvas.height - position)
+        
+        // 绘制当前页内容
+        pageCtx.drawImage(
+          canvas,
+          0, position, canvas.width, pageCanvas.height,
+          0, 0, canvas.width, pageCanvas.height
+        )
+        
+        const pageImgData = pageCanvas.toDataURL('image/png')
+        const currentPageHeight = (pageCanvas.height * pdfWidth) / pageCanvas.width
+        
+        if (position > 0) {
+          pdf.addPage()
+        }
+        
+        pdf.addImage(pageImgData, 'PNG', 0, 0, imgWidth, currentPageHeight)
+        position += pageHeight
+      }
+    }
+    
+    // 生成文件名：简历名称_姓名
+    const resumeName = currentResume.value.name || '简历'
+    const personName = currentResume.value.personalInfo?.name || '未知姓名'
+    const fileName = `${resumeName}_${personName}.pdf`
+    
+    // 保存PDF
+    pdf.save(fileName)
+    
+    ElMessage.success('PDF导出成功')
+  } catch (error) {
+    console.error('导出PDF失败:', error)
+    ElMessage.error('导出PDF失败，请重试')
+  } finally {
+    exportLoading.value = false
+  }
 }
 
 onMounted(() => {
@@ -545,8 +634,8 @@ onMounted(() => {
                 size="small"
                 type="primary"
                 :icon="Edit"
-                :loading="operationLoading"
-                :disabled="operationLoading"
+                :loading="isOperationLoading(resume.id)"
+                :disabled="isAnyOperationLoading()"
                 @click.stop="editResume(resume)"
                 circle
                 plain
@@ -556,8 +645,8 @@ onMounted(() => {
                 size="small"
                 type="danger"
                 :icon="Delete"
-                :loading="operationLoading"
-                :disabled="operationLoading"
+                :loading="isOperationLoading(resume.id)"
+                :disabled="isAnyOperationLoading()"
                 @click.stop="deleteResume(resume)"
                 circle
                 plain
@@ -603,13 +692,18 @@ onMounted(() => {
         destroy-on-close
       >
         <div class="form-container">
-          <el-form :model="formData" label-position="top">
+          <el-form 
+            ref="formRef"
+            :model="formData" 
+            :rules="formRules"
+            label-position="top"
+          >
             <!-- 基本信息 -->
             <div class="form-section">
               <h4 class="section-title">基本信息</h4>
               <el-row :gutter="20">
                 <el-col :span="24">
-                  <el-form-item label="简历名称" required>
+                  <el-form-item label="简历名称" prop="name">
                     <el-input 
                       v-model="formData.name" 
                       placeholder="请输入简历名称" 
@@ -625,18 +719,18 @@ onMounted(() => {
               <h4 class="section-title">个人信息</h4>
               <el-row :gutter="20">
                 <el-col :span="12">
-                  <el-form-item label="姓名">
+                  <el-form-item label="姓名" prop="personalInfo.name">
                     <el-input v-model="formData.personalInfo.name" placeholder="请输入姓名" />
                   </el-form-item>
                 </el-col>
                 <el-col :span="12">
-                  <el-form-item label="电话">
-                    <el-input v-model="formData.personalInfo.phone" placeholder="请输入电话" />
+                  <el-form-item label="电话" prop="personalInfo.phone">
+                    <el-input v-model="formData.personalInfo.phone" placeholder="请输入手机号码" />
                   </el-form-item>
                 </el-col>
                 <el-col :span="12">
-                  <el-form-item label="邮箱">
-                    <el-input v-model="formData.personalInfo.email" placeholder="请输入邮箱" />
+                  <el-form-item label="邮箱" prop="personalInfo.email">
+                    <el-input v-model="formData.personalInfo.email" placeholder="请输入邮箱地址" />
                   </el-form-item>
                 </el-col>
                 <el-col :span="12">
@@ -798,7 +892,7 @@ onMounted(() => {
                 <h4 class="section-title">专业技能</h4>
                 <el-button type="primary" size="small" @click="addSkill" :icon="Plus">添加</el-button>
               </div>
-              <div v-for="(skill, index) in formData.skills" :key="index" class="skill-item">
+              <div v-for="(_, index) in formData.skills" :key="index" class="skill-item">
                 <el-input
                   v-model="formData.skills[index]"
                   placeholder="请输入技能"
@@ -956,7 +1050,7 @@ onMounted(() => {
           <div class="dialog-footer">
             <el-button 
               size="large"
-              :disabled="operationLoading" 
+              :disabled="!!(isOperationLoading('create') || (editingResumeId && isOperationLoading(editingResumeId)))" 
               @click="showForm = false; isEditing = false"
             >
               取消
@@ -964,8 +1058,8 @@ onMounted(() => {
             <el-button 
               type="primary" 
               size="large"
-              :loading="operationLoading"
-              :disabled="operationLoading"
+              :loading="!!(isOperationLoading('create') || (editingResumeId && isOperationLoading(editingResumeId)))"
+              :disabled="!!(isOperationLoading('create') || (editingResumeId && isOperationLoading(editingResumeId)))"
               @click="isEditing ? updateResume() : createResume()"
             >
               {{ isEditing ? '保存修改' : '创建简历' }}
@@ -979,10 +1073,36 @@ onMounted(() => {
         v-model="showPreview"
         title="简历预览"
         width="90%"
-        max-width="800px"
+        max-width="794px"
         class="preview-dialog"
       >
-        <div v-if="currentResume" class="resume-preview">
+        <template #header>
+          <div class="preview-header-section">
+            <span class="dialog-title">简历预览</span>
+            <div class="export-buttons">
+              <el-button
+                type="primary"
+                :icon="Picture"
+                size="small"
+                :loading="exportLoading"
+                @click="exportAsImage"
+              >
+                导出图片
+              </el-button>
+              <el-button
+                type="success"
+                :icon="Document"
+                size="small"
+                :loading="exportLoading"
+                @click="exportAsPDF"
+              >
+                导出PDF
+              </el-button>
+            </div>
+          </div>
+        </template>
+        
+        <div v-if="currentResume" class="resume-preview" id="resume-preview">
           <div class="preview-header">
             <h2>{{ currentResume.personalInfo?.name || '未填写姓名' }}</h2>
             <div class="contact-info">
@@ -1031,10 +1151,8 @@ onMounted(() => {
           <!-- 专业技能 -->
           <div v-if="currentResume.skills && currentResume.skills.length > 0" class="preview-section">
             <h4>专业技能</h4>
-            <div class="skills-list">
-              <span v-for="(skill, index) in currentResume.skills.filter(s => s && s.trim())" :key="index" class="skill-tag">
-                {{ skill }}
-              </span>
+            <div class="skills-text">
+              {{ currentResume.skills.filter(s => s && s.trim()).join('、') }}
             </div>
           </div>
 
@@ -1091,6 +1209,10 @@ onMounted(() => {
           <p>支持个人信息、工作经历、教育背景、专业技能、项目经历、证书等全方位信息管理</p>
         </div>
         <div class="feature-item">
+          <h5>📄 多格式导出</h5>
+          <p>支持将简历导出为高清图片(PNG)或PDF文件，便于打印和分享，支持自动分页</p>
+        </div>
+        <div class="feature-item">
           <h5>🔒 数据安全</h5>
           <p>所有简历数据安全存储在云端，支持多设备同步访问</p>
         </div>
@@ -1108,6 +1230,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
+/* 保持原有样式不变 */
 .resume-container {
   display: flex;
   flex-direction: column;
@@ -1406,12 +1529,13 @@ onMounted(() => {
   border-top: 1px solid #e9ecef;
 }
 
-.resume-preview {
+/* 移除重复的 .resume-preview 样式 */
+/* .resume-preview {
   font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
   background: white;
   padding: 40px;
   line-height: 1.6;
-}
+} */
 
 .preview-header {
   text-align: center;
@@ -1505,17 +1629,33 @@ onMounted(() => {
 .skills-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 12px;
+  line-height: 1.8;
 }
 
+/********** 代码修改区域 **********/
 .skill-tag {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 4px 12px;
-  border-radius: 20px;
+  /* 移除所有特殊样式，改为纯文字 */
+  background: none;
+  color: #333;
+  padding: 0;
+  border-radius: 0;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: normal;
+  display: inline;
+  line-height: inherit;
+  min-height: auto;
+  text-align: left;
+  vertical-align: baseline;
+  white-space: normal;
 }
+
+/* 技能项之间用逗号分隔 */
+.skill-tag:not(:last-child)::after {
+  content: "、";
+  margin-right: 4px;
+}
+/********** 代码修改结束 **********/
 
 .certificates-list {
   display: flex;
@@ -1618,6 +1758,86 @@ onMounted(() => {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+.preview-header-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.dialog-title {
+  font-size: 18px;
+  font-weight: 500;
+  color: #303133;
+}
+
+.export-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+/* 预览弹窗样式优化 */
+.preview-dialog {
+  --a4-width: 794px;
+  --a4-height: 1123px;
+}
+
+.preview-dialog .el-dialog {
+  max-width: var(--a4-width);
+}
+
+/* 确保预览区域适合导出 - 使用固定宽度 */
+.resume-preview {
+  background: white;
+  padding: 30px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  line-height: 1.6;
+  color: #333;
+  min-height: 400px;
+  /* 固定宽度为A4纸张宽度减去padding */
+  width: 734px; /* 794px - 60px */
+  max-width: 734px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+/* 响应式适配 */
+@media (max-width: 850px) {
+  .resume-preview {
+    width: calc(90vw - 60px);
+    max-width: calc(90vw - 60px);
+  }
+}
+
+/* 导出时的样式优化 */
+@media print {
+  .resume-preview {
+    padding: 20px;
+    box-shadow: none;
+    border: none;
+    width: 754px; /* 794px - 40px */
+  }
+}
+
+/* 响应式适配 */
+@media (max-width: 768px) {
+  .export-buttons {
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .export-buttons .el-button {
+    width: 100%;
+  }
+  
+  .preview-header-section {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
   }
 }
 </style>
