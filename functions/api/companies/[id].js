@@ -1,0 +1,32 @@
+import { ApiResponse, initDatabase } from '../../utils/db.js'
+import { CompaniesRouter } from '../../routes/companies.js'
+
+export async function onRequest(context) {
+  const { request, env, params } = context
+  const origin = request.headers.get('Origin')
+
+  // 处理OPTIONS请求
+  if (request.method === 'OPTIONS') {
+    return ApiResponse.cors(origin)
+  }
+
+  // 初始化数据库
+  const dbInit = initDatabase(env)
+  if (!dbInit.success) {
+    return dbInit.response
+  }
+
+  try {
+    // 创建路由实例并处理请求
+    const router = new CompaniesRouter(dbInit.db)
+    return await router.handle(request, `/${params.id}`, env, origin)
+  } catch (error) {
+    console.error('Company API error:', error)
+    return ApiResponse.error('内部服务器错误', origin, 500)
+  }
+}
+
+export async function onRequestOptions(context) {
+  const origin = context.request.headers.get('Origin')
+  return ApiResponse.cors(origin)
+}

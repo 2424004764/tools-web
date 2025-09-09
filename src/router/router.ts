@@ -889,4 +889,14 @@ export const constantRoute = [
       description: '在线简历制作与管理工具，提供多种精美模板，支持个人信息、工作经历、教育背景等全方位简历信息管理',
     }
   },
+  {
+    path: '/company-compare',
+    component: () => import('@/components/Tools/CompanyCompare/CompanyCompare.vue'),
+    name: 'company-compare',
+    meta: {
+      title: "公司对比",
+      keywords: '公司对比,工资对比,福利对比,工作时间,双休,公司评估,求职工具,职场对比',
+      description: '公司待遇对比工具，支持多维度对比公司薪资、福利、工作时间、加班情况等信息，帮助求职者做出更好的选择',
+    }
+  },
 ]

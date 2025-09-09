@@ -328,6 +328,33 @@ export class ResumeModel extends Model {
   }
 }
 
+// Company 模型 - 公司对比模型
+export class CompanyModel extends Model {
+  constructor(db) {
+    super(db)
+    this.config = {
+      tableName: 'companies',
+      fields: {
+        id: { type: 'string', primaryKey: true },
+        uid: { type: 'string' }, // 用户ID
+        name: { type: 'string' }, // 公司名称
+        position: { type: 'string' }, // 职位
+        salary: { type: 'string' }, // 薪资
+        benefits: { type: 'text' }, // 福利待遇
+        workDays: { type: 'string', dbField: 'work_days' }, // 工作日
+        workHours: { type: 'string', dbField: 'work_hours' }, // 工作时间
+        location: { type: 'string' }, // 工作地点
+        welfare: { type: 'text' }, // 其他福利
+        overtime: { type: 'string' }, // 加班情况
+        leavePolicy: { type: 'string', dbField: 'leave_policy' }, // 请假政策
+        notes: { type: 'text' }, // 备注
+        createTime: { type: 'datetime', dbField: 'create_time' },
+        updateTime: { type: 'datetime', dbField: 'update_time' }
+      }
+    }
+  }
+}
+
 // API响应工具
 export class ApiResponse {
   static success(data, origin, status = 200) {

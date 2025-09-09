@@ -764,6 +764,15 @@ export function getToolsCate() {
           url: '/resume/',
           cateId: 7,
           cate: '其他工具',
+        },
+        {
+          id: 1,
+          title: '公司对比',
+          logo: '/images/logo/company_compare.png',
+          desc: '公司待遇对比工具，支持双休情况、福利待遇、工资等多维度对比，历史记录存储',
+          url: '/company-compare/',
+          cateId: 7,
+          cate: '其他工具',
         }
       ]
     },
