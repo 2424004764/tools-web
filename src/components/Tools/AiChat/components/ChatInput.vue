@@ -3,10 +3,12 @@ import { ref } from 'vue'
 
 const props = defineProps<{
   loading: boolean
+  streaming?: boolean
 }>()
 
 const emit = defineEmits<{
   send: [content: string]
+  abort: []
 }>()
 
 const inputContent = ref('')
@@ -24,10 +26,18 @@ const handleSend = () => {
   }
 }
 
+const handleAbort = () => {
+  emit('abort')
+}
+
 const handleKeydown = (event: KeyboardEvent) => {
   if (event.key === 'Enter' && !event.shiftKey) {
     event.preventDefault()
-    handleSend()
+    if (props.streaming) {
+      handleAbort()
+    } else {
+      handleSend()
+    }
   }
 }
 
@@ -57,17 +67,32 @@ const handleInput = () => {
       ></textarea>
     </div>
     
+    <!-- 发送/终止按钮 -->
     <button
+      v-if="!streaming"
       @click="handleSend"
       :disabled="!inputContent.trim() || loading"
       class="px-6 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
-      style="height: 40px;"
+      style="height: 40px; min-width: 80px;"
     >
       <span v-if="!loading">发送</span>
       <span v-else class="flex items-center">
-        <div class="loading-spinner-white"></div>
+        <div class="loading-spinner-white mr-2"></div>
         发送中
       </span>
+    </button>
+    
+    <!-- 终止按钮 -->
+    <button
+      v-else
+      @click="handleAbort"
+      class="px-6 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center justify-center"
+      style="height: 40px; min-width: 80px;"
+    >
+      <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+      </svg>
+      <span>停止</span>
     </button>
   </div>
 </template>

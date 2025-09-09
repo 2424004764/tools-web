@@ -9,6 +9,7 @@ interface Message {
   content: string
   timestamp: number
   failed?: boolean
+  streaming?: boolean // 新增：标识是否正在流式输出
 }
 
 const props = defineProps<{
@@ -71,6 +72,7 @@ const renderedContent = computed(() => {
       <div 
         v-else 
         class="text-sm markdown-content"
+        :class="{ 'streaming-cursor': message.streaming }"
         v-html="renderedContent"
       ></div>
       
@@ -82,6 +84,11 @@ const renderedContent = computed(() => {
           :class="message.type === 'user' ? 'text-blue-100' : 'text-gray-500'"
         >
           {{ formatTime(message.timestamp) }}
+          <!-- 流式输出状态指示 -->
+          <span v-if="message.streaming" class="ml-2 text-blue-500">
+            <span class="inline-block w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
+            正在输出...
+          </span>
         </div>
         
         <!-- 操作按钮 -->
@@ -98,9 +105,9 @@ const renderedContent = computed(() => {
             </svg>
           </button>
           
-          <!-- 重试按钮 - 只在AI消息时显示 -->
+          <!-- 重试按钮 - 只在AI消息且非流式输出时显示 -->
           <button
-            v-if="message.type === 'assistant'"
+            v-if="message.type === 'assistant' && !message.streaming"
             @click="handleRetry"
             class="p-1 rounded hover:bg-gray-100 transition-colors"
             title="重新生成"
@@ -129,6 +136,23 @@ const renderedContent = computed(() => {
 /* Markdown内容样式 */
 .markdown-content {
   line-height: 1.6;
+}
+
+/* 流式输出光标动画 */
+.streaming-cursor::after {
+  content: '▋';
+  animation: pulse 1s infinite;
+  color: #3b82f6;
+  margin-left: 2px;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
 }
 
 .markdown-content :deep(h1),
