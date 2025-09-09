@@ -17,7 +17,7 @@ database_id = "afdabfae-6edd-4def-8e77-6a1171009b9c"
 
 # 使用该命令查看本地有哪些表：wrangler d1 execute yifang-tool --command="SELECT name FROM sqlite_master WHERE type='table';"
 
-# 本地拉取调试：wrangler pages dev .
+# 本地启动调试服务：wrangler pages dev .
 # 本地调试设置环境变量（线上的环境变量是绑定在pages的变量和机密里）：
 [vars]
 JWT_SECRET = "6197upXX81DUXMF9I8f@IqVOi3NEYYR@FBTDmyMf1mY5A4ExMiiTz2!hr%5tpPZfXE^d^"
