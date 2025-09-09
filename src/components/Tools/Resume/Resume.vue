@@ -1072,13 +1072,17 @@ onMounted(() => {
       <el-dialog
         v-model="showPreview"
         title="简历预览"
-        width="90%"
-        max-width="794px"
+        width="850px"
         class="preview-dialog"
+        :close-on-click-modal="false"
+        destroy-on-close
       >
         <template #header>
           <div class="preview-header-section">
-            <span class="dialog-title">简历预览</span>
+            <div class="dialog-title-area">
+              <span class="dialog-title">简历预览</span>
+              <span class="a4-indicator">📄 A4纸张尺寸 (794×1123px)</span>
+            </div>
             <div class="export-buttons">
               <el-button
                 type="primary"
@@ -1102,99 +1106,101 @@ onMounted(() => {
           </div>
         </template>
         
-        <div v-if="currentResume" class="resume-preview" id="resume-preview">
-          <div class="preview-header">
-            <h2>{{ currentResume.personalInfo?.name || '未填写姓名' }}</h2>
-            <div class="contact-info">
-              <span v-if="currentResume.personalInfo?.phone">📞 {{ currentResume.personalInfo.phone }}</span>
-              <span v-if="currentResume.personalInfo?.email">📧 {{ currentResume.personalInfo.email }}</span>
-              <span v-if="currentResume.personalInfo?.address">📍 {{ currentResume.personalInfo.address }}</span>
-            </div>
-          </div>
-          
-          <!-- 个人简介 -->
-          <div v-if="currentResume.personalInfo?.summary" class="preview-section">
-            <h4>个人简介</h4>
-            <p>{{ currentResume.personalInfo.summary }}</p>
-          </div>
-
-          <!-- 工作经历 -->
-          <div v-if="currentResume.workExperience && currentResume.workExperience.length > 0" class="preview-section">
-            <h4>工作经历</h4>
-            <div v-for="(work, index) in currentResume.workExperience" :key="index" class="experience-item">
-              <div v-if="work.company || work.position" class="work-item">
-                <div class="work-header">
-                  <h5>{{ work.position || '职位' }} - {{ work.company || '公司' }}</h5>
-                  <span class="work-period">
-                    {{ formatWorkDate(work.startDate) }} - {{ formatWorkDate(work.endDate) || '至今' }}
-                  </span>
-                </div>
-                <p v-if="work.description" class="work-description">{{ work.description }}</p>
+        <div class="preview-container">
+          <div v-if="currentResume" class="resume-preview" id="resume-preview">
+            <div class="preview-header">
+              <h2>{{ currentResume.personalInfo?.name || '未填写姓名' }}</h2>
+              <div class="contact-info">
+                <span v-if="currentResume.personalInfo?.phone">📞 {{ currentResume.personalInfo.phone }}</span>
+                <span v-if="currentResume.personalInfo?.email">📧 {{ currentResume.personalInfo.email }}</span>
+                <span v-if="currentResume.personalInfo?.address">📍 {{ currentResume.personalInfo.address }}</span>
               </div>
             </div>
-          </div>
-
-          <!-- 教育经历 -->
-          <div v-if="currentResume.education && currentResume.education.length > 0" class="preview-section">
-            <h4>教育经历</h4>
-            <div v-for="(edu, index) in currentResume.education" :key="index" class="experience-item">
-              <div v-if="edu.school || edu.major" class="edu-item">
-                <div class="edu-header">
-                  <h5>{{ edu.school || '学校' }} - {{ edu.major || '专业' }}</h5>
-                  <span class="edu-period">{{ edu.startDate }} - {{ edu.endDate }}</span>
-                </div>
-                <p v-if="edu.degree" class="edu-degree">{{ edu.degree }}</p>
-              </div>
+            
+            <!-- 个人简介 -->
+            <div v-if="currentResume.personalInfo?.summary" class="preview-section">
+              <h4>个人简介</h4>
+              <p>{{ currentResume.personalInfo.summary }}</p>
             </div>
-          </div>
 
-          <!-- 专业技能 -->
-          <div v-if="currentResume.skills && currentResume.skills.length > 0" class="preview-section">
-            <h4>专业技能</h4>
-            <div class="skills-text">
-              {{ currentResume.skills.filter(s => s && s.trim()).join('、') }}
-            </div>
-          </div>
-
-          <!-- 项目经历 -->
-          <div v-if="currentResume.projects && currentResume.projects.length > 0" class="preview-section">
-            <h4>项目经历</h4>
-            <div v-for="(project, index) in currentResume.projects" :key="index" class="experience-item">
-              <div v-if="project.name || project.description" class="project-item">
-                <div class="project-header">
-                  <h5>{{ project.name || '项目名称' }}</h5>
-                  <span class="project-period">
-                    {{ formatWorkDate(project.startDate) }} - {{ formatWorkDate(project.endDate) || '至今' }}
-                  </span>
-                </div>
-                <p v-if="project.technologies" class="project-tech">技术栈：{{ project.technologies }}</p>
-                <p v-if="project.description" class="project-description">{{ project.description }}</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- 证书 -->
-          <div v-if="currentResume.certificates && currentResume.certificates.length > 0" class="preview-section">
-            <h4>证书</h4>
-            <div class="certificates-list">
-              <div v-for="(cert, index) in currentResume.certificates" :key="index" class="cert-item">
-                <div v-if="cert.name || cert.issuer">
-                  <strong>{{ cert.name || '证书名称' }}</strong>
-                  <span v-if="cert.issuer"> - {{ cert.issuer }}</span>
-                  <span v-if="cert.date" class="cert-date">（{{ formatWorkDate(cert.date) }}）</span>
+            <!-- 工作经历 -->
+            <div v-if="currentResume.workExperience && currentResume.workExperience.length > 0" class="preview-section">
+              <h4>工作经历</h4>
+              <div v-for="(work, index) in currentResume.workExperience" :key="index" class="experience-item">
+                <div v-if="work.company || work.position" class="work-item">
+                  <div class="work-header">
+                    <h5>{{ work.position || '职位' }} - {{ work.company || '公司' }}</h5>
+                    <span class="work-period">
+                      {{ formatWorkDate(work.startDate) }} - {{ formatWorkDate(work.endDate) || '至今' }}
+                    </span>
+                  </div>
+                  <p v-if="work.description" class="work-description">{{ work.description }}</p>
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- 其他信息 -->
-          <div v-if="currentResume.others && (currentResume.others.hobbies || currentResume.others.languages)" class="preview-section">
-            <h4>其他信息</h4>
-            <div v-if="currentResume.others.hobbies" class="other-item">
-              <strong>兴趣爱好：</strong>{{ currentResume.others.hobbies }}
+            <!-- 教育经历 -->
+            <div v-if="currentResume.education && currentResume.education.length > 0" class="preview-section">
+              <h4>教育经历</h4>
+              <div v-for="(edu, index) in currentResume.education" :key="index" class="experience-item">
+                <div v-if="edu.school || edu.major" class="edu-item">
+                  <div class="edu-header">
+                    <h5>{{ edu.school || '学校' }} - {{ edu.major || '专业' }}</h5>
+                    <span class="edu-period">{{ formatWorkDate(edu.startDate) }} - {{ formatWorkDate(edu.endDate) || '至今' }}</span>
+                  </div>
+                  <p v-if="edu.degree" class="edu-degree">{{ edu.degree }}</p>
+                </div>
+              </div>
             </div>
-            <div v-if="currentResume.others.languages" class="other-item">
-              <strong>语言能力：</strong>{{ currentResume.others.languages }}
+
+            <!-- 专业技能 -->
+            <div v-if="currentResume.skills && currentResume.skills.length > 0" class="preview-section">
+              <h4>专业技能</h4>
+              <div class="skills-text">
+                {{ currentResume.skills.filter(s => s && s.trim()).join('、') }}
+              </div>
+            </div>
+
+            <!-- 项目经历 -->
+            <div v-if="currentResume.projects && currentResume.projects.length > 0" class="preview-section">
+              <h4>项目经历</h4>
+              <div v-for="(project, index) in currentResume.projects" :key="index" class="experience-item">
+                <div v-if="project.name || project.description" class="project-item">
+                  <div class="project-header">
+                    <h5>{{ project.name || '项目名称' }}</h5>
+                    <span class="project-period">
+                      {{ formatWorkDate(project.startDate) }} - {{ formatWorkDate(project.endDate) || '至今' }}
+                    </span>
+                  </div>
+                  <p v-if="project.technologies" class="project-tech">技术栈：{{ project.technologies }}</p>
+                  <p v-if="project.description" class="project-description">{{ project.description }}</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- 证书 -->
+            <div v-if="currentResume.certificates && currentResume.certificates.length > 0" class="preview-section">
+              <h4>证书</h4>
+              <div class="certificates-list">
+                <div v-for="(cert, index) in currentResume.certificates" :key="index" class="cert-item">
+                  <div v-if="cert.name || cert.issuer">
+                    <strong>{{ cert.name || '证书名称' }}</strong>
+                    <span v-if="cert.issuer"> - {{ cert.issuer }}</span>
+                    <span v-if="cert.date" class="cert-date">（{{ formatWorkDate(cert.date) }}）</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 其他信息 -->
+            <div v-if="currentResume.others && (currentResume.others.hobbies || currentResume.others.languages)" class="preview-section">
+              <h4>其他信息</h4>
+              <div v-if="currentResume.others.hobbies" class="other-item">
+                <strong>兴趣爱好：</strong>{{ currentResume.others.hobbies }}
+              </div>
+              <div v-if="currentResume.others.languages" class="other-item">
+                <strong>语言能力：</strong>{{ currentResume.others.languages }}
+              </div>
             </div>
           </div>
         </div>
@@ -1555,9 +1561,23 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   gap: 20px;
-  flex-wrap: wrap;
   font-size: 14px;
   color: #666;
+  
+  /* 在非触摸设备(PC)上强制不换行 */
+  flex-wrap: nowrap;
+  overflow: visible;
+}
+
+/* 在移动设备上强制垂直排列联系方式 */
+@media (max-width: 768px) {
+  @media (hover: none) and (pointer: coarse) {
+    .contact-info {
+      flex-direction: column;
+      gap: 8px;
+      flex-wrap: nowrap;
+    }
+  }
 }
 
 .preview-section {
@@ -1729,19 +1749,22 @@ onMounted(() => {
     padding: 16px;
   }
   
-  .contact-info {
-    flex-direction: column;
-    gap: 8px;
-  }
-  
-  .work-header, .edu-header, .project-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  
-  .work-period, .edu-period, .project-period {
-    margin-left: 0;
-    margin-top: 4px;
+  /* 只在真正的触摸设备上让联系方式垂直排列 */
+  @media (hover: none) and (pointer: coarse) {
+    .contact-info {
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .work-header, .edu-header, .project-header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    
+    .work-period, .edu-period, .project-period {
+      margin-left: 0;
+      margin-top: 4px;
+    }
   }
 }
 
@@ -1768,10 +1791,22 @@ onMounted(() => {
   width: 100%;
 }
 
+.dialog-title-area {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
 .dialog-title {
-  font-size: 18px;
-  font-weight: 500;
-  color: #303133;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.a4-indicator {
+  font-size: 12px;
+  color: #666;
+  margin-top: 2px;
 }
 
 .export-buttons {
@@ -1779,47 +1814,163 @@ onMounted(() => {
   gap: 8px;
 }
 
-/* 预览弹窗样式优化 */
-.preview-dialog {
-  --a4-width: 794px;
-  --a4-height: 1123px;
-}
-
+/* 预览弹窗基础样式 */
 .preview-dialog .el-dialog {
-  max-width: var(--a4-width);
+  max-width: 850px !important;
+  left: 0 !important;
 }
 
-/* 确保预览区域适合导出 - 使用固定宽度 */
+/* 只在传统桌面设备(非触摸设备)上应用居中定位 */
+@media (hover: hover) and (pointer: fine) {
+  .preview-dialog .el-dialog {
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    margin: 20px auto !important;
+  }
+}
+
+.preview-dialog .el-dialog__body {
+  padding: 20px !important;
+  background-color: #f5f5f5;
+  text-align: center;
+}
+
+/* 移动端响应式设计 */
+@media (max-width: 850px) {
+  .preview-dialog .el-dialog {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100vh !important;
+  }
+  
+  .preview-container {
+    min-width: auto !important;  /* 关键：移除794px固定宽度 */
+    width: 100% !important;
+    height: auto;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start; /* 从顶部开始对齐 */
+  }
+  
+  .resume-preview {
+    transform: scale(calc(100vw / 794)) !important;
+    transform-origin: center top !important;
+    /* 确保缩放后不会超出容器 */
+    max-width: 100vw !important;
+    max-height: calc(1123px * (100vw / 794)) !important;
+  }
+}
+
+/* 简历预览 - 固定A4尺寸 */
 .resume-preview {
   background: white;
   padding: 30px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
   line-height: 1.6;
   color: #333;
-  min-height: 400px;
-  /* 固定宽度为A4纸张宽度减去padding */
-  width: 734px; /* 794px - 60px */
-  max-width: 734px;
-  margin: 0 auto;
+  width: 794px !important;
+  min-width: 794px !important;
+  max-width: 794px !important;
+  min-height: 1123px;
   box-sizing: border-box;
-  overflow-y: auto;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e0e0e0;
+  overflow: hidden;
+  display: inline-block;
+  text-align: left;
 }
 
-/* 响应式适配 */
+.preview-container {
+  display: inline-block;
+  text-align: left;
+  /* 确保容器不会被压缩 */
+  min-width: 794px;
+}
+
+/* 替换现有的复杂媒体查询 */
 @media (max-width: 850px) {
+  .preview-dialog .el-dialog {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100vh !important;
+    margin: 0 !important;
+    top: 0 !important;
+    left: 0 !important;
+    transform: none !important;
+  }
+  
+  .preview-dialog .el-dialog__wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+  
+  .preview-dialog .el-dialog__body {
+    padding: 10px !important;
+    overflow: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+  }
+  
+  /* 关键修复：移除固定宽度 */
+  .preview-container {
+    min-width: auto !important;
+    width: 100% !important;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+  }
+  
+  /* 简历等比缩放 */
   .resume-preview {
-    width: calc(90vw - 60px);
-    max-width: calc(90vw - 60px);
+    transform: scale(calc(100vw / 794)) !important;
+    transform-origin: center top !important;
+    max-width: 100vw !important;
   }
 }
 
-/* 导出时的样式优化 */
+/* 移除固定缩放比例，统一使用自适应缩放 */
+@media (max-width: 650px) {
+  /* 只在真正的触摸设备上应用样式 */
+  @media (hover: none) and (pointer: coarse) {
+    .resume-preview {
+      /* 保持自适应缩放，移除固定值 */
+      margin: 0 auto !important;
+    }
+  }
+}
+
+@media (max-width: 500px) {
+  /* 只在真正的触摸设备上应用样式 */
+  @media (hover: none) and (pointer: coarse) {
+    .resume-preview {
+      /* 保持自适应缩放，移除固定值 */
+      margin: 0 auto !important;
+    }
+  }
+}
+
+/* 导出时保持尺寸 */
 @media print {
   .resume-preview {
+    width: 794px !important;
+    min-width: 794px !important;
+    max-width: 794px !important;
+    min-height: 1123px !important;
     padding: 20px;
     box-shadow: none;
     border: none;
-    width: 754px; /* 794px - 40px */
   }
 }
 
@@ -1831,13 +1982,18 @@ onMounted(() => {
   }
   
   .export-buttons .el-button {
-    width: 100%;
+    font-size: 12px;
+    padding: 6px 10px;
   }
   
   .preview-header-section {
     flex-direction: column;
     gap: 12px;
     align-items: flex-start;
+  }
+  
+  .dialog-title-area {
+    align-items: center;
   }
 }
 </style>

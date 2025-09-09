@@ -27,6 +27,8 @@ export interface ChatOptions {
   temperature?: number
   maxTokens?: number
   stream?: boolean
+  onChunk?: (chunk: string) => void // 流式输出回调函数
+  signal?: AbortSignal // 新增：终止信号
 }
 
 export interface ImageOptions {

@@ -13,7 +13,8 @@ interface Message {
   type: "user" | "assistant";
   content: string;
   timestamp: number;
-  failed?: boolean
+  failed?: boolean;
+  streaming?: boolean; // 新增：标识是否正在流式输出
 }
 
 interface ProviderSelection {
@@ -38,15 +39,32 @@ const isSubmitting = ref(false);
 // 新增：用于跟踪是否已经处理URL参数
 const urlParamsProcessed = ref(false);
 
+// 新增：流式输出相关状态
+const isStreaming = ref(false);
+const currentStreamingMessageId = ref<string | null>(null);
+
+// 新增：终止流式请求的控制器
+const abortController = ref<AbortController | null>(null);
+
+// 生成唯一ID
+let messageIdCounter = 0;
+const generateMessageId = () => {
+  return `msg_${Date.now()}_${++messageIdCounter}`;
+};
+
 // 添加消息
-const addMessage = (type: "user" | "assistant", content: string) => {
+const addMessage = (type: "user" | "assistant", content: string, streaming = false) => {
+  const messageId = generateMessageId();
   const message: Message = {
-    id: Date.now().toString(),
+    id: messageId,
     type,
     content,
     timestamp: Date.now(),
+    streaming
   };
   messages.value.push(message);
+
+  console.log(`添加${type}消息:`, { id: messageId, type, content, streaming });
 
   // 滚动到底部
   nextTick(() => {
@@ -54,28 +72,100 @@ const addMessage = (type: "user" | "assistant", content: string) => {
       chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
     }
   });
+  
+  return messageId;
+};
+
+// 更新消息内容（用于流式输出）
+const updateMessage = (messageId: string, content: string) => {
+  console.log(`更新消息 ${messageId}:`, content);
+  const messageIndex = messages.value.findIndex(msg => msg.id === messageId);
+  console.log(`找到消息索引:`, messageIndex);
+  
+  if (messageIndex !== -1) {
+    // 使用Vue 3的响应式更新方式
+    const oldMessage = messages.value[messageIndex];
+    console.log(`更新前消息:`, oldMessage);
+    
+    messages.value[messageIndex] = {
+      ...oldMessage,
+      content: content
+    };
+    
+    console.log(`更新后消息:`, messages.value[messageIndex]);
+    
+    // 滚动到底部
+    nextTick(() => {
+      if (chatContainer.value) {
+        chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
+      }
+    });
+  } else {
+    console.error(`未找到消息ID: ${messageId}`);
+    console.log('当前所有消息:', messages.value.map(m => ({ id: m.id, type: m.type })));
+  }
+};
+
+// 完成流式输出
+const finishStreaming = (messageId: string) => {
+  console.log(`完成流式输出: ${messageId}`);
+  const messageIndex = messages.value.findIndex(msg => msg.id === messageId);
+  if (messageIndex !== -1) {
+    messages.value[messageIndex] = {
+      ...messages.value[messageIndex],
+      streaming: false
+    };
+    console.log(`消息流式状态已更新:`, messages.value[messageIndex]);
+  }
+  isStreaming.value = false;
+  currentStreamingMessageId.value = null;
+  abortController.value = null;
+};
+
+// 新增：终止流式请求
+const abortStreaming = () => {
+  console.log('用户终止流式请求');
+  
+  if (abortController.value) {
+    abortController.value.abort();
+    abortController.value = null;
+  }
+  
+  if (currentStreamingMessageId.value) {
+    const messageIndex = messages.value.findIndex(msg => msg.id === currentStreamingMessageId.value);
+    if (messageIndex !== -1) {
+      const currentContent = messages.value[messageIndex].content;
+      messages.value[messageIndex] = {
+        ...messages.value[messageIndex],
+        streaming: false,
+        content: currentContent + '\n\n[已终止生成]'
+      };
+    }
+    finishStreaming(currentStreamingMessageId.value);
+  }
 };
 
 // 处理用户输入
 const handleUserInput = async (content: string) => {
-  if (!content.trim() || loading.value || isSubmitting.value) return; // 多重防重复提交
+  if (!content.trim() || loading.value || isSubmitting.value || isStreaming.value) return;
 
   // 设置提交状态
   isSubmitting.value = true;
 
   try {
     // 添加用户消息
-    addMessage("user", content);
+    const userMessageId = addMessage("user", content);
+    console.log('用户消息已添加:', userMessageId);
 
-    // 调用AI接口
-    loading.value = true;
+    // 调用AI接口 - 移除loading状态，直接使用流式输出
     await callAIAPI();
   } catch (error) {
     console.error("AI接口调用失败:", error);
-    addMessage("assistant", "抱歉，我遇到了一些问题，请稍后再试。");
+    if (typeof error === 'object' && error !== null && 'name' in error && !(error as any).name || (error as any).name !== 'AbortError') {
+      addMessage("assistant", "抱歉，我遇到了一些问题，请稍后再试。");
+    }
   } finally {
-    loading.value = false;
-    isSubmitting.value = false; // 重置提交状态
+    isSubmitting.value = false;
   }
 };
 
@@ -125,30 +215,76 @@ const callAIAPI = async () => {
       };
     });
 
+    // 创建流式输出的助手消息
+    const assistantMessageId = addMessage("assistant", "", true);
+    currentStreamingMessageId.value = assistantMessageId;
+    isStreaming.value = true;
+
+    // 创建终止控制器
+    abortController.value = new AbortController();
+
+    console.log('开始流式输出，助手消息ID:', assistantMessageId);
+    console.log('当前消息列表:', messages.value.map(m => ({ id: m.id, type: m.type, content: m.content.substring(0, 20) + '...' })));
+
+    let accumulatedContent = ''; // 用于累积流式内容
+
     const response = await aiProvider.value.chat(
       conversationHistory,
       {
         model: selectedProvider.value.model,
         temperature: 0.7,
         maxTokens: 2000,
-        stream: false
+        stream: true,
+        signal: abortController.value.signal, // 传递终止信号
+        onChunk: (chunk: string) => {
+          console.log('收到流式数据块:', chunk);
+          // 累积内容
+          accumulatedContent += chunk;
+          console.log('累积内容长度:', accumulatedContent.length);
+          // 更新消息内容
+          updateMessage(assistantMessageId, accumulatedContent);
+        }
       }
     );
 
-    // 修复：确保提取的是字符串内容
-    const content = typeof response === 'string' ? response : (response?.content || '抱歉，没有收到有效回复');
-    addMessage("assistant", content);
+    console.log('流式输出完成，最终响应:', response);
+
+    // 完成流式输出
+    finishStreaming(assistantMessageId);
+
+    // 如果流式输出没有内容，使用响应内容
+    const currentMessage = messages.value.find(msg => msg.id === assistantMessageId);
+    if (currentMessage && !currentMessage.content.trim()) {
+      const content = typeof response === 'string' ? response : (response?.content || '抱歉，没有收到有效回复');
+      updateMessage(assistantMessageId, content);
+    }
+
+    console.log('AI响应处理完成');
   } catch (error) {
     console.error("AI接口调用出错:", error);
     
-    // 标记最后一条assistant消息为失败状态
-    const lastMessage = messages.value[messages.value.length - 1];
-    if (lastMessage && lastMessage.type === 'assistant') {
-      lastMessage.failed = true;
+    // 检查是否是用户主动终止
+    if (typeof error === 'object' && error !== null && 'name' in error && (error as any).name === 'AbortError') {
+      console.log('流式请求被用户终止');
+      return; // 用户主动终止，不显示错误消息
+    }
+    
+    // 如果有正在流式输出的消息，标记为失败
+    if (currentStreamingMessageId.value) {
+      const messageIndex = messages.value.findIndex(msg => msg.id === currentStreamingMessageId.value);
+      if (messageIndex !== -1) {
+        messages.value[messageIndex] = {
+          ...messages.value[messageIndex],
+          failed: true,
+          streaming: false,
+          content: "抱歉，我遇到了一些问题，请点击重试按钮重新获取回答。"
+        };
+      }
+      finishStreaming(currentStreamingMessageId.value);
     } else {
-      // 如果没有assistant消息，创建一个失败消息
+      // 如果没有流式输出消息，创建一个失败消息
       const failedMessage: Message = {
-        id: Date.now().toString(),
+        id: generateMessageId(),
         type: 'assistant',
         content: "抱歉，我遇到了一些问题，请点击重试按钮重新获取回答。",
         timestamp: Date.now(),
@@ -163,7 +299,15 @@ const callAIAPI = async () => {
 
 // 清空聊天记录
 const clearChat = () => {
+  // 如果正在流式输出，先终止
+  if (isStreaming.value) {
+    abortStreaming();
+  }
+  
   messages.value = [];
+  isStreaming.value = false;
+  currentStreamingMessageId.value = null;
+  abortController.value = null;
 };
 
 // 监听selectedProvider的变化，当选择完成后处理URL参数
@@ -185,8 +329,6 @@ watch(() => selectedProvider.value, (newProvider) => {
 const handleProviderChange = (selection: ProviderSelection) => {
   selectedProvider.value = selection;
   console.log('供应商已更新:', selection);
-  
-  // 这个逻辑移到watch中处理，避免重复
 };
 
 // 重试功能
@@ -204,13 +346,10 @@ const handleRetry = (messageId: string) => {
   
   // 重新调用AI接口
   try {
-    loading.value = true
     callAIAPI()
   } catch (error) {
     console.error("重试失败:", error)
     addMessage("assistant", "抱歉，重试失败，请稍后再试。")
-  } finally {
-    loading.value = false
   }
 }
 
@@ -303,20 +442,15 @@ onMounted(() => {
               @retry="handleRetry"
             />
           </div>
-
-          <!-- 加载状态 -->
-          <div v-if="loading" class="flex justify-center py-4">
-            <div class="flex items-center space-x-2 text-gray-500">
-              <div
-                class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"
-              ></div>
-              <span>AI正在思考中...</span>
-            </div>
-          </div>
         </div>
 
         <!-- 输入区域 -->
-        <ChatInput @send="handleUserInput" :loading="loading" />
+        <ChatInput 
+          @send="handleUserInput" 
+          @abort="abortStreaming"
+          :loading="loading || isSubmitting" 
+          :streaming="isStreaming"
+        />
 
         <!-- 操作按钮 -->
         <div class="flex justify-end mt-2">
@@ -346,6 +480,7 @@ onMounted(() => {
         <br>• <strong>多供应商支持</strong>：支持多个AI服务供应商，可自由选择
         <br>• <strong>模型选择</strong>：每个供应商提供多种模型选择，满足不同需求
         <br>• <strong>对话记忆</strong>：支持上下文对话，AI能记住之前的对话内容
+        <br>• <strong>流式输出</strong>：支持实时流式输出，可随时停止生成
         <br>• <strong>重试机制</strong>：遇到问题时可以重试，确保对话的连续性
         <br>• <strong>提示词支持</strong>：支持从其他页面携带提示词自动发起对话
         <br>• <strong>响应式设计</strong>：完美适配PC和移动设备
@@ -354,8 +489,9 @@ onMounted(() => {
         <br>1. 选择合适的AI供应商和模型
         <br>2. 输入您的问题或需求
         <br>3. AI会根据上下文提供针对性回答
-        <br>4. 可以继续追问或深入讨论
-        <br>5. 使用清空按钮开始新话题
+        <br>4. 流式输出过程中发送按钮会变为停止按钮
+        <br>5. 可以继续追问或深入讨论
+        <br>6. 使用清空按钮开始新话题
       </el-text>
     </ToolDetail>
   </div>
@@ -398,5 +534,21 @@ onMounted(() => {
 /* Markdown内容样式 */
 .markdown-content {
   line-height: 1.6;
+}
+
+/* 流式输出动画 */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.streaming-cursor::after {
+  content: '▋';
+  animation: pulse 1s infinite;
+  color: #3b82f6;
 }
 </style>
