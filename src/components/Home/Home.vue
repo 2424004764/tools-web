@@ -65,9 +65,17 @@ const handleScroll = () => {
     }
   }
   
-  // 更新活跃分类
+  // 更新活跃分类和URL
   if (activeCategory && activeCategory !== componentStore.activeCategory) {
     componentStore.setActiveCategory(activeCategory)
+    // 同步更新URL地址栏
+    const currentValue = route.query?.value as string
+    if (currentValue !== activeCategory) {
+      router.replace({
+        path: "/",
+        query: { value: activeCategory }
+      })
+    }
   }
 }
 
