@@ -855,6 +855,15 @@ export function getToolsCate() {
         },
         {
           id: 9,
+          title: 'AI面试',
+          logo: '/images/logo/ai_interview.png',
+          desc: 'AI智能面试助手，模拟真实面试场景，支持多种岗位类型，提升面试表现',
+          url: '/ai-interview/',
+          cateId: 10,
+          cate: 'AI工具'
+        },
+        {
+          id: 10,
           title: 'AI提示词仓库',
           logo: '/images/logo/ai_prompt.png',
           desc: '精选顶级AI提示词库，涵盖写作、编程、创意、分析等多个领域，助力提升AI对话效果',

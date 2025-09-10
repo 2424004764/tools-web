@@ -780,6 +780,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/ai-interview',
+    component: () => import('@/components/Tools/AiInterview/AiInterview.vue'),
+    name: 'ai-interview',
+    meta: {
+      title: "AI面试",
+      keywords: 'AI面试,模拟面试,面试练习,技术面试,前端面试,后端面试,产品面试,面试助手',
+      description: 'AI智能面试助手，模拟真实面试场景，支持前端、后端、产品、数据分析等多种岗位类型，帮助提升面试表现和技能',
+    }
+  },
+  {
     path: '/image-compress',
     component: () => import('@/components/Tools/ImageCompress/ImageCompress.vue'),
     name: 'image-compress',

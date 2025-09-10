@@ -82,6 +82,7 @@
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
+  <url><loc>https://tool.fologde.com/ai-interview</loc><changefreq>weekly</changefreq><priority>0.8</priority><lastmod>2025-09-10T00:00:00+00:00</lastmod></url>
 
   <!-- 好物网站 -->
   <url><loc>https://tool.fologde.com/good-sites</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2025-08-15T00:00:00+00:00</lastmod></url>
