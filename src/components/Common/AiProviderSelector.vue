@@ -397,47 +397,74 @@ const getSelectedModelDesc = () => {
 
 // 初始化：优先使用props，如果没有则从本地存储加载，最后使用默认值
 const initializeSelection = () => {
+  console.log('=== initializeSelection 开始 ===');
+  console.log('props.modelValue:', props.modelValue);
+  
   if (props.modelValue.provider && props.modelValue.model) {
+    console.log('使用 props 值');
     // 如果有props值，使用props
-    selectedProvider.value = props.modelValue.provider
-    selectedModel.value = props.modelValue.model
+    selectedProvider.value = props.modelValue.provider;
+    selectedModel.value = props.modelValue.model;
   } else {
+    console.log('尝试从本地存储加载');
     // 如果没有props值，从本地存储加载
-    const stored = loadFromLocalStorage()
+    const stored = loadFromLocalStorage();
+    console.log('本地存储的值:', stored);
+    
     if (stored.provider && stored.model) {
-      selectedProvider.value = stored.provider
-      selectedModel.value = stored.model
+      console.log('使用本地存储的值');
+      selectedProvider.value = stored.provider;
+      selectedModel.value = stored.model;
       // 触发一次emit，让父组件知道初始值
-      emit('update:modelValue', stored)
+      emit('update:modelValue', stored);
+      emit('change', stored);
     } else {
+      console.log('使用默认值');
       // 如果本地存储也没有数据，使用默认值（第一个供应商和第一个模型）
-      const defaultProvider = availableProviders.value[0]
-      const defaultModel = pollinationsModels.value[0] // 默认使用pollinations的第一个模型
+      const defaultProvider = availableProviders.value[0];
+      console.log('默认供应商:', defaultProvider);
+      console.log('pollinations模型数量:', pollinationsModels.value.length);
+      
+      const defaultModel = pollinationsModels.value[0]; // 默认使用pollinations的第一个模型
+      console.log('默认模型:', defaultModel);
 
       if (defaultProvider && defaultModel) {
-        selectedProvider.value = defaultProvider.name
-        selectedModel.value = defaultModel.name
+        console.log('设置默认选择');
+        selectedProvider.value = defaultProvider.name;
+        selectedModel.value = defaultModel.name;
         
         const defaultSelection = {
           provider: defaultProvider.name,
           model: defaultModel.name
-        }
+        };
+        
+        console.log('默认选择:', defaultSelection);
         
         // 触发emit，让父组件知道默认值
-        emit('update:modelValue', defaultSelection)
-        emit('change', defaultSelection)
+        emit('update:modelValue', defaultSelection);
+        emit('change', defaultSelection);
         
         // 保存默认选择到本地存储
-        saveToLocalStorage(defaultSelection)
+        saveToLocalStorage(defaultSelection);
         
-        console.log('使用默认选择:', defaultSelection)
-      } else if (defaultProvider) {
-        // 如果没有模型数据，至少设置供应商
-        selectedProvider.value = defaultProvider.name
+        console.log('✅ 默认选择设置完成');
+      } else {
+        console.log('❌ 无法设置默认选择');
+        console.log('defaultProvider存在:', !!defaultProvider);
+        console.log('defaultModel存在:', !!defaultModel);
+        
+        if (defaultProvider) {
+          // 如果没有模型数据，至少设置供应商
+          selectedProvider.value = defaultProvider.name;
+          console.log('只设置了默认供应商');
+        }
       }
     }
   }
-}
+  
+  console.log('=== initializeSelection 结束 ===');
+  console.log('最终选择:', { provider: selectedProvider.value, model: selectedModel.value });
+};
 
 // 监听props变化
 watch(() => props.modelValue, (newValue) => {
@@ -449,10 +476,18 @@ watch(() => props.modelValue, (newValue) => {
 
 // 组件挂载时初始化
 onMounted(async () => {
+  console.log('AiProviderSelector onMounted 开始');
+  
   // 先获取模型列表，再初始化选择
-  await fetchPollinationsModels()
-  initializeSelection()
-})
+  await fetchPollinationsModels();
+  
+  console.log('模型获取完成，pollinationsModels数量:', pollinationsModels.value.length);
+  console.log('开始初始化选择...');
+  
+  initializeSelection();
+  
+  console.log('AiProviderSelector onMounted 完成');
+});
 </script>
 
 <style scoped>
