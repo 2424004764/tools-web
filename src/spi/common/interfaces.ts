@@ -27,7 +27,7 @@ export interface ChatOptions {
   temperature?: number
   maxTokens?: number
   stream?: boolean
-  onChunk?: (chunk: string) => void // 流式输出回调函数
+  onChunk?: (chunk: string, reasoning?: string) => void // 修改：支持reasoning参数
   signal?: AbortSignal // 新增：终止信号
 }
 
