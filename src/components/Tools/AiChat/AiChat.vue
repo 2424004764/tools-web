@@ -12,6 +12,7 @@ interface Message {
   id: string;
   type: "user" | "assistant";
   content: string;
+  reasoning?: string; // 新增：AI的思考过程
   timestamp: number;
   failed?: boolean;
   streaming?: boolean; // 新增：标识是否正在流式输出
@@ -77,8 +78,8 @@ const addMessage = (type: "user" | "assistant", content: string, streaming = fal
 };
 
 // 更新消息内容（用于流式输出）
-const updateMessage = (messageId: string, content: string) => {
-  console.log(`更新消息 ${messageId}:`, content);
+const updateMessage = (messageId: string, content: string, reasoning?: string) => {
+  console.log(`更新消息 ${messageId}:`, content, reasoning);
   const messageIndex = messages.value.findIndex(msg => msg.id === messageId);
   console.log(`找到消息索引:`, messageIndex);
   
@@ -89,7 +90,8 @@ const updateMessage = (messageId: string, content: string) => {
     
     messages.value[messageIndex] = {
       ...oldMessage,
-      content: content
+      content: content,
+      ...(reasoning !== undefined && { reasoning: reasoning })
     };
     
     console.log(`更新后消息:`, messages.value[messageIndex]);
@@ -135,10 +137,12 @@ const abortStreaming = () => {
     const messageIndex = messages.value.findIndex(msg => msg.id === currentStreamingMessageId.value);
     if (messageIndex !== -1) {
       const currentContent = messages.value[messageIndex].content;
+      const currentReasoning = messages.value[messageIndex].reasoning;
       messages.value[messageIndex] = {
         ...messages.value[messageIndex],
         streaming: false,
-        content: currentContent + '\n\n[已终止生成]'
+        content: currentContent + '\n\n[已终止生成]',
+        reasoning: currentReasoning
       };
     }
     finishStreaming(currentStreamingMessageId.value);
@@ -227,6 +231,7 @@ const callAIAPI = async () => {
     console.log('当前消息列表:', messages.value.map(m => ({ id: m.id, type: m.type, content: m.content.substring(0, 20) + '...' })));
 
     let accumulatedContent = ''; // 用于累积流式内容
+    let accumulatedReasoning = ''; // 用于累积思考过程
 
     const response = await aiProvider.value.chat(
       conversationHistory,
@@ -236,13 +241,17 @@ const callAIAPI = async () => {
         maxTokens: 2000,
         stream: true,
         signal: abortController.value.signal, // 传递终止信号
-        onChunk: (chunk: string) => {
-          console.log('收到流式数据块:', chunk);
+        onChunk: (chunk: string, reasoning?: string) => {
+          console.log('收到流式数据块:', chunk, reasoning);
           // 累积内容
           accumulatedContent += chunk;
+          if (reasoning) {
+            accumulatedReasoning += reasoning;
+          }
           console.log('累积内容长度:', accumulatedContent.length);
+          console.log('累积思考过程长度:', accumulatedReasoning.length);
           // 更新消息内容
-          updateMessage(assistantMessageId, accumulatedContent);
+          updateMessage(assistantMessageId, accumulatedContent, accumulatedReasoning);
         }
       }
     );
@@ -550,5 +559,23 @@ onMounted(() => {
   content: '▋';
   animation: pulse 1s infinite;
   color: #3b82f6;
+}
+
+/* 思考过程样式 */
+.reasoning-content {
+  line-height: 1.5;
+  font-size: 0.875rem;
+}
+
+.reasoning-content :deep(p) {
+  margin: 0.3em 0;
+}
+
+.reasoning-content :deep(code) {
+  background-color: #e0f2fe;
+  color: #0277bd;
+  padding: 0.1em 0.3em;
+  border-radius: 0.2em;
+  font-size: 0.8em;
 }
 </style>

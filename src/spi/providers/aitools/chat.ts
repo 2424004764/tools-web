@@ -88,12 +88,20 @@ export async function chat(
                 console.log('解析的流式数据:', parsed);
                 
                 if (parsed.choices && parsed.choices[0] && parsed.choices[0].delta) {
-                  const content = parsed.choices[0].delta.content;
-                  if (content) {
-                    fullContent += content;
-                    console.log('发送内容块:', content);
-                    // 立即调用回调函数
-                    options.onChunk!(content);
+                  const delta = parsed.choices[0].delta;
+                  const content = delta.content;
+                  const reasoning = delta.reasoning_content;
+                  
+                  if (content || reasoning) {
+                    if (content) {
+                      fullContent += content;
+                      console.log('发送内容块:', content);
+                    }
+                    if (reasoning) {
+                      console.log('发送思考过程块:', reasoning);
+                    }
+                    // 立即调用回调函数，传递两个参数
+                    options.onChunk!(content || '', reasoning);
                   }
                 }
               } catch (e) {
