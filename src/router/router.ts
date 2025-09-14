@@ -919,4 +919,14 @@ export const constantRoute = [
       description: '全国各省市最低工资标准查询工具，提供最新的月最低工资标准和小时最低工资标准数据，支持按地区搜索',
     }
   },
+  {
+    path: '/phone-directory',
+    component: () => import('@/components/Tools/PhoneDirectory/PhoneDirectory.vue'),
+    name: 'phone-directory',
+    meta: {
+      title: "号码一览",
+      keywords: '电话号码查询,公共服务电话,紧急救援电话,政府服务热线,银行客服电话,运营商客服',
+      description: '各种国家机构、公共服务、紧急救援等常用电话号码查询服务，支持搜索、复制和直接拨打功能',
+    }
+  },
 ]

@@ -782,6 +782,15 @@ export function getToolsCate() {
           url: '/minimum-wage/',
           cateId: 7,
           cate: '其他工具',
+        },
+        {
+          id: 1,
+          title: '号码一览',
+          logo: '/images/logo/phone_directory.png',
+          desc: '各种国家机构、公共服务、紧急救援等常用电话号码查询服务',
+          url: '/phone-directory/',
+          cateId: 7,
+          cate: '其他工具',
         }
       ]
     },
