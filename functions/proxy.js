@@ -69,12 +69,34 @@ export async function onRequest(context) {
     // 创建新的请求配置
     const newRequestInit = {
         method: request.method,
-        headers: new Headers(request.headers),
+        headers: (() => {
+            const safeHeaders = new Headers();
+            // 只复制安全的headers，避免非ISO-8859-1字符问题
+            const allowedHeaders = ['content-type', 'authorization', 'user-agent', 'accept', 'accept-language', 'accept-encoding'];
+            
+            request.headers.forEach((value, key) => {
+                const lowerKey = key.toLowerCase();
+                if (allowedHeaders.includes(lowerKey)) {
+                    try {
+                        // 检查是否包含非ISO-8859-1字符
+                        if (/^[\x00-\xFF]*$/.test(value)) {
+                            safeHeaders.set(key, value);
+                        } else {
+                            console.warn(`跳过包含非ISO-8859-1字符的header: ${key}`);
+                        }
+                    } catch (e) {
+                        console.warn(`跳过有问题的header: ${key}`, e);
+                    }
+                }
+            });
+            return safeHeaders;
+        })(),
         body: request.method === 'POST' ? await request.clone().arrayBuffer() : undefined,
         redirect: 'follow'
     }
 
     // 向目标 API 发起请求
+    console.log(targetUrl, newRequestInit)
     const response = await fetch(targetUrl, newRequestInit)
 
     // 复制目标 API 的响应头并设置 CORS

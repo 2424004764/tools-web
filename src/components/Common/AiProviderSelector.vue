@@ -177,8 +177,49 @@ const fetchPollinationsModels = async () => {
   } catch (error) {
     console.error('获取Pollinations模型列表失败:', error)
     modelsLoadError.value = (error as Error).message || '获取模型列表失败'
+    
+    // 自动切换到下一个供应商
+    await switchToNextProvider()
   } finally {
     isLoadingModels.value = false
+  }
+}
+
+// 新增：自动切换到下一个供应商的方法
+const switchToNextProvider = async () => {
+  try {
+    console.log('Pollinations模型加载失败，自动切换到下一个供应商')
+    
+    // 找到当前供应商的索引
+    const currentIndex = availableProviders.value.findIndex(p => p.name === 'pollinations')
+    
+    // 如果当前是pollinations且不是最后一个供应商，切换到下一个
+    if (currentIndex >= 0 && currentIndex < availableProviders.value.length - 1) {
+      const nextProvider = availableProviders.value[currentIndex + 1]
+      console.log(`自动切换到供应商: ${nextProvider.displayName}`)
+      
+      // 更新选择
+      selectedProvider.value = nextProvider.name
+      
+      // 选择该供应商的第一个模型
+      const models = nextProvider.name === 'aitools' ? aitoolsModels.value : []
+      if (models.length > 0) {
+        selectedModel.value = models[0].name
+        console.log(`自动选择模型: ${models[0].name}`)
+      }
+      
+      // 触发选择事件
+      emitSelection()
+      
+      // 清除错误状态
+      modelsLoadError.value = ''
+      
+      console.log('✅ 自动切换完成')
+    } else {
+      console.log('没有可切换的供应商')
+    }
+  } catch (error) {
+    console.error('自动切换供应商失败:', error)
   }
 }
 

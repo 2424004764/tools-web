@@ -23,7 +23,7 @@ export async function chat(
 
   try {
     if (options?.stream && options?.onChunk) {
-      console.log('开始流式输出请求');
+      console.log('开始流式输出请求', this.apiKey);
       
       // 使用 fetch API 处理流式响应
       const response = await fetch(
