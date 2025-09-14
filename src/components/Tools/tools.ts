@@ -773,6 +773,15 @@ export function getToolsCate() {
           url: '/company-compare/',
           cateId: 7,
           cate: '其他工具',
+        },
+        {
+          id: 1,
+          title: '最低工资标准查询',
+          logo: '/images/logo/minimum_wage.png',
+          desc: '全国各省市最低工资标准查询，提供最新的月最低工资和小时最低工资标准数据',
+          url: '/minimum-wage/',
+          cateId: 7,
+          cate: '其他工具',
         }
       ]
     },

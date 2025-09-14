@@ -909,4 +909,14 @@ export const constantRoute = [
       description: '公司待遇对比工具，支持多维度对比公司薪资、福利、工作时间、加班情况等信息，帮助求职者做出更好的选择',
     }
   },
+  {
+    path: '/minimum-wage',
+    component: () => import('@/components/Tools/MinimumWage/MinimumWage.vue'),
+    name: 'minimum-wage',
+    meta: {
+      title: "最低工资标准查询",
+      keywords: '最低工资标准,最低工资查询,工资标准,劳动法,工资保障,各省最低工资',
+      description: '全国各省市最低工资标准查询工具，提供最新的月最低工资标准和小时最低工资标准数据，支持按地区搜索',
+    }
+  },
 ]
