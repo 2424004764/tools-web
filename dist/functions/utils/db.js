@@ -451,3 +451,297 @@ export function initDatabase(env) {
     db: env.DB
   }
 }
+
+// QA 模型 - QA问答页面模型
+export class QAModel extends Model {
+  constructor(db) {
+    super(db)
+    this.config = {
+      tableName: 'qa_pages',
+      fields: {
+        id: { type: 'string', primaryKey: true },
+        uid: { type: 'string' }, // 用户ID
+        title: { type: 'string' }, // QA页面标题
+        qaItems: { type: 'json', dbField: 'qa_items' }, // 问答对列表，JSON格式存储
+        headerContent: { type: 'text', dbField: 'header_content' }, // 头部自定义内容
+        footerContent: { type: 'text', dbField: 'footer_content' }, // 尾部自定义内容
+        isPublic: { type: 'boolean', dbField: 'is_public' }, // 是否公开
+        createTime: { type: 'datetime', dbField: 'create_time' },
+        updateTime: { type: 'datetime', dbField: 'update_time' }
+      }
+    }
+  }
+
+  // 生成UUID
+  generateId() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0
+      const v = c === 'x' ? r : (r & 0x3 | 0x8)
+      return v.toString(16)
+    })
+  }
+
+  // 重写create方法以处理JSON数据
+  async create(data) {
+    try {
+      const id = this.generateId()
+      const now = new Date().toISOString()
+      
+      // 处理qaItems JSON序列化
+      const qaItemsJson = data.qaItems ? JSON.stringify(data.qaItems) : '[]'
+      
+      const insertData = {
+        id,
+        uid: data.uid,
+        title: data.title,
+        qa_items: qaItemsJson,
+        header_content: data.headerContent || '',
+        footer_content: data.footerContent || '',
+        is_public: data.isPublic ? 1 : 0,
+        create_time: now,
+        update_time: now
+      }
+
+      const fields = Object.keys(insertData)
+      const placeholders = fields.map(() => '?').join(', ')
+      const values = fields.map(field => insertData[field])
+
+      const sql = `INSERT INTO ${this.config.tableName} (${fields.join(', ')}) VALUES (${placeholders})`
+      
+      await this.db.prepare(sql).bind(...values).run()
+      
+      return { success: true, id }
+    } catch (error) {
+      console.error('QAModel create error:', error)
+      return { success: false, error: error.message }
+    }
+  }
+
+  // 重写update方法以处理JSON数据
+  async update(id, data) {
+    try {
+      console.log('QAModel update called with:', { id, data })
+      
+      const now = new Date().toISOString()
+      
+      // 处理qaItems JSON序列化
+      const qaItemsJson = data.qaItems ? JSON.stringify(data.qaItems) : '[]'
+      console.log('Serialized qaItems:', qaItemsJson)
+      
+      const updateFields = []
+      const values = []
+      
+      if (data.title !== undefined) {
+        updateFields.push('title = ?')
+        values.push(data.title)
+      }
+      
+      if (data.qaItems !== undefined) {
+        updateFields.push('qa_items = ?')
+        values.push(qaItemsJson)
+      }
+      
+      if (data.headerContent !== undefined) {
+        updateFields.push('header_content = ?')
+        values.push(data.headerContent)
+      }
+      
+      if (data.footerContent !== undefined) {
+        updateFields.push('footer_content = ?')
+        values.push(data.footerContent)
+      }
+      
+      if (data.isPublic !== undefined) {
+        updateFields.push('is_public = ?')
+        values.push(data.isPublic ? 1 : 0)
+      }
+      
+      updateFields.push('update_time = ?')
+      values.push(now)
+      values.push(id)
+
+      const sql = `UPDATE ${this.config.tableName} SET ${updateFields.join(', ')} WHERE id = ?`
+      console.log('Update SQL:', sql)
+      console.log('Update values:', values)
+      
+      const result = await this.db.prepare(sql).bind(...values).run()
+      console.log('Update result:', result)
+      
+      // 修复：检查正确的changes字段
+      const changes = result.meta?.changes ?? result.changes ?? 0
+      console.log('Changes count:', changes)
+      
+      return changes > 0
+    } catch (error) {
+      console.error('QAModel update error:', error)
+      return false
+    }
+  }
+
+  // 重写findById方法以处理JSON数据反序列化
+  async findById(id) {
+    try {
+      const sql = `SELECT * FROM ${this.config.tableName} WHERE id = ?`
+      const result = await this.db.prepare(sql).bind(id).first()
+      
+      if (!result) {
+        return null
+      }
+
+      // 反序列化JSON数据，添加错误处理
+      let qaItems = []
+      try {
+        if (result.qa_items && typeof result.qa_items === 'string') {
+          qaItems = JSON.parse(result.qa_items)
+        } else if (Array.isArray(result.qa_items)) {
+          qaItems = result.qa_items
+        }
+      } catch (error) {
+        console.error('Error parsing qa_items:', error, 'Raw data:', result.qa_items)
+        qaItems = []
+      }
+      
+      return {
+        id: result.id,
+        uid: result.uid,
+        title: result.title,
+        qaItems: qaItems,
+        headerContent: result.header_content || '',
+        footerContent: result.footer_content || '',
+        isPublic: Boolean(result.is_public),
+        createTime: result.create_time,
+        updateTime: result.update_time
+      }
+    } catch (error) {
+      console.error('QAModel findById error:', error)
+      return null
+    }
+  }
+
+  // 重写find方法以处理JSON数据反序列化
+  async find(queryBuilder) {
+    try {
+      const { sql: whereSql, params: whereParams } = queryBuilder.buildWhere(this)
+      const { sql: orderSql } = queryBuilder.buildOrderBy()
+      const { sql: limitSql, params: limitParams } = queryBuilder.buildLimit()
+      
+      let sql = `SELECT * FROM ${this.config.tableName}`
+      let params = []
+      
+      if (whereSql) {
+        sql += ` WHERE ${whereSql}`
+        params = [...whereParams]
+      }
+      
+      if (orderSql) {
+        sql += ` ${orderSql}`
+      }
+      
+      if (limitSql) {
+        sql += ` ${limitSql}`
+        params = [...params, ...limitParams]
+      }
+      
+      const results = await this.db.prepare(sql).bind(...params).all()
+      console.log('Raw database results:', results)
+      
+      return results.map(result => {
+        console.log('Processing result:', result)
+        console.log('qa_items type:', typeof result.qa_items)
+        console.log('qa_items value:', result.qa_items)
+        
+        // 反序列化JSON数据，添加错误处理
+        let qaItems = []
+        try {
+          if (result.qa_items && typeof result.qa_items === 'string') {
+            qaItems = JSON.parse(result.qa_items)
+            console.log('Parsed qaItems:', qaItems)
+          } else if (Array.isArray(result.qa_items)) {
+            qaItems = result.qa_items
+            console.log('Using existing array:', qaItems)
+          }
+        } catch (error) {
+          console.error('Error parsing qa_items:', error, 'Raw data:', result.qa_items)
+          qaItems = []
+        }
+        
+        const finalResult = {
+          id: result.id,
+          uid: result.uid,
+          title: result.title,
+          qaItems: qaItems,
+          headerContent: result.header_content || '',
+          footerContent: result.footer_content || '',
+          isPublic: Boolean(result.is_public),
+          createTime: result.create_time,
+          updateTime: result.update_time
+        }
+        
+        console.log('Final result:', finalResult)
+        return finalResult
+      })
+    } catch (error) {
+      console.error('QAModel find error:', error)
+      return []
+    }
+  }
+
+  // 重写findAll方法以处理JSON数据反序列化
+  async findAll(queryBuilder) {
+    let sql = `SELECT * FROM ${this.config.tableName}`
+    let params = []
+    
+    if (queryBuilder) {
+      const whereClause = queryBuilder.buildWhere(this)
+      sql += whereClause.sql
+      params = whereClause.params
+      
+      sql += queryBuilder.buildOrderBy(this)
+      sql += queryBuilder.buildLimit()
+    }
+    
+    const results = await this.db.prepare(sql).bind(...params).all()
+    console.log('findAll results:', results)
+    console.log('results type:', typeof results)
+    console.log('results is array:', Array.isArray(results))
+    
+    // 确保results是数组
+    const resultsArray = Array.isArray(results) ? results : (results.results || [])
+    
+    return resultsArray.map(result => {
+      console.log('Processing result:', result)
+      console.log('qa_items type:', typeof result.qa_items)
+      console.log('qa_items value:', result.qa_items)
+      
+      // 反序列化JSON数据，添加错误处理
+      let qaItems = []
+      try {
+        if (result.qa_items && typeof result.qa_items === 'string') {
+          qaItems = JSON.parse(result.qa_items)
+          console.log('Parsed qaItems:', qaItems)
+        } else if (Array.isArray(result.qa_items)) {
+          qaItems = result.qa_items
+          console.log('Using existing array:', qaItems)
+        }
+      } catch (error) {
+        console.error('Error parsing qa_items:', error, 'Raw data:', result.qa_items)
+        qaItems = []
+      }
+      
+      const finalResult = {
+        id: result.id,
+        uid: result.uid,
+        title: result.title,
+        qaItems: qaItems,
+        headerContent: result.header_content || '',
+        footerContent: result.footer_content || '',
+        isPublic: Boolean(result.is_public),
+        createTime: result.create_time,
+        updateTime: result.update_time
+      }
+      
+      console.log('Final result:', finalResult)
+      return finalResult
+    })
+  }
+}

@@ -929,4 +929,24 @@ export const constantRoute = [
       description: '各种国家机构、公共服务、紧急救援等常用电话号码查询服务，支持搜索、复制和直接拨打功能',
     }
   },
+  {
+    path: '/qa',
+    component: () => import('@/components/Tools/QA/QA.vue'),
+    name: 'qa',
+    meta: {
+      title: "QA问答页面制作",
+      keywords: 'QA页面,问答页面,页面制作,自定义页面,公开链接',
+      description: '创建个性化的QA问答页面，支持自定义头部和尾部内容，可生成公开链接供他人访问',
+    }
+  },
+  {
+    path: '/qa-view/:id',
+    component: () => import('@/components/Tools/QAView/QAView.vue'),
+    name: 'qa-view',
+    meta: {
+      title: "QA页面查看",
+      keywords: 'QA页面查看,问答页面,公开页面',
+      description: '查看公开的QA问答页面',
+    }
+  },
 ]

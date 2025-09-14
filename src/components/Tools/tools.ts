@@ -791,7 +791,7 @@ export function getToolsCate() {
           url: '/phone-directory/',
           cateId: 7,
           cate: '其他工具',
-        }
+        },
       ]
     },
     {
