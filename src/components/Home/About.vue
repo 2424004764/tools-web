@@ -18,7 +18,7 @@ const siteAddr = ref(import.meta.env.VITE_MY_SITE_ADDR || '')
       <p>
         <el-text>主要基于Vite + Vue + ElementPlus + Typescript + TailwindCss + Cloudflare Functions开发，某些工具使用了第三方开源库，您可以在仓库的 <el-link :href="gitUrl + '/blob/master/package.json'" target="_blank" type="primary">package.json</el-link> 文件中找到完整的列表。</el-text>
       </p>
-        <p>
+        <div>
           本站用到的免费AI：
             <ul class="list-disc list-inside ml-4">
               <li>
@@ -28,7 +28,7 @@ const siteAddr = ref(import.meta.env.VITE_MY_SITE_ADDR || '')
                 <el-link href="https://platform.aitools.cfd/" target="_blank" type="primary">platform.aitools.cfd</el-link>
               </li>
             </ul>
-        </p>
+        </div>
       <h1 class="text-2xl font-bold mt-6 mb-6">发现了 Bug？</h1>
       <p>
         <el-text>如果您发现了 Bug，或者某些功能未能按预期工作，请在 GitHub 仓库的 <el-link type="primary" target="_blank" :href="gitUrl + '/issues/new'" class="">issues</el-link> 中提交错误报告。</el-text>

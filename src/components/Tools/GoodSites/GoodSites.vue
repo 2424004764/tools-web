@@ -56,13 +56,13 @@ const cates: Cate[] = [
     ],
   },
   {
-    title: '更多分类',
+    title: '免费资源',
     list: [
       { 
-        title: '待添加', 
-        url: '#', 
-        rating: 0, 
-        desc: '更多优质网站正在收集中...' 
+        title: 'FMHY', 
+        url: 'https://fmhy.net/', 
+        rating: 4.9, 
+        desc: '互联网上最大的免费资源集合！提供流媒体、下载、种子、游戏、阅读、教育等各类免费内容导航，涵盖广告拦截、AI工具、Android/iOS应用、Linux/macOS软件等丰富分类，是寻找免费资源的首选平台' 
       },
     ],
   },
