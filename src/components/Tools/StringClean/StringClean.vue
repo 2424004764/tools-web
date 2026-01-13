@@ -110,18 +110,20 @@ const modeOptions = [
         :key="mode.value"
         @click="selectedMode = mode.value"
         :class="[
-          'relative overflow-hidden rounded-xl p-4 cursor-pointer transition-all duration-300',
-          'border-2 shadow-lg hover:shadow-xl hover:scale-105',
+          'relative overflow-hidden rounded-xl p-4 cursor-pointer',
+          'border-2 shadow-lg',
           selectedMode === mode.value
             ? `bg-gradient-to-br ${mode.color} border-white shadow-2xl`
-            : 'bg-white border-gray-200 hover:border-gray-300'
+            : 'bg-white border-gray-200 hover:shadow-xl hover:scale-105 hover:border-gray-300'
         ]"
       >
         <!-- 选中状态的光晕效果 -->
-        <div
-          v-if="selectedMode === mode.value"
-          class="absolute inset-0 bg-white opacity-10 animate-pulse"
-        ></div>
+        <transition name="pulse-fade">
+          <div
+            v-show="selectedMode === mode.value"
+            class="absolute inset-0 bg-white opacity-10"
+          ></div>
+        </transition>
 
         <div class="relative">
           <div class="flex items-center mb-2">
@@ -427,6 +429,20 @@ const modeOptions = [
   opacity: 0;
 }
 
+/* 脉冲淡入动画 - 用于光晕效果 */
+.pulse-fade-enter-active {
+  transition: opacity 0.5s ease;
+}
+
+.pulse-fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.pulse-fade-enter-from,
+.pulse-fade-leave-to {
+  opacity: 0;
+}
+
 /* 滑入动画 */
 .slide-up-enter-active {
   transition: all 0.5s ease;
@@ -444,20 +460,5 @@ const modeOptions = [
 .slide-up-leave-to {
   opacity: 0;
   transform: translateY(-20px);
-}
-
-/* 脉冲动画 */
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-.animate-pulse {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 </style>
