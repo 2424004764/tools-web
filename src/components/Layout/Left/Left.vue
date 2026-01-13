@@ -92,6 +92,11 @@ const updateActive = async () => {
     const q = route.query?.value as any;
     const anchor = Array.isArray(q) ? q[0] : q;
     defaultActive.value = typeof anchor === "string" ? anchor : "";
+
+    // 如果在首页且没有选中锚点，默认选中第一个分类
+    if (!defaultActive.value && toolsStore.cates.length > 0) {
+      defaultActive.value = `cate_${toolsStore.cates[0].id}`;
+    }
     return;
   }
 
@@ -99,12 +104,12 @@ const updateActive = async () => {
     defaultActive.value = "";
     return;
   }
-  
+
   await nextTick();
 
   // 重置为空
   defaultActive.value = "";
-  
+
   // 精确匹配工具路径
   for (const cate of toolsStore.cates) {
     for (const tool of cate.list || []) {
