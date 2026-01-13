@@ -8,8 +8,8 @@ import {seoperender} from "./ssr.config";
 export default defineConfig(({command, mode}) => {
   let env = loadEnv(mode, process.cwd())
   return {
-    define: {  
-      'process.env.NODE_ENV': JSON.stringify('production')  
+    define: {
+      'process.env.NODE_ENV': JSON.stringify('production')
     },
     plugins: [
       vue(),
