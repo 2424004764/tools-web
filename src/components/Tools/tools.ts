@@ -260,6 +260,15 @@ export function getToolsCate() {
         },
         {
           id: 1,
+          title: '字符串去空格',
+          logo: '/images/logo/string_clean.png',
+          desc: '支持去除所有空格、去除首尾空格、去除多余空格、去除空行等多种模式',
+          url: '/stringclean/',
+          cateId: 3,
+          cate: '文本处理',
+        },
+        {
+          id: 1,
           title: 'ASCII字形生成器',
           logo: '/images/logo/ascii_word_pic.png',
           desc: '在线生成字形ASCII画',

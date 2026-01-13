@@ -32,6 +32,7 @@
   <url><loc>https://tool.fologde.com/random</loc><changefreq>monthly</changefreq><priority>0.4</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/numbertochinese</loc><changefreq>monthly</changefreq><priority>0.4</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/diff</loc><changefreq>weekly</changefreq><priority>0.5</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
+  <url><loc>https://tool.fologde.com/stringclean</loc><changefreq>monthly</changefreq><priority>0.5</priority><lastmod>2025-01-13T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/markdown</loc><changefreq>weekly</changefreq><priority>0.5</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/texttoimg</loc><changefreq>weekly</changefreq><priority>0.5</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/webinfo</loc><changefreq>monthly</changefreq><priority>0.4</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
