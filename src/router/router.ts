@@ -283,6 +283,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/stringclean',
+    component: () => import('@/components/Tools/StringClean/StringClean.vue'),
+    name: 'stringclean',
+    meta: {
+      title: "字符串去空格",
+      keywords: '字符串去空格,删除空格,去除空格,清理空格,空格处理,文本去空格,去除多余空格,去除首尾空格',
+      description: '在线字符串去空格工具，支持去除所有空格、去除首尾空格、去除多余空格、去除空行等多种模式，实时预览处理结果，提供详细的字符统计信息',
+    }
+  },
+  {
     path: '/markdown',
     component: () => import('@/components/Tools/Markdown/Markdown.vue'),
     name: 'markdown',
