@@ -24,6 +24,14 @@ const scrollToAnchor = async () => {
   const v = route.query?.value as any
   const anchor = Array.isArray(v) ? v[0] : v
   if (typeof anchor !== 'string' || !anchor) return
+
+  // 如果是滚动触发的路由更新，不执行 scrollIntoView，避免循环
+  if (isScrollTriggeredUpdate.value) return
+
+  // 暂时禁用滚动监听，避免循环触发
+  const wasActive = isScrollListenerActive.value
+  isScrollListenerActive.value = false
+
   await nextTick()
   requestAnimationFrame(() => {
     document?.getElementById(anchor)?.scrollIntoView({
@@ -31,15 +39,28 @@ const scrollToAnchor = async () => {
       block: 'start',
       inline: 'start',
     })
+
+    // 滚动完成后，延迟恢复滚动监听
+    setTimeout(() => {
+      if (wasActive) {
+        isScrollListenerActive.value = true
+      }
+    }, 1000)
   })
 }
 
 // 滚动监听相关
 const isScrollListenerActive = ref(false)
+// 用户手动点击分类后，暂时禁用滚动监听（避免冲突）
+const isUserClickingCategory = ref(false)
+// 标记是否是滚动触发的路由更新（避免循环）
+const isScrollTriggeredUpdate = ref(false)
 
 // 滚动监听函数
 const handleScroll = () => {
   if (!isScrollListenerActive.value) return
+  // 如果用户正在点击分类，暂时跳过滚动监听
+  if (isUserClickingCategory.value) return
   
   const categories = toolsStore.cates
   if (categories.length === 0) return
@@ -65,16 +86,23 @@ const handleScroll = () => {
     }
   }
   
-  // 更新活跃分类和URL
+  // 更新活跃分类和URL（添加防抖，避免频繁更新路由）
   if (activeCategory && activeCategory !== componentStore.activeCategory) {
     componentStore.setActiveCategory(activeCategory)
     // 同步更新URL地址栏
     const currentValue = route.query?.value as string
     if (currentValue !== activeCategory) {
+      // 标记这是滚动触发的更新
+      isScrollTriggeredUpdate.value = true
+      // 使用 replace 避免添加历史记录
       router.replace({
         path: "/",
         query: { value: activeCategory }
       })
+      // 更新后重置标志
+      setTimeout(() => {
+        isScrollTriggeredUpdate.value = false
+      }, 100)
     }
   }
 }
@@ -93,6 +121,14 @@ const throttledHandleScroll = () => {
 const gotoAnchor = async (anchor: string) => {
   const q = route.query?.value as any
   const current = Array.isArray(q) ? q[0] : q
+
+  // 标记用户正在点击分类，暂时禁用滚动监听
+  isUserClickingCategory.value = true
+
+  // 1秒后恢复滚动监听
+  setTimeout(() => {
+    isUserClickingCategory.value = false
+  }, 1000)
 
   if (route.path === "/") {
     if (current === anchor) {
@@ -118,17 +154,21 @@ const gotoAnchor = async (anchor: string) => {
 
 onMounted(async () => {
   await nextTick()
+
+  // 只在有明确的 query.value 时才滚动到锚点
   if (route.query && route.query.value) {
     scrollToAnchor()
-  } else {
-    document?.querySelector('#collect')?.scrollIntoView()
   }
-  
-  // 只在首页激活滚动监听
-  if (route.path === '/') {
-    isScrollListenerActive.value = true
-    window.addEventListener('scroll', throttledHandleScroll)
-  }
+  // 移除自动滚动到 #collect 的逻辑，避免页面一加载就滚动
+
+  // 延迟激活滚动监听，给用户一些时间
+  setTimeout(() => {
+    // 只在首页激活滚动监听
+    if (route.path === '/') {
+      isScrollListenerActive.value = true
+      window.addEventListener('scroll', throttledHandleScroll)
+    }
+  }, 500) // 延迟500ms
 })
 
 onUnmounted(() => {

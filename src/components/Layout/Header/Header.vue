@@ -170,7 +170,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <header class="h-24 w-full flex justify-between pt-2 pb-2 c-xs:h-16 c-xs:border-b-[1px] border-warm-200 items-center">
+  <header class="h-24 w-full flex justify-between pt-2 pb-2 c-xs:h-16 c-xs:border-b-[1px] border-warm-200 items-center c-xs:fixed c-xs:top-0 c-xs:left-0 c-xs:right-0 c-xs:z-50 c-xs:bg-white">
     <div class="flex items-center w-full">
       <Transition name="fold" class="hidden c-sm:block c-md:hidden c-xs:block">
         <svg v-if="!componentStore.leftComDrawer" @click="componentStore.setleftComDrawerStatus(true)" t="1702978210636" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="7618" width="30" height="30">

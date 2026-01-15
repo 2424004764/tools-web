@@ -18,6 +18,8 @@ const defaultOpeneds = ["cate"];
 const toolsStore = useToolsStore();
 const componentStore = useComponentStore();
 const menuReady = ref(false);
+// 标记是否已经初始化过默认分类
+const hasInitializedDefaultCategory = ref(false);
 
 // 计算当前活跃分类
 const computedActiveCategory = computed(() => {
@@ -91,12 +93,18 @@ const updateActive = async () => {
   if (path === "/") {
     const q = route.query?.value as any;
     const anchor = Array.isArray(q) ? q[0] : q;
-    defaultActive.value = typeof anchor === "string" ? anchor : "";
 
-    // 如果在首页且没有选中锚点，默认选中第一个分类
-    if (!defaultActive.value && toolsStore.cates.length > 0) {
-      defaultActive.value = `cate_${toolsStore.cates[0].id}`;
+    // 如果有明确的query.value，使用它
+    if (typeof anchor === "string" && anchor) {
+      defaultActive.value = anchor;
+      hasInitializedDefaultCategory.value = true;
     }
+    // 如果没有query.value，使用默认的第一个分类
+    else if (!defaultActive.value && toolsStore.cates.length > 0) {
+      defaultActive.value = `cate_${toolsStore.cates[0].id}`;
+      hasInitializedDefaultCategory.value = true;
+    }
+
     return;
   }
 
