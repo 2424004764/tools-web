@@ -293,7 +293,8 @@ A: 当然可以，随时欢迎提交 `PR`
 Q：有问题怎么反馈呢？
 
 A：可以提issue，或者加入微信群，如果群满或者二维码链接过期，则联系开发者，微信：yifang_self，微信群二维码：
-![bca9312cd24dc2333248bc8326ae37cf](https://github.com/user-attachments/assets/7cba19dd-eba6-4458-aef3-e8169ef4fc45)
+<img src="https://github.com/user-attachments/assets/7cba19dd-eba6-4458-aef3-e8169ef4fc45" width="300">
+
 
 
 
