@@ -23,6 +23,12 @@ const info = reactive({
   cahrSign: '~!@#$%^&*()_+',
 })
 
+// 将生成的密码分割成数组
+const passwordList = computed(() => {
+  if (!info.resStr) return []
+  return info.resStr.split('\n').filter(p => p.trim())
+})
+
 //生成密码
 const gen = () => {
   //包含字符验证
@@ -54,7 +60,7 @@ const gen = () => {
     })
     return
   }
-  
+
   //清空旧数据
   info.resStr = ''
 
@@ -70,19 +76,19 @@ const gen = () => {
 
 const changeCheckBox = (val: any, type: number) => {
   switch(type) {
-    case 0: 
+    case 0:
       //设置数字字符
       setChar(val, /\d+/g, info.charNum)
       break;
-    case 1: 
+    case 1:
       //设置小写字母字符
       setChar(val, /[a-z]/g, info.charLower)
       break;
-    case 2: 
+    case 2:
       //设置大写字母字符
       setChar(val, /[A-Z]/g, info.charUpper)
       break;
-    case 3: 
+    case 3:
       //设置特殊符号字符
       setChar(val, /[~!@#$%^&*()_+]/g, info.cahrSign)
       break;
@@ -103,9 +109,16 @@ const setChar = (val: boolean, reg: RegExp, charType: string) => {
     }
 }
 
+//复制单条密码
+const copySingle = async (password: string) => {
+  await copy(password)
+  ElMessage.success('已复制')
+}
+
 //copy
 const copyRes = async (resStr: string) => {
-  copy(resStr)
+  await copy(resStr)
+  ElMessage.success('已复制全部密码')
 }
 
 const strength = computed(() => {
@@ -169,14 +182,50 @@ onMounted(() => {
           <el-progress :percentage="strength.percent" :color="strength.color" :stroke-width="8" />
         </div>
       </div>
-      <div class="mt-3 mb-3">
-        <el-button type="primary" @click="gen">生成密码</el-button>
-        <el-button type="primary" @click="copyRes(info.resStr)">复制全部</el-button>
+      <div class="mt-3 mb-3 flex flex-wrap gap-2">
+        <el-button type="primary" @click="gen" class="flex-1 c-xs:w-auto">生成密码</el-button>
+        <el-button
+          v-if="passwordList.length > 0"
+          @click="copyRes(info.resStr)"
+          plain
+          class="flex-1 c-xs:w-auto"
+        >
+          复制全部
+        </el-button>
       </div>
-      <!-- res -->
-      <div>
-        <el-input type="textarea" :autosize="info.autosize" v-model="info.resStr"></el-input>
+
+      <!-- 密码列表 -->
+      <div v-if="passwordList.length > 0" class="space-y-2">
+        <div
+          v-for="(password, index) in passwordList"
+          :key="index"
+          class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 hover:border-warm-400 hover:bg-warm-50 transition-all"
+        >
+          <!-- 序号和密码 -->
+          <div class="flex items-center gap-3 flex-1 min-w-0">
+            <span class="text-warm-700 font-semibold text-sm flex-shrink-0">{{ index + 1 }}</span>
+            <el-text
+              class="font-mono text-base break-all flex-1"
+              style="word-break: break-all;"
+            >
+              {{ password }}
+            </el-text>
+          </div>
+
+          <!-- 复制按钮 -->
+          <el-button
+            type="primary"
+            size="small"
+            @click="copySingle(password)"
+            class="ml-2 flex-shrink-0"
+          >
+            复制
+          </el-button>
+        </div>
       </div>
+
+      <!-- 原始结果（隐藏，用于保留功能） -->
+      <el-input v-model="info.resStr" type="hidden" />
     </div>
 
     <!-- desc -->

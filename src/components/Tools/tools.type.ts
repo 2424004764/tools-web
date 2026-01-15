@@ -11,7 +11,8 @@ export interface ToolsInfo {
   logo: string,
   desc: string,
   url: string,
-  cate: string
+  cate: string,
+  cateId?: number
 }
 
 //tools cate
