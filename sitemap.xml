@@ -70,8 +70,8 @@
   <url><loc>https://tool.fologde.com/imagetobase64</loc><changefreq>monthly</changefreq><priority>0.4</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/textedit</loc><changefreq>monthly</changefreq><priority>0.5</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/cookie</loc><changefreq>monthly</changefreq><priority>0.5</priority><lastmod>2025-01-26T00:00:00+00:00</lastmod></url>
-
-  <!-- AI 工具 -->
+  <url><loc>https://tool.fologde.com/base64</loc><changefreq>monthly</changefreq><priority>0.6</priority><lastmod>2025-01-13T00:00:00+00:00</lastmod></url>
+  <url><loc>https://tool.fologde.com/mysql-to-go</loc><changefreq>monthly</changefreq><priority>0.6</priority><lastmod>2025-09-06T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/ai-text-to-image</loc><changefreq>weekly</changefreq><priority>0.7</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/aihub</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/ai-variable-name</loc><changefreq>weekly</changefreq><priority>0.8</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>

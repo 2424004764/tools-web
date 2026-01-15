@@ -46,7 +46,7 @@ const isQAViewPage = computed(() => {
       <el-header v-if="!isQAViewPage">
         <Header />
       </el-header>
-      <el-main>
+      <el-main class="c-xs:pt-16">
         <router-view v-slot="{ Component, route }">
           <transition name="fade" mode="out-in">
             <component :is="Component" :key="route.path"></component>
@@ -79,5 +79,17 @@ const isQAViewPage = computed(() => {
 
 .fade-leave-active {
   transition: opacity 0.1s ease-in;
+}
+
+/* 手机端header固定后，el-header不占据空间 */
+@media (max-width: 640px) {
+  .el-container > .el-header {
+    display: contents;
+  }
+
+  /* 给el-main添加顶部padding，避免被固定的header遮挡 */
+  .el-container > .el-main {
+    padding-top: 64px !important;
+  }
 }
 </style>

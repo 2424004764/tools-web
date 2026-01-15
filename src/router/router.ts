@@ -6,8 +6,8 @@ export const constantRoute = [
     component: () => import('@/components/Home/Home.vue'),
     name: 'home',
     meta: {
-      keywords: '在线工具,开发运维,文本处理,图片处理,数据图表,趣味互动,选择随机,教育学术,AI工具,好物网站,JSON转换,CSV,TSV,随机密码,UUID,时间戳转换,进制转换,单位换算,URL编码,URL参数,正则测试,Markdown,文本对比,文本去重,哈希,HMAC,文件大小转换,HTTP状态码,JWT解析,Cron生成,HTML实体,二维码生成,二维码识别,图片编辑,图片分割,图片转Base64,文本转图片,色板,取色器,柱状图,折线图,饼图,散点图,摩斯电码,贪吃蛇,2048,俄罗斯方块,扫雷,打地鼠,数字华容道,数独,IP查询,网站信息,AI起名,AI变量名,文生图,AI翻译,Postman',
-      description: '一站式在线工具箱：覆盖开发运维、文本处理、图片处理、数据图表、趣味互动、选择随机、教育学术与 AI 工具；提供 JSON/CSV/TSV 互转、随机密码/UUID、时间戳与进制转换、单位换算、URL 编解码/参数解析、正则测试、Markdown、文本对比/去重、哈希校验、文件大小转换、HTTP 状态码、JWT 解析、Cron 表达式、HTML 实体、二维码生成与识别、在线图片编辑/分割/转 Base64、文本转图片、色板取色器、柱状/折线/饼/散点图、摩斯电码，以及贪吃蛇/2048/俄罗斯方块/扫雷/打地鼠/数字华容道/数独等小游戏，另含 IP 查询、网站信息获取、AI 起名/变量名/文生图/翻译与在线请求调试等实用功能。'
+      keywords: '在线工具,开发运维,文本处理,图片处理,数据图表,趣味互动,选择随机,教育学术,AI工具,好物网站,JSON转换,CSV,TSV,随机密码,UUID,时间戳转换,进制转换,单位换算,URL编码,URL参数,正则测试,Markdown,文本对比,文本去重,哈希,HMAC,Base64,Base64编码,Base64解码,文件大小转换,HTTP状态码,JWT解析,Cron生成,HTML实体,二维码生成,二维码识别,图片编辑,图片分割,图片转Base64,Base64转图片,文本转图片,色板,取色器,柱状图,折线图,饼图,散点图,摩斯电码,贪吃蛇,2048,俄罗斯方块,扫雷,打地鼠,数字华容道,数独,IP查询,网站信息,AI起名,AI变量名,文生图,AI翻译,Postman',
+      description: '一站式在线工具箱：覆盖开发运维、文本处理、图片处理、数据图表、趣味互动、选择随机、教育学术与 AI 工具；提供 JSON/CSV/TSV 互转、随机密码/UUID、时间戳与进制转换、单位换算、URL 编解码/参数解析、正则测试、Markdown、文本对比/去重、Base64 编解码、哈希校验、文件大小转换、HTTP 状态码、JWT 解析、Cron 表达式、HTML 实体、二维码生成与识别、在线图片编辑/分割、图片与 Base64 双向互转、文本转图片、色板取色器、柱状/折线/饼/散点图、摩斯电码，以及贪吃蛇/2048/俄罗斯方块/扫雷/打地鼠/数字华容道/数独等小游戏，另含 IP 查询、网站信息获取、AI 起名/变量名/文生图/翻译与在线请求调试等实用功能。'
     }
   },
   // 用户信息页
@@ -468,8 +468,8 @@ export const constantRoute = [
     name: 'imageToBase64',
     meta: {
       title: "图片转Base64",
-      keywords: '图片转base64,图片编码,base64编码,图片转码',
-      description: '将图片文件转换为Base64编码，支持拖拽上传和点击上传，方便在网页中使用图片',
+      keywords: '图片转base64,图片编码,base64转图片,图片解码,base64互转,图片base64转换',
+      description: '图片与Base64双向互转工具，支持图片转Base64编码和Base64转图片，支持JPG、PNG、GIF、WebP、SVG等格式，可预览和下载',
     }
   },
   // {
@@ -897,6 +897,16 @@ export const constantRoute = [
       title: "MySQL转Go结构体",
       keywords: 'MySQL转Go,DDL转结构体,Go结构体生成,数据库转代码,MySQL代码生成',
       description: '将MySQL数据表字段转换为Go语言结构体，支持字段类型映射、标签生成和命名规范转换',
+    }
+  },
+  {
+    path: '/base64',
+    component: () => import('@/components/Tools/Base64/Base64.vue'),
+    name: 'base64',
+    meta: {
+      title: "Base64编码/解码",
+      keywords: 'Base64,Base64编码,Base64解码,文本转Base64,Base64转换,在线Base64',
+      description: '在线Base64编码解码工具，支持文本的Base64编码与解码，双向实时转换，支持中文',
     }
   },
   {

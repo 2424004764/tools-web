@@ -208,6 +208,15 @@ export function getToolsCate() {
         },
         {
           id: 1,
+          title: 'Base64编码/解码',
+          logo: '/images/logo/base64.png',
+          desc: '文本的Base64编码与解码，双向实时转换，支持中文',
+          url: '/base64/',
+          cateId: 2,
+          cate: '开发运维',
+        },
+        {
+          id: 1,
           title: 'MySQL转Go结构体',
           logo: '/images/logo/mysql_to_go.png',
           desc: '将MySQL数据表字段转换为Go语言结构体，支持字段类型映射、标签生成和命名规范转换',
@@ -481,9 +490,9 @@ export function getToolsCate() {
         },
         {
           id: 1,
-          title: '图片转Base64',
+          title: '图片、Base64互转',
           logo: '/images/logo/img.png',
-          desc: '将图片文件转换为Base64编码，支持拖拽上传和点击上传',
+          desc: '图片与Base64双向互转，支持图片转Base64编码和Base64转图片',
           url: '/imagetobase64/',
           cateId: 5,
           cate: '图片处理',
