@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive } from 'vue'
+import { reactive, watch } from 'vue'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { Md5 } from 'ts-md5'
@@ -15,21 +15,34 @@ const info = reactive({
 
 //加密
 const encrypt = () => {
+  if (!info.encryptStr) {
+    info.encryptUpper32 = ''
+    info.encryptLower32 = ''
+    info.encryptUpper16 = ''
+    info.encryptLower16 = ''
+    return
+  }
   info.encryptLower32 = Md5.hashStr(info.encryptStr)
   info.encryptUpper32 = info.encryptLower32.toUpperCase()
   info.encryptUpper16 = info.encryptUpper32.substring(8, 24)
   info.encryptLower16 = info.encryptLower32.substring(8, 24)
 }
 
-//清空输入框
+// 清空输入框
 const clear = () => {
   info.encryptStr = ''
+  encrypt()
 }
 
-//copy
+// copy
 const copyRes = async (resStr: string) => {
   copy(resStr)
 }
+
+// 监听输入变化，自动加密
+watch(() => info.encryptStr, () => {
+  encrypt()
+})
 </script>
 
 <template>
@@ -42,7 +55,6 @@ const copyRes = async (resStr: string) => {
       </div>
       
       <div class="mt-4">
-        <el-button type="primary" @click="encrypt()" >加密</el-button>
         <el-button type="primary" @click="clear()">清空输入框</el-button>
       </div>
 
