@@ -32,3 +32,4 @@ dist-ssr
 *.sw?
 
 public/sitemap.txt
+.claude/settings.local.json
