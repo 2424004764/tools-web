@@ -979,4 +979,14 @@ export const constantRoute = [
       description: '专为闲鱼技能服务设计的海报生成工具，提供多种精美模板，支持自定义文字内容，一键生成高清海报图片'
     }
   },
+  {
+    path: '/land-area',
+    component: () => import('@/components/Tools/LandArea/LandArea.vue'),
+    name: 'land-area',
+    meta: {
+      title: "土地亩数计算器",
+      keywords: '土地面积,亩数计算,亩数换算,面积计算,平方米转亩,公顷换算',
+      description: '在线土地亩数计算器，支持输入土地长宽自动计算亩数，同时提供平方米、公顷、平方千米等多种单位换算'
+    }
+  },
 ]
