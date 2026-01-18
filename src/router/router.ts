@@ -969,4 +969,14 @@ export const constantRoute = [
       description: '查看公开的QA问答页面',
     }
   },
+  {
+    path: '/skill-poster',
+    component: () => import('@/components/Tools/SkillPoster/SkillPoster.vue'),
+    name: 'skill-poster',
+    meta: {
+      title: "闲鱼技能海报生成器",
+      keywords: '闲鱼海报,技能海报,海报生成器,闲鱼技能,海报模板,图片生成',
+      description: '专为闲鱼技能服务设计的海报生成工具，提供多种精美模板，支持自定义文字内容，一键生成高清海报图片'
+    }
+  },
 ]
