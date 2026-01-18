@@ -23,7 +23,7 @@
     // Element Plus全局组件类型声明
     "types": ["element-plus/global"],
     //解析非相对模块的基地址，默认是当前目录
-    "baseUrl": "./",
+    "baseUrl": "./",  
     //路径映射，相对于baseUrl
     "paths": {
       "@/*": ["src/*"]
@@ -31,7 +31,6 @@
     "allowJs": true,
     "noImplicitAny": false,
   },
-  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.ts*", "src/**/*.vue", "src/types/**/*.d.ts"],
-  "exclude": ["node_modules", "dist", "**/node_modules/*", "**/dist/*"],
+  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.ts*", "src/**/*.vue"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
