@@ -1,0 +1,13 @@
+diff --git a/node_modules/qrcode-vue3/src/core/QRCodeStyling.ts b/node_modules/qrcode-vue3/src/core/QRCodeStyling.ts
+index 1111111..2222222 100644
+--- a/node_modules/qrcode-vue3/src/core/QRCodeStyling.ts
++++ b/node_modules/qrcode-vue3/src/core/QRCodeStyling.ts
+@@ -38,7 +38,7 @@ import { QRCode } from "./QRCode";
+ 
+ const loadQRPromise = import("qr-code-styling").then(module => module.default || module);
+ 
+-const qrcodeLib = (loadQRPromise as any).default || loadQRPromise;
++const qrcodeLib: any = (loadQRPromise as any).default || loadQRPromise;
+ 
+ interface ImageDownloadResult {
+   src: string;
