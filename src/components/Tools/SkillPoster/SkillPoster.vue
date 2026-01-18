@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref, watch } from 'vue'
+import { reactive, ref, watch, computed } from 'vue'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import html2canvas from "html2canvas"
@@ -171,7 +171,16 @@ const info = reactive({
     description: 48,
     contact: 24
   },
-  previewScale: 0.42 // 预览缩放比例
+  previewScale: 0.42, // 预览缩放比例
+  watermark: {
+    enabled: false,
+    text: '闲鱼技能服务',
+    size: 24,
+    opacity: 30,
+    density: 5,
+    angle: -30,
+    color: 'rgba(255, 255, 255, 0.3)'
+  }
 })
 
 const poster = ref()
@@ -243,6 +252,53 @@ const animateClick = (event: MouseEvent) => {
     ripple.remove()
   }, 600)
 }
+
+// 水印样式计算
+const watermarkStyle = computed(() => {
+  if (!info.watermark.enabled) return {}
+  return {
+    position: 'absolute' as const,
+    left: '0' as const,
+    top: '0' as const,
+    right: '0' as const,
+    bottom: '0' as const,
+    pointerEvents: 'none' as const,
+    display: 'grid' as const,
+    gridTemplateColumns: `repeat(${info.watermark.density}, 1fr)`,
+    gridTemplateRows: `repeat(${info.watermark.density}, 1fr)`,
+    alignContent: 'center' as const,
+    justifyContent: 'center' as const,
+    overflow: 'hidden' as const,
+    zIndex: 1
+  }
+})
+
+const watermarkItemStyle = computed(() => {
+  if (!info.watermark.enabled) return {}
+  const isLightBg = info.selectedTemplate.style === 'minimal-white'
+  const baseColor = isLightBg ? '0, 0, 0' : '255, 255, 255'
+
+  return {
+    fontSize: info.watermark.size + 'px',
+    color: `rgba(${baseColor}, ${info.watermark.opacity / 100})`,
+    fontWeight: 'normal' as const,
+    padding: '20px' as const,
+    transform: `rotate(${info.watermark.angle}deg)`,
+    whiteSpace: 'nowrap' as const,
+    userSelect: 'none' as const,
+    lineHeight: '1.5' as const,
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const
+  }
+})
+
+// 生成水印内容数组
+const watermarkItems = computed(() => {
+  if (!info.watermark.enabled) return []
+  const totalCount = info.watermark.density * info.watermark.density
+  return Array(totalCount).fill(info.watermark.text || '')
+})
 
 // 生成图片
 const generatePoster = async () => {
@@ -490,6 +546,46 @@ const generatePoster = async () => {
               />
             </div>
 
+            <!-- 水印设置 -->
+            <div class="mt-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-200">
+              <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center">
+                  <svg class="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                  </svg>
+                  <span class="text-base font-bold text-gray-800">水印设置</span>
+                </div>
+                <el-switch v-model="info.watermark.enabled" />
+              </div>
+
+              <div v-if="info.watermark.enabled" class="space-y-3">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">水印文字</label>
+                  <el-input v-model="info.watermark.text" placeholder="请输入水印文字" maxlength="30" />
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">字体大小 ({{ info.watermark.size }}px)</label>
+                    <el-slider v-model="info.watermark.size" :min="12" :max="72" show-input size="small" />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">旋转角度 ({{ info.watermark.angle }}°)</label>
+                    <el-slider v-model="info.watermark.angle" :min="-90" :max="90" show-input size="small" />
+                  </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">透明度 ({{ info.watermark.opacity }}%)</label>
+                    <el-slider v-model="info.watermark.opacity" :min="5" :max="100" show-input size="small" />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">疏密度 ({{ info.watermark.density }}x{{ info.watermark.density }})</label>
+                    <el-slider v-model="info.watermark.density" :min="2" :max="10" show-input size="small" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- 下载按钮 -->
             <el-button
               type="primary"
@@ -509,17 +605,12 @@ const generatePoster = async () => {
         <div class="bg-white rounded-2xl p-4 shadow-sm flex-1">
           <div class="flex items-center justify-between mb-3">
             <h3 class="text-lg font-bold text-gray-800">实时预览</h3>
-            <div class="flex items-center gap-2">
-              <el-text class="text-xs text-gray-500">缩放：{{ (info.previewScale * 100).toFixed(0) }}%</el-text>
-              <el-slider
-                v-model="info.previewScale"
-                :min="0.1"
-                :max="1"
-                :step="0.01"
-                size="small"
-                style="width: 120px"
-              />
-            </div>
+            <el-text class="text-xs text-gray-500">缩放：{{ (info.previewScale * 100).toFixed(0) }}%</el-text>
+          </div>
+
+          <!-- 缩放控制 -->
+          <div class="mb-3">
+            <el-slider v-model="info.previewScale" :min="0.1" :max="1" :step="0.01" show-input size="small" />
           </div>
 
           <!-- 海报预览 -->
@@ -627,6 +718,13 @@ const generatePoster = async () => {
                   >
                     {{ info.footerText }}
                   </div>
+                </div>
+              </div>
+
+              <!-- 水印层 -->
+              <div v-if="info.watermark.enabled" :style="watermarkStyle">
+                <div v-for="(item, index) in watermarkItems" :key="index" :style="watermarkItemStyle">
+                  {{ item }}
                 </div>
               </div>
               </div>
