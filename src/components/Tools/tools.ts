@@ -435,6 +435,15 @@ export function getToolsCate() {
           url: '/algorithm-visualization/',
           cateId: 4,
           cate: '教育学术'
+        },
+        {
+          id: 1,
+          title: '土地亩数计算器',
+          logo: '/images/logo/land_area.png',
+          desc: '在线土地亩数计算器，输入土地长宽自动计算亩数，支持平方米、公顷、平方千米等多种单位换算',
+          url: '/land-area/',
+          cateId: 4,
+          cate: '教育学术'
         }
       ]
     },
