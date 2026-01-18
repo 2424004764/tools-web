@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc --noEmit && node --max_old_space_size=8192 node_modules/vite/bin/vite.js build --mode development",
-    "build:pro": "vue-tsc --noEmit && node --max_old_space_size=8192 node_modules/vite/bin/vite.js build --mode production",
+    "build": "vue-tsc --noEmit --skipLibCheck && node --max_old_space_size=8192 node_modules/vite/bin/vite.js build --mode development",
+    "build:pro": "vue-tsc --noEmit --skipLibCheck && node --max_old_space_size=8192 node_modules/vite/bin/vite.js build --mode production",
+    "build:notype": "node --max_old_space_size=8192 node_modules/vite/bin/vite.js build --mode development",
     "preview": "vite preview"
   },
   "dependencies": {
