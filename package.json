@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc --noEmit --skipLibCheck && node --max_old_space_size=8192 node_modules/vite/bin/vite.js build --mode development",
-    "build:pro": "vue-tsc --noEmit --skipLibCheck && node --max_old_space_size=8192 node_modules/vite/bin/vite.js build --mode production",
-    "build:notype": "node --max_old_space_size=8192 node_modules/vite/bin/vite.js build --mode development",
+    "build": "vue-tsc --noEmit && node --max_old_space_size=8192 node_modules/vite/bin/vite.js build --mode development",
+    "build:pro": "vue-tsc --noEmit && node --max_old_space_size=8192 node_modules/vite/bin/vite.js build --mode production",
+    "postinstall": "patch-package",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -77,6 +77,7 @@
     "autoprefixer": "^10.4.16",
     "fast-glob": "^3.3.2",
     "less": "^4.2.0",
+    "patch-package": "^8.0.0",
     "path": "^0.12.7",
     "pinia": "^2.1.7",
     "tailwindcss": "^3.3.5",
