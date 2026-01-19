@@ -69,7 +69,7 @@ npm install pnpm -g
 
 克隆
 ```
-git clone --depth=1 https://github.com/naroat/tools-web.git
+git clone https://github.com/2424004764/tools-web.git
 ```
 
 安装
