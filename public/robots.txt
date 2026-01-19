@@ -1,22 +1,15 @@
 User-agent: *
 Allow: /
 
-# Block internal endpoints
+# 禁止爬取内部接口和系统文件
 Disallow: /api/
 Disallow: /functions/
 Disallow: /__vite/
+Disallow: /node_modules/
+Disallow: /.git/
 
+# 站点地图
 Sitemap: https://tool.fologde.com/sitemap.xml
 
-User-agent: *
-Allow: /
-
-# Block internal endpoints
-Disallow: /api/
-Disallow: /functions/
-Disallow: /__vite/
-
-# Uncomment and set your production sitemap URL to help search engines discover pages
-# Sitemap: https://your-domain.com/sitemap.xml
-
-
+# 爬取频率（可选）
+Crawl-delay: 1

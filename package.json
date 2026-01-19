@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vue-tsc --noEmit && node --max_old_space_size=8192 node_modules/vite/bin/vite.js build --mode development",
     "build:pro": "vue-tsc --noEmit && node --max_old_space_size=8192 node_modules/vite/bin/vite.js build --mode production",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "generate:sitemap": "node scripts/generate-sitemap.js"
   },
   "dependencies": {
     "@codemirror/commands": "^6.3.2",
