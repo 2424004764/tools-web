@@ -1,0 +1,67 @@
+{
+  "name": "开发者工具箱 - 免费50+在线开发工具",
+  "short_name": "开发者工具箱",
+  "description": "免费在线开发工具集，包含MD5加密、JSON格式化、二维码生成、闲鱼海报制作、AI绘画、土地面积计算、EXIF信息查看等50+种实用工具",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#667eea",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/logo192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "utilities", "developer"],
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "scope": "/",
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {
+      "name": "MD5加密",
+      "short_name": "MD5",
+      "description": "MD5在线加密解密工具",
+      "url": "/md5",
+      "icons": [{ "src": "/logo192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "JSON格式化",
+      "short_name": "JSON",
+      "description": "JSON在线格式化工具",
+      "url": "/json",
+      "icons": [{ "src": "/logo192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "二维码生成",
+      "short_name": "二维码",
+      "description": "免费在线二维码生成器",
+      "url": "/qrcode",
+      "icons": [{ "src": "/logo192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "AI绘画",
+      "short_name": "AI画",
+      "description": "AI文字转图片生成工具",
+      "url": "/ai-text-to-image",
+      "icons": [{ "src": "/logo192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "闲鱼海报",
+      "short_name": "海报",
+      "description": "闲鱼技能海报生成器",
+      "url": "/skill-poster",
+      "icons": [{ "src": "/logo192.png", "sizes": "192x192" }]
+    }
+  ]
+}

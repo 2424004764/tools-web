@@ -6,26 +6,59 @@
     <link rel="shortcut icon" type="image/svg+xml" href="/public/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="renderer" content="webkit">
-    
+
     <!-- 预加载关键资源 -->
     <link rel="preload" href="/src/styles/tailwind.css" as="style">
     <link rel="preload" href="/src/main.ts" as="script">
-    
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+
     <!-- DNS 预解析 -->
     <link rel="dns-prefetch" href="//image.pollinations.ai">
-    
-    <meta name="keywords" content="">
-    <meta name="description" content="">
-    <meta property="og:locale" content="zh_CN">
-    <meta property="og:title" content="">
-    <meta property="og:site_name" content="">
-    <meta property="og:description" content="">
+
+    <!-- SEO Meta 标签 -->
+    <meta name="keywords" content="在线工具,开发工具,MD5加密,JSON格式化,二维码生成,图片处理,开发者工具,闲鱼海报,AI绘画,土地面积计算,EXIF查看">
+    <meta name="description" content="免费在线开发工具集，包含MD5加密、JSON格式化、二维码生成、闲鱼海报制作、AI绘画、土地面积计算、EXIF信息查看等50+种实用工具，完全免费，提升开发效率">
+    <meta name="author" content="开发者工具箱">
+    <meta name="robots" content="index,follow">
+
+    <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
-    <meta property="og:image" content="/src/assets/logo.png">
+    <meta property="og:locale" content="zh_CN">
+    <meta property="og:title" content="开发者工具箱 - 免费50+在线开发工具 | MD5加密 JSON格式化 二维码生成">
+    <meta property="og:description" content="免费在线开发工具集，包含MD5加密、JSON格式化、二维码生成、闲鱼海报制作、AI绘画、土地面积计算、EXIF信息查看等50+种实用工具">
+    <meta property="og:image" content="https://tool.fologde.com/logo.png">
+    <meta property="og:site_name" content="开发者工具箱">
+    <meta property="og:url" content="https://tool.fologde.com">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="开发者工具箱 - 免费50+在线开发工具">
+    <meta name="twitter:description" content="免费在线开发工具集，包含MD5加密、JSON格式化、二维码生成、闲鱼海报制作、AI绘画、土地面积计算、EXIF信息查看等50+种实用工具">
+    <meta name="twitter:image" content="https://tool.fologde.com/logo.png">
 
     <!-- 百度站点验证 -->
     <meta name="baidu-site-verification" content="codeva-Nyu1hjNoJ5" />
-    <title></title>
+
+    <!-- 结构化数据 -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "开发者工具箱",
+      "alternateName": "Fologde Tools",
+      "url": "https://tool.fologde.com",
+      "description": "免费在线开发工具集，包含50+种实用工具",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://tool.fologde.com/search?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+
+    <title>开发者工具箱 - 免费50+在线开发工具 | MD5加密 JSON格式化 二维码生成 AI绘画</title>
   </head>
   <body class="bg-gradient-to-br from-warm-50 to-warm-100">
     <!--[if lt IE 9]>
