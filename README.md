@@ -120,7 +120,7 @@ git add . && git commit -m "新增xx功能" && git push origin master
 
 ### Cloudflare部署
 
-详见我的公众号文章：https://mp.weixin.qq.com/s/kIrz2uAv0cmT3f2rPWbtdQ
+详见我的公众号文章：[https://mp.weixin.qq.com/s/kIrz2uAv0cmT3f2rPWbtdQ](https://mp.weixin.qq.com/s/RXWAGN6OpKw2qa1DKF_5-g)
 
 ## 本地调试functions
 根目录执行命令：
