@@ -1,1 +1,0 @@
-@keyframes tileAppear-406bb965{0%{transform:scale(0);opacity:0}50%{transform:scale(1.1)}to{transform:scale(1);opacity:1}}.tile-appear[data-v-406bb965]{animation:tileAppear-406bb965 .2s ease-out}@keyframes tileMerge-406bb965{0%{transform:scale(1)}50%{transform:scale(1.2)}to{transform:scale(1)}}.tile-merge[data-v-406bb965]{animation:tileMerge-406bb965 .3s ease-in-out}
