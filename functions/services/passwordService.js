@@ -203,7 +203,22 @@ export class PasswordService {
       const result = await this.db.prepare(dataSql).bind(...baseParams, ...searchParams, pageSize, offset).all()
 
       // 映射字段 - .all() 返回的结果对象，需要访问 .results 属性
-      const mappedEntries = result.results.map(entry => this.entryModel.mapFromDb(entry))
+      const rawEntries = result.results || []
+      console.log('=== 分页调试信息 ===')
+      console.log('页码:', page, '每页条数:', pageSize, '偏移量:', offset)
+      console.log('COUNT 总数:', total)
+      console.log('实际返回行数:', rawEntries.length)
+      console.log('期望返回行数:', Math.min(pageSize, total - offset))
+      if (rawEntries.length !== Math.min(pageSize, total - offset)) {
+        console.warn('!!! 数据不一致 !!!')
+        // 输出所有 ID 用于排查
+        const allIdsSql = `SELECT id FROM password_entries WHERE ${baseConditions.join(' AND ')}${searchCondition} ORDER BY create_time DESC`
+        const allIdsResult = await this.db.prepare(allIdsSql).bind(...baseParams, ...searchParams).all()
+        console.log('所有符合条件的 IDs (前30个):', (allIdsResult.results || []).slice(0, 30).map(r => r.id))
+      }
+      console.log('==================')
+
+      const mappedEntries = rawEntries.map(entry => this.entryModel.mapFromDb(entry))
 
       return {
         success: true,
