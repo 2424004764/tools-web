@@ -989,4 +989,14 @@ export const constantRoute = [
       description: '在线土地亩数计算器，支持输入土地长宽自动计算亩数，同时提供平方米、公顷、平方千米等多种单位换算'
     }
   },
+  {
+    path: '/password-manager',
+    component: () => import('@/components/Tools/PasswordManager/PasswordManager.vue'),
+    name: 'password-manager',
+    meta: {
+      title: "密码管理器",
+      keywords: '密码管理,密码存储,密码本,密码分组,密码备注,在线密码管理器,AES加密',
+      description: '安全的在线密码管理器，支持AES加密存储、分组管理、备注功能、密码生成器，保护您的账号安全'
+    }
+  },
 ]

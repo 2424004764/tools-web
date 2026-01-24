@@ -19,6 +19,15 @@ export function getToolsCate() {
         },
         {
           id: 1,
+          title: '密码管理器',
+          logo: '/images/logo/keywords.png',
+          desc: '安全的密码存储工具，支持分组管理和备注，AES加密保护',
+          url: '/password-manager/',
+          cateId: 2,
+          cate: '开发运维',
+        },
+        {
+          id: 1,
           title: 'URL编码/解码',
           logo: '/images/logo/url.png',
           desc: 'URL在线编码解码工具（UrlEncode编码 和 UrlDecode解码）',
