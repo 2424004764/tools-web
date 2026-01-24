@@ -26,12 +26,6 @@ export interface PasswordGroup {
   updateTime: string
 }
 
-// API 响应接口
-interface ApiResponse<T = any> {
-  data?: T
-  error?: string
-}
-
 // 分页响应接口
 export interface PaginatedResponse<T> {
   list: T[]
@@ -69,8 +63,8 @@ export async function getAllGroups(): Promise<PasswordGroup[]> {
 // 根据ID获取分组
 export async function getGroupById(id: string): Promise<PasswordGroup | null> {
   try {
-    const response = await functionsRequest.get<ApiResponse<PasswordGroup>>(`${API_BASE_URL}/groups/${id}`)
-    return response.data.data || null
+    const response = await functionsRequest.get<PasswordGroup>(`${API_BASE_URL}/groups/${id}`)
+    return response.data || null
   } catch (error: any) {
     console.error('获取分组失败:', error)
     ElMessage.error(error.response?.data?.error || '获取分组失败')
@@ -136,10 +130,11 @@ export async function getAllEntries(options?: { groupId?: string; page?: number;
     const queryString = new URLSearchParams(params).toString()
     const url = queryString ? `${API_BASE_URL}/entries?${queryString}` : `${API_BASE_URL}/entries`
 
-    const response = await functionsRequest.get<ApiResponse<PaginatedResponse<PasswordEntry>>>(url)
+    const response = await functionsRequest.get<any>(url)
     console.log('getAllEntries response:', response.data)
 
-    const data = response.data?.data as PaginatedResponse<PasswordEntry> | undefined
+    // 后端直接返回分页数据，不需要再嵌套一层
+    const data = response.data as PaginatedResponse<PasswordEntry> | undefined
     const result: PaginatedResponse<PasswordEntry> = {
       list: data?.list || [],
       total: data?.total || 0,
@@ -165,8 +160,8 @@ export async function getAllEntries(options?: { groupId?: string; page?: number;
 // 根据ID获取密码条目
 export async function getEntryById(id: string): Promise<PasswordEntry | null> {
   try {
-    const response = await functionsRequest.get<ApiResponse<PasswordEntry>>(`${API_BASE_URL}/entries/${id}`)
-    return response.data.data || null
+    const response = await functionsRequest.get<PasswordEntry>(`${API_BASE_URL}/entries/${id}`)
+    return response.data || null
   } catch (error: any) {
     console.error('获取密码条目失败:', error)
     ElMessage.error(error.response?.data?.error || '获取密码条目失败')
