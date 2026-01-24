@@ -136,9 +136,9 @@ const initializeGamePositions = () => {
 initializeGamePositions();
 
 // 游戏循环
-let gameLoop: number | null = null;
+let gameLoop: ReturnType<typeof setInterval> | null = null;
 // 计时器
-let timeTimer: number | null = null;
+let timeTimer: ReturnType<typeof setInterval> | null = null;
 
 // 生成随机食物位置
 const generateFood = () => {

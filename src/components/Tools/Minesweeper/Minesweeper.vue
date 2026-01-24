@@ -34,7 +34,7 @@ const board = ref<Array<Array<{
   neighborMines: number
 }>>>([])
 
-let gameTimer: number | null = null
+let gameTimer: ReturnType<typeof setInterval> | null = null
 
 // 初始化游戏板
 const initBoard = () => {
@@ -286,7 +286,7 @@ const getNumberColor = (cell: any) => {
 
 // 触摸控制相关变量
 let touchStartTime = 0
-let touchTimer: number | null = null
+let touchTimer: ReturnType<typeof setTimeout> | null = null
 let longPressThreshold = 500 // 长按阈值（毫秒）
 let hasLongPressed = false // 标记是否已经长按过
 

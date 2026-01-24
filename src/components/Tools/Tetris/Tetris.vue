@@ -39,7 +39,7 @@ const board = ref<number[][]>([])
 const currentPiece = ref<{ shape: number[][], x: number, y: number, type: string } | null>(null)
 const nextPiece = ref<{ shape: number[][], x: number, y: number, type: string } | null>(null)
 
-let gameTimer: number | null = null
+let gameTimer: ReturnType<typeof setInterval> | null = null
 
 // 方块形状定义
 const tetrominoes = {

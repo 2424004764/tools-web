@@ -32,7 +32,7 @@ const diceImages = ref({
 //当前掷筛子掷到的点数（默认1点）
 const currentPoint = ref(1)
 //定时器
-const timer = ref(0)
+const timer = ref<ReturnType<typeof setInterval> | null>(null)
 
 const getDicePoint = async () => {
   let point = 1;
@@ -72,7 +72,10 @@ const startAnimation = async () => {
       //差不多执行1.2秒钟的时候可以停止了
       if (num > 12) {
         //关闭定时器
-        clearInterval(timer.value);
+        if (timer.value) {
+          clearInterval(timer.value);
+          timer.value = null;
+        }
         //设置骰子停止
         isDicing.value = false;
         //返回结果
@@ -84,7 +87,10 @@ const startAnimation = async () => {
 
 onBeforeUnmount(() => {
   //组件销毁之前清除定时器
-  clearInterval(timer.value);
+  if (timer.value) {
+    clearInterval(timer.value);
+    timer.value = null;
+  }
 })
 
 defineExpose({
