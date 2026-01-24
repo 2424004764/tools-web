@@ -66,7 +66,7 @@ const cards = ref<Array<{
 
 // 当前翻开的卡片
 const flippedCards = ref<number[]>([])
-let gameTimer: number | null = null
+let gameTimer: ReturnType<typeof setInterval> | null = null
 
 // 卡片符号
 const cardSymbols = ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🦆', '🦅', '🦉', '🦇', '🦉', '🦊', '🐺', '🐗', '🐴', '🦄', '🐝', '🐛', '🦋', '🐜']

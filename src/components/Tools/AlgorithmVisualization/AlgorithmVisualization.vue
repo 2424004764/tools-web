@@ -43,7 +43,7 @@ const state = reactive({
 })
 
 // 时间更新定时器
-let timeUpdateInterval: number | null = null
+let timeUpdateInterval: ReturnType<typeof setInterval> | null = null
 
 // 时间格式化
 const formatTime = (milliseconds: number) => {

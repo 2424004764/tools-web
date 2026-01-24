@@ -34,8 +34,8 @@ const config = reactive({
 
 // 地鼠洞状态
 const holes = ref<Array<{ id: number, hasMole: boolean, isHit: boolean }>>([])
-let gameTimer: number | null = null
-let moleTimer: number | null = null
+let gameTimer: ReturnType<typeof setInterval> | null = null
+let moleTimer: ReturnType<typeof setTimeout> | null = null
 
 // 初始化地鼠洞
 const initHoles = () => {

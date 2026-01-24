@@ -126,8 +126,8 @@ const detectDevice = () => {
   }
 }
 
-let gameTimer: number | null = null
-let countdownTimer: number | null = null
+let gameTimer: ReturnType<typeof setTimeout> | null = null
+let countdownTimer: ReturnType<typeof setInterval> | null = null
 
 // 生成随机位置
 const generateRandomPositions = (count: number, gridSize: number) => {
