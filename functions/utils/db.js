@@ -90,14 +90,19 @@ export class Model {
   // 字段映射：数据库字段名 -> JS字段名
   mapFromDb(data) {
     const mapped = {}
-    
+
     for (const [jsField, fieldConfig] of Object.entries(this.config.fields)) {
       const dbField = fieldConfig.dbField || jsField
       if (data[dbField] !== undefined) {
-        mapped[jsField] = data[dbField]
+        let value = data[dbField]
+        // 处理时间字段：添加 UTC 时区标记
+        if (fieldConfig.type === 'datetime' && value && typeof value === 'string' && !value.endsWith('Z')) {
+          value = value + 'Z'
+        }
+        mapped[jsField] = value
       }
     }
-    
+
     return mapped
   }
 
@@ -449,6 +454,46 @@ export function initDatabase(env) {
   return {
     success: true,
     db: env.DB
+  }
+}
+
+// PasswordEntry 模型 - 密码条目模型
+export class PasswordEntryModel extends Model {
+  constructor(db) {
+    super(db)
+    this.config = {
+      tableName: 'password_entries',
+      fields: {
+        id: { type: 'string', primaryKey: true },
+        uid: { type: 'string' }, // 用户ID
+        title: { type: 'string' }, // 标题
+        username: { type: 'string' }, // 用户名
+        password: { type: 'string' }, // 加密后的密码
+        url: { type: 'string' }, // 网站URL
+        groupId: { type: 'string', dbField: 'group_id' }, // 分组ID
+        notes: { type: 'text' }, // 备注
+        createTime: { type: 'datetime', dbField: 'create_time' },
+        updateTime: { type: 'datetime', dbField: 'update_time' }
+      }
+    }
+  }
+}
+
+// PasswordGroup 模型 - 密码分组模型
+export class PasswordGroupModel extends Model {
+  constructor(db) {
+    super(db)
+    this.config = {
+      tableName: 'password_groups',
+      fields: {
+        id: { type: 'string', primaryKey: true },
+        uid: { type: 'string' }, // 用户ID
+        name: { type: 'string' }, // 分组名称
+        color: { type: 'string' }, // 分组颜色
+        createTime: { type: 'datetime', dbField: 'create_time' },
+        updateTime: { type: 'datetime', dbField: 'update_time' }
+      }
+    }
   }
 }
 
