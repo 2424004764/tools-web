@@ -19,8 +19,8 @@ export function getToolsCate() {
         },
         {
           id: 1,
-          title: '密码管理器',
-          logo: '/images/logo/keywords.png',
+          title: '在线密码管理',
+          logo: '/images/logo/password_book.png',
           desc: '安全的密码存储工具，支持分组管理和备注，AES加密保护',
           url: '/password-manager/',
           cateId: 2,
@@ -527,7 +527,7 @@ export function getToolsCate() {
         {
           id: 1,
           title: '闲鱼技能海报生成器',
-          logo: '/images/logo/text_to_img.png',
+          logo: '/images/logo/xianyu_post.png',
           desc: '专为闲鱼技能服务设计的海报生成工具，提供多种精美模板，支持自定义文字内容，一键生成高清海报图片',
           url: '/skill-poster/',
           cateId: 5,
