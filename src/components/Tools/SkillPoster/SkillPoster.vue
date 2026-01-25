@@ -165,6 +165,7 @@ const info = reactive({
   footerText: '闲鱼技能服务 · 专业可靠',
   showFooter: true,
   tags: ['Python', '数据分析', '爬虫'],
+  textAlign: 'left', // 对齐方式：left | center | right
   fontSize: {
     mainTitle: 80,
     subTitle: 48,
@@ -449,6 +450,34 @@ const generatePoster = async () => {
         <div class="bg-white rounded-2xl p-4 shadow-sm">
           <h3 class="text-lg font-bold mb-3 text-gray-800">编辑内容</h3>
 
+          <!-- 对齐方式 -->
+          <div class="mb-4 p-3 bg-gray-50 rounded-lg">
+            <label class="block text-sm font-medium text-gray-700 mb-2">内容对齐方式</label>
+            <div class="flex gap-2">
+              <button
+                v-for="align in ['left', 'center', 'right']"
+                :key="align"
+                @click="info.textAlign = align"
+                :class="[
+                  'flex-1 py-2 px-4 rounded-lg font-medium transition-all duration-200',
+                  info.textAlign === align
+                    ? 'bg-blue-500 text-white shadow-md'
+                    : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-300'
+                ]"
+              >
+                <svg v-if="align === 'left'" class="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h10M4 18h7"></path>
+                </svg>
+                <svg v-else-if="align === 'center'" class="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M7 12h10M5 18h14"></path>
+                </svg>
+                <svg v-else class="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M10 12h10M6 18h14"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+
           <div class="space-y-4">
             <!-- 主标题 -->
             <div>
@@ -463,7 +492,7 @@ const generatePoster = async () => {
               />
               <div class="mt-2">
                 <el-text class="text-xs text-gray-500">字体大小：{{ info.fontSize.mainTitle }}px</el-text>
-                <el-slider v-model="info.fontSize.mainTitle" :min="1" :max="100" show-input size="small" />
+                <el-slider v-model="info.fontSize.mainTitle" :min="20" :max="200" show-input size="small" />
               </div>
             </div>
 
@@ -479,7 +508,7 @@ const generatePoster = async () => {
                 />
                 <div class="mt-2">
                   <el-text class="text-xs text-gray-500">字体大小：{{ info.fontSize.subTitle }}px</el-text>
-                  <el-slider v-model="info.fontSize.subTitle" :min="1" :max="80" show-input size="small" />
+                  <el-slider v-model="info.fontSize.subTitle" :min="20" :max="120" show-input size="small" />
                 </div>
               </div>
             </div>
@@ -631,7 +660,7 @@ const generatePoster = async () => {
                 }"
               >
               <!-- 内容容器 -->
-              <div class="h-full flex flex-col justify-between p-12">
+              <div class="h-full flex flex-col justify-between p-12" :style="{ textAlign: info.textAlign as 'left' | 'center' | 'right' }">
                 <!-- 顶部区域 -->
                 <div class="flex-1 flex flex-col justify-center">
                   <!-- 主标题 -->
@@ -660,8 +689,13 @@ const generatePoster = async () => {
                   <!-- 分隔线 -->
                   <div
                     v-if="info.showSubTitle"
-                    class="w-24 h-1.5 rounded-full mb-8"
-                    :style="{ background: info.selectedTemplate.accentColor }"
+                    class="h-1.5 rounded-full"
+                    :style="{
+                      background: info.selectedTemplate.accentColor,
+                      width: '96px',
+                      marginBottom: '2rem',
+                      margin: info.textAlign === 'center' ? '0 auto 2rem auto' : info.textAlign === 'right' ? '0 0 0 auto' : '0 0 2rem 0'
+                    }"
                   ></div>
 
                   <!-- 描述 -->
@@ -680,7 +714,7 @@ const generatePoster = async () => {
                 <!-- 底部区域 -->
                 <div class="mt-auto">
                   <!-- 标签 -->
-                  <div class="flex flex-wrap gap-x-6 gap-y-3 mb-6 items-center">
+                  <div class="flex flex-wrap gap-x-6 gap-y-3 mb-6 items-center" :style="{ justifyContent: info.textAlign === 'center' ? 'center' : info.textAlign === 'right' ? 'flex-end' : 'flex-start' }">
                     <div
                       v-for="(tag, index) in info.tags"
                       :key="index"
