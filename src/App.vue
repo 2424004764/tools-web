@@ -6,6 +6,7 @@ import Floor from "@/components/Layout/Floor/Floor.vue";
 // import Right from '@/components/Layout/Right/Right.vue'
 import { useComponentStore } from "@/store/modules/component";
 import SimilarRecommend from "@/components/Layout/SimilarRecommend/SimilarRecommend.vue";
+import Comments from "@/components/Layout/Comments/Comments.vue";
 import { useRoute } from 'vue-router';
 //store
 const componentStore = useComponentStore();
@@ -14,6 +15,11 @@ const route = useRoute();
 // 判断是否为QA查看页面
 const isQAViewPage = computed(() => {
   return route.name === 'qa-view';
+});
+
+// 判断是否为首页
+const isHomePage = computed(() => {
+  return route.name === 'home' || route.path === '/';
 });
 
 </script>
@@ -53,6 +59,7 @@ const isQAViewPage = computed(() => {
           </transition>
         </router-view>
         <SimilarRecommend v-if="!isQAViewPage" />
+        <Comments v-if="!isQAViewPage && !isHomePage" />
       </el-main>
       <el-footer v-if="!isQAViewPage" class="md:mb-6 mt-12 c-xs:mb-12">
         <Floor />
