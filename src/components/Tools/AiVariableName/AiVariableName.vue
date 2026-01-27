@@ -17,7 +17,7 @@ const info = reactive({
 const description = ref('')
 const style = ref<'camelCase' | 'PascalCase' | 'snake_case' | 'kebab-case'>('camelCase')
 const lang = ref<'en' | 'pinyin'>('en')
-const count = ref(8)
+const count = ref(2)
 const isLoading = ref(false)
 const results = ref<string[]>([])
 
@@ -57,19 +57,37 @@ const generate = async () => {
   results.value = []
   try {
     const prompt = buildPrompt()
-    const resp = await axios.get(
-      `${pollinationsProxyUrl.value}?path=${encodeURIComponent(prompt)}&target=${pollinationsTextUrl.value}`,
+
+    // 构建 OpenAI 格式请求
+    const requestBody = {
+      model: 'nova-fast',
+      messages: [
+        { role: 'user', content: prompt }
+      ]
+    }
+
+    const resp = await axios.post(
+      pollinationsProxyUrl.value,
+      requestBody,
       {
-        headers: { Authorization: 'Bearer ' + pollinationsApiKey.value }
+        params: {
+          target: `${pollinationsTextUrl.value}/v1/chat/completions`
+        },
+        headers: {
+          'Authorization': `Bearer ${pollinationsApiKey.value}`,
+          'Content-Type': 'application/json'
+        }
       }
     )
-    const text: string = typeof resp.data === 'string' ? resp.data : String(resp.data)
-    const lines = text
+
+    // 解析 OpenAI 格式响应
+    const content = resp.data?.choices?.[0]?.message?.content || ''
+    const lines = content
       .replace(/\r\n/g, '\n')
       .split('\n')
       .map(s => s.trim().replace(/^\d+\.\s*/,'').replace(/^-+\s*/,''))
       .filter(s => s.length > 0)
-    results.value = Array.from(new Set(lines)).slice(0, count.value)
+    results.value = (Array.from(new Set(lines)) as string[]).slice(0, count.value)
   } catch (e) {
     console.error('生成失败:', e)
     alert('生成失败，请稍后重试')

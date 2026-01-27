@@ -115,11 +115,6 @@ const availableProviders = ref([
     name: 'pollinations',
     displayName: 'Pollinations',
     description: '强大的AI图像生成和文本处理服务，支持多种模型'
-  },
-  {
-    name: 'aitools',
-    displayName: 'AI Tools',
-    description: '多种AI模型集合，支持文本、图像、音频处理'
   }
 ])
 
@@ -129,6 +124,10 @@ const modelsLoadError = ref('')
 
 // Pollinations模型数据（改为响应式数据，支持动态更新）
 const pollinationsModels = ref<ModelData[]>([])
+
+// 当前选择的供应商和模型
+const selectedProvider = ref('')
+const selectedModel = ref('')
 
 // 获取Pollinations模型列表
 const fetchPollinationsModels = async () => {
@@ -202,7 +201,7 @@ const switchToNextProvider = async () => {
       selectedProvider.value = nextProvider.name
       
       // 选择该供应商的第一个模型
-      const models = nextProvider.name === 'aitools' ? aitoolsModels.value : []
+      const models = pollinationsModels.value
       if (models.length > 0) {
         selectedModel.value = models[0].name
         console.log(`自动选择模型: ${models[0].name}`)
@@ -254,50 +253,12 @@ const generateModelDescription = (model: any): string => {
   return description
 }
 
-// AI Tools模型数据
-const aitoolsModels = ref<ModelData[]>([
-  { 
-    name: "deepseek/deepseek-v3-0324", 
-    description: "DeepSeek V3 0324 - 最新版本的多模态模型，支持文本和图像" 
-  },
-  { 
-    name: "deepseek/deepseek-r1-32b", 
-    description: "DeepSeek R1 32B - 32B参数大型模型，强大的理解和生成能力" 
-  },
-  { 
-    name: "deepseek/deepseek-r1-70b", 
-    description: "DeepSeek R1 70B - 70B参数超大型模型，顶级AI性能" 
-  },
-  { 
-    name: "qwen/qwen2.5-7b", 
-    description: "Qwen 2.5 7B - 轻量级但功能强大的模型，适合快速部署" 
-  },
-  { 
-    name: "zhipu/glm-4-9b", 
-    description: "智谱 GLM-4 9B - 清华智谱AI的对话模型，9B参数" 
-  },
-  { 
-    name: "zhipu/glm-4-flash", 
-    description: "智谱 GLM-4 Flash - 快速响应的对话模型，优化推理速度" 
-  },
-  { 
-    name: "zhipu/glm-4.1v-thinking-flash", 
-    description: "智谱 GLM-4.1V Thinking Flash - 思维链推理模型，支持复杂逻辑" 
-  },
-  { 
-    name: "zhipu/glm-4.5-flash", 
-    description: "智谱 GLM-4.5 Flash - 最新版本快速模型，4.5代架构" 
-  }
-])
-
-// 响应式数据
-const selectedProvider = ref('')
-const selectedModel = ref('')
+// 获取Pollinations模型列表
 
 // 计算属性
 const availableModels = computed(() => {
   if (!selectedProvider.value) return []
-  return selectedProvider.value === 'pollinations' ? pollinationsModels.value : aitoolsModels.value
+  return pollinationsModels.value
 })
 
 // 扩展本地存储，为每个供应商保存选择的模型
@@ -332,7 +293,7 @@ const loadFromLocalStorage = (): { provider: string; model: string } => {
         const providerExists = availableProviders.value.some(p => p.name === parsed.provider)
         if (providerExists) {
           // 检查模型是否仍然可用
-          const models = parsed.provider === 'pollinations' ? pollinationsModels.value : aitoolsModels.value
+          const models = pollinationsModels.value
           const modelExists = models.some(m => m.name === parsed.model)
           if (modelExists) {
             return parsed
@@ -370,7 +331,7 @@ const handleProviderChange = () => {
   
   if (previousModel) {
     // 如果之前选择过该供应商的模型，验证模型是否仍然可用
-    const models = newProvider === 'pollinations' ? pollinationsModels.value : aitoolsModels.value
+    const models = pollinationsModels.value
     const modelExists = models.some(m => m.name === previousModel)
     
     if (modelExists) {
@@ -379,7 +340,7 @@ const handleProviderChange = () => {
       console.log(`使用之前选择的模型: ${previousModel}`)
     } else {
       // 模型不可用，选择第一个可用模型
-      const firstModel = models[0]
+      const firstModel = pollinationsModels.value[0]
       if (firstModel) {
         selectedModel.value = firstModel.name
         console.log(`模型不可用，选择第一个: ${firstModel.name}`)
@@ -387,8 +348,7 @@ const handleProviderChange = () => {
     }
   } else {
     // 如果之前没有选择过该供应商的模型，选择第一个
-    const models = newProvider === 'pollinations' ? pollinationsModels.value : aitoolsModels.value
-    const firstModel = models[0]
+    const firstModel = pollinationsModels.value[0]
     if (firstModel) {
       selectedModel.value = firstModel.name
       console.log(`首次选择该供应商，使用第一个模型: ${firstModel.name}`)
@@ -430,9 +390,8 @@ const getSelectedProviderDesc = () => {
 const getSelectedModelDesc = () => {
   if (!selectedProvider.value) return '请先选择AI供应商'
   if (!selectedModel.value) return '请选择具体的AI模型'
-  
-  const models = selectedProvider.value === 'pollinations' ? pollinationsModels.value : aitoolsModels.value
-  const model = models.find(m => m.name === selectedModel.value)
+
+  const model = pollinationsModels.value.find(m => m.name === selectedModel.value)
   return model ? model.description : ''
 }
 

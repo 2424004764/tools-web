@@ -97,14 +97,30 @@ const translate = async () => {
   loading.value = true
   resultText.value = ''
   try {
-    const zws = '\u200b'.repeat(1 + Math.floor(Math.random() * 3))
-    const prompt = buildPrompt() + zws
-    const resp = await axios.get(
-      `${pollinationsProxyUrl.value}?path=${encodeURIComponent(prompt)}&target=${pollinationsTextUrl.value}&params=_t=${Date.now()}`,
-      { headers: { Authorization: 'Bearer ' + pollinationsApiKey.value } }
+    const prompt = buildPrompt()
+
+    // 构建 OpenAI 格式请求
+    const requestBody = {
+      model: 'nova-fast',
+      messages: [{ role: 'user', content: prompt }]
+    }
+
+    const resp = await axios.post(
+      pollinationsProxyUrl.value,
+      requestBody,
+      {
+        params: {
+          target: `${pollinationsTextUrl.value}/v1/chat/completions`
+        },
+        headers: {
+          'Authorization': `Bearer ${pollinationsApiKey.value}`,
+          'Content-Type': 'application/json'
+        }
+      }
     )
-    const text: string = typeof resp.data === 'string' ? resp.data : String(resp.data)
-    resultText.value = text
+
+    // 解析 OpenAI 格式响应
+    resultText.value = resp.data?.choices?.[0]?.message?.content || ''
   } catch (e) {
     console.error(e)
     alert('翻译失败，请稍后重试')

@@ -26,7 +26,6 @@ const gender = ref<Gender>('男')
 const givenLen = ref<GivenLen>('1-2')
 const style = ref<'不限' | '古典' | '现代' | '文雅' | '阳光' | '中性' | '诗意'>('不限')
 const count = ref(10)
-const noCache = ref(true)
 const meaning = ref('')
 const birthDate = ref('') // YYYY-MM-DD
 const fixedChar = ref('') // 仅允许 1 个字
@@ -233,12 +232,12 @@ const generate = async () => {
   try {
     // 校验所选姓氏是否填写
     if (surnameUsage.value === '母姓' && !motherSurname.value.trim()) {
-      ElMessage.warning('已选择“母姓”，请先填写母姓再生成')
+      ElMessage.warning('已选择"母姓"，请先填写母姓再生成')
       isLoading.value = false
       return
     }
     if (surnameUsage.value === '父姓' && !fatherSurname.value.trim()) {
-      ElMessage.warning('已选择“父姓”，请先填写父姓再生成')
+      ElMessage.warning('已选择"父姓"，请先填写父姓再生成')
       isLoading.value = false
       return
     }
@@ -256,34 +255,43 @@ const generate = async () => {
       }
     }
 
+    // 构建 OpenAI 格式请求的辅助函数
+    const fetchOpenAI = async (prompt: string) => {
+      const requestBody = {
+        model: 'nova-fast',
+        messages: [{ role: 'user', content: prompt }]
+      }
+      const resp = await axios.post(
+        pollinationsProxyUrl.value,
+        requestBody,
+        {
+          params: {
+            target: `${pollinationsTextUrl.value}/v1/chat/completions`
+          },
+          headers: {
+            'Authorization': `Bearer ${pollinationsApiKey.value}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      )
+      return resp.data?.choices?.[0]?.message?.content || ''
+    }
+
     if (givenLen.value === '1-2') {
       const needTwo = Math.ceil(count.value / 2)
       const needOne = count.value - needTwo
       const p2 = buildPrompt('2', needTwo)
       const p1 = buildPrompt('1', needOne)
-      const zws2 = '\u200b'.repeat(1 + Math.floor(Math.random() * 3))
-      const zws1 = '\u200b'.repeat(1 + Math.floor(Math.random() * 3))
-      const [resp2, resp1] = await Promise.all([
-        axios.get(
-          `${pollinationsProxyUrl.value}?path=${encodeURIComponent(noCache.value ? (p2 + zws2) : p2)}&target=${pollinationsTextUrl.value}&params=_t=${Date.now()}`,
-          { headers: { Authorization: 'Bearer ' + pollinationsApiKey.value } }
-        ),
-        axios.get(
-          `${pollinationsProxyUrl.value}?path=${encodeURIComponent(noCache.value ? (p1 + zws1) : p1)}&target=${pollinationsTextUrl.value}&params=_t=${Date.now()+1}`,
-          { headers: { Authorization: 'Bearer ' + pollinationsApiKey.value } }
-        )
+      const [text2, text1] = await Promise.all([
+        fetchOpenAI(p2),
+        fetchOpenAI(p1)
       ])
-      collect(typeof resp2.data === 'string' ? resp2.data : String(resp2.data))
-      collect(typeof resp1.data === 'string' ? resp1.data : String(resp1.data))
+      collect(text2)
+      collect(text1)
     } else {
       const p = buildPrompt(givenLen.value)
-      const zws = '\u200b'.repeat(1 + Math.floor(Math.random() * 3))
-      const promptToSend = noCache.value ? (p + zws) : p
-      const resp = await axios.get(
-        `${pollinationsProxyUrl.value}?path=${encodeURIComponent(promptToSend)}&target=${pollinationsTextUrl.value}&params=_t=${Date.now()}`,
-        { headers: { Authorization: 'Bearer ' + pollinationsApiKey.value } }
-      )
-      collect(typeof resp.data === 'string' ? resp.data : String(resp.data))
+      const text = await fetchOpenAI(p)
+      collect(text)
     }
 
     const filtered = filterByGivenLen(uniq)

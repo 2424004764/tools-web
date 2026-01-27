@@ -65,15 +65,29 @@ const generate = async () => {
   result.value = "";
   try {
     const prompt = buildPrompt();
-    const resp = await axios.get(
-      `${pollinationsProxyUrl.value}?path=${encodeURIComponent(
-        prompt
-      )}&target=${pollinationsTextUrl.value}&params=_t=${Date.now()}`,
-      { headers: { Authorization: "Bearer " + pollinationsApiKey.value } }
+
+    // 构建 OpenAI 格式请求
+    const requestBody = {
+      model: 'nova-fast',
+      messages: [{ role: 'user', content: prompt }]
+    };
+
+    const resp = await axios.post(
+      pollinationsProxyUrl.value,
+      requestBody,
+      {
+        params: {
+          target: `${pollinationsTextUrl.value}/v1/chat/completions`
+        },
+        headers: {
+          'Authorization': `Bearer ${pollinationsApiKey.value}`,
+          'Content-Type': 'application/json'
+        }
+      }
     );
-    const text: string =
-      typeof resp.data === "string" ? resp.data : String(resp.data);
-    result.value = text;
+
+    // 解析 OpenAI 格式响应
+    result.value = resp.data?.choices?.[0]?.message?.content || "";
   } catch (e) {
     console.error(e);
     alert("生成失败，请稍后重试");

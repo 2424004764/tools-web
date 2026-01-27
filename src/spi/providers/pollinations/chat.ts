@@ -2,7 +2,7 @@ import { ChatMessage, ChatOptions, ChatResponse } from '../../common/interfaces'
 
 export async function chat(
   this: any,
-  messages: ChatMessage[], 
+  messages: ChatMessage[],
   options?: ChatOptions
 ): Promise<ChatResponse> {
   if (!this.apiKey || !this.proxyUrl || !this.textUrl) {
@@ -11,30 +11,32 @@ export async function chat(
 
   // 构建 OpenAI 兼容的请求体
   const requestBody = {
-    model: options?.model || 'gpt-3.5-turbo',
+    model: options?.model || 'nova-fast',
     messages: messages.map(msg => ({
       role: msg.role,
       content: msg.content
     })),
     temperature: options?.temperature || 0.7,
     max_tokens: options?.maxTokens || 2000,
-    stream: options?.stream || false
+    stream: options?.stream || false,
+    seed: Math.floor(Math.random() * 100000000) // 添加随机种子
   }
 
   try {
     if (options?.stream && options?.onChunk) {
       console.log('开始Pollinations流式输出请求');
-      
+
       // 使用 fetch API 处理流式响应
       const response = await fetch(
-        `${this.proxyUrl}?path=openai&target=${this.textUrl}&params=_t=${Date.now()}`,
+        `${this.proxyUrl}?target=${this.textUrl}/v1/chat/completions`,
         {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.apiKey}`
           },
           body: JSON.stringify(requestBody),
-          signal: options.signal // 传递终止信号
+          signal: options.signal
         }
       );
 
@@ -53,44 +55,41 @@ export async function chat(
 
       try {
         while (true) {
-          // 检查是否被终止
           if (options.signal?.aborted) {
             throw new DOMException('流式请求被终止', 'AbortError');
           }
 
           const { done, value } = await reader.read();
-          
+
           if (done) {
             console.log('Pollinations流式读取完成');
             break;
           }
 
-          // 解码数据块
           const chunk = decoder.decode(value, { stream: true });
           buffer += chunk;
-          
-          // 处理完整的行
+
           const lines = buffer.split('\n');
-          buffer = lines.pop() || ''; // 保留最后一个可能不完整的行
-          
+          buffer = lines.pop() || '';
+
           for (const line of lines) {
             if (line.startsWith('data: ')) {
               const data = line.slice(6).trim();
-              
+
               if (data === '[DONE]') {
                 console.log('Pollinations收到结束标记');
                 break;
               }
-              
+
               try {
                 const parsed = JSON.parse(data);
                 console.log('Pollinations解析的流式数据:', parsed);
-                
+
                 if (parsed.choices && parsed.choices[0] && parsed.choices[0].delta) {
                   const delta = parsed.choices[0].delta;
                   const content = delta.content;
                   const reasoning = delta.reasoning_content;
-                  
+
                   if (content || reasoning) {
                     if (content) {
                       fullContent += content;
@@ -99,7 +98,6 @@ export async function chat(
                     if (reasoning) {
                       console.log('Pollinations发送思考过程块:', reasoning);
                     }
-                    // 立即调用回调函数，传递两个参数
                     options.onChunk!(content || '', reasoning);
                   }
                 }
@@ -113,7 +111,6 @@ export async function chat(
         reader.releaseLock();
       }
 
-      // 清理AI回复中的多余内容
       const cleanResponse = fullContent
         .replace(/^回答：/, '')
         .replace(/^AI助手：/, '')
@@ -132,17 +129,17 @@ export async function chat(
       };
     } else {
       console.log('Pollinations使用非流式输出');
-      
-      // 非流式输出处理（使用fetch代替axios）
+
       const response = await fetch(
-        `${this.proxyUrl}?path=openai&target=${this.textUrl}&params=_t=${Date.now()}`,
+        `${this.proxyUrl}?target=${this.textUrl}/v1/chat/completions&_t=${Date.now()}`,
         {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.apiKey}`
           },
           body: JSON.stringify(requestBody),
-          signal: options?.signal // 也支持非流式请求的终止
+          signal: options?.signal
         }
       );
 
@@ -152,7 +149,6 @@ export async function chat(
 
       const data = await response.json();
 
-      // 处理 OpenAI 兼容的响应格式
       let content = '';
       if (data && data.choices && data.choices.length > 0) {
         content = data.choices[0].message?.content || '';
@@ -162,7 +158,6 @@ export async function chat(
         content = String(data);
       }
 
-      // 清理AI回复中的多余内容
       const cleanResponse = content
         .replace(/^回答：/, '')
         .replace(/^AI助手：/, '')
@@ -181,7 +176,7 @@ export async function chat(
   } catch (error) {
     if (typeof error === 'object' && error !== null && 'name' in error && (error as any).name === 'AbortError') {
       console.log('Pollinations请求被终止');
-      throw error; // 重新抛出终止错误
+      throw error;
     }
     console.error('Pollinations API 调用失败:', error);
     throw new Error('AI服务暂时不可用，请稍后重试');

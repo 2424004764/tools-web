@@ -12,7 +12,6 @@ const info = reactive({
 const pollinationsApiKey = ref(import.meta.env.VITE_POLLINATIONS_API_KEY || "");
 const pollinationsProxyUrl = ref(import.meta.env.VITE_POLLINATIONS_PROXY_URL);
 const pollinationsTextUrl = ref(import.meta.env.VITE_POLLINATIONS_TEXT_URL);
-const pollinationsUrl = ref(import.meta.env.VITE_POLLINATIONS_URL);
 
 // 状态管理
 const loading = ref(false);
@@ -75,6 +74,9 @@ const generateMotivations = async (isAutoRefresh: boolean = false) => {
 
   while (retryCount < maxRetries) {
     try {
+      // 添加随机种子确保每次结果不同
+      const seed = Math.floor(Math.random() * 100000000);
+
       const prompt = `请生成${generateCount.value}条${selectedStyle.value}风格的励志鸡汤文，要求：
 1. 每条鸡汤文要简洁有力，字数控制在30-50字之间
 2. 内容要积极向上，富有哲理和启发性
@@ -82,14 +84,29 @@ const generateMotivations = async (isAutoRefresh: boolean = false) => {
 4. 每条鸡汤文单独一行，不要编号，不要标点符号结尾
 5. 只输出鸡汤文内容，不要其他解释文字`;
 
-      const resp = await axios.get(
-        `${pollinationsProxyUrl.value}?path=${encodeURIComponent(
-          prompt
-        )}&target=${pollinationsTextUrl.value}&params=_t=${Date.now()}`,
-        { headers: { Authorization: "Bearer " + pollinationsApiKey.value } }
+      // 构建 OpenAI 格式请求
+      const requestBody = {
+        model: 'nova-fast',
+        messages: [{ role: 'user', content: prompt }],
+        seed: seed  // 添加随机种子
+      };
+
+      const resp = await axios.post(
+        pollinationsProxyUrl.value,
+        requestBody,
+        {
+          params: {
+            target: `${pollinationsTextUrl.value}/v1/chat/completions`,
+            _t: Date.now() // 添加时间戳避免缓存
+          },
+          headers: {
+            'Authorization': `Bearer ${pollinationsApiKey.value}`,
+            'Content-Type': 'application/json'
+          }
+        }
       );
 
-      let text = typeof resp.data === "string" ? resp.data : String(resp.data);
+      let text = resp.data?.choices?.[0]?.message?.content || '';
 
       // 处理返回的文本，分割成多条鸡汤文
       const lines = text
@@ -236,75 +253,54 @@ const abortController = ref<AbortController | null>(null);
 // 生成封面
 const generateCover = async (motivation: string, motivationId: number) => {
   if (generatingCovers.value[motivationId]) return;
-  
+
   // 设置当前鸡汤文的生成状态
   generatingCovers.value[motivationId] = true;
   currentMotivation.value = motivation;
   currentMotivationId.value = motivationId;
-  
+
   // 先显示弹窗
   showCoverModal.value = true;
-  
+
   // 创建AbortController用于取消请求
   abortController.value = new AbortController();
-  
+
   try {
     // 构造封面生成的提示词
     const coverPrompt = `励志鸡汤文封面背景：${motivation}，简约现代设计风格，渐变背景，适合作为文字封面，高清图片`;
-    
-    // 参考文生图页面的接口调用方式
-    // 构造查询参数
-    const params = {
-      model: "sdxl", // 使用SDXL模型
-      width: "1024",
-      height: "1024",
-      nologo: "true",
-      seed: Math.floor(Math.random() * 100000000).toString(),
-    };
 
-    // 移除未定义的参数并确保所有值都是字符串
-    const filteredParams = Object.fromEntries(
-      Object.entries(params)
-        .filter(([_, v]) => v !== undefined)
-        .map(([k, v]) => [k, String(v)]) // 确保所有值都是字符串
-    );
+    // 使用 gen.pollinations.ai 的图片生成 API
+    const encodedPrompt = encodeURIComponent(coverPrompt);
+    const seed = Math.floor(Math.random() * 100000000);
 
-    // 添加时间戳避免缓存
-    filteredParams._t = String(Date.now());
-
-    // 将 filteredParams 转成 GET 参数拼接
-    const queryString = new URLSearchParams(filteredParams).toString();
     const response = await axios.get(
-      `${pollinationsProxyUrl.value}?path=prompt/${encodeURIComponent(coverPrompt)}&target=${pollinationsUrl.value}&params=${queryString}`,
+      `https://gen.pollinations.ai/image/${encodedPrompt}?model=flux&seed=${seed}&width=1024&height=1024&nologo=true`,
       {
         headers: {
-          Authorization: "Bearer " + pollinationsApiKey.value,
+          'Authorization': `Bearer ${pollinationsApiKey.value}`
         },
         responseType: "blob",
-        signal: abortController.value.signal, // 添加取消信号
+        signal: abortController.value.signal
       }
     );
 
     const blob = new Blob([response.data], { type: "image/png" });
     const imageUrl = URL.createObjectURL(blob);
-    
+
     // 将文字叠加到图片上
     const finalImageUrl = await addTextToImage(imageUrl, motivation);
     generatedCoverUrl.value = finalImageUrl;
-    
-    // 生成完成，弹窗内容从loading变为图片展示
-    
+
   } catch (error) {
     // 如果是取消请求导致的错误，不显示错误提示，但需要重置状态
     if (axios.isCancel(error)) {
       console.log('请求已取消');
-      // 请求被取消时，状态已经在closeCoverModal中重置，这里不需要额外处理
       return;
     }
-    
+
     console.error("生成封面失败:", error);
     alert("封面生成失败，请稍后重试");
-    
+
     // 生成失败时也需要重置状态
     if (currentMotivationId.value !== null) {
       generatingCovers.value[currentMotivationId.value] = false;
@@ -312,7 +308,6 @@ const generateCover = async (motivation: string, motivationId: number) => {
   } finally {
     // 清理AbortController
     abortController.value = null;
-    // 注意：这里不再重置generatingCovers状态，因为成功时不需要重置，失败时在上面已经重置
   }
 };
 
