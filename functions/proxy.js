@@ -7,8 +7,9 @@ export async function onRequest(context) {
 
     // 允许代理的目标接口（此处限制只能访问指定目标）
     const allowedTargets = [
-        'https://image.pollinations.ai', 
-        'https://text.pollinations.ai', 
+        'https://image.pollinations.ai',
+        'https://text.pollinations.ai',
+        'https://gen.pollinations.ai',
         'https://platform.aitools.cfd',
     ]
 
@@ -32,10 +33,10 @@ export async function onRequest(context) {
     // 拼接最终目标地址
     const targetUrl = new URL(targetParam)
 
-    // 拼接请求路径
+    // 拼接请求路径（如果 target 参数已经包含完整路径，则不再添加 path）
     const path = url.searchParams.get('path') || '';
-    if (path) {
-        targetUrl.pathname = path;  // 设置目标 URL 的路径
+    if (path && !targetParam.includes('/v1/')) {
+        targetUrl.pathname = path;
     }
 
     // 处理查询参数
@@ -71,19 +72,14 @@ export async function onRequest(context) {
         method: request.method,
         headers: (() => {
             const safeHeaders = new Headers();
-            // 只复制安全的headers，避免非ISO-8859-1字符问题
+            // 只复制安全的headers
             const allowedHeaders = ['content-type', 'authorization', 'user-agent', 'accept', 'accept-language', 'accept-encoding'];
-            
+
             request.headers.forEach((value, key) => {
                 const lowerKey = key.toLowerCase();
                 if (allowedHeaders.includes(lowerKey)) {
                     try {
-                        // 检查是否包含非ISO-8859-1字符
-                        if (/^[\x00-\xFF]*$/.test(value)) {
-                            safeHeaders.set(key, value);
-                        } else {
-                            console.warn(`跳过包含非ISO-8859-1字符的header: ${key}`);
-                        }
+                        safeHeaders.set(key, value);
                     } catch (e) {
                         console.warn(`跳过有问题的header: ${key}`, e);
                     }
@@ -91,12 +87,14 @@ export async function onRequest(context) {
             });
             return safeHeaders;
         })(),
-        body: request.method === 'POST' ? await request.clone().arrayBuffer() : undefined,
+        body: request.method === 'POST' || request.method === 'PUT' || request.method === 'PATCH'
+            ? await request.arrayBuffer()
+            : undefined,
         redirect: 'follow'
     }
 
     // 向目标 API 发起请求
-    console.log(targetUrl, newRequestInit)
+    console.log(`Proxy request to: ${targetUrl.href}`)
     const response = await fetch(targetUrl, newRequestInit)
 
     // 复制目标 API 的响应头并设置 CORS

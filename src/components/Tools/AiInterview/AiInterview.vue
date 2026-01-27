@@ -1,14 +1,20 @@
 <script setup lang="ts">
-import { reactive, ref, computed, onMounted } from "vue";
+import { reactive, ref, computed, nextTick } from "vue";
 import { useRoute } from 'vue-router';
+import axios from 'axios';
 import DetailHeader from "@/components/Layout/DetailHeader/DetailHeader.vue";
 import ToolDetail from "@/components/Layout/ToolDetail/ToolDetail.vue";
-import AiChatCore from "@/components/Common/AiChatCore.vue";
+import { copy } from '@/utils/string';
 
 const route = useRoute();
 
+const pollinationsApiKey = ref(import.meta.env.VITE_POLLINATIONS_API_KEY || '');
+const pollinationsProxyUrl = ref(import.meta.env.VITE_POLLINATIONS_PROXY_URL);
+const pollinationsTextUrl = ref(import.meta.env.VITE_POLLINATIONS_TEXT_URL);
+
 const info = reactive({
   title: "AI面试",
+  desc: "模拟真实面试场景，帮助您提升面试表现"
 });
 
 // 面试提示词配置
@@ -38,13 +44,13 @@ const interviewPrompts = [
 2.  **正式面试**：
     - 从经典的 "请做个自我介绍" 或 "请讲讲你为什么对这个岗位感兴趣" 开始。
     - 融合不同类型的问题，包括但不限于：
-        - **行为问题 (Behavioral Questions)**：深入探究我过往的经历，并引导我使用STAR原则（Situation, Task, Action, Result）来回答。例如：“请分享一个你处理过的最困难的项目。”
-        - **情景问题 (Situational Questions)**：提出假设性场景，考察我的应变能力和解决问题的思路。例如：“如果我们产品的用户量下周突然翻倍，你会优先关注哪些技术问题？”
+        - **行为问题 (Behavioral Questions)**：深入探究我过往的经历，并引导我使用STAR原则（Situation, Task, Action, Result）来回答。例如："请分享一个你处理过的最困难的项目。"
+        - **情景问题 (Situational Questions)**：提出假设性场景，考察我的应变能力和解决问题的思路。例如："如果我们产品的用户量下周突然翻倍，你会优先关注哪些技术问题？"
         - **简历深挖 (Resume Deep Dive)**：针对我简历中的某一段具体经历或技能进行提问。
         - **技术/专业问题 (Technical/Domain-specific Questions)**：根据岗位要求，提出相关的专业知识问题。
         - **动机与文化契合度问题 (Motivation & Culture Fit)**：考察我申请该岗位的动机以及与公司文化的匹配度。
     - **追问**：在我回答后，你必须像一个真正的面试官一样，针对我回答中的细节进行1-2次追问，以考察我思维的深度和逻辑的严谨性。
-3.  **向我提问环节**：在面试主要部分结束后，你会问我：“你有什么想问我的吗？”并以该公司的面试官身份，尽力回答我的问题。
+3.  **向我提问环节**：在面试主要部分结束后，你会问我："你有什么想问我的吗？"并以该公司的面试官身份，尽力回答我的问题。
 4.  **面试结束与反馈**：在我表示没有更多问题后，你将宣布面试结束，并立即切换回AI助手角色，从以下几个维度给我提供详细的反馈：
     - **总体评价**：对我整体表现的总结。
     - **亮点分析**：指出我回答得好的地方，具体是哪个问题，好在哪里。
@@ -72,36 +78,41 @@ const interviewPrompts = [
 const selectedPrompt = ref<typeof interviewPrompts[0] | null>(null);
 const promptInputs = ref<Record<string, string>>({});
 const showChat = ref(false);
-const chatCoreRef = ref();
+
+// 对话相关状态
+const messages = ref<Array<{ type: 'user' | 'assistant', content: string }>>([]);
+const inputMessage = ref('');
+const isLoading = ref(false);
+const chatContainerRef = ref<HTMLElement>();
 
 // 计算生成的系统提示词
 const generatedSystemPrompt = computed(() => {
   if (!selectedPrompt.value) return '';
-  
+
   let template = selectedPrompt.value.template;
-  
+
   // 替换模板中的变量
   selectedPrompt.value.inputs.forEach(input => {
     const value = promptInputs.value[input.key] || '';
     const regex = new RegExp(`\\{${input.key}\\}`, 'g');
     template = template.replace(regex, value);
   });
-  
+
   return template;
 });
 
 // 选择提示词
 const selectPrompt = (prompt: typeof interviewPrompts[0]) => {
   selectedPrompt.value = prompt;
-  // 重置输入
   promptInputs.value = {};
   showChat.value = false;
+  messages.value = [];
 };
 
 // 验证必填项
 const canStartInterview = computed(() => {
   if (!selectedPrompt.value) return false;
-  
+
   return selectedPrompt.value.inputs.every(input => {
     if (input.required) {
       return promptInputs.value[input.key]?.trim();
@@ -111,29 +122,17 @@ const canStartInterview = computed(() => {
 });
 
 // 开始面试
-const startInterview = async () => {
-  console.log('=== 开始面试流程 ===');
-  
-  if (!canStartInterview.value) {
-    console.log('❌ 无法开始面试，必填项未完成');
-    return;
-  }
-  
-  console.log('1. 显示聊天界面');
+const startInterview = () => {
+  if (!canStartInterview.value) return;
+
   showChat.value = true;
-  
-  // 等待聊天组件渲染完成
-  console.log('2. 等待聊天组件渲染...');
-  await new Promise(resolve => setTimeout(resolve, 100));
-  
-  if (chatCoreRef.value) {
-    console.log('3. 设置系统提示词');
-    chatCoreRef.value.setSystemPrompt(generatedSystemPrompt.value);
-    console.log('4. 系统提示词设置完成，等待供应商自动选择...');
-    // 剩下的工作由 handleProviderChanged 自动处理
-  }
-  
-  console.log('=== 面试流程设置完成 ===');
+  messages.value = [];
+
+  // 自动发送开始消息
+  nextTick(() => {
+    const startMessage = `您好！我已经准备好了，可以开始面试吗？`;
+    sendMessage(startMessage);
+  });
 };
 
 // 重新选择
@@ -141,114 +140,85 @@ const selectAgain = () => {
   selectedPrompt.value = null;
   promptInputs.value = {};
   showChat.value = false;
-  if (chatCoreRef.value) {
-    chatCoreRef.value.clearChat();
-  }
+  messages.value = [];
+  inputMessage.value = '';
 };
 
-// 处理对话开始事件
-const handleConversationStarted = () => {
-  console.log('AI面试对话已开始');
-};
+// 发送消息
+const sendMessage = async (userInput?: string) => {
+  const message = userInput || inputMessage.value.trim();
+  if (!message || isLoading.value) return;
 
-// 根据面试类型生成用户开始消息
-const generateUserStartMessage = (): string => {
-  if (!selectedPrompt.value) return "我准备好了，可以开始面试吗？";
-  
-  const messages = [
-    "您好！我已经准备好了，可以开始面试吗？",
-    "我准备好了，请开始面试吧！", 
-    "面试官您好，我已经做好准备，可以开始了。",
-    "您好！我对这次面试很期待，现在可以开始吗？"
-  ];
-  
-  // 根据面试类型添加特定的消息
-  switch (selectedPrompt.value.id) {
-    case 'general':
-      const position = promptInputs.value.position || '这个岗位';
-      const company = promptInputs.value.company || '贵公司';
-      messages.push(
-        `您好！我很期待这次${company}的${position}面试，我已经准备好了。`,
-        `面试官您好！我对${position}这个岗位很感兴趣，现在可以开始面试吗？`
-      );
-      break;
-    
-    case 'it':
-      messages.push(
-        "您好！我已经准备好进行Golang开发工程师的技术面试了。",
-        "面试官您好！作为一名Go开发者，我很期待这次技术面试，可以开始吗？"
-      );
-      break;
-      
-    default:
-      messages.push(`您好！我已经准备好进行${selectedPrompt.value.title}了。`);
-  }
-  
-  // 随机选择一个消息
-  return messages[Math.floor(Math.random() * messages.length)];
-};
+  // 添加用户消息
+  messages.value.push({ type: 'user', content: message });
+  inputMessage.value = '';
 
-// 监听供应商变更事件，用于自动开始对话
-const handleProviderChanged = (selection: any) => {
-  console.log('=== handleProviderChanged 触发 ===');
-  console.log('面试页面收到供应商变更:', selection);
-  console.log('当前showChat状态:', showChat.value);
-  console.log('chatCoreRef存在:', !!chatCoreRef.value);
-  
-  // 如果供应商和模型都已选择，且处于面试状态，且当前没有消息，则自动发送开始消息
-  if (selection.provider && selection.model && showChat.value && chatCoreRef.value) {
-    console.log('✅ 所有条件满足，准备自动发送开始面试消息');
-    
-    // 延迟确保所有状态都更新完成
-    setTimeout(async () => {
-      try {
-        console.log('开始检查消息数量...');
-        // 检查是否已经有消息了，避免重复发送
-        const currentMessages = chatCoreRef.value.messages || [];
-        console.log('当前消息数量:', currentMessages.length);
-        console.log('消息内容:', currentMessages);
-        
-        if (currentMessages.length === 0) {
-          console.log('✅ 没有消息，开始自动发送用户开始消息');
-          
-          // 生成个性化的开始消息
-          const startMessage = generateUserStartMessage();
-          console.log('生成的开始消息:', startMessage);
-          
-          console.log('调用 handleUserInput...');
-          await chatCoreRef.value.handleUserInput(startMessage);
-          console.log('✅ 自动开始消息发送成功');
-        } else {
-          console.log('⚠️ 已有消息记录，跳过自动发送');
-          console.log('现有消息:', currentMessages.map(m => ({ type: m.type, content: m.content.substring(0, 50) })));
-        }
-      } catch (error) {
-        console.error('❌ 自动发送开始消息失败:', error);
-        
-        // 如果自动发送失败，尝试发送一个简单的备用消息
-        try {
-          console.log('尝试发送备用消息...');
-          await chatCoreRef.value.handleUserInput("我准备好了，可以开始面试吗？");
-          console.log('✅ 备用开始消息发送成功');
-        } catch (backupError) {
-          console.error('❌ 备用消息也发送失败:', backupError);
+  // 滚动到底部
+  nextTick(() => scrollToBottom());
+
+  isLoading.value = true;
+
+  try {
+    // 构建消息历史
+    const apiMessages: Array<{ role: string, content: string }> = [
+      { role: 'system', content: generatedSystemPrompt.value },
+      ...messages.value.map(m => ({ role: m.type === 'user' ? 'user' : 'assistant', content: m.content }))
+    ];
+
+    // 构建 OpenAI 格式请求
+    const requestBody = {
+      model: 'nova-fast',
+      messages: apiMessages
+    };
+
+    const resp = await axios.post(
+      pollinationsProxyUrl.value,
+      requestBody,
+      {
+        params: {
+          target: `${pollinationsTextUrl.value}/v1/chat/completions`
+        },
+        headers: {
+          'Authorization': `Bearer ${pollinationsApiKey.value}`,
+          'Content-Type': 'application/json'
         }
       }
-    }, 1000); // 增加延迟确保组件完全加载
-  } else {
-    console.log('❌ 条件不满足，不发送消息');
-    console.log('selection.provider:', selection.provider);
-    console.log('selection.model:', selection.model);
-    console.log('showChat.value:', showChat.value);
-    console.log('chatCoreRef.value:', !!chatCoreRef.value);
+    );
+
+    // 解析 OpenAI 格式响应
+    const assistantMessage = resp.data?.choices?.[0]?.message?.content || '抱歉，我暂时无法回复。';
+    messages.value.push({ type: 'assistant', content: assistantMessage });
+
+  } catch (e) {
+    console.error('请求失败:', e);
+    messages.value.push({ type: 'assistant', content: '抱歉，请求出现错误，请稍后重试。' });
+  } finally {
+    isLoading.value = false;
+    nextTick(() => scrollToBottom());
   }
-  
-  console.log('=== handleProviderChanged 结束 ===');
+};
+
+// 滚动到底部
+const scrollToBottom = () => {
+  if (chatContainerRef.value) {
+    chatContainerRef.value.scrollTop = chatContainerRef.value.scrollHeight;
+  }
+};
+
+// 复制消息
+const copyMessage = (text: string) => copy(text);
+
+// 添加按下效果的方法
+const handleButtonPress = (event: Event) => {
+  const button = event.target as HTMLElement;
+  button.classList.add('button-pressed');
+  setTimeout(() => {
+    button.classList.remove('button-pressed');
+  }, 150);
 };
 
 // 组件挂载时检查URL参数
-onMounted(() => {
-  // 可以通过URL参数直接选择特定的面试类型
+const checkUrlParams = () => {
   const promptId = route.query.prompt as string;
   if (promptId) {
     const prompt = interviewPrompts.find(p => p.id === promptId);
@@ -256,7 +226,9 @@ onMounted(() => {
       selectPrompt(prompt);
     }
   }
-});
+};
+
+checkUrlParams();
 </script>
 
 <template>
@@ -309,7 +281,15 @@ onMounted(() => {
               {{ input.label }}
               <span v-if="input.required" class="text-red-500">*</span>
             </label>
+            <textarea
+              v-if="input.key === 'resume'"
+              v-model="promptInputs[input.key]"
+              :placeholder="input.placeholder"
+              :required="input.required"
+              class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-[120px]"
+            />
             <input
+              v-else
               v-model="promptInputs[input.key]"
               :placeholder="input.placeholder"
               :required="input.required"
@@ -331,7 +311,8 @@ onMounted(() => {
     </div>
 
     <!-- 面试对话阶段 -->
-    <div v-else>
+    <div v-else class="p-4 rounded-2xl bg-white">
+      <!-- 面试状态栏 -->
       <div class="mb-4 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-500">
         <div class="flex items-center justify-between">
           <div class="flex items-center">
@@ -347,14 +328,79 @@ onMounted(() => {
         </div>
       </div>
 
-      <AiChatCore
-        ref="chatCoreRef"
-        :title="selectedPrompt?.title || 'AI面试助手'"
-        :system-prompt="generatedSystemPrompt"
-        storage-key="ai-interview-provider-selection"
-        @conversation-started="handleConversationStarted"
-        @provider-changed="handleProviderChanged"
-      />
+      <!-- 聊天消息区域 -->
+      <div
+        ref="chatContainerRef"
+        class="h-[500px] overflow-y-auto border rounded-lg p-4 mb-4 bg-gray-50"
+      >
+        <div class="space-y-4">
+          <div
+            v-for="(msg, index) in messages"
+            :key="index"
+            :class="[
+              'flex',
+              msg.type === 'user' ? 'justify-end' : 'justify-start'
+            ]"
+          >
+            <div
+              :class="[
+                'max-w-[80%] rounded-lg p-3 relative group',
+                msg.type === 'user'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-white border text-gray-800'
+              ]"
+            >
+              <div class="whitespace-pre-wrap">{{ msg.content }}</div>
+              <button
+                v-if="msg.type === 'assistant'"
+                @click="copyMessage(msg.content)"
+                @mousedown="handleButtonPress"
+                @touchstart="handleButtonPress"
+                class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 px-2 py-1 rounded"
+              >
+                复制
+              </button>
+            </div>
+          </div>
+
+          <!-- 加载中提示 -->
+          <div v-if="isLoading" class="flex justify-start">
+            <div class="bg-white border rounded-lg p-3 text-gray-500">
+              <span class="inline-flex items-center">
+                <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                面试官正在思考...
+              </span>
+            </div>
+          </div>
+
+          <!-- 欢迎提示 -->
+          <div v-if="messages.length === 0 && !isLoading" class="text-center text-gray-400 py-8">
+            <p>面试即将开始，请做好准备...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 输入区域 -->
+      <div class="flex gap-2">
+        <textarea
+          v-model="inputMessage"
+          @keydown.enter.prevent="sendMessage()"
+          placeholder="输入你的回答..."
+          class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+          rows="2"
+          :disabled="isLoading"
+        />
+        <button
+          @click="sendMessage()"
+          :disabled="isLoading || !inputMessage.trim()"
+          class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors self-end"
+        >
+          {{ isLoading ? '发送中...' : '发送' }}
+        </button>
+      </div>
     </div>
 
     <!-- 功能说明 -->
@@ -366,7 +412,6 @@ onMounted(() => {
         <br>• <strong>智能对话</strong>：AI面试官根据回答动态调整问题难度和方向
         <br>• <strong>专业指导</strong>：模拟真实面试流程，提供针对性的技术和能力考察
         <br>• <strong>即时反馈</strong>：在对话中获得建议和指导，提升面试技巧
-        <br>• <strong>多供应商支持</strong>：支持多个AI服务供应商，确保稳定的面试体验
         <br><br>
         <strong>使用建议：</strong>
         <br>1. 选择与目标岗位匹配的面试类型
@@ -374,15 +419,47 @@ onMounted(() => {
         <br>3. 认真对待每个问题，模拟真实面试状态
         <br>4. 主动询问面试技巧和改进建议
         <br>5. 可以多次练习，熟悉不同类型的面试风格
-        <br>6. 利用AI的专业建议改进简历和回答思路
       </el-text>
     </ToolDetail>
   </div>
 </template>
 
 <style scoped>
-/* 添加一些自定义样式 */
-.grid-item-hover {
-  transform: translateY(-2px);
+.button-pressed {
+  transform: scale(0.95) !important;
+  filter: brightness(0.9) !important;
+}
+
+/* 自定义滚动条样式 */
+.overflow-y-auto::-webkit-scrollbar {
+  width: 6px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* 自定义旋转动画 */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
 }
 </style>
