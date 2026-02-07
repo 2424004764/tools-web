@@ -690,6 +690,15 @@ export function getToolsCate() {
           cateId: 11,
           cate: '趣味互动',
         },
+        {
+          id: 13,
+          title: '临时聊天室',
+          logo: '/images/logo/chat.png',
+          desc: '在线临时聊天室，无需注册，不存储数据，关闭即消失',
+          url: '/temp-chat/',
+          cateId: 11,
+          cate: '趣味互动',
+        },
       ]
     },
     {

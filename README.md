@@ -286,6 +286,38 @@ wrangler pages dev .
 
 - 笔记备忘录 - 在线笔记记录工具，支持创建、编辑、删除笔记，数据安全存储
 
+- 临时聊天室 - 基于 Supabase Realtime 的临时聊天室，支持扫码加入、链接分享、口令进入
+
+## 环境变量配置
+
+项目使用 `.env.development` 和 `.env.production` 管理环境变量。主要配置项：
+
+```env
+# Supabase 配置（临时聊天室功能需要）
+VITE_SUPABASE_URL='https://your-project.supabase.co'
+VITE_SUPABASE_ANON_KEY='your-anon-key'
+```
+
+### Supabase 临时聊天室配置
+
+1. **创建 Supabase 项目**：访问 https://supabase.com 创建免费项目
+
+2. **创建数据表**：在 Supabase SQL Editor 中执行以下 SQL：
+```sql
+CREATE TABLE chat_messages (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  room_id TEXT NOT NULL,
+  nickname TEXT NOT NULL,
+  content TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 启用 Realtime 功能
+ALTER PUBLICATION supabase_realtime ADD TABLE chat_messages;
+```
+
+3. **获取密钥**：在 Project Settings > API 中复制 URL 和 anon key，填入环境变量
+
 ## 其他
 
 Q: 我应该如何添加新功能？

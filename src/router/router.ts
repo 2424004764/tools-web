@@ -999,4 +999,14 @@ export const constantRoute = [
       description: '安全的在线密码管理器，支持AES加密存储、分组管理、备注功能、密码生成器，保护您的账号安全'
     }
   },
+  {
+    path: '/temp-chat',
+    component: () => import('@/components/Tools/TempChat/TempChat.vue'),
+    name: 'temp-chat',
+    meta: {
+      title: "临时聊天室",
+      keywords: '临时聊天室,在线聊天,匿名聊天,P2P聊天,不存数据,阅后即焚',
+      description: '在线临时聊天室，无需注册，不存储任何数据，基于P2P技术实现实时通信，关闭页面即消失'
+    }
+  },
 ]
