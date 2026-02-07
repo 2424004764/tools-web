@@ -32,6 +32,7 @@ const isConnecting = ref(false);
 const isSending = ref(false);
 const isConnected = ref(false);
 const showQrcode = ref(false);
+const showAllOnlineUsers = ref(false);
 
 // Supabase channel 实例
 let messageChannel: any = null;
@@ -579,12 +580,25 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
           </div>
         </div>
 
-        <!-- 在线用户列表（移动端显示） -->
-        <div class="md:hidden flex items-center gap-2 pb-2 text-sm text-gray-500 overflow-x-auto">
-          <span>在线:</span>
-          <span v-for="user in onlineUsers" :key="user" class="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs whitespace-nowrap">
-            {{ user }}
-          </span>
+        <!-- 在线用户列表 -->
+        <div class="flex items-center gap-2 pb-2 text-sm text-gray-500 flex-wrap">
+          <span class="flex-shrink-0">在线 ({{ onlineUsers.length }}):</span>
+          <template v-if="onlineUsers.length > 5 && !showAllOnlineUsers">
+            <span v-for="user in onlineUsers.slice(0, 5)" :key="user" class="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs whitespace-nowrap">
+              {{ user }}
+            </span>
+            <span class="text-xs text-blue-500 cursor-pointer hover:underline" @click="showAllOnlineUsers = true">
+              还有 {{ onlineUsers.length - 5 }} 人...
+            </span>
+          </template>
+          <template v-else>
+            <span v-for="user in onlineUsers" :key="user" class="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs whitespace-nowrap">
+              {{ user }}
+            </span>
+            <span v-if="onlineUsers.length > 5" class="text-xs text-blue-500 cursor-pointer hover:underline" @click="showAllOnlineUsers = false">
+              收起
+            </span>
+          </template>
         </div>
 
         <!-- 消息列表 -->
