@@ -65,11 +65,6 @@ const getRoomLink = computed(() => {
   return `${baseUrl}?room=${roomId.value}`;
 });
 
-// 获取房间口令（用于分享）
-const getRoomToken = computed(() => {
-  return roomId.value;
-});
-
 // 从 URL 参数中获取房间号
 const loadRoomFromUrl = () => {
   const roomParam = route.query.room as string;
@@ -143,8 +138,12 @@ const joinRoom = async () => {
     const normalizedRoomId = roomId.value.toUpperCase();
 
     // 加载历史消息
+    let isNewRoom = false;
     try {
       const historyData = await chatDb.getMessages(normalizedRoomId, 50);
+      if (!historyData || historyData.length === 0) {
+        isNewRoom = true;
+      }
       messages.value = historyData
         .filter((msg: any) => {
           // 只显示最近1小时的消息
@@ -161,9 +160,17 @@ const joinRoom = async () => {
 
       nextTick(() => scrollToBottom());
     } catch (error: any) {
-      // 如果表不存在，忽略错误继续
-      if (error.code !== 'PGRST204') {
-        console.error("加载历史消息失败:", error);
+      // 如果表不存在，标记为新房间
+      isNewRoom = true;
+      console.error("加载历史消息失败:", error);
+    }
+
+    // 如果是新房间，发送一条系统消息标记房间创建
+    if (isNewRoom) {
+      try {
+        await chatDb.sendMessage(normalizedRoomId, '系统', `房间 ${normalizedRoomId} 已创建`);
+      } catch (e) {
+        // 忽略错误
       }
     }
 

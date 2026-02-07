@@ -298,7 +298,7 @@ VITE_SUPABASE_URL='https://your-project.supabase.co'
 VITE_SUPABASE_ANON_KEY='your-anon-key'
 ```
 
-### Supabase 临时聊天室配置
+### Supabase 临时聊天室配置（有免费额度，小项目使用）
 
 1. **创建 Supabase 项目**：访问 https://supabase.com 创建免费项目
 
