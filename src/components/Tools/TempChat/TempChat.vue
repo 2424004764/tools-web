@@ -4,6 +4,7 @@ import { useRoute } from "vue-router";
 import DetailHeader from "@/components/Layout/DetailHeader/DetailHeader.vue";
 import ToolDetail from "@/components/Layout/ToolDetail/ToolDetail.vue";
 import { ElMessage } from "element-plus";
+import { CopyDocument, Close } from "@element-plus/icons-vue";
 import QrcodeVue3 from "qrcode-vue3";
 import { supabase, chatDb } from "@/utils/supabase";
 
@@ -28,6 +29,7 @@ const inputMessage = ref("");
 const messagesContainer = ref<HTMLElement | null>(null);
 const onlineUsers = ref<string[]>([]);
 const isConnecting = ref(false);
+const isSending = ref(false);
 const isConnected = ref(false);
 const showQrcode = ref(false);
 
@@ -94,14 +96,21 @@ const configSteps = [
 // 初始化 Supabase 连接
 const initSupabase = async () => {
   // 检查 Supabase 配置
-  if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
-    ElMessage.warning("Supabase 未配置，请先配置环境变量");
+  const url = import.meta.env.VITE_SUPABASE_URL || '';
+  const key = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+  if (!url || !key || url.includes('your-project') || key.includes('your-anon-key')) {
     return false;
   }
 
   try {
-    // 测试连接
-    const { error } = await supabase.from('chat_messages').select('id').limit(1);
+    // 添加超时保护
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('连接超时')), 5000)
+    );
+
+    const connectPromise = supabase.from('chat_messages').select('id').limit(1);
+
+    const { error } = await Promise.race([connectPromise, timeoutPromise]) as any;
     if (error && error.code !== 'PGRST116') {
       throw error;
     }
@@ -109,7 +118,7 @@ const initSupabase = async () => {
     return true;
   } catch (error: any) {
     console.error("Supabase 连接失败:", error);
-    ElMessage.error("连接服务器失败，请检查网络或配置");
+    isConnected.value = false;
     return false;
   }
 };
@@ -236,6 +245,11 @@ const joinRoom = async () => {
     newUrl.searchParams.set('room', normalizedRoomId);
     window.history.replaceState({}, '', newUrl.toString());
 
+    // 等待 DOM 更新后滚动到底部
+    nextTick(() => {
+      scrollToBottom();
+    });
+
     ElMessage.success("成功加入聊天室");
   } catch (error: any) {
     console.error("加入房间失败:", error);
@@ -267,14 +281,17 @@ const updateOnlineUsers = () => {
 
 // 发送消息
 const sendMessage = async () => {
-  if (!inputMessage.value.trim()) return;
+  if (!inputMessage.value.trim() || isSending.value) return;
 
+  isSending.value = true;
   try {
     await chatDb.sendMessage(roomId.value, nickname.value, inputMessage.value.trim());
     inputMessage.value = "";
   } catch (error: any) {
     console.error("发送消息失败:", error);
     ElMessage.error("发送失败，请重试");
+  } finally {
+    isSending.value = false;
   }
 };
 
@@ -313,7 +330,10 @@ const leaveRoom = () => {
 // 滚动到底部
 const scrollToBottom = () => {
   if (messagesContainer.value) {
-    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+    messagesContainer.value.scrollTo({
+      top: messagesContainer.value.scrollHeight,
+      behavior: 'smooth'
+    });
   }
 };
 
@@ -332,6 +352,16 @@ const copyRoomLink = async () => {
   try {
     await navigator.clipboard.writeText(getRoomLink.value);
     ElMessage.success("链接已复制，分享给好友即可加入");
+  } catch {
+    ElMessage.error("复制失败");
+  }
+};
+
+// 复制消息
+const copyMessage = async (content: string) => {
+  try {
+    await navigator.clipboard.writeText(content);
+    ElMessage.success("消息已复制");
   } catch {
     ElMessage.error("复制失败");
   }
@@ -487,33 +517,41 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
       </div>
 
       <!-- 已加入房间时显示聊天界面 -->
-      <div v-else class="flex flex-col h-[600px]">
+      <div v-else class="flex flex-col gap-3">
         <!-- 顶部信息栏 -->
-        <div class="flex items-center justify-between pb-3 border-b border-gray-200 mb-3">
-          <div class="flex items-center gap-3 flex-wrap">
-            <div class="flex items-center gap-2">
-              <span class="text-sm text-gray-500">房间:</span>
-              <span class="font-mono font-semibold text-primary">{{ roomId }}</span>
-              <el-button size="small" text @click="copyRoomId">
-                <el-icon><i class="el-icon-copy-document" /></el-icon>
-                复制
-              </el-button>
+        <div class="space-y-3 pb-3 border-b border-gray-200">
+          <!-- 第一行：房间信息 -->
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2 flex-1 min-w-0">
+              <span class="text-sm text-gray-500 flex-shrink-0">房间:</span>
+              <span class="font-mono font-semibold text-primary truncate">{{ roomId }}</span>
             </div>
-            <div class="hidden md:flex items-center gap-2">
-              <span class="text-sm text-gray-500">在线:</span>
-              <span class="text-sm text-green-600">{{ onlineUsers.length }} 人</span>
+            <div class="flex items-center gap-1 flex-shrink-0">
+              <el-button size="small" text @click="copyRoomId">
+                <el-icon :size="16"><CopyDocument /></el-icon>
+              </el-button>
+              <div class="hidden md:flex items-center gap-1 ml-2">
+                <span class="text-sm text-gray-500">在线:</span>
+                <span class="text-sm text-green-600">{{ onlineUsers.length }} 人</span>
+              </div>
             </div>
           </div>
-          <div class="flex items-center gap-2">
-            <el-button size="small" @click="toggleQrcode">
-              <el-icon><i class="el-icon-qrcode" /></el-icon>
-              二维码
-            </el-button>
-            <el-button size="small" @click="copyRoomLink">
-              <el-icon><i class="el-icon-link" /></el-icon>
-              复制链接
-            </el-button>
-            <el-button type="danger" size="small" @click="leaveRoom">离开</el-button>
+          <!-- 第二行：操作按钮 -->
+          <div class="flex items-center justify-between">
+            <div class="md:hidden flex items-center gap-1">
+              <span class="text-sm text-gray-500">在线: {{ onlineUsers.length }} 人</span>
+            </div>
+            <div class="flex items-center gap-1 ml-auto">
+              <el-button size="small" @click="toggleQrcode">
+                二维码
+              </el-button>
+              <el-button size="small" @click="copyRoomLink">
+                复制链接
+              </el-button>
+              <el-button type="danger" size="small" @click="leaveRoom">
+                离开
+              </el-button>
+            </div>
           </div>
         </div>
 
@@ -523,7 +561,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
             <div class="flex justify-between items-center mb-4">
               <h3 class="text-lg font-semibold">扫码加入聊天室</h3>
               <el-button text @click="toggleQrcode">
-                <el-icon><i class="el-icon-close" /></el-icon>
+                <el-icon :size="20"><Close /></el-icon>
               </el-button>
             </div>
             <div class="flex flex-col items-center">
@@ -553,6 +591,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
         <div
           ref="messagesContainer"
           class="flex-1 overflow-y-auto space-y-3 pr-2 bg-gray-50 rounded-lg p-4"
+          style="min-height: 350px; max-height: 55vh;"
         >
           <div v-if="messages.length === 0" class="flex items-center justify-center h-full text-gray-400">
             <div class="text-center">
@@ -564,11 +603,11 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
           <div
             v-for="msg in messages"
             :key="msg.id"
-            class="flex"
+            class="flex group"
             :class="msg.isSelf ? 'justify-end' : 'justify-start'"
           >
             <!-- 普通消息 -->
-            <div class="max-w-[80%] md:max-w-[70%]">
+            <div class="max-w-[90%] md:max-w-[80%]">
               <div class="flex items-end gap-2" :class="msg.isSelf ? 'flex-row-reverse' : ''">
                 <!-- 头像 -->
                 <div
@@ -579,15 +618,28 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
                 </div>
 
                 <!-- 消息内容 -->
-                <div>
+                <div class="relative">
                   <div class="text-xs text-gray-400 mb-1" :class="msg.isSelf ? 'text-right' : ''">
                     {{ msg.nickname }} · {{ formatTime(msg.timestamp) }}
                   </div>
                   <div
-                    class="px-4 py-2 rounded-2xl break-words shadow-sm"
+                    class="px-4 py-2 rounded-2xl shadow-sm whitespace-pre-wrap break-words overflow-wrap-break-word cursor-pointer"
                     :class="msg.isSelf ? 'bg-blue-500 text-white rounded-br-md' : 'bg-white text-gray-800 rounded-bl-md'"
+                    @click="copyMessage(msg.content)"
                   >
                     {{ msg.content }}
+                  </div>
+                  <!-- 复制按钮 -->
+                  <div
+                    class="absolute left-1/2 -translate-x-1/2 -bottom-9 opacity-0 group-hover:opacity-100 transition-opacity duration-200 md:block hidden z-10"
+                    @click.stop="copyMessage(msg.content)"
+                  >
+                    <div class="bg-gray-800 text-white text-xs px-3 py-1 rounded-full flex items-center gap-1 shadow-lg cursor-pointer hover:bg-gray-700 whitespace-nowrap">
+                      <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                      </svg>
+                      <span>复制</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -597,15 +649,19 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
 
         <!-- 输入区域 -->
         <div class="pt-3 border-t border-gray-200 mt-3">
-          <div class="flex gap-2">
+          <div class="flex gap-2 items-end">
             <el-input
               v-model="inputMessage"
+              type="textarea"
+              :rows="1"
+              :autosize="{ minRows: 1, maxRows: 5 }"
               placeholder="输入消息..."
               maxlength="500"
               show-word-limit
               @keydown="handleKeydown"
+              class="flex-1"
             />
-            <el-button type="primary" @click="sendMessage" :disabled="!inputMessage.trim()">
+            <el-button type="primary" @click="sendMessage" :disabled="!inputMessage.trim()" :loading="isSending">
               发送
             </el-button>
           </div>
@@ -630,6 +686,13 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
         <br>3. 点击加入聊天室
         <br>4. 通过二维码/链接/房间号邀请好友
         <br>5. 开始聊天！
+        <br><br>
+        <strong>实现原理：</strong>
+        <br>• 使用 <strong>Supabase Realtime</strong> 实现 WebSocket 实时通信，消息秒级同步
+        <br>• 消息存储在云端数据库，支持历史消息加载（最近1小时）
+        <br>• 通过 Presence 功能追踪在线用户状态
+        <br>• 房间通过唯一标识符区分，只有相同房间号的用户才能互相通信
+        <br>• 前端采用 Vue3 响应式设计，界面自适应各种屏幕尺寸
       </el-text>
     </ToolDetail>
   </div>
@@ -657,5 +720,11 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
 
 .text-primary {
   color: #409eff;
+}
+
+/* 消息换行样式 */
+.overflow-wrap-break-word {
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 </style>
