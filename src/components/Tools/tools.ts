@@ -303,6 +303,15 @@ export function getToolsCate() {
           cateId: 3,
           cate: '文本处理'
         },
+        {
+          id: 1,
+          title: 'PDF页眉页脚编辑器',
+          logo: '/images/logo/pdf_edit_header.png',
+          desc: '在线PDF页眉页脚编辑工具，支持自定义文本、字体、字号和对齐方式',
+          url: '/pdf-editor/',
+          cateId: 3,
+          cate: '文本处理'
+        },
       ]
     },
     {
@@ -467,15 +476,6 @@ export function getToolsCate() {
           logo: '/images/logo/pdf_to_image.png',
           desc: '在线将PDF文件转换为高清图片，支持多页转换，保持原始清晰度',
           url: '/pdf-to-image/',
-          cateId: 5,
-          cate: '图片处理'
-        },
-        {
-          id: 1,
-          title: 'PDF页眉页脚编辑器',
-          logo: '/images/logo/pdf_to_image.png',
-          desc: '在线PDF页眉页脚编辑工具，支持自定义文本、字体、字号和对齐方式',
-          url: '/pdf-editor/',
           cateId: 5,
           cate: '图片处理'
         },
@@ -818,6 +818,15 @@ export function getToolsCate() {
           url: '/colorpicker/',
           cateId: 7,
           cate: '其他工具'
+        },
+        {
+          id: 1,
+          title: '待办事项',
+          logo: '/images/logo/todos.png',
+          desc: '在线待办事项管理，支持优先级设置、截止日期提醒，高效管理任务',
+          url: '/todos/',
+          cateId: 7,
+          cate: '其他工具',
         },
         {
           id: 1,

@@ -60,6 +60,11 @@ const goToCompanyCompare = () => {
 const goToQA = () => {
   router.push('/qa');
 };
+
+// 跳转到待办事项页面
+const goToTodos = () => {
+  router.push('/todos');
+};
 </script>
 
 <template>
@@ -236,15 +241,15 @@ const goToQA = () => {
               </div>
             </div>
             <!-- QA页面制作 -->
-            <div 
+            <div
               @click="goToQA"
               class="bg-white border border-gray-200 rounded-lg p-3 hover:shadow-md hover:border-orange-300 transition-all duration-200 cursor-pointer group"
             >
               <div class="flex items-center space-x-3">
                 <div class="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center group-hover:bg-orange-200 transition-colors">
-                  <img 
-                    src="/images/logo/qa.png" 
-                    alt="QA页面制作" 
+                  <img
+                    src="/images/logo/qa.png"
+                    alt="QA页面制作"
                     class="w-10 h-10 object-contain"
                   />
                 </div>
@@ -257,6 +262,34 @@ const goToQA = () => {
                   </p>
                 </div>
                 <div class="text-gray-400 group-hover:text-orange-500 transition-colors">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <!-- 待办事项 -->
+            <div
+              @click="goToTodos"
+              class="bg-white border border-gray-200 rounded-lg p-3 hover:shadow-md hover:border-teal-300 transition-all duration-200 cursor-pointer group"
+            >
+              <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center group-hover:bg-teal-200 transition-colors">
+                  <img
+                    src="/images/logo/todos.png"
+                    alt="待办事项"
+                    class="w-10 h-10 object-contain"
+                  />
+                </div>
+                <div class="flex-1">
+                  <h4 class="font-medium text-gray-800 text-sm c-sm:text-base group-hover:text-teal-600 transition-colors">
+                    待办事项
+                  </h4>
+                  <p class="text-gray-500 text-xs c-sm:text-sm">
+                    管理您的任务和待办清单
+                  </p>
+                </div>
+                <div class="text-gray-400 group-hover:text-teal-500 transition-colors">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                   </svg>

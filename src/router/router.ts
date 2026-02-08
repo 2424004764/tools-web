@@ -900,6 +900,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/todos',
+    component: () => import('@/components/Tools/Todos/Todos.vue'),
+    name: 'todos',
+    meta: {
+      title: "待办事项",
+      keywords: '待办事项,任务管理,TODO,优先级,截止日期,任务清单',
+      description: '在线待办事项管理工具，支持优先级设置、截止日期提醒，高效管理个人任务清单',
+    }
+  },
+  {
     path: '/mysql-to-go',
     component: () => import('@/components/Tools/MySQLToGo/MySQLToGo.vue'),
     name: 'mysql-to-go',

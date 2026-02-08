@@ -215,6 +215,54 @@ export class Validator {
     }
   }
 
+  // 验证待办事项创建数据
+  static validateCreateTodo(data) {
+    const errors = []
+
+    if (!data.title || typeof data.title !== 'string' || data.title.trim().length === 0) {
+      errors.push('标题不能为空')
+    }
+
+    if (data.title && data.title.length > 200) {
+      errors.push('标题长度不能超过200个字符')
+    }
+
+    if (data.priority && !['low', 'medium', 'high'].includes(data.priority)) {
+      errors.push('优先级必须是 low、medium 或 high')
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    }
+  }
+
+  // 验证待办事项更新数据
+  static validateUpdateTodo(data) {
+    const errors = []
+
+    if (data.title !== undefined && (typeof data.title !== 'string' || data.title.trim().length === 0)) {
+      errors.push('标题不能为空')
+    }
+
+    if (data.title && data.title.length > 200) {
+      errors.push('标题长度不能超过200个字符')
+    }
+
+    if (data.priority !== undefined && !['low', 'medium', 'high'].includes(data.priority)) {
+      errors.push('优先级必须是 low、medium 或 high')
+    }
+
+    if (data.completed !== undefined && typeof data.completed !== 'number') {
+      errors.push('完成状态必须是数字')
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    }
+  }
+
   // 创建验证错误响应
   static createValidationErrorResponse(errors) {
     return ApiResponse.error(`参数验证失败: ${errors.join(', ')}`, 400)
