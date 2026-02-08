@@ -523,18 +523,16 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
         <div class="space-y-3 pb-3 border-b border-gray-200">
           <!-- 第一行：房间信息 -->
           <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2 flex-1 min-w-0">
+            <div class="flex items-center gap-1 flex-1 min-w-0">
               <span class="text-sm text-gray-500 flex-shrink-0">房间:</span>
               <span class="font-mono font-semibold text-primary truncate">{{ roomId }}</span>
-            </div>
-            <div class="flex items-center gap-1 flex-shrink-0">
-              <el-button size="small" text @click="copyRoomId">
+              <el-button size="small" text @click="copyRoomId" class="flex-shrink-0">
                 <el-icon :size="16"><CopyDocument /></el-icon>
               </el-button>
-              <div class="hidden md:flex items-center gap-1 ml-2">
-                <span class="text-sm text-gray-500">在线:</span>
-                <span class="text-sm text-green-600">{{ onlineUsers.length }} 人</span>
-              </div>
+            </div>
+            <div class="hidden md:flex items-center gap-1 flex-shrink-0">
+              <span class="text-sm text-gray-500">在线:</span>
+              <span class="text-sm text-green-600">{{ onlineUsers.length }} 人</span>
             </div>
           </div>
           <!-- 第二行：操作按钮 -->
