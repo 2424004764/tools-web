@@ -53,8 +53,12 @@ export default defineConfig(({command, mode}) => {
             utils: ['lodash', 'axios', 'uuid'],
             // 代码相关库
             codemirror: ['codemirror', '@codemirror/commands', '@codemirror/lang-javascript', '@codemirror/lang-json'],
-            // 图片处理库
-            image: ['html2canvas', 'compressorjs', 'tui-image-editor'],
+            // 图片处理库（按需加载，不打包到主chunk）
+            // image: ['html2canvas', 'compressorjs', 'tui-image-editor'],
+            // PDF处理库（按需加载）
+            // pdf: ['pdfjs-dist'],
+            // 3D库（按需加载）
+            // three: ['three'],
           },
           // 为 chunk 文件名添加 hash
           chunkFileNames: (chunkInfo) => {
