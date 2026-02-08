@@ -472,6 +472,15 @@ export function getToolsCate() {
         },
         {
           id: 1,
+          title: 'PDF页眉页脚编辑器',
+          logo: '/images/logo/pdf_to_image.png',
+          desc: '在线PDF页眉页脚编辑工具，支持自定义文本、字体、字号和对齐方式',
+          url: '/pdf-editor/',
+          cateId: 5,
+          cate: '图片处理'
+        },
+        {
+          id: 1,
           title: '二维码生成',
           logo: '/images/logo/qrcode.png',
           desc: '在线生成二维码，支持带logo、透明、艺术的二维码生成',

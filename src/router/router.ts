@@ -890,6 +890,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/pdf-editor',
+    component: () => import('@/components/Tools/PdfEditor/PdfEditor.vue'),
+    name: 'pdf-editor',
+    meta: {
+      title: "PDF页眉页脚编辑器",
+      keywords: 'PDF编辑,PDF页眉,PDF页脚,在线PDF编辑,页眉页脚添加',
+      description: '在线PDF页眉页脚编辑工具，支持自定义页眉页脚文本、字体、字号和对齐方式，可应用到单页或所有页',
+    }
+  },
+  {
     path: '/mysql-to-go',
     component: () => import('@/components/Tools/MySQLToGo/MySQLToGo.vue'),
     name: 'mysql-to-go',
