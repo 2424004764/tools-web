@@ -497,6 +497,26 @@ export class PasswordGroupModel extends Model {
   }
 }
 
+// Todo 模型 - 待办事项模型
+export class TodoModel extends Model {
+  constructor(db) {
+    super(db)
+    this.config = {
+      tableName: 'todos',
+      fields: {
+        id: { type: 'string', primaryKey: true },
+        uid: { type: 'string' },
+        title: { type: 'string' },
+        completed: { type: 'integer' },
+        priority: { type: 'string' },
+        dueDate: { type: 'string', dbField: 'due_date' },
+        createTime: { type: 'datetime', dbField: 'create_time' },
+        updateTime: { type: 'datetime', dbField: 'update_time' }
+      }
+    }
+  }
+}
+
 // QA 模型 - QA问答页面模型
 export class QAModel extends Model {
   constructor(db) {
