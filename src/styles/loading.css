@@ -1,0 +1,26 @@
+/* 路由加载状态样式 */
+.route-loading {
+  position: relative;
+}
+
+.route-loading::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #409EFF 0%, #67C23A 50%, #409EFF 100%);
+  background-size: 200% 100%;
+  animation: loading-bar 1.5s ease-in-out infinite;
+  z-index: 9999;
+}
+
+@keyframes loading-bar {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}

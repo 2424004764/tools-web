@@ -48,7 +48,18 @@ if (typeof requestIdleCallback !== 'undefined') {
   }, 2000)
 }
 
+// 添加全局加载状态
+let loadingTimeout: number | null = null
+
 router.beforeEach((to, _from, next) => {
+  // 显示加载指示器（延迟200ms，避免快速切换时闪烁）
+  loadingTimeout = window.setTimeout(() => {
+    const app = document.querySelector('#app')
+    if (app) {
+      app.classList.add('route-loading')
+    }
+  }, 200)
+
   // 预加载目标路由的相邻路由
   if (to.path && !preloadedRoutes.has(to.path)) {
     const currentIndex = constantRoute.findIndex(r => r.path === to.path)
@@ -72,6 +83,16 @@ router.beforeEach((to, _from, next) => {
 
 //路由后置卫士
 router.afterEach((to) => {
+  // 清除加载状态
+  if (loadingTimeout) {
+    clearTimeout(loadingTimeout)
+    loadingTimeout = null
+  }
+  const app = document.querySelector('#app')
+  if (app) {
+    app.classList.remove('route-loading')
+  }
+
   //填充mate元信息
   const { title , keywords, description } = to.meta
   //详情页标题

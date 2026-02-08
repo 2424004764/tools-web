@@ -10,6 +10,7 @@ import 'virtual:svg-icons-register'
 import router from './router'
 //styles
 import './styles/tailwind.css'
+import './styles/loading.css'
 //element-plus css
 import 'element-plus/dist/index.css'
 //pinia
@@ -22,9 +23,6 @@ import 'default-passive-events'
 import 'viewerjs/dist/viewer.css'
 import VueViewer from 'v-viewer'
 import { initializeAIProviders } from './spi/init'
-
-// 初始化AI提供者
-initializeAIProviders()
 
 const app = createApp(App)
 //安装仓库
@@ -41,3 +39,8 @@ setupMdEditor(app)
 app.use(VueViewer)
 //挂载应用
 app.mount('#app')
+
+// 延迟初始化AI提供者（不阻塞应用启动）
+setTimeout(() => {
+  initializeAIProviders()
+}, 1000)
