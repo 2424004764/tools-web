@@ -43,15 +43,25 @@ class FunctionsRequest {
           const status = error.response.status
           
           if (status === 401) {
-            ElMessage.error('登录已过期，即将跳转到登录页')
+            ElMessage({
+              message: '登录已过期，即将跳转到登录页',
+              type: 'error',
+              duration: 2000,
+              showClose: true
+            })
             setTimeout(() => {
               window.location.href = '/login'
-            }, 1000)
+            }, 1500)
           } else {
             handleHttpError(status)
           }
         } else if (error.request) {
-          ElMessage.error('网络连接失败')
+          ElMessage({
+            message: '网络连接失败',
+            type: 'error',
+            duration: 2500,
+            showClose: true
+          })
         }
 
         return Promise.reject(error)

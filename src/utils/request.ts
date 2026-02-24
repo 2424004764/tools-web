@@ -40,7 +40,12 @@ request.interceptors.response.use((response) => {
             isSpecialApi: false
         })
     } else {
-        ElMessage.error('无网络')
+        ElMessage({
+            message: '无网络',
+            type: 'error',
+            duration: 2500,
+            showClose: true
+        })
     }
     
     return Promise.reject(error);
