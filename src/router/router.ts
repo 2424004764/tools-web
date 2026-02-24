@@ -1029,4 +1029,14 @@ export const constantRoute = [
       description: '在线临时聊天室，无需注册，不存储任何数据，基于P2P技术实现实时通信，关闭页面即消失'
     }
   },
+  {
+    path: '/wechat-format',
+    component: () => import('@/components/Tools/WeChatFormat/WeChatFormat.vue'),
+    name: 'wechatFormat',
+    meta: {
+      title: "公众号排版",
+      keywords: '公众号排版,微信排版,文章排版,Markdown转公众号,公众号编辑器,公众号样式',
+      description: '专业的公众号排版工具，支持Markdown编辑、多种主题模板、代码高亮、目录生成等功能，一键复制到公众号编辑器'
+    }
+  },
 ]

@@ -75,8 +75,13 @@ const searchTools = async (query: string) => {
   loading.value = false
 }
 
-const optionClick = (url: string) => {
-  router.push(url)
+const optionClick = (item: any) => {
+  // 如果是好物网站,直接打开外部链接
+  if (item.isExternalSite && item.externalUrl) {
+    window.open(item.externalUrl, '_blank')
+  } else {
+    router.push(item.url)
+  }
 }
 
 // 处理退出登录
@@ -229,7 +234,7 @@ onUnmounted(() => {
             :key="item.id"
             :label="item.title + ' - ' + item.desc"
             :value="item.id"
-            @click="optionClick(item.url)"
+            @click="optionClick(item)"
           >
           </el-option>
         </el-select>

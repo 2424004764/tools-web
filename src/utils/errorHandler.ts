@@ -38,7 +38,12 @@ export function handle401Error(options: ErrorHandlerOptions = {}) {
 
   // 显示错误消息
   if (showMessage) {
-    ElMessage.error(message)
+    ElMessage({
+      message,
+      type: 'error',
+      duration: 2500,
+      showClose: true
+    })
   }
 
   // 对于特殊API（如笔记），不自动处理登录态
@@ -94,7 +99,12 @@ export function handleHttpError(status: number, options: ErrorHandlerOptions = {
   }
 
   if (showMessage) {
-    ElMessage.error(message)
+    ElMessage({
+      message,
+      type: 'error',
+      duration: 2500,
+      showClose: true
+    })
   }
 
   return { status, message }
@@ -112,7 +122,12 @@ export function checkTokenBeforeRequest(): boolean {
   // 如果token即将过期（提前5分钟），提醒用户
   const payload = token ? isTokenExpired(token) : true
   if (payload) {
-    ElMessage.warning('登录即将过期，请及时保存数据')
+    ElMessage({
+      message: '登录即将过期，请及时保存数据',
+      type: 'warning',
+      duration: 3000,
+      showClose: true
+    })
     return false
   }
   

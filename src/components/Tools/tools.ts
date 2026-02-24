@@ -1,5 +1,58 @@
 import type { ToolsReqData } from '@/components/Tools/tools.type.ts'
 
+// 好物网站数据
+export const goodSitesData = [
+  {
+    title: 'Upload.app',
+    url: 'https://upload.app/',
+    rating: 4.5,
+    desc: '海外APK文件托管存储分享平台，支持上传APK/XAPK文件，提供病毒检查保证安全性，可查看网友分享的破解版APK，体验优秀的文件托管服务',
+    category: 'APK文件托管分享'
+  },
+  {
+    title: 'Adoptium',
+    url: 'https://adoptium.net/',
+    rating: 4.9,
+    desc: 'Eclipse基金会官方Java运行时发行版，提供Eclipse Temurin® OpenJDK二进制文件。支持Java 8/11/17/21/24等版本，跨平台兼容Windows/macOS/Linux，提供x64/arm64架构支持，经过TCK认证和AQAvit验证，企业级质量保证',
+    category: '开发工具'
+  },
+  {
+    title: 'PICUI 图床',
+    url: 'https://picui.cn/upload',
+    rating: 4.7,
+    desc: '免费图床，单图≤10MB，最多同时上传5张，拖拽上传，自动生成URL/HTML/BBCode/Markdown等链接格式',
+    category: '图床/图片托管'
+  },
+  {
+    title: 'MJJ图床',
+    url: 'https://mjj.today/',
+    rating: 4.6,
+    desc: '免费图床服务，支持图片上传和托管，提供稳定的图片外链服务',
+    category: '图床/图片托管'
+  },
+  {
+    title: 'GreenVideo',
+    url: 'https://greenvideo.cc/',
+    rating: 4.8,
+    desc: '支持全球众多视频平台下载，包括Instagram、哔哩哔哩（B站）、抖音、Facebook、Weverse等各大视频平台以及社交网络。提供视频/音频/图片下载功能，支持未知或新视频站的探索能力，是一个全方位的媒体下载神器',
+    category: '视频下载'
+  },
+  {
+    title: 'Linux.do',
+    url: 'https://linux.do/',
+    rating: 4.8,
+    desc: '综合性技术论坛社区，内容涵盖广泛。包含开发调优、资源荟萃、文档共建、前沿快讯、跳蚤市场、求职招聘、创业推广、福利羊毛、闲聊娱乐等多样化版块，支持标签分类和权限分级，是一个活跃的技术交流平台',
+    category: '技术社区'
+  },
+  {
+    title: 'FMHY',
+    url: 'https://fmhy.net/',
+    rating: 4.9,
+    desc: '互联网上最大的免费资源集合！提供流媒体、下载、种子、游戏、阅读、教育等各类免费内容导航，涵盖广告拦截、AI工具、Android/iOS应用、Linux/macOS软件等丰富分类，是寻找免费资源的首选平台',
+    category: '免费资源'
+  },
+]
+
 //获取tools分类与对应的工具
 export function getToolsCate() {
   return [
@@ -309,6 +362,15 @@ export function getToolsCate() {
           logo: '/images/logo/pdf_edit_header.png',
           desc: '在线PDF页眉页脚编辑工具，支持自定义文本、字体、字号和对齐方式',
           url: '/pdf-editor/',
+          cateId: 3,
+          cate: '文本处理'
+        },
+        {
+          id: 1,
+          title: '公众号排版',
+          logo: '/images/logo/wechat_format.png',
+          desc: '专业的公众号排版工具，支持Markdown编辑、多种主题模板、代码高亮、目录生成等功能',
+          url: '/wechat-format/',
           cateId: 3,
           cate: '文本处理'
         },
@@ -1022,19 +1084,48 @@ export function getTools(data: ToolsReqData) {
   const { cateId, title } = data
   //获取工具list
   let list = toolsList()
-  //标题筛选
+
+  //标题筛选 - 包含好物网站搜索
   if (title != '') {
+    const searchTitle = title.toLowerCase()
+
+    // 1. 搜索普通工具
     list = list.filter(item => {
       let tmpValue = item.title.toLowerCase()
       let tmpDesc = item.desc.toLowerCase()
-      // console.log(tmpValue.indexOf(title.toLowerCase()))
-      return tmpValue.indexOf(title.toLowerCase()) !== -1 || tmpDesc.indexOf(title.toLowerCase()) !== -1;
+      return tmpValue.indexOf(searchTitle) !== -1 || tmpDesc.indexOf(searchTitle) !== -1;
     });
+
+    // 2. 搜索好物网站
+    const goodSitesResults = goodSitesData
+      .filter(site => {
+        const siteTitle = site.title.toLowerCase()
+        const siteDesc = site.desc.toLowerCase()
+        const siteUrl = site.url.toLowerCase()
+        return siteTitle.indexOf(searchTitle) !== -1 ||
+               siteDesc.indexOf(searchTitle) !== -1 ||
+               siteUrl.indexOf(searchTitle) !== -1
+      })
+      .map(site => ({
+        id: `good-site-${site.title}`,
+        title: site.title,
+        logo: '/images/logo/good_sites.png',
+        desc: `${site.category} - ${site.desc.substring(0, 50)}...`,
+        url: '/good-sites/',
+        cateId: 12,
+        cate: '好物网站',
+        isExternalSite: true,
+        externalUrl: site.url
+      }))
+
+    // 合并结果,好物网站结果排在前面
+    list = [...goodSitesResults, ...list]
   }
+
   //分类筛选
   if (cateId > 0) {
     list = list.filter(item => {
-      return item.cateId == cateId;  
+      return item.cateId == cateId;
     });
   }
   return list

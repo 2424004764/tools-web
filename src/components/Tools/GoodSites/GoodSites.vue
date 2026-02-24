@@ -14,55 +14,72 @@ const cates: Cate[] = [
   {
     title: 'APK文件托管分享',
     list: [
-      { 
-        title: 'Upload.app', 
-        url: 'https://upload.app/', 
-        rating: 4.5, 
-        desc: '海外APK文件托管存储分享平台，支持上传APK/XAPK文件，提供病毒检查保证安全性，可查看网友分享的破解版APK，体验优秀的文件托管服务' 
+      {
+        title: 'Upload.app',
+        url: 'https://upload.app/',
+        rating: 4.5,
+        desc: '海外APK文件托管存储分享平台，支持上传APK/XAPK文件，提供病毒检查保证安全性，可查看网友分享的破解版APK，体验优秀的文件托管服务'
       },
     ],
   },
   {
     title: '开发工具',
     list: [
-      { 
-        title: 'Adoptium', 
-        url: 'https://adoptium.net/', 
-        rating: 4.9, 
-        desc: 'Eclipse基金会官方Java运行时发行版，提供Eclipse Temurin® OpenJDK二进制文件。支持Java 8/11/17/21/24等版本，跨平台兼容Windows/macOS/Linux，提供x64/arm64架构支持，经过TCK认证和AQAvit验证，企业级质量保证' 
+      {
+        title: 'Adoptium',
+        url: 'https://adoptium.net/',
+        rating: 4.9,
+        desc: 'Eclipse基金会官方Java运行时发行版，提供Eclipse Temurin® OpenJDK二进制文件。支持Java 8/11/17/21/24等版本，跨平台兼容Windows/macOS/Linux，提供x64/arm64架构支持，经过TCK认证和AQAvit验证，企业级质量保证'
       },
     ],
   },
   {
     title: '图床/图片托管',
     list: [
-      { 
-        title: 'PICUI 图床', 
-        url: 'https://picui.cn/upload', 
-        rating: 4.7, 
-        desc: '免费图床，单图≤10MB，最多同时上传5张，拖拽上传，自动生成URL/HTML/BBCode/Markdown等链接格式' 
+      {
+        title: 'PICUI 图床',
+        url: 'https://picui.cn/upload',
+        rating: 4.7,
+        desc: '免费图床，单图≤10MB，最多同时上传5张，拖拽上传，自动生成URL/HTML/BBCode/Markdown等链接格式'
+      },
+      {
+        title: 'MJJ图床',
+        url: 'https://mjj.today/',
+        rating: 4.6,
+        desc: '免费图床服务，支持图片上传和托管，提供稳定的图片外链服务'
+      },
+    ],
+  },
+  {
+    title: '视频下载',
+    list: [
+      {
+        title: 'GreenVideo',
+        url: 'https://greenvideo.cc/',
+        rating: 4.8,
+        desc: '支持全球众多视频平台下载，包括Instagram、哔哩哔哩（B站）、抖音、Facebook、Weverse等各大视频平台以及社交网络。提供视频/音频/图片下载功能，支持未知或新视频站的探索能力，是一个全方位的媒体下载神器'
       },
     ],
   },
   {
     title: '技术社区',
     list: [
-      { 
-        title: 'Linux.do', 
-        url: 'https://linux.do/', 
-        rating: 4.8, 
-        desc: '综合性技术论坛社区，内容涵盖广泛。包含开发调优、资源荟萃、文档共建、前沿快讯、跳蚤市场、求职招聘、创业推广、福利羊毛、闲聊娱乐等多样化版块，支持标签分类和权限分级，是一个活跃的技术交流平台' 
+      {
+        title: 'Linux.do',
+        url: 'https://linux.do/',
+        rating: 4.8,
+        desc: '综合性技术论坛社区，内容涵盖广泛。包含开发调优、资源荟萃、文档共建、前沿快讯、跳蚤市场、求职招聘、创业推广、福利羊毛、闲聊娱乐等多样化版块，支持标签分类和权限分级，是一个活跃的技术交流平台'
       }
     ],
   },
   {
     title: '免费资源',
     list: [
-      { 
-        title: 'FMHY', 
-        url: 'https://fmhy.net/', 
-        rating: 4.9, 
-        desc: '互联网上最大的免费资源集合！提供流媒体、下载、种子、游戏、阅读、教育等各类免费内容导航，涵盖广告拦截、AI工具、Android/iOS应用、Linux/macOS软件等丰富分类，是寻找免费资源的首选平台' 
+      {
+        title: 'FMHY',
+        url: 'https://fmhy.net/',
+        rating: 4.9,
+        desc: '互联网上最大的免费资源集合！提供流媒体、下载、种子、游戏、阅读、教育等各类免费内容导航，涵盖广告拦截、AI工具、Android/iOS应用、Linux/macOS软件等丰富分类，是寻找免费资源的首选平台'
       },
     ],
   },
