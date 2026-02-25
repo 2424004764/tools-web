@@ -1749,4 +1749,11 @@ const quickSyntaxButtons = [
     padding: 6px 0;
   }
 }
+
+/* 移动端编辑器高度优化 */
+@media (max-width: 1024px) {
+  .markdown-editor-textarea {
+    min-height: 400px !important;
+  }
+}
 </style>
