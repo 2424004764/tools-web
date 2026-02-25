@@ -813,6 +813,15 @@ export function getToolsCate() {
           cateId: 9,
           cate: '选择随机',
         },
+        {
+          id: 1,
+          title: '随机中文人名生成',
+          logo: '/images/logo/chinese_name.png',
+          desc: '随机生成中文人名，支持单姓/复姓、性别筛选、批量生成，适合测试数据、小说创作',
+          url: '/chinese-name/',
+          cateId: 9,
+          cate: '选择随机',
+        },
       ]
     },
     // {
