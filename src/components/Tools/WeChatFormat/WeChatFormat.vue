@@ -1324,6 +1324,46 @@ const insertSyntax = (syntax: string) => {
   }
 }
 
+// 滚动同步相关
+const editorScrolling = ref(false)
+const previewScrolling = ref(false)
+
+// 编辑器滚动事件
+const handleEditorScroll = (e: Event) => {
+  if (previewScrolling.value) return
+  editorScrolling.value = true
+
+  const textarea = e.target as HTMLTextAreaElement
+  const previewContainer = document.querySelector('.preview-scroll-container') as HTMLElement
+
+  if (previewContainer) {
+    const scrollPercentage = textarea.scrollTop / (textarea.scrollHeight - textarea.clientHeight)
+    previewContainer.scrollTop = scrollPercentage * (previewContainer.scrollHeight - previewContainer.clientHeight)
+  }
+
+  setTimeout(() => {
+    editorScrolling.value = false
+  }, 100)
+}
+
+// 预览区滚动事件
+const handlePreviewScroll = (e: Event) => {
+  if (editorScrolling.value) return
+  previewScrolling.value = true
+
+  const previewContainer = e.target as HTMLElement
+  const textarea = document.querySelector('.markdown-editor-textarea') as HTMLTextAreaElement
+
+  if (textarea) {
+    const scrollPercentage = previewContainer.scrollTop / (previewContainer.scrollHeight - previewContainer.clientHeight)
+    textarea.scrollTop = scrollPercentage * (textarea.scrollHeight - textarea.clientHeight)
+  }
+
+  setTimeout(() => {
+    previewScrolling.value = false
+  }, 100)
+}
+
 // 快捷语法按钮
 const quickSyntaxButtons = [
   { icon: '𝗕', label: '加粗', syntax: '**粗体文本**' },
@@ -1379,11 +1419,11 @@ const quickSyntaxButtons = [
     </div>
 
     <!-- 主要内容区 -->
-    <div class="flex flex-col lg:flex-row gap-3">
+    <div class="flex flex-col lg:flex-row gap-3 flex-1 min-h-0">
       <!-- 左侧编辑区 -->
-      <div class="w-full lg:flex-1 rounded-2xl bg-white overflow-hidden">
+      <div class="w-full lg:flex-1 flex flex-col rounded-2xl bg-white overflow-hidden">
         <!-- 快捷语法按钮 -->
-        <div class="p-2 border-b flex flex-wrap gap-1.5">
+        <div class="p-2 border-b flex flex-wrap gap-1.5 flex-shrink-0">
           <el-button
             v-for="btn in quickSyntaxButtons"
             :key="btn.label"
@@ -1397,25 +1437,26 @@ const quickSyntaxButtons = [
         </div>
 
         <!-- Markdown 编辑器 -->
-        <el-input
-          v-model="markdownContent"
-          type="textarea"
-          :rows="20"
-          placeholder="在这里输入 Markdown 内容..."
-          class="markdown-editor"
-        />
+        <div class="editor-scroll-container flex-1 overflow-y-auto min-h-0">
+          <textarea
+            v-model="markdownContent"
+            placeholder="在这里输入 Markdown 内容..."
+            class="markdown-editor-textarea w-full h-full resize-none box-border"
+            @scroll="handleEditorScroll"
+          ></textarea>
+        </div>
       </div>
 
       <!-- 右侧预览区 -->
       <div class="w-full lg:flex-1 flex flex-col rounded-2xl bg-white overflow-hidden">
         <!-- 预览头部 -->
-        <div class="p-3 border-b flex items-center justify-between">
+        <div class="p-3 border-b flex items-center justify-between flex-shrink-0">
           <span class="font-medium">预览</span>
           <el-switch v-model="info.showToc" active-text="显示目录" size="small" />
         </div>
 
         <!-- 目录 -->
-        <div v-if="info.showToc && tocList.length > 0" class="p-3 border-b bg-gray-50 max-h-48 overflow-y-auto">
+        <div v-if="info.showToc && tocList.length > 0" class="p-3 border-b bg-gray-50 max-h-48 overflow-y-auto flex-shrink-0">
           <div class="text-sm font-medium mb-2">目录</div>
           <div
             v-for="(item, index) in tocList"
@@ -1430,7 +1471,7 @@ const quickSyntaxButtons = [
         </div>
 
         <!-- 预览内容 -->
-        <div class="flex-1 overflow-y-auto p-2 sm:p-4">
+        <div class="preview-scroll-container flex-1 overflow-y-auto p-2 sm:p-4 min-h-0" @scroll="handlePreviewScroll">
           <div class="preview-container" v-html="previewHTML"></div>
         </div>
       </div>
@@ -1512,23 +1553,72 @@ const quickSyntaxButtons = [
 </template>
 
 <style scoped>
-.markdown-editor :deep(textarea) {
+/* 编辑器滚动容器 */
+.editor-scroll-container {
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db transparent;
+}
+
+.editor-scroll-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.editor-scroll-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.editor-scroll-container::-webkit-scrollbar-thumb {
+  background-color: #d1d5db;
+  border-radius: 3px;
+}
+
+.editor-scroll-container::-webkit-scrollbar-thumb:hover {
+  background-color: #9ca3af;
+}
+
+/* 编辑器 textarea */
+.markdown-editor-textarea {
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
   font-size: 14px;
   line-height: 1.6;
   border: none;
-  resize: none;
+  padding: 16px;
   white-space: pre;
   overflow-wrap: normal;
   word-break: normal;
+  outline: none;
 }
 
-.markdown-editor :deep(textarea):focus {
+.markdown-editor-textarea:focus {
   box-shadow: none;
+  outline: none;
+}
+
+/* 预览区滚动容器 */
+.preview-scroll-container {
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db transparent;
+}
+
+.preview-scroll-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.preview-scroll-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.preview-scroll-container::-webkit-scrollbar-thumb {
+  background-color: #d1d5db;
+  border-radius: 3px;
+}
+
+.preview-scroll-container::-webkit-scrollbar-thumb:hover {
+  background-color: #9ca3af;
 }
 
 .preview-container {
-  min-height: 300px;
+  min-height: 100%;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
