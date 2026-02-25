@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { reactive, computed, ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -13,6 +14,9 @@ import type { PasswordEntry, PasswordGroup } from '@/api/password'
 
 // 用户store
 const userStore = useUserStore()
+
+// 路由
+const router = useRouter()
 
 const info = reactive({
   title: "密码管理器",
@@ -625,7 +629,7 @@ defineExpose({ formatTime, exportPasswords, openImportDialog })
         </div>
         <h2 class="text-2xl font-bold text-gray-800 mb-2">密码管理器</h2>
         <p class="text-gray-600 mb-4">请先登录以使用密码管理器</p>
-        <el-button type="primary" @click="userStore.logout">前往登录</el-button>
+        <el-button type="primary" @click="router.push('/login')">前往登录</el-button>
       </div>
     </div>
 
