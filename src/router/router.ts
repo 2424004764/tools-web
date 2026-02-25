@@ -1039,4 +1039,14 @@ export const constantRoute = [
       description: '专业的公众号排版工具，支持Markdown编辑、多种主题模板、代码高亮、目录生成等功能，一键复制到公众号编辑器'
     }
   },
+  {
+    path: '/chinese-name',
+    component: () => import('@/components/Tools/ChineseName/ChineseName.vue'),
+    name: 'chineseName',
+    meta: {
+      title: "随机中文人名生成",
+      keywords: '中文名生成,中文人名,姓名生成,随机姓名,测试数据,小说起名,角色命名,复姓,单姓',
+      description: '随机生成中文人名工具，支持单姓和复姓，可按性别筛选，支持自定义名字长度和批量生成，适合测试数据、小说创作、游戏角色命名等场景'
+    }
+  },
 ]
