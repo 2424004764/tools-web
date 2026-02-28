@@ -604,6 +604,15 @@ export function getToolsCate() {
           cateId: 5,
           cate: '图片处理'
         },
+        {
+          id: 1,
+          title: '视频转GIF动图',
+          logo: '/images/logo/video_to_gif.svg',
+          desc: '在线视频转GIF工具，支持选择视频片段、自定义帧率、尺寸和质量，纯前端处理保护隐私',
+          url: '/video-to-gif/',
+          cateId: 5,
+          cate: '图片处理'
+        },
       ]
     },
     {

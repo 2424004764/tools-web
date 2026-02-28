@@ -1049,4 +1049,14 @@ export const constantRoute = [
       description: '随机生成中文人名工具，支持单姓和复姓，可按性别筛选，支持自定义名字长度和批量生成，适合测试数据、小说创作、游戏角色命名等场景'
     }
   },
+  {
+    path: '/video-to-gif',
+    component: () => import('@/components/Tools/VideoToGif/VideoToGif.vue'),
+    name: 'video-to-gif',
+    meta: {
+      title: "视频转GIF动图",
+      keywords: '视频转GIF,视频转动图,GIF生成器,动图制作,视频截图,GIF制作',
+      description: '在线视频转GIF工具，支持选择视频片段、自定义帧率、尺寸和质量，纯前端处理保护隐私，生成后可直接下载'
+    }
+  },
 ]
