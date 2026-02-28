@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- 背景 -->
+  <rect width="128" height="128" rx="20" fill="#8B5CF6"/>
+
+  <!-- 视频播放按钮 -->
+  <polygon points="45,35 45,93 85,64" fill="white" opacity="0.9"/>
+
+  <!-- GIF 文字 -->
+  <text x="64" y="115" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="white" text-anchor="middle">GIF</text>
+
+  <!-- 装饰点 -->
+  <circle cx="95" cy="35" r="4" fill="#FCD34D"/>
+  <circle cx="105" cy="45" r="3" fill="#F87171"/>
+</svg>
