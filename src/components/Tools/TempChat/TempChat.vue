@@ -684,6 +684,10 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
     <!-- 功能说明 -->
     <ToolDetail title="功能说明" class="mt-4">
       <el-text>
+        <el-text type="danger">
+          ⚠️ <strong>重要提示：</strong>本功能使用 Supabase 免费版提供服务，受存储额度限制，系统会自动清理一个月之前的消息。如存储空间告急，将优先清理最早的消息以保证服务正常运行。
+        </el-text>
+        <br><br>
         临时聊天室，基于 Supabase Realtime 实现实时通信。
         <br>• <strong>无需注册</strong>：输入昵称即可加入
         <br>• <strong>临时房间</strong>：房间号可自定义或随机生成
