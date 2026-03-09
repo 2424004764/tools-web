@@ -33,6 +33,28 @@ const isSending = ref(false);
 const isConnected = ref(false);
 const showQrcode = ref(false);
 const showAllOnlineUsers = ref(false);
+const showEmojiPicker = ref(false);
+
+// 常用表情列表
+const emojiList = [
+  '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣',
+  '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰',
+  '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜',
+  '🤪', '🤨', '🧐', '🤓', '😎', '🤩', '🥳', '😏',
+  '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑',
+  '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔',
+  '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮',
+  '🤧', '🥵', '🥶', '🥴', '😵', '🤯', '🤠', '🥳',
+  '🥸', '😎', '🤓', '🧐', '😕', '😟', '🙁', '😮',
+  '😯', '😲', '😳', '🥺', '😦', '😧', '😨', '😰',
+  '😥', '😢', '😭', '😱', '😖', '😣', '😞', '😓',
+  '😩', '😫', '🥱', '😤', '😡', '😠', '🤬', '👋',
+  '👍', '👎', '👏', '🙌', '👐', '🤲', '🤝', '🙏',
+  '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍',
+  '💔', '💕', '💞', '💓', '💗', '💖', '💘', '💝',
+  '⭐', '🌟', '✨', '💫', '🔥', '💥', '💯', '🎉',
+  '🎊', '🎈', '🎁', '🏆', '🥇', '🔔', '🔕', '📢',
+];
 
 // Supabase channel 实例
 let messageChannel: any = null;
@@ -399,6 +421,12 @@ const handleKeydown = (e: Event | KeyboardEvent) => {
   }
 };
 
+// 选择表情
+const selectEmoji = (emoji: string) => {
+  inputMessage.value += emoji;
+  showEmojiPicker.value = false;
+};
+
 // 组件挂载
 onMounted(() => {
   generateNickname();
@@ -661,7 +689,28 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
 
         <!-- 输入区域 -->
         <div class="pt-3 border-t border-gray-200 mt-3">
+          <!-- 表情选择器 -->
+          <div v-if="showEmojiPicker" class="mb-3 p-3 bg-white border border-gray-200 rounded-lg shadow-lg">
+            <div class="grid grid-cols-8 gap-1 max-h-48 overflow-y-auto">
+              <button
+                v-for="emoji in emojiList"
+                :key="emoji"
+                @click="selectEmoji(emoji)"
+                class="text-2xl p-1 hover:bg-gray-100 rounded transition-colors duration-150"
+                :title="emoji"
+              >
+                {{ emoji }}
+              </button>
+            </div>
+          </div>
           <div class="flex gap-2 items-end">
+            <el-button
+              @click="showEmojiPicker = !showEmojiPicker"
+              :type="showEmojiPicker ? 'primary' : 'default'"
+              class="mb-0.5"
+            >
+              {{ showEmojiPicker ? '收起' : '😊' }}
+            </el-button>
             <el-input
               v-model="inputMessage"
               type="textarea"
@@ -742,5 +791,35 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
 .overflow-wrap-break-word {
   overflow-wrap: break-word;
   word-break: break-word;
+}
+
+/* 表情选择器滚动条样式 */
+.max-h-48::-webkit-scrollbar {
+  width: 6px;
+}
+
+.max-h-48::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.max-h-48::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.max-h-48::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+/* 移动端隐藏滚动条 */
+@media (max-width: 768px) {
+  .max-h-48::-webkit-scrollbar {
+    display: none;
+  }
+  .max-h-48 {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
 </style>
