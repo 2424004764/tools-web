@@ -34,6 +34,18 @@ const isConnected = ref(false);
 const showQrcode = ref(false);
 const showAllOnlineUsers = ref(false);
 const showEmojiPicker = ref(false);
+const recentEmojis = ref<string[]>([]);
+const hasNewMessages = ref(false);
+const emojiPickerRef = ref<HTMLElement | null>(null);
+const showNicknameDialog = ref(false);
+const editingNickname = ref("");
+
+// 历史昵称列表（用于判断 isSelf）
+const myNicknames = ref<string[]>([]);
+
+// 发送频率限制
+const lastSendTime = ref(0);
+const SEND_COOLDOWN = 1000; // 1秒冷却时间
 
 // 常用表情列表
 const emojiList = [
@@ -63,6 +75,62 @@ let heartbeatInterval: any = null;
 
 // 当前用户的唯一ID
 const currentUserId = ref(`user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
+
+// 保存昵称到本地存储
+const saveNickname = (nick: string) => {
+  // 获取当前存储的历史昵称
+  const saved = localStorage.getItem('tempchat-mynicknames');
+  let nicknames: string[] = [];
+  if (saved) {
+    try {
+      nicknames = JSON.parse(saved);
+    } catch {
+      nicknames = [];
+    }
+  }
+
+  // 添加新昵称（如果不存在）
+  if (!nicknames.includes(nick)) {
+    nicknames.push(nick);
+    // 最多保留20个历史昵称
+    if (nicknames.length > 20) {
+      nicknames = nicknames.slice(-20);
+    }
+    localStorage.setItem('tempchat-mynicknames', JSON.stringify(nicknames));
+  }
+
+  myNicknames.value = nicknames;
+
+  // 保存当前昵称
+  localStorage.setItem('tempchat-current-nickname', nick);
+};
+
+// 加载保存的昵称
+const loadSavedNickname = () => {
+  const current = localStorage.getItem('tempchat-current-nickname');
+  const saved = localStorage.getItem('tempchat-mynicknames');
+
+  if (saved) {
+    try {
+      myNicknames.value = JSON.parse(saved);
+    } catch {
+      myNicknames.value = [];
+    }
+  }
+
+  // 如果有保存的当前昵称，使用它
+  if (current) {
+    nickname.value = current;
+    return true;
+  }
+
+  return false;
+};
+
+// 判断消息是否是自己发送的
+const isMyMessage = (msgNickname: string) => {
+  return myNicknames.value.includes(msgNickname);
+};
 
 // 生成随机房间ID
 const generateRoomId = () => {
@@ -167,6 +235,9 @@ const joinRoom = async () => {
       return;
     }
 
+    // 保存昵称到本地存储
+    saveNickname(nickname.value);
+
     const normalizedRoomId = roomId.value.toUpperCase();
 
     // 加载历史消息
@@ -187,7 +258,7 @@ const joinRoom = async () => {
           nickname: msg.nickname,
           content: msg.content,
           timestamp: new Date(msg.created_at).getTime(),
-          isSelf: msg.nickname === nickname.value,
+          isSelf: isMyMessage(msg.nickname),
         }));
 
       nextTick(() => scrollToBottom());
@@ -217,10 +288,15 @@ const joinRoom = async () => {
         nickname: newMsg.nickname,
         content: newMsg.content,
         timestamp: new Date(newMsg.created_at).getTime(),
-        isSelf: newMsg.nickname === nickname.value,
+        isSelf: isMyMessage(newMsg.nickname),
       });
 
-      nextTick(() => scrollToBottom());
+      // 如果用户不在底部，显示新消息提示
+      if (!isAtBottom()) {
+        hasNewMessages.value = true;
+      } else {
+        nextTick(() => scrollToBottom());
+      }
     });
 
     // 订阅在线用户
@@ -306,9 +382,20 @@ const updateOnlineUsers = () => {
 const sendMessage = async () => {
   if (!inputMessage.value.trim() || isSending.value) return;
 
+  // 频率限制
+  const now = Date.now();
+  if (now - lastSendTime.value < SEND_COOLDOWN) {
+    ElMessage.warning("发送太频繁，请稍后再试");
+    return;
+  }
+
+  // XSS 防护 - 转义 HTML 特殊字符
+  const safeContent = escapeHtml(inputMessage.value.trim());
+
   isSending.value = true;
+  lastSendTime.value = now;
   try {
-    await chatDb.sendMessage(roomId.value, nickname.value, inputMessage.value.trim());
+    await chatDb.sendMessage(roomId.value, nickname.value, safeContent);
     inputMessage.value = "";
   } catch (error: any) {
     console.error("发送消息失败:", error);
@@ -316,6 +403,39 @@ const sendMessage = async () => {
   } finally {
     isSending.value = false;
   }
+};
+
+// XSS 防护 - 转义 HTML 特殊字符
+const escapeHtml = (text: string) => {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+};
+
+// 解析消息中的 URL
+const parseMessageContent = (content: string) => {
+  // 匹配 http/https URL
+  const urlRegex = /(https?:\/\/[^\s<]+)/g;
+  const parts: Array<{ text: string; isLink: boolean; url?: string }> = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = urlRegex.exec(content)) !== null) {
+    // 添加匹配前的文本
+    if (match.index > lastIndex) {
+      parts.push({ text: content.slice(lastIndex, match.index), isLink: false });
+    }
+    // 添加链接
+    parts.push({ text: match[1], isLink: true, url: match[1] });
+    lastIndex = urlRegex.lastIndex;
+  }
+
+  // 添加剩余文本
+  if (lastIndex < content.length) {
+    parts.push({ text: content.slice(lastIndex), isLink: false });
+  }
+
+  return parts;
 };
 
 // 离开房间
@@ -339,6 +459,7 @@ const leaveRoom = () => {
   messages.value = [];
   onlineUsers.value = [];
   isJoined.value = false;
+  hasNewMessages.value = false;
 
   // 生成新的房间号和昵称
   generateRoomId();
@@ -357,6 +478,27 @@ const scrollToBottom = () => {
       top: messagesContainer.value.scrollHeight,
       behavior: 'smooth'
     });
+  }
+};
+
+// 检查是否在底部
+const isAtBottom = () => {
+  if (!messagesContainer.value) return true;
+  const container = messagesContainer.value;
+  const threshold = 100; // 允许100px的误差
+  return container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
+};
+
+// 滚动到底部并清除新消息提示
+const scrollToBottomAndClear = () => {
+  hasNewMessages.value = false;
+  scrollToBottom();
+};
+
+// 检查滚动位置
+const handleScroll = () => {
+  if (isAtBottom()) {
+    hasNewMessages.value = false;
   }
 };
 
@@ -421,15 +563,118 @@ const handleKeydown = (e: Event | KeyboardEvent) => {
   }
 };
 
+// 全局键盘事件处理
+const handleGlobalKeydown = (e: KeyboardEvent) => {
+  if (e.key === 'Escape') {
+    if (showQrcode.value) {
+      showQrcode.value = false;
+    }
+    if (showEmojiPicker.value) {
+      showEmojiPicker.value = false;
+    }
+    if (showNicknameDialog.value) {
+      showNicknameDialog.value = false;
+    }
+  }
+};
+
+// 点击外部区域关闭表情面板
+const handleClickOutside = (e: MouseEvent) => {
+  if (showEmojiPicker.value && emojiPickerRef.value) {
+    const target = e.target as Node;
+    if (!emojiPickerRef.value.contains(target)) {
+      showEmojiPicker.value = false;
+    }
+  }
+};
+
+// 打开昵称修改对话框
+const openNicknameDialog = () => {
+  editingNickname.value = nickname.value;
+  showNicknameDialog.value = true;
+};
+
+// 更改昵称
+const changeNickname = async () => {
+  const newNickname = editingNickname.value.trim();
+  if (!newNickname) {
+    ElMessage.warning("昵称不能为空");
+    return;
+  }
+  if (newNickname === nickname.value) {
+    showNicknameDialog.value = false;
+    return;
+  }
+
+  const oldNickname = nickname.value;
+  nickname.value = newNickname;
+  showNicknameDialog.value = false;
+
+  // 保存新昵称
+  saveNickname(newNickname);
+
+  // 更新 presence 中的昵称
+  if (presenceChannel) {
+    presenceChannel.track({
+      user_id: currentUserId.value,
+      nickname: newNickname,
+      online_at: new Date().toISOString(),
+    });
+  }
+
+  // 发送系统消息通知所有人
+  try {
+    await chatDb.sendMessage(roomId.value, '系统', `${oldNickname} 更改昵称为 ${newNickname}`);
+  } catch (e) {
+    // 忽略错误
+  }
+
+  ElMessage.success("昵称已更改");
+};
+
 // 选择表情
 const selectEmoji = (emoji: string) => {
   inputMessage.value += emoji;
-  showEmojiPicker.value = false;
+
+  // 添加到最近使用
+  const index = recentEmojis.value.indexOf(emoji);
+  if (index > -1) {
+    recentEmojis.value.splice(index, 1);
+  }
+  recentEmojis.value.unshift(emoji);
+
+  // 只保留最近16个
+  if (recentEmojis.value.length > 16) {
+    recentEmojis.value = recentEmojis.value.slice(0, 16);
+  }
+
+  // 保存到本地存储
+  localStorage.setItem('tempchat-recent-emojis', JSON.stringify(recentEmojis.value));
 };
 
 // 组件挂载
 onMounted(() => {
-  generateNickname();
+  // 先尝试加载保存的昵称
+  const hasSaved = loadSavedNickname();
+
+  // 如果没有保存的昵称，才生成新的
+  if (!hasSaved) {
+    generateNickname();
+  }
+
+  // 加载最近使用的表情
+  const saved = localStorage.getItem('tempchat-recent-emojis');
+  if (saved) {
+    try {
+      recentEmojis.value = JSON.parse(saved);
+    } catch {
+      recentEmojis.value = [];
+    }
+  }
+
+  // 添加全局事件监听
+  window.addEventListener('keydown', handleGlobalKeydown);
+  window.addEventListener('click', handleClickOutside);
 
   // 检查 URL 中是否有房间号
   const hasRoomParam = loadRoomFromUrl();
@@ -448,10 +693,14 @@ onMounted(() => {
 // 组件卸载
 onUnmounted(() => {
   leaveRoom();
+  window.removeEventListener('keydown', handleGlobalKeydown);
+  window.removeEventListener('click', handleClickOutside);
 });
 
 onBeforeUnmount(() => {
   leaveRoom();
+  window.removeEventListener('keydown', handleGlobalKeydown);
+  window.removeEventListener('click', handleClickOutside);
 });
 </script>
 
@@ -549,22 +798,30 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
       <div v-else class="flex flex-col gap-3">
         <!-- 顶部信息栏 -->
         <div class="space-y-3 pb-3 border-b border-gray-200">
-          <!-- 第一行：房间信息 -->
+          <!-- 第一行：房间信息和昵称 -->
           <div class="flex items-center justify-between">
-            <div class="flex items-center gap-1 flex-1 min-w-0">
+            <div class="flex items-center gap-2 flex-1 min-w-0">
               <span class="text-sm text-gray-500 flex-shrink-0">房间:</span>
               <span class="font-mono font-semibold text-primary truncate">{{ roomId }}</span>
               <el-button size="small" text @click="copyRoomId" class="flex-shrink-0">
                 <el-icon :size="16"><CopyDocument /></el-icon>
               </el-button>
             </div>
-            <div class="hidden md:flex items-center gap-1 flex-shrink-0">
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <span class="text-sm text-gray-400">{{ nickname }}</span>
+              <el-button size="small" text @click="openNicknameDialog" title="修改昵称">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732a2.5 2.5 0 013.536 3.536z"></path>
+                </svg>
+              </el-button>
+            </div>
+          </div>
+          <!-- 第二行：在线人数和操作按钮 -->
+          <div class="flex items-center justify-between">
+            <div class="hidden md:flex items-center gap-1">
               <span class="text-sm text-gray-500">在线:</span>
               <span class="text-sm text-green-600">{{ onlineUsers.length }} 人</span>
             </div>
-          </div>
-          <!-- 第二行：操作按钮 -->
-          <div class="flex items-center justify-between">
             <div class="md:hidden flex items-center gap-1">
               <span class="text-sm text-gray-500">在线: {{ onlineUsers.length }} 人</span>
             </div>
@@ -606,6 +863,28 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
           </div>
         </div>
 
+        <!-- 昵称修改对话框 -->
+        <el-dialog
+          v-model="showNicknameDialog"
+          title="修改昵称"
+          width="400px"
+          :close-on-click-modal="false"
+        >
+          <el-input
+            v-model="editingNickname"
+            placeholder="输入新昵称"
+            maxlength="20"
+            show-word-limit
+            @keyup.enter="changeNickname"
+          />
+          <template #footer>
+            <el-button @click="showNicknameDialog = false">取消</el-button>
+            <el-button type="primary" @click="changeNickname" :disabled="!editingNickname.trim()">
+              确定
+            </el-button>
+          </template>
+        </el-dialog>
+
         <!-- 在线用户列表 -->
         <div class="flex items-center gap-2 pb-2 text-sm text-gray-500 flex-wrap">
           <span class="flex-shrink-0">在线 ({{ onlineUsers.length }}):</span>
@@ -630,8 +909,9 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
         <!-- 消息列表 -->
         <div
           ref="messagesContainer"
-          class="flex-1 overflow-y-auto space-y-3 pr-2 bg-gray-50 rounded-lg p-4"
+          class="flex-1 overflow-y-auto space-y-3 pr-2 bg-gray-50 rounded-lg p-4 relative"
           style="min-height: 350px; max-height: 55vh;"
+          @scroll="handleScroll"
         >
           <div v-if="messages.length === 0" class="flex items-center justify-center h-full text-gray-400">
             <div class="text-center">
@@ -663,11 +943,24 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
                     {{ msg.nickname }} · {{ formatTime(msg.timestamp) }}
                   </div>
                   <div
-                    class="px-4 py-2 rounded-2xl shadow-sm whitespace-pre-wrap break-words overflow-wrap-break-word cursor-pointer"
+                    class="px-4 py-2 rounded-2xl shadow-sm whitespace-pre-wrap break-words overflow-wrap-break-word"
                     :class="msg.isSelf ? 'bg-blue-500 text-white rounded-br-md' : 'bg-white text-gray-800 rounded-bl-md'"
-                    @click="copyMessage(msg.content)"
                   >
-                    {{ msg.content }}
+                    <!-- 解析 URL 并渲染链接 -->
+                    <template v-for="(part, idx) in parseMessageContent(msg.content)" :key="idx">
+                      <a
+                        v-if="part.isLink"
+                        :href="part.url"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-blue-500 hover:underline break-all"
+                        :class="msg.isSelf ? 'text-white hover:text-blue-100' : ''"
+                        @click.stop
+                      >
+                        {{ part.text }}
+                      </a>
+                      <span v-else>{{ part.text }}</span>
+                    </template>
                   </div>
                   <!-- 复制按钮 -->
                   <div
@@ -687,10 +980,41 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
           </div>
         </div>
 
+        <!-- 新消息提示按钮 -->
+        <transition name="fade">
+          <div
+            v-if="hasNewMessages"
+            @click="scrollToBottomAndClear"
+            class="absolute bottom-24 left-1/2 -translate-x-1/2 bg-blue-500 text-white px-4 py-2 rounded-full shadow-lg cursor-pointer hover:bg-blue-600 transition-colors z-10 flex items-center gap-2"
+          >
+            <span>有新消息</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+            </svg>
+          </div>
+        </transition>
+
         <!-- 输入区域 -->
-        <div class="pt-3 border-t border-gray-200 mt-3">
+        <div class="pt-3 border-t border-gray-200 mt-3 relative" ref="emojiPickerRef">
           <!-- 表情选择器 -->
-          <div v-if="showEmojiPicker" class="mb-3 p-3 bg-white border border-gray-200 rounded-lg shadow-lg">
+          <div v-if="showEmojiPicker" class="mb-3 p-3 bg-white border border-gray-200 rounded-lg shadow-lg" @click.stop>
+            <!-- 最近使用 -->
+            <div v-if="recentEmojis.length > 0" class="mb-3">
+              <div class="text-xs text-gray-400 mb-2">最近使用</div>
+              <div class="grid grid-cols-8 gap-1">
+                <button
+                  v-for="emoji in recentEmojis"
+                  :key="'recent-' + emoji"
+                  @click="selectEmoji(emoji)"
+                  class="text-2xl p-1 hover:bg-gray-100 rounded transition-colors duration-150"
+                  :title="emoji"
+                >
+                  {{ emoji }}
+                </button>
+              </div>
+            </div>
+            <!-- 所有表情 -->
+            <div class="text-xs text-gray-400 mb-2">所有表情</div>
             <div class="grid grid-cols-8 gap-1 max-h-48 overflow-y-auto">
               <button
                 v-for="emoji in emojiList"
@@ -707,7 +1031,6 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
             <el-button
               @click="showEmojiPicker = !showEmojiPicker"
               :type="showEmojiPicker ? 'primary' : 'default'"
-              class="mb-0.5"
             >
               {{ showEmojiPicker ? '收起' : '😊' }}
             </el-button>
@@ -821,5 +1144,16 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+}
+
+/* 淡入淡出动画 */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>
