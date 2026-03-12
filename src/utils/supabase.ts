@@ -22,14 +22,20 @@ export const chatDb = {
   /**
    * 发送消息
    */
-  async sendMessage(roomId: string, nickname: string, content: string) {
+  async sendMessage(roomId: string, nickname: string, content: string, replyTo?: { id: string; nickname: string; content: string }) {
+    const insertData: any = {
+      room_id: roomId.toUpperCase(),
+      nickname,
+      content,
+    };
+
+    if (replyTo) {
+      insertData.reply_to = replyTo;
+    }
+
     const { data, error } = await supabase
       .from('chat_messages')
-      .insert({
-        room_id: roomId.toUpperCase(),
-        nickname,
-        content,
-      })
+      .insert(insertData)
       .select()
       .single();
     if (error) throw error;
@@ -37,15 +43,42 @@ export const chatDb = {
   },
 
   /**
-   * 获取历史消息
+   * 获取历史消息（支持分页）
    */
-  async getMessages(roomId: string, limit = 50) {
-    const { data, error } = await supabase
+  async getMessages(roomId: string, limit = 50, offset = 0) {
+    let query = supabase
       .from('chat_messages')
       .select('*')
       .eq('room_id', roomId.toUpperCase())
-      .order('created_at', { ascending: true })
+      .order('created_at', { ascending: false })
       .limit(limit);
+
+    if (offset > 0) {
+      // 从 offset 条之后开始获取
+      query = query.range(offset, offset + limit - 1);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    // 反转顺序，使最早的在前
+    return data ? data.reverse() : [];
+  },
+
+  /**
+   * 撤回消息
+   */
+  async revokeMessage(roomId: string, messageId: string) {
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .update({
+        content: '消息已撤回',
+        revoked: true,
+      })
+      .eq('id', messageId)
+      .eq('room_id', roomId.toUpperCase())
+      .select()
+      .single();
+
     if (error) throw error;
     return data;
   },

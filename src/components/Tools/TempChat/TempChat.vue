@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref, onMounted, onUnmounted, nextTick, computed, onBeforeUnmount } from "vue";
+import { reactive, ref, onMounted, onUnmounted, nextTick, computed } from "vue";
 import { useRoute } from "vue-router";
 import DetailHeader from "@/components/Layout/DetailHeader/DetailHeader.vue";
 import ToolDetail from "@/components/Layout/ToolDetail/ToolDetail.vue";
@@ -24,6 +24,12 @@ const messages = ref<Array<{
   content: string;
   timestamp: number;
   isSelf: boolean;
+  revoked?: boolean;
+  replyTo?: {
+    id: string;
+    nickname: string;
+    content: string;
+  };
 }>>([]);
 const inputMessage = ref("");
 const messagesContainer = ref<HTMLElement | null>(null);
@@ -47,26 +53,71 @@ const myNicknames = ref<string[]>([]);
 const lastSendTime = ref(0);
 const SEND_COOLDOWN = 1000; // 1秒冷却时间
 
-// 常用表情列表
-const emojiList = [
-  '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣',
-  '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰',
-  '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜',
-  '🤪', '🤨', '🧐', '🤓', '😎', '🤩', '🥳', '😏',
-  '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑',
-  '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔',
-  '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮',
-  '🤧', '🥵', '🥶', '🥴', '😵', '🤯', '🤠', '🥳',
-  '🥸', '😎', '🤓', '🧐', '😕', '😟', '🙁', '😮',
-  '😯', '😲', '😳', '🥺', '😦', '😧', '😨', '😰',
-  '😥', '😢', '😭', '😱', '😖', '😣', '😞', '😓',
-  '😩', '😫', '🥱', '😤', '😡', '😠', '🤬', '👋',
-  '👍', '👎', '👏', '🙌', '👐', '🤲', '🤝', '🙏',
-  '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍',
-  '💔', '💕', '💞', '💓', '💗', '💖', '💘', '💝',
-  '⭐', '🌟', '✨', '💫', '🔥', '💥', '💯', '🎉',
-  '🎊', '🎈', '🎁', '🏆', '🥇', '🔔', '🔕', '📢',
+// 消息撤回
+const showRevokeDialog = ref(false);
+const revokingMessageId = ref<string>('');
+const REVOKE_TIME_LIMIT = 120000; // 2分钟内可撤回
+
+// 正在输入提示
+const typingUsers = ref<string[]>([]);
+const typingTimeout = ref<any>(null);
+const lastTypingTime = ref(0);
+const isTyping = ref(false);
+
+// 消息搜索
+const showSearchDialog = ref(false);
+const searchKeyword = ref('');
+const searchResults = ref<Array<{
+  id: string;
+  nickname: string;
+  content: string;
+  timestamp: number;
+  replyTo?: {
+    id: string;
+    nickname: string;
+    content: string;
+  };
+}>>([]);
+const currentSearchIndex = ref(0);
+
+// 消息分页
+const currentOffset = ref(0);
+const PAGE_SIZE = 50;
+const hasMoreMessages = ref(false);
+const isLoadingMore = ref(false);
+
+// 消息音效
+const messageSoundEnabled = ref(true);
+const audioContext = ref<AudioContext | null>(null);
+
+// 表情分类
+const emojiCategories = [
+  { name: '笑脸', emojis: ['😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰'] },
+  { name: '爱心', emojis: ['😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🤩', '🥳', '😏'] },
+  { name: '手势', emojis: ['👋', '👍', '👎', '👏', '🙌', '👐', '🤲', '🤝', '🙏', '✍️', '💪', '🦵', '🦶', '👂', '👃', '🧠'] },
+  { name: '动物', emojis: ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔'] },
+  { name: '食物', emojis: ['🍎', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🫐', '🍈', '🍒', '🍑', '🥭', '🍍', '🥥', '🥝', '🍅'] },
+  { name: '活动', emojis: ['⚽', '🏀', '🏈', '⚾', '🥎', '🎾', '🏐', '🏉', '🥏', '🎱', '🪀', '🏓', '🏸', '🏒', '🏑', '🥍'] },
+  { name: '物体', emojis: ['⭐', '🌟', '✨', '💫', '🔥', '💥', '💯', '🎉', '🎊', '🎈', '🎁', '🏆', '🥇', '🔔', '🔕', '📢'] },
+  { name: '符号', emojis: ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '💔', '💕', '💞', '💓', '💗', '💖', '💘', '💝'] },
 ];
+const activeEmojiCategory = ref('笑脸');
+
+// 网络重连
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 5;
+const isReconnecting = ref(false);
+
+// 消息引用
+const replyingTo = ref<{
+  id: string;
+  nickname: string;
+  content: string;
+} | null>(null);
+
+// 快捷键
+const inputHistory = ref<string[]>([]);
+const historyIndex = ref(-1);
 
 // Supabase channel 实例
 let messageChannel: any = null;
@@ -74,7 +125,7 @@ let presenceChannel: any = null;
 let heartbeatInterval: any = null;
 
 // 当前用户的唯一ID
-const currentUserId = ref(`user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
+const currentUserId = ref(`user-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`);
 
 // 保存昵称到本地存储
 const saveNickname = (nick: string) => {
@@ -190,13 +241,14 @@ const initSupabase = async () => {
   const url = import.meta.env.VITE_SUPABASE_URL || '';
   const key = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
   if (!url || !key || url.includes('your-project') || key.includes('your-anon-key')) {
+    ElMessage.error("Supabase 未配置，请联系管理员配置服务");
     return false;
   }
 
   try {
     // 添加超时保护
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('连接超时')), 5000)
+      setTimeout(() => reject(new Error('连接超时')), 10000)
     );
 
     const connectPromise = supabase.from('chat_messages').select('id').limit(1);
@@ -209,6 +261,18 @@ const initSupabase = async () => {
     return true;
   } catch (error: any) {
     console.error("Supabase 连接失败:", error);
+
+    // 根据错误类型显示不同的提示
+    let errorMsg = "连接服务器失败";
+    if (error.message === '连接超时') {
+      errorMsg = "连接超时，请检查网络连接";
+    } else if (error.message?.includes('Failed to fetch')) {
+      errorMsg = "网络连接失败，请检查网络";
+    } else if (error.code === 'PGRST301') {
+      errorMsg = "API密钥错误，请联系管理员";
+    }
+
+    ElMessage.error(errorMsg);
     isConnected.value = false;
     return false;
   }
@@ -232,6 +296,7 @@ const joinRoom = async () => {
     const connected = await initSupabase();
     if (!connected) {
       isConnecting.value = false;
+      ElMessage.error("连接服务器失败，请检查网络或稍后重试");
       return;
     }
 
@@ -243,28 +308,36 @@ const joinRoom = async () => {
     // 加载历史消息
     let isNewRoom = false;
     try {
-      const historyData = await chatDb.getMessages(normalizedRoomId, 50);
+      currentOffset.value = 0;
+      const historyData = await chatDb.getMessages(normalizedRoomId, PAGE_SIZE);
       if (!historyData || historyData.length === 0) {
         isNewRoom = true;
+        hasMoreMessages.value = false;
+      } else {
+        hasMoreMessages.value = historyData.length === PAGE_SIZE;
+        currentOffset.value = historyData.length;
       }
-      messages.value = historyData
-        .filter((msg: any) => {
-          // 只显示最近1小时的消息
-          const oneHourAgo = Date.now() - 60 * 60 * 1000;
-          return new Date(msg.created_at).getTime() > oneHourAgo;
-        })
+
+      messages.value = (historyData || [])
         .map((msg: any) => ({
           id: msg.id,
           nickname: msg.nickname,
           content: msg.content,
           timestamp: new Date(msg.created_at).getTime(),
           isSelf: isMyMessage(msg.nickname),
+          revoked: msg.revoked || false,
+          replyTo: msg.reply_to ? {
+            id: msg.reply_to.id,
+            nickname: msg.reply_to.nickname,
+            content: msg.reply_to.content,
+          } : undefined,
         }));
 
       nextTick(() => scrollToBottom());
     } catch (error: any) {
       // 如果表不存在，标记为新房间
       isNewRoom = true;
+      hasMoreMessages.value = false;
       console.error("加载历史消息失败:", error);
     }
 
@@ -283,13 +356,21 @@ const joinRoom = async () => {
       const exists = messages.value.some(m => m.id === newMsg.id);
       if (exists) return;
 
+      const isMyMsg = isMyMessage(newMsg.nickname);
       messages.value.push({
         id: newMsg.id,
         nickname: newMsg.nickname,
         content: newMsg.content,
         timestamp: new Date(newMsg.created_at).getTime(),
-        isSelf: isMyMessage(newMsg.nickname),
+        isSelf: isMyMsg,
+        revoked: newMsg.revoked || false,
+        replyTo: newMsg.reply_to,
       });
+
+      // 播放提示音（不是自己的消息时）
+      if (!isMyMsg && !newMsg.revoked) {
+        playMessageSound();
+      }
 
       // 如果用户不在底部，显示新消息提示
       if (!isAtBottom()) {
@@ -305,12 +386,15 @@ const joinRoom = async () => {
     presenceChannel
       .on('presence', { event: 'sync' }, () => {
         updateOnlineUsers();
+        updateTypingUsers();
       })
       .on('presence', { event: 'join' }, () => {
         updateOnlineUsers();
+        updateTypingUsers();
       })
       .on('presence', { event: 'leave' }, () => {
         updateOnlineUsers();
+        updateTypingUsers();
       })
       .subscribe((status: string) => {
         if (status === 'SUBSCRIBED') {
@@ -319,21 +403,25 @@ const joinRoom = async () => {
             user_id: currentUserId.value,
             nickname: nickname.value,
             online_at: new Date().toISOString(),
+            typing: false,
           });
           updateOnlineUsers();
+        } else if (status === 'CHANNEL_ERROR') {
+          handleDisconnect();
         }
       });
 
-    // 心跳更新在线状态
+    // 心跳更新在线状态（改为20秒）
     heartbeatInterval = setInterval(() => {
       if (presenceChannel) {
         presenceChannel.track({
           user_id: currentUserId.value,
           nickname: nickname.value,
           online_at: new Date().toISOString(),
+          typing: false,
         });
       }
-    }, 30000);
+    }, 20000);
 
     isJoined.value = true;
     isConnecting.value = false;
@@ -378,6 +466,30 @@ const updateOnlineUsers = () => {
   onlineUsers.value = users;
 };
 
+// 更新正在输入的用户列表
+const updateTypingUsers = () => {
+  if (!presenceChannel) return;
+
+  const state = presenceChannel.presenceState();
+  const typing: string[] = [];
+
+  if (state) {
+    Object.keys(state).forEach((key: string) => {
+      const presences = state[key] as any[];
+      presences.forEach((presence: any) => {
+        // 排除自己
+        if (presence.typing && presence.user_id !== currentUserId.value) {
+          if (presence.nickname && !typing.includes(presence.nickname)) {
+            typing.push(presence.nickname);
+          }
+        }
+      });
+    });
+  }
+
+  typingUsers.value = typing;
+};
+
 // 发送消息
 const sendMessage = async () => {
   if (!inputMessage.value.trim() || isSending.value) return;
@@ -392,11 +504,29 @@ const sendMessage = async () => {
   // XSS 防护 - 转义 HTML 特殊字符
   const safeContent = escapeHtml(inputMessage.value.trim());
 
+  // 保存到输入历史
+  inputHistory.value.push(safeContent);
+  if (inputHistory.value.length > 50) {
+    inputHistory.value = inputHistory.value.slice(-50);
+  }
+  historyIndex.value = -1;
+
   isSending.value = true;
   lastSendTime.value = now;
+
+  const messageData = {
+    content: safeContent,
+    reply_to: replyingTo.value ? {
+      id: replyingTo.value.id,
+      nickname: replyingTo.value.nickname,
+      content: replyingTo.value.content,
+    } : undefined,
+  };
+
   try {
-    await chatDb.sendMessage(roomId.value, nickname.value, safeContent);
+    await chatDb.sendMessage(roomId.value, nickname.value, messageData.content, messageData.reply_to);
     inputMessage.value = "";
+    cancelReply(); // 清除回复状态
   } catch (error: any) {
     console.error("发送消息失败:", error);
     ElMessage.error("发送失败，请重试");
@@ -412,37 +542,16 @@ const escapeHtml = (text: string) => {
   return div.innerHTML;
 };
 
-// 解析消息中的 URL
-const parseMessageContent = (content: string) => {
-  // 匹配 http/https URL
-  const urlRegex = /(https?:\/\/[^\s<]+)/g;
-  const parts: Array<{ text: string; isLink: boolean; url?: string }> = [];
-  let lastIndex = 0;
-  let match;
-
-  while ((match = urlRegex.exec(content)) !== null) {
-    // 添加匹配前的文本
-    if (match.index > lastIndex) {
-      parts.push({ text: content.slice(lastIndex, match.index), isLink: false });
-    }
-    // 添加链接
-    parts.push({ text: match[1], isLink: true, url: match[1] });
-    lastIndex = urlRegex.lastIndex;
-  }
-
-  // 添加剩余文本
-  if (lastIndex < content.length) {
-    parts.push({ text: content.slice(lastIndex), isLink: false });
-  }
-
-  return parts;
-};
-
 // 离开房间
 const leaveRoom = () => {
   if (heartbeatInterval) {
     clearInterval(heartbeatInterval);
     heartbeatInterval = null;
+  }
+
+  if (typingTimeout.value) {
+    clearTimeout(typingTimeout.value);
+    typingTimeout.value = null;
   }
 
   // 取消订阅
@@ -458,8 +567,15 @@ const leaveRoom = () => {
 
   messages.value = [];
   onlineUsers.value = [];
+  typingUsers.value = [];
   isJoined.value = false;
   hasNewMessages.value = false;
+  replyingTo.value = null;
+  searchResults.value = [];
+  currentOffset.value = 0;
+  hasMoreMessages.value = false;
+  inputHistory.value = [];
+  historyIndex.value = -1;
 
   // 生成新的房间号和昵称
   generateRoomId();
@@ -500,6 +616,9 @@ const handleScroll = () => {
   if (isAtBottom()) {
     hasNewMessages.value = false;
   }
+
+  // 检测滚动到顶部，加载更多消息
+  handleScrollTop();
 };
 
 // 复制房间号
@@ -542,25 +661,10 @@ const refreshPage = () => {
   window.location.reload();
 };
 
-// 格式化时间
-const formatTime = (timestamp: number) => {
-  const date = new Date(timestamp);
-  const now = new Date();
-  const isToday = date.toDateString() === now.toDateString();
-
-  if (isToday) {
-    return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-  } else {
-    return date.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
-  }
-};
-
-// 按回车发送
-const handleKeydown = (e: Event | KeyboardEvent) => {
-  if (e instanceof KeyboardEvent && e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendMessage();
-  }
+// 切换消息音效
+const toggleMessageSound = () => {
+  messageSoundEnabled.value = !messageSoundEnabled.value;
+  localStorage.setItem('tempchat-sound-enabled', JSON.stringify(messageSoundEnabled.value));
 };
 
 // 全局键盘事件处理
@@ -586,6 +690,436 @@ const handleClickOutside = (e: MouseEvent) => {
       showEmojiPicker.value = false;
     }
   }
+};
+
+// ============ 新增功能函数 ============
+
+// 消息撤回功能
+const revokeMessage = async (messageId: string) => {
+  const msg = messages.value.find(m => m.id === messageId);
+  if (!msg) return;
+
+  // 检查是否是自己发送的
+  if (!msg.isSelf) {
+    ElMessage.warning("只能撤回自己的消息");
+    return;
+  }
+
+  // 检查时间限制
+  const now = Date.now();
+  if (now - msg.timestamp > REVOKE_TIME_LIMIT) {
+    ElMessage.warning("消息发送超过2分钟，无法撤回");
+    return;
+  }
+
+  showRevokeDialog.value = true;
+  revokingMessageId.value = messageId;
+};
+
+const confirmRevoke = async () => {
+  if (!revokingMessageId.value) return;
+
+  try {
+    await chatDb.revokeMessage(roomId.value, revokingMessageId.value);
+
+    // 更新本地消息状态
+    const msg = messages.value.find(m => m.id === revokingMessageId.value);
+    if (msg) {
+      msg.revoked = true;
+      msg.content = '消息已撤回';
+    }
+
+    ElMessage.success("消息已撤回");
+  } catch (error: any) {
+    console.error("撤回消息失败:", error);
+    ElMessage.error("撤回失败，请重试");
+  } finally {
+    showRevokeDialog.value = false;
+    revokingMessageId.value = '';
+  }
+};
+
+// 正在输入功能
+const sendTypingIndicator = () => {
+  if (!presenceChannel || isJoined.value === false) return;
+
+  const now = Date.now();
+  if (now - lastTypingTime.value > 3000) { // 3秒内只发送一次
+    presenceChannel.track({
+      user_id: currentUserId.value,
+      nickname: nickname.value,
+      online_at: new Date().toISOString(),
+      typing: true,
+    });
+    lastTypingTime.value = now;
+  }
+
+  // 清除之前的定时器
+  if (typingTimeout.value) {
+    clearTimeout(typingTimeout.value);
+  }
+
+  // 5秒后停止"正在输入"状态
+  typingTimeout.value = setTimeout(() => {
+    isTyping.value = false;
+  }, 5000);
+
+  isTyping.value = true;
+};
+
+// 监听用户输入，发送正在输入状态
+const handleInput = () => {
+  if (inputMessage.value.trim()) {
+    sendTypingIndicator();
+  }
+};
+
+// 消息搜索功能
+const searchMessages = () => {
+  const keyword = searchKeyword.value.trim().toLowerCase();
+  if (!keyword) {
+    searchResults.value = [];
+    return;
+  }
+
+  searchResults.value = messages.value.filter(msg => {
+    const matchesContent = !msg.revoked && msg.content.toLowerCase().includes(keyword);
+    const matchesNickname = msg.nickname.toLowerCase().includes(keyword);
+    const matchesReplyTo = msg.replyTo && (
+      msg.replyTo.nickname.toLowerCase().includes(keyword) ||
+      msg.replyTo.content.toLowerCase().includes(keyword)
+    );
+    return matchesContent || matchesNickname || matchesReplyTo;
+  });
+
+  currentSearchIndex.value = 0;
+
+  if (searchResults.value.length > 0) {
+    scrollToMessage(searchResults.value[0].id);
+    ElMessage.success(`找到 ${searchResults.value.length} 条匹配消息`);
+  } else {
+    ElMessage.info("未找到匹配消息");
+  }
+};
+
+const scrollToMessage = (messageId: string) => {
+  const element = document.getElementById(`msg-${messageId}`);
+  if (element) {
+    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // 高亮显示
+    element.classList.add('highlight-message');
+    setTimeout(() => {
+      element.classList.remove('highlight-message');
+    }, 2000);
+  }
+};
+
+const navigateSearchResult = (direction: 'prev' | 'next') => {
+  if (searchResults.value.length === 0) return;
+
+  if (direction === 'next') {
+    currentSearchIndex.value = (currentSearchIndex.value + 1) % searchResults.value.length;
+  } else {
+    currentSearchIndex.value = (currentSearchIndex.value - 1 + searchResults.value.length) % searchResults.value.length;
+  }
+
+  scrollToMessage(searchResults.value[currentSearchIndex.value].id);
+};
+
+// 消息分页加载
+const loadMoreMessages = async () => {
+  if (isLoadingMore.value || !hasMoreMessages.value) return;
+
+  isLoadingMore.value = true;
+  try {
+    const moreMessages = await chatDb.getMessages(
+      roomId.value,
+      PAGE_SIZE,
+      currentOffset.value
+    );
+
+    if (moreMessages && moreMessages.length > 0) {
+      const formatted = moreMessages.map((msg: any) => ({
+        id: msg.id,
+        nickname: msg.nickname,
+        content: msg.content,
+        timestamp: new Date(msg.created_at).getTime(),
+        isSelf: isMyMessage(msg.nickname),
+        revoked: msg.revoked || false,
+        replyTo: msg.reply_to ? {
+          id: msg.reply_to.id,
+          nickname: msg.reply_to.nickname,
+          content: msg.reply_to.content,
+        } : undefined,
+      }));
+
+      // 插入到开头
+      messages.value.unshift(...formatted.reverse());
+      currentOffset.value += moreMessages.length;
+
+      // 检查是否还有更多消息
+      hasMoreMessages.value = moreMessages.length === PAGE_SIZE;
+
+      // 保持滚动位置
+      nextTick(() => {
+        if (messagesContainer.value) {
+          const oldHeight = messagesContainer.value.scrollHeight;
+          requestAnimationFrame(() => {
+            if (messagesContainer.value) {
+              const newHeight = messagesContainer.value.scrollHeight;
+              messagesContainer.value.scrollTop += newHeight - oldHeight;
+            }
+          });
+        }
+      });
+    } else {
+      hasMoreMessages.value = false;
+    }
+  } catch (error) {
+    console.error("加载更多消息失败:", error);
+  } finally {
+    isLoadingMore.value = false;
+  }
+};
+
+// 检测滚动到顶部
+const handleScrollTop = () => {
+  if (!messagesContainer.value) return;
+
+  const container = messagesContainer.value;
+  if (container.scrollTop < 50 && hasMoreMessages.value && !isLoadingMore.value) {
+    loadMoreMessages();
+  }
+};
+
+// 消息音效
+const initAudioContext = () => {
+  try {
+    audioContext.value = new (window.AudioContext || (window as any).webkitAudioContext)();
+  } catch (e) {
+    console.warn("AudioContext not supported");
+  }
+};
+
+const playMessageSound = () => {
+  if (!messageSoundEnabled.value || !audioContext.value) return;
+
+  try {
+    const oscillator = audioContext.value.createOscillator();
+    const gainNode = audioContext.value.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.value.destination);
+
+    oscillator.frequency.value = 800;
+    oscillator.type = 'sine';
+
+    gainNode.gain.setValueAtTime(0.1, audioContext.value.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.value.currentTime + 0.1);
+
+    oscillator.start(audioContext.value.currentTime);
+    oscillator.stop(audioContext.value.currentTime + 0.1);
+  } catch (e) {
+    console.warn("播放提示音失败:", e);
+  }
+};
+
+// 改进的时间格式化
+const formatTime = (timestamp: number) => {
+  const date = new Date(timestamp);
+  const now = new Date();
+  const diff = now.getTime() - timestamp;
+
+  // 1分钟内
+  if (diff < 60000) {
+    return '刚刚';
+  }
+
+  // 1小时内
+  if (diff < 3600000) {
+    return `${Math.floor(diff / 60000)}分钟前`;
+  }
+
+  const isToday = date.toDateString() === now.toDateString();
+
+  if (isToday) {
+    return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+  } else {
+    const isYesterday = new Date(now.getTime() - 86400000).toDateString() === date.toDateString();
+    if (isYesterday) {
+      return `昨天 ${date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`;
+    }
+    return date.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+  }
+};
+
+// 改进的URL解析
+const parseMessageContent = (content: string) => {
+  // 匹配 http/https URL（改进版）
+  const urlRegex = /(https?:\/\/[^\s<]+[^<.,:;"')\]\s])/g;
+  const parts: Array<{ text: string; isLink: boolean; url?: string }> = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = urlRegex.exec(content)) !== null) {
+    // 添加匹配前的文本
+    if (match.index > lastIndex) {
+      parts.push({ text: content.slice(lastIndex, match.index), isLink: false });
+    }
+    // 添加链接
+    parts.push({ text: match[1], isLink: true, url: match[1] });
+    lastIndex = urlRegex.lastIndex;
+  }
+
+  // 添加剩余文本
+  if (lastIndex < content.length) {
+    parts.push({ text: content.slice(lastIndex), isLink: false });
+  }
+
+  return parts;
+};
+
+// 消息引用功能
+const replyToMessage = (msg: any) => {
+  replyingTo.value = {
+    id: msg.id,
+    nickname: msg.nickname,
+    content: msg.revoked ? '消息已撤回' : msg.content,
+  };
+
+  // 聚焦到输入框
+  nextTick(() => {
+    const textarea = document.querySelector('textarea');
+    if (textarea) {
+      textarea.focus();
+    }
+  });
+};
+
+const cancelReply = () => {
+  replyingTo.value = null;
+};
+
+// 快捷键支持
+const handleKeydown = (e: Event | KeyboardEvent) => {
+  if (e instanceof KeyboardEvent) {
+    // Ctrl/Cmd + Enter 发送消息
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      sendMessage();
+      return;
+    }
+
+    // 普通回车发送（Shift+Enter 换行）
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+      return;
+    }
+
+    // 上箭头浏览历史
+    if (e.key === 'ArrowUp' && !inputMessage.value) {
+      e.preventDefault();
+      if (historyIndex.value < inputHistory.value.length - 1) {
+        historyIndex.value++;
+        inputMessage.value = inputHistory.value[inputHistory.value.length - 1 - historyIndex.value];
+      }
+      return;
+    }
+
+    // 下箭头浏览历史
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (historyIndex.value > 0) {
+        historyIndex.value--;
+        inputMessage.value = inputHistory.value[inputHistory.value.length - 1 - historyIndex.value];
+      } else if (historyIndex.value === 0) {
+        historyIndex.value = -1;
+        inputMessage.value = '';
+      }
+      return;
+    }
+
+    // Escape 取消回复
+    if (e.key === 'Escape' && replyingTo.value) {
+      cancelReply();
+    }
+
+    // Ctrl+F 或 Cmd+F 打开搜索
+    if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+      e.preventDefault();
+      showSearchDialog.value = true;
+      nextTick(() => {
+        const input = document.querySelector('.search-input input') as HTMLInputElement;
+        if (input) input.focus();
+      });
+    }
+  }
+};
+
+// 网络重连
+const handleDisconnect = () => {
+  if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+    isReconnecting.value = true;
+    reconnectAttempts++;
+
+    const delay = Math.pow(2, reconnectAttempts) * 1000; // 指数退避
+
+    ElMessage.info(`连接断开，${delay / 1000}秒后重连... (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`);
+
+    setTimeout(() => {
+      joinRoom().then(() => {
+        reconnectAttempts = 0;
+        isReconnecting.value = false;
+      }).catch(() => {
+        handleDisconnect();
+      });
+    }, delay);
+  } else {
+    ElMessage.error("连接失败，请刷新页面重试");
+    isReconnecting.value = false;
+  }
+};
+
+// 消息导出
+const exportMessages = () => {
+  if (messages.value.length === 0) {
+    ElMessage.warning("没有可导出的消息");
+    return;
+  }
+
+  let content = `聊天室: ${roomId.value}\n`;
+  content += `导出时间: ${new Date().toLocaleString()}\n`;
+  content += `消息数量: ${messages.value.length}\n`;
+  content += `${'='.repeat(50)}\n\n`;
+
+  messages.value.forEach(msg => {
+    const time = formatTime(msg.timestamp);
+    const prefix = msg.isSelf ? '【我】' : `【${msg.nickname}】`;
+    const msgContent = msg.revoked ? '消息已撤回' : msg.content;
+
+    // 如果是回复消息
+    if (msg.replyTo) {
+      content += `[${time}] ${prefix} 回复 @${msg.replyTo.nickname}:\n`;
+      content += `  > ${msg.replyTo.content.substring(0, 50)}${msg.replyTo.content.length > 50 ? '...' : ''}\n`;
+      content += `  ${msgContent}\n\n`;
+    } else {
+      content += `[${time}] ${prefix}: ${msgContent}\n\n`;
+    }
+  });
+
+  // 创建下载
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `chat-${roomId.value}-${new Date().getTime()}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  ElMessage.success("聊天记录已导出");
 };
 
 // 打开昵称修改对话框
@@ -650,6 +1184,9 @@ const selectEmoji = (emoji: string) => {
 
   // 保存到本地存储
   localStorage.setItem('tempchat-recent-emojis', JSON.stringify(recentEmojis.value));
+
+  // 关闭表情面板
+  showEmojiPicker.value = false;
 };
 
 // 组件挂载
@@ -671,6 +1208,19 @@ onMounted(() => {
       recentEmojis.value = [];
     }
   }
+
+  // 加载音效设置
+  const soundEnabled = localStorage.getItem('tempchat-sound-enabled');
+  if (soundEnabled !== null) {
+    messageSoundEnabled.value = JSON.parse(soundEnabled);
+  }
+
+  // 初始化音频上下文（用户交互后）
+  const initAudio = () => {
+    initAudioContext();
+    document.removeEventListener('click', initAudio);
+  };
+  document.addEventListener('click', initAudio);
 
   // 添加全局事件监听
   window.addEventListener('keydown', handleGlobalKeydown);
@@ -695,13 +1245,13 @@ onUnmounted(() => {
   leaveRoom();
   window.removeEventListener('keydown', handleGlobalKeydown);
   window.removeEventListener('click', handleClickOutside);
+
+  // 关闭音频上下文
+  if (audioContext.value) {
+    audioContext.value.close();
+  }
 });
 
-onBeforeUnmount(() => {
-  leaveRoom();
-  window.removeEventListener('keydown', handleGlobalKeydown);
-  window.removeEventListener('click', handleClickOutside);
-});
 </script>
 
 <template>
@@ -817,7 +1367,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
             </div>
           </div>
           <!-- 第二行：在线人数和操作按钮 -->
-          <div class="flex items-center justify-between">
+          <div class="flex items-center justify-between flex-wrap gap-2">
             <div class="hidden md:flex items-center gap-1">
               <span class="text-sm text-gray-500">在线:</span>
               <span class="text-sm text-green-600">{{ onlineUsers.length }} 人</span>
@@ -825,12 +1375,25 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
             <div class="md:hidden flex items-center gap-1">
               <span class="text-sm text-gray-500">在线: {{ onlineUsers.length }} 人</span>
             </div>
-            <div class="flex items-center gap-1 ml-auto">
+            <div class="flex items-center gap-1 ml-auto flex-wrap">
+              <el-button size="small" @click="showSearchDialog = true" title="搜索消息 (Ctrl+F)">
+                🔍 搜索
+              </el-button>
               <el-button size="small" @click="toggleQrcode">
                 二维码
               </el-button>
               <el-button size="small" @click="copyRoomLink">
                 复制链接
+              </el-button>
+              <el-button size="small" @click="exportMessages" title="导出聊天记录">
+                📥 导出
+              </el-button>
+              <el-button
+                size="small"
+                @click="toggleMessageSound"
+                :title="messageSoundEnabled ? '关闭音效' : '开启音效'"
+              >
+                {{ messageSoundEnabled ? '🔊' : '🔇' }}
               </el-button>
               <el-button type="danger" size="small" @click="leaveRoom">
                 离开
@@ -885,6 +1448,60 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
           </template>
         </el-dialog>
 
+        <!-- 消息搜索对话框 -->
+        <el-dialog
+          v-model="showSearchDialog"
+          title="搜索消息"
+          width="500px"
+        >
+          <div class="space-y-4">
+            <el-input
+              v-model="searchKeyword"
+              placeholder="输入关键词搜索..."
+              class="search-input"
+              @keyup.enter="searchMessages"
+            >
+              <template #append>
+                <el-button @click="searchMessages" :disabled="!searchKeyword.trim()">
+                  搜索
+                </el-button>
+              </template>
+            </el-input>
+
+            <div v-if="searchResults.length > 0" class="space-y-2">
+              <div class="text-sm text-gray-500 flex items-center justify-between">
+                <span>找到 {{ searchResults.length }} 条结果</span>
+                <div class="flex gap-1">
+                  <el-button size="small" @click="navigateSearchResult('prev')" :disabled="searchResults.length <= 1">
+                    上一条
+                  </el-button>
+                  <el-button size="small" @click="navigateSearchResult('next')" :disabled="searchResults.length <= 1">
+                    下一条
+                  </el-button>
+                </div>
+              </div>
+              <div class="text-xs text-gray-400">
+                当前: {{ currentSearchIndex + 1 }} / {{ searchResults.length }}
+              </div>
+            </div>
+          </div>
+        </el-dialog>
+
+        <!-- 消息撤回确认对话框 -->
+        <el-dialog
+          v-model="showRevokeDialog"
+          title="撤回消息"
+          width="400px"
+        >
+          <p class="text-gray-600">确定要撤回这条消息吗？撤回后无法恢复。</p>
+          <template #footer>
+            <el-button @click="showRevokeDialog = false">取消</el-button>
+            <el-button type="danger" @click="confirmRevoke">
+              确定撤回
+            </el-button>
+          </template>
+        </el-dialog>
+
         <!-- 在线用户列表 -->
         <div class="flex items-center gap-2 pb-2 text-sm text-gray-500 flex-wrap">
           <span class="flex-shrink-0">在线 ({{ onlineUsers.length }}):</span>
@@ -909,10 +1526,17 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
         <!-- 消息列表 -->
         <div
           ref="messagesContainer"
-          class="flex-1 overflow-y-auto space-y-3 pr-2 bg-gray-50 rounded-lg p-4 relative"
+          class="flex-1 overflow-y-auto overflow-x-hidden space-y-3 pr-2 bg-gray-50 rounded-lg p-4 relative"
           style="min-height: 350px; max-height: 55vh;"
           @scroll="handleScroll"
         >
+          <!-- 加载更多提示 -->
+          <div v-if="hasMoreMessages" class="text-center py-2">
+            <el-button size="small" text @click="loadMoreMessages" :loading="isLoadingMore">
+              {{ isLoadingMore ? '加载中...' : '加载更多消息' }}
+            </el-button>
+          </div>
+
           <div v-if="messages.length === 0" class="flex items-center justify-center h-full text-gray-400">
             <div class="text-center">
               <div class="text-4xl mb-2">🎉</div>
@@ -923,6 +1547,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
           <div
             v-for="msg in messages"
             :key="msg.id"
+            :id="`msg-${msg.id}`"
             class="flex group"
             :class="msg.isSelf ? 'justify-end' : 'justify-start'"
           >
@@ -931,8 +1556,10 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
               <div class="flex items-end gap-2" :class="msg.isSelf ? 'flex-row-reverse' : ''">
                 <!-- 头像 -->
                 <div
-                  class="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0"
+                  class="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0 cursor-pointer hover:opacity-80"
                   :class="msg.isSelf ? 'bg-blue-500' : 'bg-green-500'"
+                  @click="replyToMessage(msg)"
+                  title="点击回复"
                 >
                   {{ msg.nickname.charAt(0) }}
                 </div>
@@ -942,37 +1569,79 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
                   <div class="text-xs text-gray-400 mb-1" :class="msg.isSelf ? 'text-right' : ''">
                     {{ msg.nickname }} · {{ formatTime(msg.timestamp) }}
                   </div>
+
+                  <!-- 引用内容 -->
+                  <div v-if="msg.replyTo" class="mb-1 pl-2 border-l-2 border-gray-300">
+                    <div class="text-xs text-gray-500">@{{ msg.replyTo.nickname }}</div>
+                    <div class="text-sm text-gray-600 truncate max-w-xs">{{ msg.replyTo.content }}</div>
+                  </div>
+
                   <div
-                    class="px-4 py-2 rounded-2xl shadow-sm whitespace-pre-wrap break-words overflow-wrap-break-word"
-                    :class="msg.isSelf ? 'bg-blue-500 text-white rounded-br-md' : 'bg-white text-gray-800 rounded-bl-md'"
+                    class="px-4 py-2 rounded-2xl shadow-sm overflow-hidden break-words"
+                    :class="[
+                      msg.isSelf ? 'bg-blue-500 text-white rounded-br-md' : 'bg-white text-gray-800 rounded-bl-md',
+                      msg.revoked ? 'italic text-gray-400' : ''
+                    ]"
                   >
                     <!-- 解析 URL 并渲染链接 -->
-                    <template v-for="(part, idx) in parseMessageContent(msg.content)" :key="idx">
+                    <template v-if="!msg.revoked" v-for="(part, idx) in parseMessageContent(msg.content)" :key="idx">
                       <a
                         v-if="part.isLink"
                         :href="part.url"
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="text-blue-500 hover:underline break-all"
+                        class="text-blue-500 hover:underline break-all inline"
                         :class="msg.isSelf ? 'text-white hover:text-blue-100' : ''"
                         @click.stop
                       >
                         {{ part.text }}
                       </a>
-                      <span v-else>{{ part.text }}</span>
+                      <span v-else class="break-words inline">{{ part.text }}</span>
+                    </template>
+                    <template v-else>
+                      {{ msg.content }}
                     </template>
                   </div>
-                  <!-- 复制按钮 -->
-                  <div
-                    class="absolute left-1/2 -translate-x-1/2 -bottom-9 opacity-0 group-hover:opacity-100 transition-opacity duration-200 md:block hidden z-10"
-                    @click.stop="copyMessage(msg.content)"
-                  >
-                    <div class="bg-gray-800 text-white text-xs px-3 py-1 rounded-full flex items-center gap-1 shadow-lg cursor-pointer hover:bg-gray-700 whitespace-nowrap">
+
+                  <!-- 操作按钮 (桌面端) -->
+                  <div class="absolute left-1/2 -translate-x-1/2 -bottom-9 opacity-0 group-hover:opacity-100 transition-opacity duration-200 md:flex hidden z-10 gap-1">
+                    <div
+                      v-if="msg.isSelf && !msg.revoked && Date.now() - msg.timestamp < REVOKE_TIME_LIMIT"
+                      @click.stop="revokeMessage(msg.id)"
+                      class="bg-gray-800 text-white text-xs px-3 py-1 rounded-full flex items-center gap-1 shadow-lg cursor-pointer hover:bg-gray-700 whitespace-nowrap"
+                      title="撤回消息 (2分钟内)"
+                    >
+                      <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path>
+                      </svg>
+                      <span>撤回</span>
+                    </div>
+                    <div
+                      @click.stop="copyMessage(msg.content)"
+                      class="bg-gray-800 text-white text-xs px-3 py-1 rounded-full flex items-center gap-1 shadow-lg cursor-pointer hover:bg-gray-700 whitespace-nowrap"
+                    >
                       <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
                       </svg>
                       <span>复制</span>
                     </div>
+                    <div
+                      @click.stop="replyToMessage(msg)"
+                      class="bg-gray-800 text-white text-xs px-3 py-1 rounded-full flex items-center gap-1 shadow-lg cursor-pointer hover:bg-gray-700 whitespace-nowrap"
+                    >
+                      <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path>
+                      </svg>
+                      <span>回复</span>
+                    </div>
+                  </div>
+
+                  <!-- 移动端长按菜单 -->
+                  <div
+                    v-if="false"
+                    class="md:hidden absolute left-1/2 -translate-x-1/2 -bottom-9 bg-gray-800 text-white text-xs px-3 py-1 rounded-full shadow-lg whitespace-nowrap"
+                  >
+                    长按查看操作
                   </div>
                 </div>
               </div>
@@ -998,8 +1667,25 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
         <div class="pt-3 border-t border-gray-200 mt-3 relative" ref="emojiPickerRef">
           <!-- 表情选择器 -->
           <div v-if="showEmojiPicker" class="mb-3 p-3 bg-white border border-gray-200 rounded-lg shadow-lg" @click.stop>
+            <!-- 分类标签 -->
+            <div class="flex gap-1 mb-2 overflow-x-auto pb-1">
+              <button
+                v-for="cat in emojiCategories"
+                :key="cat.name"
+                @click="activeEmojiCategory = cat.name"
+                :class="[
+                  'px-3 py-1 text-xs rounded-full whitespace-nowrap transition-colors',
+                  activeEmojiCategory === cat.name
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                ]"
+              >
+                {{ cat.name }}
+              </button>
+            </div>
+
             <!-- 最近使用 -->
-            <div v-if="recentEmojis.length > 0" class="mb-3">
+            <div v-if="recentEmojis.length > 0 && activeEmojiCategory === '笑脸'" class="mb-3">
               <div class="text-xs text-gray-400 mb-2">最近使用</div>
               <div class="grid grid-cols-8 gap-1">
                 <button
@@ -1013,11 +1699,11 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
                 </button>
               </div>
             </div>
-            <!-- 所有表情 -->
-            <div class="text-xs text-gray-400 mb-2">所有表情</div>
+
+            <!-- 当前分类的表情 -->
             <div class="grid grid-cols-8 gap-1 max-h-48 overflow-y-auto">
               <button
-                v-for="emoji in emojiList"
+                v-for="emoji in emojiCategories.find(c => c.name === activeEmojiCategory)?.emojis || []"
                 :key="emoji"
                 @click="selectEmoji(emoji)"
                 class="text-2xl p-1 hover:bg-gray-100 rounded transition-colors duration-150"
@@ -1027,6 +1713,28 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
               </button>
             </div>
           </div>
+
+          <!-- 回复提示 -->
+          <div v-if="replyingTo" class="mb-2 p-2 bg-blue-50 rounded-lg flex items-center justify-between">
+            <div class="flex-1 min-w-0">
+              <div class="text-xs text-gray-500">回复 @{{ replyingTo.nickname }}</div>
+              <div class="text-sm text-gray-700 truncate">{{ replyingTo.content.substring(0, 50) }}{{ replyingTo.content.length > 50 ? '...' : '' }}</div>
+            </div>
+            <el-button size="small" text @click="cancelReply" class="ml-2 flex-shrink-0">
+              <el-icon><Close /></el-icon>
+            </el-button>
+          </div>
+
+          <!-- 正在输入提示 -->
+          <div v-if="typingUsers.length > 0" class="mb-2 text-sm text-gray-500 flex items-center gap-1">
+            <span class="typing-indicator">
+              <span></span>
+              <span></span>
+              <span></span>
+            </span>
+            {{ typingUsers.join('、') }} 正在输入...
+          </div>
+
           <div class="flex gap-2 items-end">
             <el-button
               @click="showEmojiPicker = !showEmojiPicker"
@@ -1039,10 +1747,11 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
               type="textarea"
               :rows="1"
               :autosize="{ minRows: 1, maxRows: 5 }"
-              placeholder="输入消息..."
+              placeholder="输入消息... (Enter发送，Shift+Enter换行，Ctrl+F搜索，↑↓浏览历史)"
               maxlength="500"
               show-word-limit
               @keydown="handleKeydown"
+              @input="handleInput"
               class="flex-1"
             />
             <el-button type="primary" @click="sendMessage" :disabled="!inputMessage.trim()" :loading="isSending">
@@ -1077,7 +1786,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
         <br><br>
         <strong>实现原理：</strong>
         <br>• 使用 <strong>Supabase Realtime</strong> 实现 WebSocket 实时通信，消息秒级同步
-        <br>• 消息存储在云端数据库，支持历史消息加载（最近1小时）
+        <br>• 消息存储在云端数据库，支持历史消息加载
         <br>• 通过 Presence 功能追踪在线用户状态
         <br>• 房间通过唯一标识符区分，只有相同房间号的用户才能互相通信
         <br>• 前端采用 Vue3 响应式设计，界面自适应各种屏幕尺寸
@@ -1111,9 +1820,18 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
 }
 
 /* 消息换行样式 */
-.overflow-wrap-break-word {
+.break-words {
   overflow-wrap: break-word;
   word-break: break-word;
+  word-wrap: break-word;
+}
+
+.break-all {
+  word-break: break-all;
+}
+
+.inline {
+  display: inline;
 }
 
 /* 表情选择器滚动条样式 */
@@ -1155,5 +1873,74 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+/* 消息高亮样式 */
+.highlight-message {
+  animation: highlight-pulse 2s ease-in-out;
+}
+
+@keyframes highlight-pulse {
+  0% {
+    background-color: rgba(255, 255, 0, 0.3);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+/* 正在输入动画 */
+.typing-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.typing-indicator span {
+  width: 6px;
+  height: 6px;
+  background-color: #9ca3af;
+  border-radius: 50%;
+  animation: typing-bounce 1.4s infinite ease-in-out both;
+}
+
+.typing-indicator span:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.typing-indicator span:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes typing-bounce {
+  0%, 80%, 100% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* 移动端优化 */
+@media (max-width: 768px) {
+  .group:hover .group-hover\:opacity-100 {
+    opacity: 0;
+  }
+
+  .message-actions-mobile {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    border-top: 1px solid #e5e7eb;
+    padding: 12px;
+    display: flex;
+    justify-content: space-around;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    z-index: 50;
+  }
 }
 </style>
