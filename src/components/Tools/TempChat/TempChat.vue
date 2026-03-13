@@ -1747,7 +1747,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
               type="textarea"
               :rows="1"
               :autosize="{ minRows: 1, maxRows: 5 }"
-              placeholder="输入消息... (Enter发送，Shift+Enter换行，Ctrl+F搜索，↑↓浏览历史)"
+              placeholder="输入消息..."
               maxlength="500"
               show-word-limit
               @keydown="handleKeydown"
@@ -1783,6 +1783,12 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
         <br>3. 点击加入聊天室
         <br>4. 通过二维码/链接/房间号邀请好友
         <br>5. 开始聊天！
+        <br><br>
+        <strong>快捷键：</strong>
+        <br>• <strong>Enter</strong>：发送消息
+        <br>• <strong>Shift + Enter</strong>：换行
+        <br>• <strong>Ctrl + F</strong>：搜索消息
+        <br>• <strong>↑ / ↓</strong>：浏览输入历史
         <br><br>
         <strong>实现原理：</strong>
         <br>• 使用 <strong>Supabase Realtime</strong> 实现 WebSocket 实时通信，消息秒级同步
