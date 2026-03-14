@@ -63,7 +63,7 @@ const goToQA = () => {
 
 // 跳转到待办事项页面
 const goToTodos = () => {
-  router.push('/todos');
+  router.push('/userinfo/todos');
 };
 </script>
 

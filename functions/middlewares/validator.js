@@ -231,6 +231,10 @@ export class Validator {
       errors.push('优先级必须是 low、medium 或 high')
     }
 
+    if (data.category !== undefined && (typeof data.category !== 'string' || data.category.length > 50)) {
+      errors.push('分类长度不能超过50个字符')
+    }
+
     return {
       isValid: errors.length === 0,
       errors
@@ -255,6 +259,10 @@ export class Validator {
 
     if (data.completed !== undefined && typeof data.completed !== 'number') {
       errors.push('完成状态必须是数字')
+    }
+
+    if (data.category !== undefined && (typeof data.category !== 'string' || data.category.length > 50)) {
+      errors.push('分类长度不能超过50个字符')
     }
 
     return {

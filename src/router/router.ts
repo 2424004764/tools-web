@@ -900,9 +900,9 @@ export const constantRoute = [
     }
   },
   {
-    path: '/todos',
+    path: '/userinfo/todos',
     component: () => import('@/components/Tools/Todos/Todos.vue'),
-    name: 'todos',
+    name: 'userinfo-todos',
     meta: {
       title: "待办事项",
       keywords: '待办事项,任务管理,TODO,优先级,截止日期,任务清单',

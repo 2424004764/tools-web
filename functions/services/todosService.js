@@ -18,6 +18,10 @@ export class TodosService {
         queryBuilder.where('priority', '=', filters.priority)
       }
 
+      if (filters.category) {
+        queryBuilder.where('category', '=', filters.category)
+      }
+
       queryBuilder.orderBy('createTime', 'DESC')
 
       pager.applyTo(queryBuilder)
@@ -28,6 +32,9 @@ export class TodosService {
       }
       if (filters.priority) {
         countQuery.where('priority', '=', filters.priority)
+      }
+      if (filters.category) {
+        countQuery.where('category', '=', filters.category)
       }
 
       const total = await this.todoModel.count(countQuery)
@@ -64,6 +71,7 @@ export class TodosService {
         completed: todoData.completed || 0,
         priority: todoData.priority || 'medium',
         dueDate: todoData.dueDate || null,
+        category: todoData.category || '默认',
         uid: uid
       })
       return {
@@ -86,6 +94,7 @@ export class TodosService {
       if (todoData.completed !== undefined) updateData.completed = todoData.completed
       if (todoData.priority !== undefined) updateData.priority = todoData.priority
       if (todoData.dueDate !== undefined) updateData.dueDate = todoData.dueDate
+      if (todoData.category !== undefined) updateData.category = todoData.category
 
       const queryBuilder = new QueryBuilder()
         .where('id', '=', id)
