@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { reactive, ref, computed } from 'vue'
+import { reactive, ref, computed, watch, onMounted } from 'vue'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { copy } from '@/utils/string'
 import { ElMessage } from 'element-plus'
+import type { UploadFile } from 'element-plus'
 import MarkdownIt from 'markdown-it'
 import hljs from 'highlight.js/lib/core'
 import javascript from 'highlight.js/lib/languages/javascript'
@@ -36,6 +37,36 @@ hljs.registerLanguage('xml', html)
 hljs.registerLanguage('bash', bash)
 hljs.registerLanguage('shell', bash)
 hljs.registerLanguage('json', json)
+
+// ============ 类型定义 ============
+interface ThemeStyles {
+  id: string
+  containerBg: string
+  textColor: string
+  headingColor: string
+  linkColor: string
+  quoteBg: string
+  quoteBorder: string
+  codeBg: string
+  borderColor: string
+  fontFamily: string
+  headingWeight: string
+  containerShadow: string
+  containerRadius: string
+  headingBorder: string
+  quoteStyle: string
+  headingDecoration: string
+  containerBorder: string
+  headingSpacing: string
+  paragraphSpacing: string
+  listIndent: string
+}
+
+interface Theme {
+  id: string
+  name: string
+  styles: ThemeStyles
+}
 
 
 const info = reactive({
@@ -125,7 +156,7 @@ greet('World');
 `)
 
 // 主题配置
-const themes = [
+const themes: Theme[] = [
   {
     id: 'simple',
     name: '简约风格',
@@ -478,6 +509,77 @@ const fontStyles = reactive({
   letterSpacing: 0,
 })
 
+// 本地存储的key
+const STORAGE_KEY = 'wechat_format_config'
+
+// 保存提示状态
+const saveTipVisible = ref(false)
+let saveTipTimer: number | null = null
+
+// 显示保存提示
+const showSaveTip = () => {
+  saveTipVisible.value = true
+  if (saveTipTimer) {
+    clearTimeout(saveTipTimer)
+  }
+  saveTipTimer = window.setTimeout(() => {
+    saveTipVisible.value = false
+    saveTipTimer = null
+  }, 2000)
+}
+
+// 从本地存储加载配置
+const loadFromStorage = () => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (saved) {
+      const data = JSON.parse(saved)
+      if (data.currentTheme) info.currentTheme = data.currentTheme
+      if (data.fontSize) fontStyles.fontSize = data.fontSize
+      if (data.lineHeight) fontStyles.lineHeight = data.lineHeight
+      if (data.letterSpacing !== undefined) fontStyles.letterSpacing = data.letterSpacing
+      if (data.content) markdownContent.value = data.content
+    }
+  } catch (e) {
+    console.error('加载配置失败:', e)
+  }
+}
+
+// 保存配置到本地存储
+const saveToStorage = () => {
+  try {
+    const data = {
+      currentTheme: info.currentTheme,
+      fontSize: fontStyles.fontSize,
+      lineHeight: fontStyles.lineHeight,
+      letterSpacing: fontStyles.letterSpacing,
+      content: markdownContent.value,
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+    showSaveTip()
+  } catch (e) {
+    console.error('保存配置失败:', e)
+  }
+}
+
+// 监听配置变化并自动保存（防抖）
+let saveTimer: number | null = null
+watch(
+  () => [info.currentTheme, fontStyles.fontSize, fontStyles.lineHeight, fontStyles.letterSpacing, markdownContent.value],
+  () => {
+    if (saveTimer) clearTimeout(saveTimer)
+    saveTimer = window.setTimeout(() => {
+      saveToStorage()
+    }, 500)
+  },
+  { deep: true }
+)
+
+// 组件挂载时加载配置
+onMounted(() => {
+  loadFromStorage()
+})
+
 // 预览内容 (HTML)
 const previewContent = computed(() => {
   const theme = themes.find(t => t.id === info.currentTheme)?.styles || themes[0].styles
@@ -490,12 +592,19 @@ const previewHTML = computed(() => {
   return wrapWithStyles(previewContent.value, theme)
 })
 
-// 格式化 Markdown 为 HTML（所有样式内联）
-const formatMarkdown = (md: string, theme: any) => {
-  // 处理字体名称：将双引号替换单引号，在style属性中更安全
+// ============ MarkdownIt 实例缓存 ============
+let cachedMdIt: MarkdownIt | null = null
+let cachedThemeId: string | null = null
+
+/** 获取或创建 MarkdownIt 实例 */
+const getMarkdownIt = (theme: ThemeStyles): MarkdownIt => {
+  // 如果主题变化，重新创建实例
+  if (cachedMdIt && cachedThemeId === theme.id) {
+    return cachedMdIt
+  }
+
   const safeFontFamily = theme.fontFamily.replace(/"/g, "'")
 
-  // 创建 markdown-it 实例
   const mdIt = new MarkdownIt({
     html: true,
     linkify: true,
@@ -504,80 +613,40 @@ const formatMarkdown = (md: string, theme: any) => {
       if (lang && hljs.getLanguage(lang)) {
         try {
           const highlighted = hljs.highlight(str, { language: lang }).value
-          // 转换 highlight.js 的类名为内联样式，span内的空格已替换为 &nbsp;
           const withInlineStyles = convertHljsToInlineStyles(highlighted)
           const codeFontFamily = "'Fira Code', 'JetBrains Mono', 'Source Code Pro', 'Victor Mono', 'Consolas', 'Monaco', monospace"
-          // 使用表格包裹，pre标签保持格式
           return `<table style="width:100%;border-collapse:collapse;margin:15px 0;background:${theme.codeBg};border-radius:${theme.containerRadius};overflow:hidden;"><tr><td style="padding:15px;"><pre style="font-family:${codeFontFamily};font-size:14px;line-height:1.6;color:${theme.textColor};margin:0;white-space:pre-wrap;word-wrap:break-word;">${withInlineStyles}</pre></td></tr></table>`
         } catch (__) {}
       }
       const codeFontFamily = "'Fira Code', 'JetBrains Mono', 'Source Code Pro', 'Victor Mono', 'Consolas', 'Monaco', monospace"
-      // 替换空格为 &nbsp; 但保留换行符
       const escaped = mdIt.utils.escapeHtml(str).replace(/ /g, '\u00a0')
       return `<table style="width:100%;border-collapse:collapse;margin:15px 0;background:${theme.codeBg};border-radius:${theme.containerRadius};overflow:hidden;"><tr><td style="padding:15px;"><pre style="font-family:${codeFontFamily};font-size:14px;line-height:1.6;color:${theme.textColor};margin:0;white-space:pre-wrap;word-wrap:break-word;">${escaped}</pre></td></tr></table>`
     }
   })
 
-  // 自定义渲染规则，添加主题样式
-  // 标题打开标签
-  mdIt.renderer.rules.heading_open = (tokens, idx, _options, _env, _self) => {
+  // 自定义渲染规则
+  mdIt.renderer.rules.heading_open = (tokens, idx) => {
     const token = tokens[idx]
     const level = parseInt(token.tag.slice(1))
     return renderHeadingOpen(level, theme, safeFontFamily)
   }
 
-  // 段落打开标签
-  mdIt.renderer.rules.paragraph_open = (_tokens, _idx, _options, _env, _self) => {
+  mdIt.renderer.rules.paragraph_open = () => {
     return `<p style="margin:10px 0;line-height:${fontStyles.lineHeight};font-size:${fontStyles.fontSize}px;color:${theme.textColor};text-align:left;letter-spacing:${fontStyles.letterSpacing}px;font-family:${safeFontFamily};">`
   }
 
-  // 无序列表
-  mdIt.renderer.rules.bullet_list_open = (_tokens, _idx, _options, _env, _self) => {
-    return renderUlOpen(theme, safeFontFamily)
-  }
+  mdIt.renderer.rules.bullet_list_open = () => renderUlOpen(theme, safeFontFamily)
+  mdIt.renderer.rules.ordered_list_open = () => renderOlOpen(theme, safeFontFamily)
+  mdIt.renderer.rules.list_item_open = () => renderLiOpen(theme)
+  mdIt.renderer.rules.blockquote_open = () => renderBlockquoteOpen(theme, safeFontFamily)
+  mdIt.renderer.rules.table_open = () => renderTableOpen(theme)
+  mdIt.renderer.rules.thead_open = () => renderTheadOpen(theme)
+  mdIt.renderer.rules.tbody_open = () => '<tbody>'
+  mdIt.renderer.rules.tr_open = () => '<tr>'
+  mdIt.renderer.rules.th_open = (tokens, idx) => renderThOpen(theme, tokens[idx].attrGet('style'))
+  mdIt.renderer.rules.td_open = (tokens, idx) => renderTdOpen(theme, tokens[idx].attrGet('style'))
 
-  // 有序列表
-  mdIt.renderer.rules.ordered_list_open = (_tokens, _idx, _options, _env, _self) => {
-    return renderOlOpen(theme, safeFontFamily)
-  }
-
-  // 列表项
-  mdIt.renderer.rules.list_item_open = (_tokens, _idx, _options, _env, _self) => {
-    return renderLiOpen(theme)
-  }
-
-  // 引用
-  mdIt.renderer.rules.blockquote_open = (_tokens, _idx, _options, _env, _self) => {
-    return renderBlockquoteOpen(theme, safeFontFamily)
-  }
-
-  // 表格
-  mdIt.renderer.rules.table_open = (_tokens, _idx, _options, _env, _self) => {
-    return renderTableOpen(theme)
-  }
-
-  mdIt.renderer.rules.thead_open = (_tokens, _idx, _options, _env, _self) => {
-    return renderTheadOpen(theme)
-  }
-
-  mdIt.renderer.rules.tbody_open = (_tokens, _idx, _options, _env, _self) => {
-    return '<tbody>'
-  }
-
-  mdIt.renderer.rules.tr_open = (_tokens, _idx, _options, _env, _self) => {
-    return '<tr>'
-  }
-
-  mdIt.renderer.rules.th_open = (tokens, idx, _options, _env, _self) => {
-    return renderThOpen(theme, tokens[idx].attrGet('style'))
-  }
-
-  mdIt.renderer.rules.td_open = (tokens, idx, _options, _env, _self) => {
-    return renderTdOpen(theme, tokens[idx].attrGet('style'))
-  }
-
-  // 行内代码
-  mdIt.renderer.rules.code_inline = (tokens, idx, _options, _env, _self) => {
+  mdIt.renderer.rules.code_inline = (tokens, idx) => {
     const codeFontFamily = "'Fira Code', 'JetBrains Mono', 'Source Code Pro', 'Victor Mono', 'Consolas', 'Monaco', monospace"
     let style = `font-family: ${codeFontFamily};font-size: 0.9em;background: ${theme.codeBg};padding: 2px 6px;border-radius: 4px;color: ${theme.textColor};`
     if (theme.id === 'vibrant') style += ` background: linear-gradient(135deg, ${theme.linkColor}15 0%, ${theme.linkColor}05 100%);color: ${theme.headingColor};`
@@ -585,51 +654,34 @@ const formatMarkdown = (md: string, theme: any) => {
     return `<code style="${style}">${tokens[idx].content}</code>`
   }
 
-  // 粗体打开
-  mdIt.renderer.rules.strong_open = (_tokens, _idx, _options, _env, _self) => {
+  mdIt.renderer.rules.strong_open = () => {
     let style = `font-weight: bold;color: ${theme.headingColor};`
     if (theme.id === 'vibrant') style += ` background: linear-gradient(90deg, ${theme.linkColor}20 0%, transparent 100%);padding: 2px 6px;border-radius: 3px;`
     else if (theme.id === 'night') style += ` color: ${theme.linkColor};`
-    // 赛博朋克主题粗体
     else if (theme.id === 'cyberpunk') style += ` color: #ff00ff;text-shadow: 0 0 8px #ff00ff, 0 0 16px #ff00ff;`
-    // 霓虹主题粗体
     else if (theme.id === 'neon') style += ` color: #ffff00;text-shadow: 0 0 10px #ffff00;`
-    // 极光主题粗体
     else if (theme.id === 'aurora') style += ` color: #ffffff;text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);background: rgba(255, 255, 0, 0.2);padding: 2px 6px;border-radius: 4px;`
-    // 金属主题粗体
     else if (theme.id === 'metal') style += ` color: #4a9eff;text-shadow: 1px 1px 2px rgba(0,0,0,0.3);`
-    // 糖果主题粗体
     else if (theme.id === 'candy') style += ` color: #ff1493;background: #ffe4ec;padding: 2px 8px;border-radius: 12px;`
-    // 合成波主题粗体
     else if (theme.id === 'synthwave') style += ` color: #00ffff;text-shadow: 0 0 8px #00ffff;`
-    // 故障主题粗体
     else if (theme.id === 'glitch') style += ` color: #00ff00;text-shadow: 2px 0 #ff0000;`
     return `<strong style="${style}">`
   }
 
-  // 斜体打开
-  mdIt.renderer.rules.em_open = (_tokens, _idx, _options, _env, _self) => {
+  mdIt.renderer.rules.em_open = () => {
     let style = `font-style: italic;color: ${theme.textColor};`
     if (theme.id === 'literary' || theme.id === 'elegant') style += ` font-family: Georgia, serif;`
-    // 赛博朋克主题斜体
     else if (theme.id === 'cyberpunk') style += ` color: #00ffff;text-shadow: 0 0 6px #00ffff;`
-    // 霓虹主题斜体
     else if (theme.id === 'neon') style += ` color: #ff0066;text-shadow: 0 0 8px #ff0066;`
-    // 极光主题斜体
     else if (theme.id === 'aurora') style += ` color: #ffff00;opacity: 0.9;`
-    // 金属主题斜体
     else if (theme.id === 'metal') style += ` color: #c9c9c9;`
-    // 糖果主题斜体
     else if (theme.id === 'candy') style += ` color: #ff69b4;`
-    // 合成波主题斜体
     else if (theme.id === 'synthwave') style += ` color: #ff6ec7;text-shadow: 0 0 6px #ff6ec7;`
-    // 故障主题斜体
     else if (theme.id === 'glitch') style += ` color: #00ff00;text-shadow: 0 0 6px #00ff00;`
     return `<em style="${style}">`
   }
 
-  // 链接打开
-  mdIt.renderer.rules.link_open = (tokens, idx, _options, _env, _self) => {
+  mdIt.renderer.rules.link_open = (tokens, idx) => {
     let linkStyle = `color: ${theme.linkColor};text-decoration: none;transition: all 0.2s;`
     if (theme.id === 'simple') linkStyle += `border-bottom: 1px solid ${theme.linkColor}40;`
     else if (theme.id === 'business') linkStyle += `border-bottom: 2px solid ${theme.linkColor};font-weight: 500;`
@@ -637,7 +689,6 @@ const formatMarkdown = (md: string, theme: any) => {
     else if (theme.id === 'night') linkStyle += `border-bottom: 1px solid ${theme.linkColor};`
     else if (theme.id === 'elegant') linkStyle += `border-bottom: 1px solid ${theme.linkColor}60;`
     else if (theme.id === 'vibrant') linkStyle += `border-bottom: 2px solid ${theme.linkColor};font-weight: 600;`
-    // 赛博朋克主题链接
     else if (theme.id === 'cyberpunk') linkStyle += `text-shadow: 0 0 8px #00ffff;transition: all 0.3s;`
     else if (theme.id === 'neon') linkStyle += `text-shadow: 0 0 10px #ff0066;transition: all 0.3s;`
     else if (theme.id === 'aurora') linkStyle += `text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);`
@@ -648,23 +699,30 @@ const formatMarkdown = (md: string, theme: any) => {
     return `<a href="${tokens[idx].attrGet('href')}" style="${linkStyle}">`
   }
 
-  // 分割线
-  mdIt.renderer.rules.hr = (_tokens, _idx, _options, _env, _self) => {
-    return renderHr(theme)
-  }
-
-  // 图片
-  mdIt.renderer.rules.image = (tokens, idx, _options, _env, _self) => {
+  mdIt.renderer.rules.hr = () => renderHr(theme)
+  mdIt.renderer.rules.image = (tokens, idx) => {
     const src = tokens[idx].attrGet('src')
     const alt = tokens[idx].content || ''
     return renderImage(src, alt, theme, safeFontFamily)
   }
 
-
-  return mdIt.render(md)
+  cachedMdIt = mdIt
+  cachedThemeId = theme.id
+  return mdIt
 }
 
-const renderHeadingOpen = (level: number, theme: any, safeFontFamily: string) => {
+// 格式化 Markdown 为 HTML（所有样式内联）
+const formatMarkdown = (md: string, theme: ThemeStyles): string => {
+  try {
+    const mdIt = getMarkdownIt(theme)
+    return mdIt.render(md)
+  } catch (error) {
+    console.error('Markdown 解析失败:', error)
+    return '<p style="color: red;">内容解析失败，请检查 Markdown 语法</p>'
+  }
+}
+
+const renderHeadingOpen = (level: number, theme: ThemeStyles, safeFontFamily: string) => {
   if (level === 1) {
     let style = `font-size: 28px;font-weight: ${theme.headingWeight};color: ${theme.headingColor};font-family: ${safeFontFamily};margin: 30px 0 20px;line-height: ${theme.headingSpacing};text-align: center;`
     if (theme.id === 'simple') style += ` letter-spacing: 2px;`
@@ -738,7 +796,7 @@ const renderHeadingOpen = (level: number, theme: any, safeFontFamily: string) =>
   return `<h3 style="${style}">`
 }
 
-const renderUlOpen = (theme: any, safeFontFamily: string) => {
+const renderUlOpen = (theme: ThemeStyles, safeFontFamily: string) => {
   let style = `margin: 16px 0;padding-left: ${theme.listIndent};font-family: ${safeFontFamily};list-style-type: disc;`
   if (theme.id === 'literary') style += ` list-style-type: '✦ ';`
   else if (theme.id === 'night') style += ` list-style-type: '● ';color: ${theme.linkColor};`
@@ -761,7 +819,7 @@ const renderUlOpen = (theme: any, safeFontFamily: string) => {
   return `<ul style="${style}">`
 }
 
-const renderOlOpen = (theme: any, safeFontFamily: string) => {
+const renderOlOpen = (theme: ThemeStyles, safeFontFamily: string) => {
   let style = `margin: 16px 0;padding-left: ${theme.listIndent};list-style-type: decimal;font-family: ${safeFontFamily};`
   if (theme.id === 'literary') style += ` color: ${theme.quoteBorder};`
   else if (theme.id === 'night') style += ` color: ${theme.linkColor};padding-left: ${theme.listIndent};`
@@ -782,7 +840,7 @@ const renderOlOpen = (theme: any, safeFontFamily: string) => {
   return `<ol style="${style}">`
 }
 
-const renderLiOpen = (theme: any) => {
+const renderLiOpen = (theme: ThemeStyles) => {
   let style = `margin: 8px 0;line-height: ${fontStyles.lineHeight};color: ${theme.textColor};`
   if (theme.id === 'literary') style += ` padding-left: 8px;`
   else if (theme.id === 'elegant') style += ` padding-left: 0;`
@@ -804,7 +862,7 @@ const renderLiOpen = (theme: any) => {
   return `<li style="${style}">`
 }
 
-const renderBlockquoteOpen = (theme: any, safeFontFamily: string) => {
+const renderBlockquoteOpen = (theme: ThemeStyles, safeFontFamily: string) => {
   let style = `font-family: ${safeFontFamily};color: ${theme.textColor};line-height: ${fontStyles.lineHeight};margin: 16px 0;`
   if (theme.id === 'simple') style += ` border-left: 4px solid ${theme.quoteBorder};padding-left: 16px;opacity: 0.9;`
   else if (theme.id === 'business') style += ` background: ${theme.quoteBg};border-left: 5px solid ${theme.quoteBorder};padding: 16px 20px;border-radius: 4px;box-shadow: 0 2px 4px rgba(0,0,0,0.05);`
@@ -834,7 +892,7 @@ const renderBlockquoteOpen = (theme: any, safeFontFamily: string) => {
   return `<blockquote style="${style}">`
 }
 
-const renderHr = (theme: any) => {
+const renderHr = (theme: ThemeStyles) => {
   if (theme.id === 'simple') return `<hr style="border: none;border-top: 1px solid ${theme.borderColor};margin: 20px 0;opacity: 0.5;"/>`
   if (theme.id === 'business') return `<hr style="border: none;border-top: 2px solid ${theme.linkColor};margin: 24px 0;opacity: 0.8;"/>`
   if (theme.id === 'literary') return `<hr style="border: none;border-top: 2px dashed ${theme.quoteBorder};margin: 24px 0;opacity: 0.6;"/>`
@@ -858,7 +916,7 @@ const renderHr = (theme: any) => {
   return `<hr style="border: none;border-top: 2px solid ${theme.borderColor};margin: 24px 0;opacity: 0.6;"/>`
 }
 
-const renderImage = (src: string, alt: string, theme: any, _safeFontFamily: string) => {
+const renderImage = (src: string, alt: string, theme: ThemeStyles, _safeFontFamily: string) => {
   let style = `max-width: 100%;height: auto;border-radius: ${theme.containerRadius};margin: 20px 0;display: block;box-shadow: ${theme.containerShadow};`
   if (theme.id === 'business' || theme.id === 'vibrant') style += ` border: 1px solid ${theme.borderColor};`
   else if (theme.id === 'literary') style += ` border: 3px double ${theme.quoteBorder};padding: 8px;background: ${theme.quoteBg};`
@@ -875,7 +933,7 @@ const renderImage = (src: string, alt: string, theme: any, _safeFontFamily: stri
 }
 
 // 表格渲染函数
-const renderTableOpen = (theme: any) => {
+const renderTableOpen = (theme: ThemeStyles) => {
   let style = `width: 100%;border-collapse: collapse;margin: 20px 0;font-size: ${fontStyles.fontSize}px;color: ${theme.textColor};`
   if (theme.id === 'simple') style += ` border: 1px solid ${theme.borderColor};`
   else if (theme.id === 'business') style += ` border: 1px solid ${theme.linkColor};box-shadow: 0 2px 8px rgba(0,0,0,0.05);`
@@ -901,7 +959,7 @@ const renderTableOpen = (theme: any) => {
   return `<table style="${style}">`
 }
 
-const renderTheadOpen = (theme: any) => {
+const renderTheadOpen = (theme: ThemeStyles) => {
   let style = ``
   if (theme.id === 'simple') style += `background: ${theme.codeBg};border-bottom: 2px solid ${theme.borderColor};`
   else if (theme.id === 'business') style += `background: ${theme.linkColor};color: #fff;border-bottom: 2px solid ${theme.linkColor};`
@@ -927,7 +985,7 @@ const renderTheadOpen = (theme: any) => {
   return `<thead style="${style}">`
 }
 
-const renderThOpen = (theme: any, align: string | null) => {
+const renderThOpen = (theme: ThemeStyles, align: string | null) => {
   let style = `padding: 12px 16px;text-align: ${align || 'left'};font-weight: 600;color: ${theme.headingColor};border-right: 1px solid ${theme.borderColor};`
   if (theme.id === 'business' || theme.id === 'night' || theme.id === 'vibrant') {
     style = `padding: 12px 16px;text-align: ${align || 'left'};font-weight: 600;color: #fff;border-right: 1px solid ${theme.linkColor};`
@@ -953,7 +1011,7 @@ const renderThOpen = (theme: any, align: string | null) => {
   return `<th style="${style}">`
 }
 
-const renderTdOpen = (theme: any, align: string | null) => {
+const renderTdOpen = (theme: ThemeStyles, align: string | null) => {
   let style = `padding: 12px 16px;text-align: ${align || 'left'};border-bottom: 1px solid ${theme.borderColor};border-right: 1px solid ${theme.borderColor};line-height: ${fontStyles.lineHeight};`
   if (theme.id === 'business') style += `border-bottom: 1px solid ${theme.linkColor};border-right: 1px solid ${theme.linkColor};`
   else if (theme.id === 'literary') style += `border-bottom: 1px solid ${theme.quoteBorder};border-right: 1px solid ${theme.quoteBorder};`
@@ -1101,7 +1159,7 @@ const copyRichText = async () => {
 }
 
 // 包装样式
-const wrapWithStyles = (html: string, theme: any) => {
+const wrapWithStyles = (html: string, theme: ThemeStyles) => {
   // 转义字体名称中的引号
   const safeFontFamily = theme.fontFamily.replace(/"/g, '&quot;')
 
@@ -1154,12 +1212,55 @@ const tocList = computed(() => {
   })
 })
 
+// 字数统计
+const wordCount = computed(() => {
+  const text = markdownContent.value
+  const chineseChars = (text.match(/[\u4e00-\u9fa5]/g) || []).length
+  const englishWords = (text.match(/[a-zA-Z]+/g) || []).length
+  const numbers = (text.match(/\d+/g) || []).length
+  return chineseChars + englishWords + numbers
+})
+
+// 当前激活的目录项
+const activeHeadingId = ref('')
+
 // 滚动到标题
 const scrollToHeading = (id: string) => {
   const element = document.getElementById(id)
   if (element) {
     element.scrollIntoView({ behavior: 'smooth' })
+    activeHeadingId.value = id
   }
+}
+
+// 清空内容
+const clearContent = () => {
+  markdownContent.value = ''
+  ElMessage.success('内容已清空')
+}
+
+// 导出 Markdown 文件
+const exportMarkdown = () => {
+  const blob = new Blob([markdownContent.value], { type: 'text/markdown' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `article_${Date.now()}.md`
+  link.click()
+  URL.revokeObjectURL(url)
+  ElMessage.success('已导出 Markdown 文件')
+}
+
+// 导入 Markdown 文件
+const importMarkdown = (uploadFile: UploadFile) => {
+  const file = uploadFile.raw
+  if (!file) return
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    markdownContent.value = e.target?.result as string
+    ElMessage.success('已导入 Markdown 文件')
+  }
+  reader.readAsText(file)
 }
 
 // 快速插入 Markdown 语法
@@ -1359,6 +1460,17 @@ const handlePreviewScroll = (e: Event) => {
     textarea.scrollTop = scrollPercentage * (textarea.scrollHeight - textarea.clientHeight)
   }
 
+  // 更新当前激活的目录项
+  const headings = previewContainer.querySelectorAll('h1, h2, h3')
+  for (const heading of headings) {
+    const rect = (heading as HTMLElement).getBoundingClientRect()
+    const containerRect = previewContainer.getBoundingClientRect()
+    if (rect.top - containerRect.top >= 0 && rect.top - containerRect.top <= 200) {
+      activeHeadingId.value = (heading as HTMLElement).id
+      break
+    }
+  }
+
   setTimeout(() => {
     previewScrolling.value = false
   }, 100)
@@ -1380,16 +1492,18 @@ const quickSyntaxButtons = [
 </script>
 
 <template>
-  <div class="flex flex-col mt-3 flex-1">
-    <DetailHeader :title="info.title"></DetailHeader>
+  <div class="flex flex-col">
+    <div class="mt-3">
+      <DetailHeader :title="info.title"></DetailHeader>
+    </div>
 
     <!-- 顶部操作栏 -->
-    <div class="p-3 sm:p-4 rounded-2xl bg-white mb-3">
+    <div class="p-3 sm:p-4 rounded-2xl bg-white mb-3 sticky top-0 z-50 shadow-sm">
       <div class="grid grid-cols-1 sm:flex sm:flex-wrap items-center gap-3 sm:gap-4">
         <!-- 主题选择 -->
         <div class="flex items-center gap-2">
           <span class="text-sm font-medium shrink-0">主题:</span>
-          <el-select v-model="info.currentTheme" placeholder="选择主题" style="width: 160px" class="flex-1">
+          <el-select v-model="info.currentTheme" placeholder="选择主题" style="width: 140px" class="flex-1">
             <el-option
               v-for="theme in themes"
               :key="theme.id"
@@ -1410,20 +1524,36 @@ const quickSyntaxButtons = [
           <el-input-number v-model="fontStyles.lineHeight" :min="1" :max="3" :step="0.1" size="small" />
         </div>
 
-        <!-- 导出按钮 -->
-        <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-          <el-button type="primary" class="w-full sm:w-auto" @click="copyRichText">复制富文本</el-button>
-          <el-button class="w-full sm:w-auto" @click="copyHTML">复制 HTML</el-button>
+        <div class="flex items-center gap-2">
+          <span class="text-sm font-medium shrink-0">字间距:</span>
+          <el-input-number v-model="fontStyles.letterSpacing" :min="-2" :max="10" :step="0.5" size="small" />
         </div>
+
+        <!-- 操作按钮 -->
+        <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto ml-auto">
+          <el-upload :auto-upload="false" :on-change="importMarkdown" :show-file-list="false">
+            <el-button class="w-full sm:w-auto">导入</el-button>
+          </el-upload>
+          <el-button class="w-full sm:w-auto" @click="exportMarkdown">导出</el-button>
+          <el-button type="danger" plain class="w-full sm:w-auto" @click="clearContent">清空</el-button>
+          <el-button class="w-full sm:w-auto" @click="copyHTML">复制 HTML</el-button>
+          <el-button type="primary" class="w-full sm:w-auto" @click="copyRichText">复制富文本</el-button>
+        </div>
+      </div>
+
+      <!-- 字数统计 -->
+      <div class="mt-2 text-xs text-gray-400 flex justify-between">
+        <span>{{ markdownContent.length }} 字符 | {{ wordCount }} 词</span>
+        <span v-if="saveTipVisible" class="text-green-500">草稿已保存到本地</span>
       </div>
     </div>
 
     <!-- 主要内容区 -->
-    <div class="flex flex-col lg:flex-row gap-3 flex-1 min-h-0">
+    <div class="flex flex-col lg:flex-row gap-3 min-h-[500px] lg:h-[650px]">
       <!-- 左侧编辑区 -->
-      <div class="w-full lg:flex-1 flex flex-col rounded-2xl bg-white overflow-hidden">
+      <div class="w-full lg:flex-1 rounded-2xl bg-white overflow-hidden flex flex-col">
         <!-- 快捷语法按钮 -->
-        <div class="p-2 border-b flex flex-wrap gap-1.5 flex-shrink-0">
+        <div class="p-2 border-b flex flex-wrap gap-1.5 flex-shrink-0 bg-white">
           <el-button
             v-for="btn in quickSyntaxButtons"
             :key="btn.label"
@@ -1436,12 +1566,12 @@ const quickSyntaxButtons = [
           </el-button>
         </div>
 
-        <!-- Markdown 编辑器 -->
-        <div class="editor-scroll-container flex-1 overflow-y-auto min-h-0">
+        <!-- Markdown 编辑器滚动容器 -->
+        <div class="flex-1 overflow-y-auto flex flex-col">
           <textarea
             v-model="markdownContent"
             placeholder="在这里输入 Markdown 内容..."
-            class="markdown-editor-textarea w-full h-full resize-none box-border"
+            class="markdown-editor-textarea w-full flex-1 min-h-[300px] resize-none box-border"
             @scroll="handleEditorScroll"
           ></textarea>
         </div>
@@ -1462,8 +1592,9 @@ const quickSyntaxButtons = [
             v-for="(item, index) in tocList"
             :key="index"
             :id="item.id"
-            class="toc-item cursor-pointer hover:text-blue-500"
-            :style="{ paddingLeft: `${(item.level - 1) * 12}px` }"
+            class="toc-item cursor-pointer py-1 px-2 rounded hover:bg-blue-50 transition-colors"
+            :class="{ 'bg-blue-100 text-blue-600 font-medium': activeHeadingId === item.id }"
+            :style="{ paddingLeft: `${12 + (item.level - 1) * 12}px` }"
             @click="scrollToHeading(item.id)"
           >
             {{ item.title }}
@@ -1583,9 +1714,9 @@ const quickSyntaxButtons = [
   line-height: 1.6;
   border: none;
   padding: 16px;
-  white-space: pre;
-  overflow-wrap: normal;
-  word-break: normal;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
   outline: none;
 }
 
@@ -1620,6 +1751,8 @@ const quickSyntaxButtons = [
 .preview-container {
   min-height: 100%;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 /* 移动端优化：预览容器宽度 */
@@ -1755,5 +1888,16 @@ const quickSyntaxButtons = [
   .markdown-editor-textarea {
     min-height: 400px !important;
   }
+}
+
+/* 保存提示动画 */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>
