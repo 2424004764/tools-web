@@ -1531,6 +1531,9 @@ const quickSyntaxButtons = [
 
         <!-- 操作按钮 -->
         <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto ml-auto">
+          <a href="https://mjj.today/" target="_blank" rel="noopener noreferrer">
+            <el-button class="w-full sm:w-auto">🖼️ 图床</el-button>
+          </a>
           <el-upload :auto-upload="false" :on-change="importMarkdown" :show-file-list="false">
             <el-button class="w-full sm:w-auto">导入</el-button>
           </el-upload>
