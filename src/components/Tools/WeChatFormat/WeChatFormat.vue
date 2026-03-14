@@ -68,6 +68,19 @@ interface Theme {
   styles: ThemeStyles
 }
 
+// 草稿数据结构
+interface Draft {
+  id: string
+  title: string
+  content: string
+  currentTheme: string
+  fontSize: number
+  lineHeight: number
+  letterSpacing: number
+  createdAt: number
+  updatedAt: number
+}
+
 
 const info = reactive({
   title: "公众号排版",
@@ -76,6 +89,13 @@ const info = reactive({
   currentTheme: 'literary',
   showToc: true,
 })
+
+// 草稿列表相关状态
+const draftList = ref<Draft[]>([])
+const currentDraftId = ref<string>('')
+const draftDrawerVisible = ref(false)
+const editingDraftId = ref<string>('')
+const editingDraftTitle = ref('')
 
 // Markdown 内容
 const markdownContent = ref(`
@@ -511,6 +531,8 @@ const fontStyles = reactive({
 
 // 本地存储的key
 const STORAGE_KEY = 'wechat_format_config'
+const DRAFTS_STORAGE_KEY = 'wechat_format_drafts'
+const CURRENT_DRAFT_ID_KEY = 'wechat_format_current_draft_id'
 
 // 保存提示状态
 const saveTipVisible = ref(false)
@@ -567,18 +589,219 @@ let saveTimer: number | null = null
 watch(
   () => [info.currentTheme, fontStyles.fontSize, fontStyles.lineHeight, fontStyles.letterSpacing, markdownContent.value],
   () => {
+    // 保存到本地存储（原来的逻辑）
     if (saveTimer) clearTimeout(saveTimer)
     saveTimer = window.setTimeout(() => {
       saveToStorage()
+      // 如果有当前草稿，同时保存到草稿
+      if (currentDraftId.value) {
+        autoSaveToDraft()
+      }
     }, 500)
   },
   { deep: true }
 )
 
+// 自动保存到当前草稿（静默保存，不显示消息）
+const autoSaveToDraft = () => {
+  if (!currentDraftId.value) return
+
+  const draftIndex = draftList.value.findIndex(d => d.id === currentDraftId.value)
+  if (draftIndex !== -1) {
+    draftList.value[draftIndex] = {
+      ...draftList.value[draftIndex],
+      content: markdownContent.value,
+      currentTheme: info.currentTheme,
+      fontSize: fontStyles.fontSize,
+      lineHeight: fontStyles.lineHeight,
+      letterSpacing: fontStyles.letterSpacing,
+      updatedAt: Date.now(),
+    }
+    // 只重新排序而不保存到本地存储（saveDraftsList会保存）
+    draftList.value.sort((a, b) => b.updatedAt - a.updatedAt)
+    saveDraftsList()
+  }
+}
+
 // 组件挂载时加载配置
 onMounted(() => {
   loadFromStorage()
+  loadDraftsList()
+  loadCurrentDraft()
 })
+
+// ============ 草稿管理 ============
+
+// 加载草稿列表
+const loadDraftsList = () => {
+  try {
+    const saved = localStorage.getItem(DRAFTS_STORAGE_KEY)
+    if (saved) {
+      draftList.value = JSON.parse(saved)
+      // 按更新时间倒序排列
+      draftList.value.sort((a, b) => b.updatedAt - a.updatedAt)
+    }
+  } catch (e) {
+    console.error('加载草稿列表失败:', e)
+  }
+}
+
+// 保存草稿列表
+const saveDraftsList = () => {
+  try {
+    localStorage.setItem(DRAFTS_STORAGE_KEY, JSON.stringify(draftList.value))
+  } catch (e) {
+    console.error('保存草稿列表失败:', e)
+  }
+}
+
+// 加载当前草稿
+const loadCurrentDraft = () => {
+  try {
+    const savedDraftId = localStorage.getItem(CURRENT_DRAFT_ID_KEY)
+    if (savedDraftId) {
+      const draft = draftList.value.find(d => d.id === savedDraftId)
+      if (draft) {
+        loadDraft(draft)
+      }
+    }
+  } catch (e) {
+    console.error('加载当前草稿失败:', e)
+  }
+}
+
+// 新建草稿
+const createNewDraft = () => {
+  const newDraft: Draft = {
+    id: `draft_${Date.now()}`,
+    title: `未命名草稿 ${draftList.value.length + 1}`,
+    content: markdownContent.value,
+    currentTheme: info.currentTheme,
+    fontSize: fontStyles.fontSize,
+    lineHeight: fontStyles.lineHeight,
+    letterSpacing: fontStyles.letterSpacing,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  }
+  draftList.value.unshift(newDraft)
+  saveDraftsList()
+  setCurrentDraft(newDraft.id)
+  ElMessage.success('草稿已创建')
+}
+
+// 保存当前草稿
+const saveCurrentDraft = () => {
+  if (!currentDraftId.value) {
+    // 如果没有当前草稿，自动创建一个
+    createNewDraft()
+    return
+  }
+
+  const draftIndex = draftList.value.findIndex(d => d.id === currentDraftId.value)
+  if (draftIndex !== -1) {
+    draftList.value[draftIndex] = {
+      ...draftList.value[draftIndex],
+      content: markdownContent.value,
+      currentTheme: info.currentTheme,
+      fontSize: fontStyles.fontSize,
+      lineHeight: fontStyles.lineHeight,
+      letterSpacing: fontStyles.letterSpacing,
+      updatedAt: Date.now(),
+    }
+    // 重新排序
+    draftList.value.sort((a, b) => b.updatedAt - a.updatedAt)
+    saveDraftsList()
+    ElMessage.success('草稿已保存')
+  }
+}
+
+// 加载草稿内容
+const loadDraft = (draft: Draft) => {
+  markdownContent.value = draft.content
+  info.currentTheme = draft.currentTheme
+  fontStyles.fontSize = draft.fontSize
+  fontStyles.lineHeight = draft.lineHeight
+  fontStyles.letterSpacing = draft.letterSpacing
+  setCurrentDraft(draft.id)
+  draftDrawerVisible.value = false
+  ElMessage.success(`已加载草稿：${draft.title}`)
+}
+
+// 设置当前草稿ID
+const setCurrentDraft = (draftId: string) => {
+  currentDraftId.value = draftId
+  localStorage.setItem(CURRENT_DRAFT_ID_KEY, draftId)
+}
+
+// 删除草稿
+const deleteDraft = (draftId: string) => {
+  const index = draftList.value.findIndex(d => d.id === draftId)
+  if (index !== -1) {
+    const draft = draftList.value[index]
+    draftList.value.splice(index, 1)
+    saveDraftsList()
+
+    // 如果删除的是当前草稿，清空当前草稿ID
+    if (currentDraftId.value === draftId) {
+      currentDraftId.value = ''
+      localStorage.removeItem(CURRENT_DRAFT_ID_KEY)
+    }
+
+    ElMessage.success(`已删除草稿：${draft.title}`)
+  }
+}
+
+// 开始编辑草稿标题
+const startEditTitle = (draft: Draft) => {
+  editingDraftId.value = draft.id
+  editingDraftTitle.value = draft.title
+}
+
+// 确认编辑草稿标题
+const confirmEditTitle = (draft: Draft) => {
+  const draftIndex = draftList.value.findIndex(d => d.id === draft.id)
+  if (draftIndex !== -1 && editingDraftTitle.value.trim()) {
+    draftList.value[draftIndex].title = editingDraftTitle.value.trim()
+    draftList.value[draftIndex].updatedAt = Date.now()
+    saveDraftsList()
+    ElMessage.success('标题已修改')
+  }
+  editingDraftId.value = ''
+  editingDraftTitle.value = ''
+}
+
+// 取消编辑草稿标题
+const cancelEditTitle = () => {
+  editingDraftId.value = ''
+  editingDraftTitle.value = ''
+}
+
+// 格式化时间
+const formatTime = (timestamp: number) => {
+  const date = new Date(timestamp)
+  const now = new Date()
+  const diff = now.getTime() - date.getTime()
+
+  if (diff < 60000) return '刚刚'
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`
+  if (diff < 604800000) return `${Math.floor(diff / 86400000)}天前`
+
+  return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
+}
+
+// 当前草稿标题
+const currentDraftTitle = computed(() => {
+  if (!currentDraftId.value) return '未保存草稿'
+  const draft = draftList.value.find(d => d.id === currentDraftId.value)
+  return draft ? draft.title : '未保存草稿'
+})
+
+// 根据主题ID获取主题名称
+const getThemeName = (themeId: string) => {
+  const theme = themes.find(t => t.id === themeId)
+  return theme ? theme.name : '未知主题'
+}
 
 // 预览内容 (HTML)
 const previewContent = computed(() => {
@@ -1531,6 +1754,12 @@ const quickSyntaxButtons = [
 
         <!-- 操作按钮 -->
         <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto ml-auto">
+          <el-button class="w-full sm:w-auto" @click="draftDrawerVisible = true">
+            📁 草稿箱
+          </el-button>
+          <el-button class="w-full sm:w-auto" @click="saveCurrentDraft">
+            💾 保存草稿
+          </el-button>
           <a href="https://mjj.today/" target="_blank" rel="noopener noreferrer">
             <el-button class="w-full sm:w-auto">🖼️ 图床</el-button>
           </a>
@@ -1546,7 +1775,7 @@ const quickSyntaxButtons = [
 
       <!-- 字数统计 -->
       <div class="mt-2 text-xs text-gray-400 flex justify-between">
-        <span>{{ markdownContent.length }} 字符 | {{ wordCount }} 词</span>
+        <span>{{ markdownContent.length }} 字符 | {{ wordCount }} 词 | {{ currentDraftTitle }}</span>
         <span v-if="saveTipVisible" class="text-green-500">草稿已保存到本地</span>
       </div>
     </div>
@@ -1683,6 +1912,100 @@ const quickSyntaxButtons = [
         </div>
       </div>
     </ToolDetail>
+
+    <!-- 草稿列表抽屉 -->
+    <el-drawer
+      v-model="draftDrawerVisible"
+      title="草稿箱"
+      direction="rtl"
+      size="360px"
+      :with-header="true"
+    >
+      <template #header>
+        <div class="flex items-center justify-between">
+          <span class="text-lg font-semibold">📁 草稿箱</span>
+          <el-button
+            type="primary"
+            size="small"
+            @click="createNewDraft"
+            class="!ml-2"
+          >
+            + 新建草稿
+          </el-button>
+        </div>
+      </template>
+
+      <div v-if="draftList.length === 0" class="text-center text-gray-400 py-12">
+        <p class="text-4xl mb-3">📝</p>
+        <p>暂无草稿</p>
+        <p class="text-xs mt-2">点击上方"新建草稿"创建第一个草稿</p>
+      </div>
+
+      <div v-else class="space-y-3">
+        <div
+          v-for="draft in draftList"
+          :key="draft.id"
+          class="group relative rounded-xl border transition-all duration-200 cursor-pointer hover:shadow-md"
+          :class="currentDraftId === draft.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-blue-300'"
+          @click="loadDraft(draft)"
+        >
+          <!-- 编辑状态 -->
+          <div v-if="editingDraftId === draft.id" class="p-3" @click.stop>
+            <el-input
+              v-model="editingDraftTitle"
+              size="small"
+              placeholder="请输入标题"
+              @keyup.enter="confirmEditTitle(draft)"
+              @keyup.esc="cancelEditTitle"
+              class="mb-2"
+            />
+            <div class="flex gap-2">
+              <el-button type="primary" size="small" @click="confirmEditTitle(draft)">确认</el-button>
+              <el-button size="small" @click="cancelEditTitle">取消</el-button>
+            </div>
+          </div>
+
+          <!-- 正常状态 -->
+          <div v-else class="p-3">
+            <div class="flex items-start justify-between gap-2">
+              <div class="flex-1 min-w-0">
+                <h3 class="font-medium text-gray-800 truncate">{{ draft.title }}</h3>
+                <p class="text-xs text-gray-400 mt-1 flex items-center flex-wrap gap-1.5">
+                  <span>{{ formatTime(draft.updatedAt) }}</span>
+                  <span class="px-1.5 py-0.5 rounded text-xs bg-gray-100 text-gray-600">{{ getThemeName(draft.currentTheme) }}</span>
+                  <span v-if="draft.id === currentDraftId" class="text-blue-500">当前</span>
+                </p>
+                <p class="text-xs text-gray-400 mt-0.5">
+                  {{ draft.content.slice(0, 50) }}{{ draft.content.length > 50 ? '...' : '' }}
+                </p>
+              </div>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="flex gap-2 mt-3 pt-2 border-t border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
+              <el-button
+                size="small"
+                text
+                type="primary"
+                @click.stop="startEditTitle(draft)"
+                class="!text-xs"
+              >
+                重命名
+              </el-button>
+              <el-button
+                size="small"
+                text
+                type="danger"
+                @click.stop="deleteDraft(draft.id)"
+                class="!text-xs"
+              >
+                删除
+              </el-button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </el-drawer>
   </div>
 </template>
 
@@ -1902,5 +2225,16 @@ const quickSyntaxButtons = [
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+/* 草稿列表样式 */
+:deep(.el-drawer__header) {
+  padding: 16px 20px;
+  margin-bottom: 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+:deep(.el-drawer__body) {
+  padding: 16px;
 }
 </style>

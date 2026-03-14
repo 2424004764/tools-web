@@ -904,7 +904,7 @@ export function getToolsCate() {
           title: '待办事项',
           logo: '/images/logo/todos.png',
           desc: '在线待办事项管理，支持优先级设置、截止日期提醒，高效管理任务',
-          url: '/todos/',
+          url: '/userinfo/todos/',
           cateId: 7,
           cate: '其他工具',
         },
