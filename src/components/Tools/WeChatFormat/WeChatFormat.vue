@@ -83,7 +83,7 @@ interface Draft {
 
 
 const info = reactive({
-  title: "公众号排版",
+  title: "微信公众号文章排版",
   content: '',
   mode: 'markdown', // markdown | rich
   currentTheme: 'literary',
@@ -1788,7 +1788,7 @@ const quickSyntaxButtons = [
           <el-button class="w-full sm:w-auto" @click="resetContent">还原</el-button>
           <el-button type="danger" plain class="w-full sm:w-auto" @click="clearContent">清空</el-button>
           <el-button class="w-full sm:w-auto" @click="copyHTML">复制 HTML</el-button>
-          <el-button type="primary" class="w-full sm:w-auto" @click="copyRichText">复制富文本</el-button>
+          <el-button type="primary" class="w-full sm:w-auto" @click="copyRichText">复制到微信公众号</el-button>
         </div>
       </div>
 
