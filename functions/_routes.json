@@ -10,7 +10,8 @@
     "/gitee-auth",
     "/github-auth",
 
-    "/cron/test"
+    "/cron/test",
+    "/cron/clean-chat"
   ],
   "exclude": []
 }
