@@ -1,0 +1,15 @@
+name: 定时清理临时聊天室
+
+on:
+  schedule:
+    # 每天 UTC 时间 0:00 执行 (北京时间 8:00)
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  clean-chat:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 清理一个月前的聊天消息
+        run: |
+          curl -X GET "https://tool.fologde.com/cron/clean-chat"
