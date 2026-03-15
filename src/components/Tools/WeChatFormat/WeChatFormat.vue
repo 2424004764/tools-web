@@ -3,7 +3,7 @@ import { reactive, ref, computed, watch, onMounted } from 'vue'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { copy } from '@/utils/string'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import type { UploadFile } from 'element-plus'
 import MarkdownIt from 'markdown-it'
 import hljs from 'highlight.js/lib/core'
@@ -97,8 +97,8 @@ const draftDrawerVisible = ref(false)
 const editingDraftId = ref<string>('')
 const editingDraftTitle = ref('')
 
-// Markdown 内容
-const markdownContent = ref(`
+// 初始内容
+const INITIAL_CONTENT = `
 
 # 欢迎使用公众号排版工具
 
@@ -173,7 +173,10 @@ function greet(name) {
 greet('World');
 \`\`\`
 
-`)
+`
+
+// Markdown 内容
+const markdownContent = ref(INITIAL_CONTENT)
 
 // 主题配置
 const themes: Theme[] = [
@@ -1148,10 +1151,7 @@ const renderImage = (src: string, alt: string, theme: ThemeStyles, _safeFontFami
 
   const imgTag = `<img src="${src}" alt="${alt}" style="${style}"/>`
 
-  if (alt && alt !== 'img' && alt !== 'image') {
-    return `<section style="text-align: center; margin: 20px 0;">${imgTag}<p style="font-size: 14px; color: ${theme.textColor}; margin-top: 8px; line-height: 1.6;">${alt}</p></section>`
-  }
-
+  // 只返回图片，不显示图片名称
   return imgTag
 }
 
@@ -1462,6 +1462,24 @@ const clearContent = () => {
   ElMessage.success('内容已清空')
 }
 
+// 还原到初始内容
+const resetContent = () => {
+  ElMessageBox.confirm(
+    '还原将清空当前编辑的内容，恢复到初始示例内容，是否继续？',
+    '确认还原',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+    }
+  ).then(() => {
+    markdownContent.value = INITIAL_CONTENT
+    ElMessage.success('已还原到初始内容')
+  }).catch(() => {
+    // 取消操作
+  })
+}
+
 // 导出 Markdown 文件
 const exportMarkdown = () => {
   const blob = new Blob([markdownContent.value], { type: 'text/markdown' })
@@ -1767,6 +1785,7 @@ const quickSyntaxButtons = [
             <el-button class="w-full sm:w-auto">导入</el-button>
           </el-upload>
           <el-button class="w-full sm:w-auto" @click="exportMarkdown">导出</el-button>
+          <el-button class="w-full sm:w-auto" @click="resetContent">还原</el-button>
           <el-button type="danger" plain class="w-full sm:w-auto" @click="clearContent">清空</el-button>
           <el-button class="w-full sm:w-auto" @click="copyHTML">复制 HTML</el-button>
           <el-button type="primary" class="w-full sm:w-auto" @click="copyRichText">复制富文本</el-button>
