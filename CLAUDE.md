@@ -155,6 +155,28 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'
 
 All D1 operations are in `functions/services/`. Shared code should be extracted to `functions/utils/` to avoid duplication.
 
+### Cloudflare Functions & Cron Jobs
+
+Functions are placed in `functions/` directory and automatically map to routes:
+- `functions/api/xxx.js` → `/api/xxx`
+- `functions/cron/xxx.js` → `/cron/xxx`
+- `functions/xxx.js` → `/xxx`
+
+**重要**: 添加新的 Function 或定时任务时，必须在 `functions/_routes.json` 的 `include` 数组中添加对应路由，否则会返回首页 HTML。
+
+示例：
+```json
+{
+  "version": 1,
+  "include": [
+    "/cron/your-cron-job"
+  ],
+  "exclude": []
+}
+```
+
+定时任务配合 GitHub Actions 使用，见 `.github/workflows/`。
+
 ## Coding Conventions
 
 From `.cursor/rules/general.mdc`:
