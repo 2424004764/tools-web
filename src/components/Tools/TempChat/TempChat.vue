@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { reactive, ref, onMounted, onUnmounted, nextTick, computed } from "vue";
+import { reactive, ref, onMounted, onUnmounted, nextTick, computed, watch } from "vue";
 import { useRoute } from "vue-router";
 import DetailHeader from "@/components/Layout/DetailHeader/DetailHeader.vue";
 import ToolDetail from "@/components/Layout/ToolDetail/ToolDetail.vue";
 import { ElMessage } from "element-plus";
-import { CopyDocument, Close } from "@element-plus/icons-vue";
+import { CopyDocument, Close, QuestionFilled } from "@element-plus/icons-vue";
 import QrcodeVue3 from "qrcode-vue3";
 import { supabase, chatDb } from "@/utils/supabase";
 
@@ -25,6 +25,7 @@ const messages = ref<Array<{
   timestamp: number;
   isSelf: boolean;
   revoked?: boolean;
+  mentioned?: boolean;
   replyTo?: {
     id: string;
     nickname: string;
@@ -46,6 +47,14 @@ const emojiPickerRef = ref<HTMLElement | null>(null);
 const showNicknameDialog = ref(false);
 const editingNickname = ref("");
 
+// @提及功能
+const showMentionList = ref(false);
+const mentionFilter = ref('');
+const mentionListRef = ref<HTMLElement | null>(null);
+const mentionStartIndex = ref(-1);
+const mentionedUsers = ref<string[]>([]);
+const selectedMentionIndex = ref(0);
+
 // 历史昵称列表（用于判断 isSelf）
 const myNicknames = ref<string[]>([]);
 
@@ -63,6 +72,11 @@ const typingUsers = ref<string[]>([]);
 const typingTimeout = ref<any>(null);
 const lastTypingTime = ref(0);
 const isTyping = ref(false);
+
+// 临时模式（消息不存储）
+const ephemeralMode = ref(true);
+const isUpdatingEphemeralMode = ref(false); // 防止循环广播
+const showEphemeralModeInfo = ref(false);
 
 // 消息搜索
 const showSearchDialog = ref(false);
@@ -319,19 +333,25 @@ const joinRoom = async () => {
       }
 
       messages.value = (historyData || [])
-        .map((msg: any) => ({
-          id: msg.id,
-          nickname: msg.nickname,
-          content: msg.content,
-          timestamp: new Date(msg.created_at).getTime(),
-          isSelf: isMyMessage(msg.nickname),
-          revoked: msg.revoked || false,
-          replyTo: msg.reply_to ? {
-            id: msg.reply_to.id,
-            nickname: msg.reply_to.nickname,
-            content: msg.reply_to.content,
-          } : undefined,
-        }));
+        .map((msg: any) => {
+          const amIMentioned = myNicknames.value.some(myName =>
+            msg.content.includes(`@${myName}`) || msg.content.includes(`@${myName} `)
+          );
+          return {
+            id: msg.id,
+            nickname: msg.nickname,
+            content: msg.content,
+            timestamp: new Date(msg.created_at).getTime(),
+            isSelf: isMyMessage(msg.nickname),
+            revoked: msg.revoked || false,
+            mentioned: amIMentioned,
+            replyTo: msg.reply_to ? {
+              id: msg.reply_to.id,
+              nickname: msg.reply_to.nickname,
+              content: msg.reply_to.content,
+            } : undefined,
+          };
+        });
 
       nextTick(() => scrollToBottom());
     } catch (error: any) {
@@ -357,6 +377,12 @@ const joinRoom = async () => {
       if (exists) return;
 
       const isMyMsg = isMyMessage(newMsg.nickname);
+
+      // 检查是否被@
+      const amIMentioned = myNicknames.value.some(myName =>
+        newMsg.content.includes(`@${myName}`) || newMsg.content.includes(`@${myName} `)
+      );
+
       messages.value.push({
         id: newMsg.id,
         nickname: newMsg.nickname,
@@ -365,11 +391,22 @@ const joinRoom = async () => {
         isSelf: isMyMsg,
         revoked: newMsg.revoked || false,
         replyTo: newMsg.reply_to,
+        mentioned: amIMentioned,
       });
 
       // 播放提示音（不是自己的消息时）
       if (!isMyMsg && !newMsg.revoked) {
-        playMessageSound();
+        // 被@时使用特殊提示音
+        if (amIMentioned) {
+          playMentionSound();
+        } else {
+          playMessageSound();
+        }
+      }
+
+      // 被@时显示特殊提示
+      if (amIMentioned && !isMyMsg) {
+        ElMessage.warning(`${newMsg.nickname} 在消息中提到了你！`);
       }
 
       // 如果用户不在底部，显示新消息提示
@@ -395,6 +432,53 @@ const joinRoom = async () => {
       .on('presence', { event: 'leave' }, () => {
         updateOnlineUsers();
         updateTypingUsers();
+      })
+      // 订阅临时消息广播
+      .on('broadcast', { event: 'ephemeral-message' }, (payload: any) => {
+        const tempMsg = payload.payload;
+        if (tempMsg.room_id !== normalizedRoomId) return;
+
+        const isMyMsg = isMyMessage(tempMsg.nickname);
+        const exists = messages.value.some(m => m.id === tempMsg.id);
+        if (exists || isMyMsg) return;
+
+        // 检查是否被@
+        const amIMentioned = myNicknames.value.some(myName =>
+          tempMsg.content.includes(`@${myName}`) || tempMsg.content.includes(`@${myName} `)
+        );
+
+        messages.value.push({
+          id: tempMsg.id,
+          nickname: tempMsg.nickname,
+          content: tempMsg.content,
+          timestamp: tempMsg.timestamp,
+          isSelf: false,
+          revoked: false,
+          mentioned: amIMentioned,
+        });
+
+        // 播放提示音
+        if (amIMentioned) {
+          playMentionSound();
+          ElMessage.warning(`${tempMsg.nickname} 在消息中提到了你！`);
+        } else {
+          playMessageSound();
+        }
+
+        nextTick(() => scrollToBottom());
+      })
+      // 订阅临时模式状态变化
+      .on('broadcast', { event: 'ephemeral-mode-change' }, (payload: any) => {
+        const data = payload.payload;
+        // 忽略自己发送的状态变化
+        if (data.sender_id === currentUserId.value) return;
+
+        // 同步临时模式状态（标记为收到广播，避免再次广播）
+        isUpdatingEphemeralMode.value = true;
+        ephemeralMode.value = data.enabled;
+
+        // 可选：显示提示
+        // ElMessage.info(`${data.sender_nickname} 将临时模式${data.enabled ? '开启' : '关闭'}`);
       })
       .subscribe((status: string) => {
         if (status === 'SUBSCRIBED') {
@@ -523,9 +607,45 @@ const sendMessage = async () => {
   };
 
   try {
-    await chatDb.sendMessage(roomId.value, nickname.value, messageData.content, messageData.reply_to);
-    inputMessage.value = "";
-    cancelReply(); // 清除回复状态
+    if (ephemeralMode.value) {
+      // 临时模式：通过 presenceChannel 广播消息，不存储
+      if (!presenceChannel) {
+        ElMessage.error("请先加入房间");
+        return;
+      }
+
+      const tempMessage = {
+        id: `temp-${Date.now()}-${Math.random()}`,
+        nickname: nickname.value,
+        content: messageData.content,
+        timestamp: Date.now(),
+        isSelf: true,
+        revoked: false,
+        replyTo: messageData.reply_to,
+      };
+
+      // 添加到本地消息列表
+      messages.value.push(tempMessage);
+      nextTick(() => scrollToBottom());
+
+      // 通过 presenceChannel 广播消息
+      presenceChannel.send({
+        type: 'broadcast',
+        event: 'ephemeral-message',
+        payload: {
+          ...tempMessage,
+          room_id: roomId.value,
+        },
+      });
+
+      inputMessage.value = "";
+      cancelReply();
+    } else {
+      // 正常模式：存储到数据库
+      await chatDb.sendMessage(roomId.value, nickname.value, messageData.content, messageData.reply_to);
+      inputMessage.value = "";
+      cancelReply(); // 清除回复状态
+    }
   } catch (error: any) {
     console.error("发送消息失败:", error);
     ElMessage.error("发送失败，请重试");
@@ -682,6 +802,15 @@ const handleClickOutside = (e: MouseEvent) => {
       showEmojiPicker.value = false;
     }
   }
+
+  // 关闭提及列表
+  if (showMentionList.value) {
+    const target = e.target as Node;
+    const textarea = document.querySelector('textarea') as HTMLTextAreaElement;
+    if (mentionListRef.value && !mentionListRef.value.contains(target) && target !== textarea) {
+      showMentionList.value = false;
+    }
+  }
 };
 
 // ============ 新增功能函数 ============
@@ -761,9 +890,82 @@ const sendTypingIndicator = () => {
 
 // 监听用户输入，发送正在输入状态
 const handleInput = () => {
-  if (inputMessage.value.trim()) {
+  const value = inputMessage.value;
+
+  // 检测 @输入
+  const cursorPosition = value.length;
+  // 查找光标前最近的 @ 符号
+  let lastAtIndex = -1;
+  for (let i = cursorPosition - 1; i >= 0; i--) {
+    if (value[i] === '@') {
+      // 检查 @ 前面是否是空格或开头，确保是一个新的 @
+      if (i === 0 || /\s/.test(value[i - 1])) {
+        lastAtIndex = i;
+        break;
+      }
+    } else if (!/\s/.test(value[i])) {
+      // 如果 @ 后面没有空格就遇到非空格字符，继续查找更早的 @
+      continue;
+    } else {
+      // 遇到空格，停止查找
+      break;
+    }
+  }
+
+  if (lastAtIndex !== -1) {
+    // 获取 @ 后面的输入内容作为过滤条件
+    const filterText = value.slice(lastAtIndex + 1, cursorPosition);
+    // 如果过滤条件改变了，重置选中索引
+    if (filterText !== mentionFilter.value) {
+      selectedMentionIndex.value = 0;
+    }
+    mentionFilter.value = filterText;
+    mentionStartIndex.value = lastAtIndex;
+    showMentionList.value = true;
+  } else {
+    showMentionList.value = false;
+    mentionFilter.value = '';
+    mentionStartIndex.value = -1;
+    selectedMentionIndex.value = 0;
+  }
+
+  if (value.trim()) {
     sendTypingIndicator();
   }
+};
+
+// 过滤可提及的用户
+const filteredMentionUsers = computed(() => {
+  if (!mentionFilter.value) {
+    return onlineUsers.value.filter(u => u !== nickname.value);
+  }
+  const filter = mentionFilter.value.toLowerCase();
+  return onlineUsers.value.filter(u =>
+    u !== nickname.value && u.toLowerCase().includes(filter)
+  );
+});
+
+// 选择提及用户
+const selectMentionUser = (user: string) => {
+  const beforeMention = inputMessage.value.slice(0, mentionStartIndex.value);
+  const afterMention = inputMessage.value.slice(mentionStartIndex.value + 1 + mentionFilter.value.length);
+  inputMessage.value = beforeMention + '@' + user + ' ' + afterMention;
+  showMentionList.value = false;
+  mentionFilter.value = '';
+  mentionStartIndex.value = -1;
+
+  // 记录被提及的用户（去重）
+  if (!mentionedUsers.value.includes(user)) {
+    mentionedUsers.value.push(user);
+  }
+
+  // 聚焦回输入框
+  nextTick(() => {
+    const textarea = document.querySelector('textarea') as HTMLTextAreaElement;
+    if (textarea) {
+      textarea.focus();
+    }
+  });
 };
 
 // 消息搜索功能
@@ -916,6 +1118,32 @@ const playMessageSound = () => {
   }
 };
 
+// 被@时的特殊提示音
+const playMentionSound = () => {
+  if (!messageSoundEnabled.value || !audioContext.value) return;
+
+  try {
+    const oscillator = audioContext.value.createOscillator();
+    const gainNode = audioContext.value.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.value.destination);
+
+    // 双音调提示音
+    oscillator.frequency.setValueAtTime(1000, audioContext.value.currentTime);
+    oscillator.frequency.setValueAtTime(1200, audioContext.value.currentTime + 0.1);
+    oscillator.type = 'sine';
+
+    gainNode.gain.setValueAtTime(0.15, audioContext.value.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.value.currentTime + 0.2);
+
+    oscillator.start(audioContext.value.currentTime);
+    oscillator.stop(audioContext.value.currentTime + 0.2);
+  } catch (e) {
+    console.warn("播放提示音失败:", e);
+  }
+};
+
 // 改进的时间格式化
 const formatTime = (timestamp: number) => {
   const date = new Date(timestamp);
@@ -945,27 +1173,59 @@ const formatTime = (timestamp: number) => {
   }
 };
 
-// 改进的URL解析
+// 改进的URL解析和@提及解析
 const parseMessageContent = (content: string) => {
-  // 匹配 http/https URL（改进版）
-  const urlRegex = /(https?:\/\/[^\s<]+[^<.,:;"')\]\s])/g;
-  const parts: Array<{ text: string; isLink: boolean; url?: string }> = [];
+  const parts: Array<{ text: string; isLink: boolean; url?: string; isMention?: boolean }> = [];
+
+  // 先处理 @提及（只匹配在线用户昵称）
+  const mentionRegex = /@([^\s@]+)/g;
   let lastIndex = 0;
   let match;
 
-  while ((match = urlRegex.exec(content)) !== null) {
-    // 添加匹配前的文本
-    if (match.index > lastIndex) {
-      parts.push({ text: content.slice(lastIndex, match.index), isLink: false });
+  while ((match = mentionRegex.exec(content)) !== null) {
+    const username = match[1];
+
+    // 添加匹配前的文本（可能包含URL）
+    const beforeText = content.slice(lastIndex, match.index);
+    if (beforeText) {
+      // 解析这段文本中的URL
+      const urlRegex = /(https?:\/\/[^\s<]+[^<.,:;"')\]\s])/g;
+      let urlLastIndex = 0;
+      let urlMatch;
+      while ((urlMatch = urlRegex.exec(beforeText)) !== null) {
+        if (urlMatch.index > urlLastIndex) {
+          parts.push({ text: beforeText.slice(urlLastIndex, urlMatch.index), isLink: false });
+        }
+        parts.push({ text: urlMatch[1], isLink: true, url: urlMatch[1] });
+        urlLastIndex = urlRegex.lastIndex;
+      }
+      if (urlLastIndex < beforeText.length) {
+        parts.push({ text: beforeText.slice(urlLastIndex), isLink: false });
+      }
     }
-    // 添加链接
-    parts.push({ text: match[1], isLink: true, url: match[1] });
-    lastIndex = urlRegex.lastIndex;
+
+    // 只有当@后面是在线用户昵称时，才标记为提及
+    const isRealUser = onlineUsers.value.includes(username);
+    parts.push({ text: match[0], isLink: false, isMention: isRealUser });
+    lastIndex = mentionRegex.lastIndex;
   }
 
-  // 添加剩余文本
-  if (lastIndex < content.length) {
-    parts.push({ text: content.slice(lastIndex), isLink: false });
+  // 添加剩余文本（可能包含URL）
+  const remainingText = content.slice(lastIndex);
+  if (remainingText) {
+    const urlRegex = /(https?:\/\/[^\s<]+[^<.,:;"')\]\s])/g;
+    let urlLastIndex = 0;
+    let urlMatch;
+    while ((urlMatch = urlRegex.exec(remainingText)) !== null) {
+      if (urlMatch.index > urlLastIndex) {
+        parts.push({ text: remainingText.slice(urlLastIndex, urlMatch.index), isLink: false });
+      }
+      parts.push({ text: urlMatch[1], isLink: true, url: urlMatch[1] });
+      urlLastIndex = urlRegex.lastIndex;
+    }
+    if (urlLastIndex < remainingText.length) {
+      parts.push({ text: remainingText.slice(urlLastIndex), isLink: false });
+    }
   }
 
   return parts;
@@ -995,6 +1255,30 @@ const cancelReply = () => {
 // 快捷键支持
 const handleKeydown = (e: Event | KeyboardEvent) => {
   if (e instanceof KeyboardEvent) {
+    // @提及列表导航
+    if (showMentionList.value && filteredMentionUsers.value.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        selectedMentionIndex.value = Math.min(selectedMentionIndex.value + 1, filteredMentionUsers.value.length - 1);
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        selectedMentionIndex.value = Math.max(selectedMentionIndex.value - 1, 0);
+        return;
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        selectMentionUser(filteredMentionUsers.value[selectedMentionIndex.value]);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        showMentionList.value = false;
+        return;
+      }
+    }
+
     // Ctrl/Cmd + Enter 发送消息
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault();
@@ -1206,6 +1490,36 @@ onMounted(() => {
   if (soundEnabled !== null) {
     messageSoundEnabled.value = JSON.parse(soundEnabled);
   }
+
+  // 加载临时模式设置
+  const ephemeralModeSaved = localStorage.getItem('tempchat-ephemeral-mode');
+  if (ephemeralModeSaved !== null) {
+    ephemeralMode.value = JSON.parse(ephemeralModeSaved);
+  }
+
+  // 监听临时模式变化并保存/广播
+  watch(ephemeralMode, (newValue) => {
+    localStorage.setItem('tempchat-ephemeral-mode', JSON.stringify(newValue));
+
+    // 如果是收到广播后的更新，不再次广播
+    if (isUpdatingEphemeralMode.value) {
+      isUpdatingEphemeralMode.value = false;
+      return;
+    }
+
+    // 广播给房间内其他人
+    if (presenceChannel && isJoined.value) {
+      presenceChannel.send({
+        type: 'broadcast',
+        event: 'ephemeral-mode-change',
+        payload: {
+          enabled: newValue,
+          sender_id: currentUserId.value,
+          sender_nickname: nickname.value,
+        },
+      });
+    }
+  });
 
   // 初始化音频上下文（用户交互后）
   const initAudio = () => {
@@ -1494,25 +1808,69 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
           </template>
         </el-dialog>
 
-        <!-- 在线用户列表 -->
-        <div class="flex items-center gap-2 pb-2 text-sm text-gray-500 flex-wrap">
-          <span class="flex-shrink-0">在线 ({{ onlineUsers.length }}):</span>
-          <template v-if="onlineUsers.length > 5 && !showAllOnlineUsers">
-            <span v-for="user in onlineUsers.slice(0, 5)" :key="user" class="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs whitespace-nowrap">
-              {{ user }}
-            </span>
-            <span class="text-xs text-blue-500 cursor-pointer hover:underline" @click="showAllOnlineUsers = true">
-              还有 {{ onlineUsers.length - 5 }} 人...
-            </span>
+        <!-- 临时模式说明对话框 -->
+        <el-dialog
+          v-model="showEphemeralModeInfo"
+          title="临时模式说明"
+          width="90%"
+          :style="{ maxWidth: '450px' }"
+        >
+          <div class="space-y-3 text-sm text-gray-600">
+            <p class="font-medium text-gray-700">什么是临时模式？</p>
+            <p>临时模式下，消息不会存储到数据库，仅通过实时广播传输。这意味着：</p>
+            <ul class="list-disc list-inside ml-4 space-y-1">
+              <li>刷新页面后，所有消息会消失</li>
+              <li>无法加载历史消息</li>
+              <li>消息更加私密，不留痕迹</li>
+              <li>适合临时聊天、敏感话题讨论</li>
+            </ul>
+            <p class="text-orange-500 mt-3">⚠️ 注意：房间内所有人会同步切换此模式，一人切换，所有人同步。</p>
+          </div>
+          <template #footer>
+            <el-button type="primary" @click="showEphemeralModeInfo = false">知道了</el-button>
           </template>
-          <template v-else>
-            <span v-for="user in onlineUsers" :key="user" class="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs whitespace-nowrap">
-              {{ user }}
-            </span>
-            <span v-if="onlineUsers.length > 5" class="text-xs text-blue-500 cursor-pointer hover:underline" @click="showAllOnlineUsers = false">
-              收起
-            </span>
-          </template>
+        </el-dialog>
+
+        <!-- 在线用户列表和设置 -->
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2">
+          <div class="flex items-center gap-2 text-sm text-gray-500 flex-wrap">
+            <span class="flex-shrink-0">在线 ({{ onlineUsers.length }}):</span>
+            <template v-if="onlineUsers.length > 5 && !showAllOnlineUsers">
+              <span v-for="user in onlineUsers.slice(0, 5)" :key="user" class="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs whitespace-nowrap">
+                {{ user }}
+              </span>
+              <span class="text-xs text-blue-500 cursor-pointer hover:underline" @click="showAllOnlineUsers = true">
+                还有 {{ onlineUsers.length - 5 }} 人...
+              </span>
+            </template>
+            <template v-else>
+              <span v-for="user in onlineUsers" :key="user" class="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs whitespace-nowrap">
+                {{ user }}
+              </span>
+              <span v-if="onlineUsers.length > 5" class="text-xs text-blue-500 cursor-pointer hover:underline" @click="showAllOnlineUsers = false">
+                收起
+              </span>
+            </template>
+          </div>
+
+          <!-- 临时模式开关 -->
+          <div class="flex items-center gap-2 text-sm">
+            <span class="text-gray-500">临时模式:</span>
+            <el-switch
+              v-model="ephemeralMode"
+              active-text="开启"
+              inactive-text="关闭"
+              size="small"
+              title="消息不存储，刷新后消失"
+            />
+            <el-icon
+              class="cursor-pointer text-gray-400 hover:text-gray-600"
+              @click="showEphemeralModeInfo = true"
+              title="查看说明"
+            >
+              <QuestionFilled />
+            </el-icon>
+          </div>
         </div>
 
         <!-- 消息列表 -->
@@ -1576,7 +1934,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
                     ]"
                     style="white-space: pre-wrap; word-break: break-word;"
                   >
-                    <!-- 解析 URL 并渲染链接 -->
+                    <!-- 解析 URL 并渲染链接，高亮@提及 -->
                     <template v-if="!msg.revoked" v-for="(part, idx) in parseMessageContent(msg.content)" :key="idx">
                       <a
                         v-if="part.isLink"
@@ -1589,6 +1947,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
                       >
                         {{ part.text }}
                       </a>
+                      <span v-else-if="part.isMention" class="mention-highlight" :class="msg.isSelf ? 'mention-self' : ''">{{ part.text }}</span>
                       <span v-else class="break-words inline">{{ part.text }}</span>
                     </template>
                     <template v-else>
@@ -1751,6 +2110,25 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
               发送
             </el-button>
           </div>
+
+          <!-- @提及列表 -->
+          <div
+            v-if="showMentionList && filteredMentionUsers.length > 0"
+            ref="mentionListRef"
+            class="mention-list-popup"
+          >
+            <div
+              v-for="(user, idx) in filteredMentionUsers"
+              :key="user"
+              class="mention-item"
+              :class="{ 'mention-selected': idx === selectedMentionIndex }"
+              @click="selectMentionUser(user)"
+              @mouseenter="selectedMentionIndex = idx"
+            >
+              <span class="mention-avatar">{{ user.charAt(0) }}</span>
+              <span class="mention-name">{{ user }}</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1780,12 +2158,20 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
         <strong>快捷键：</strong>
         <br>• <strong>Enter</strong>：发送消息
         <br>• <strong>Shift + Enter</strong>：换行
+        <br>• <strong>@</strong>：提及在线用户（输入@后选择用户）
         <br>• <strong>Ctrl + F</strong>：搜索消息
         <br>• <strong>↑ / ↓</strong>：浏览输入历史
         <br><br>
+        <strong>特色功能：</strong>
+        <br>• <strong>@提及</strong>：输入@可提及在线用户，被提及者会收到特殊提示
+        <br>• <strong>临时模式</strong>：消息不存储到数据库，刷新页面后消失，适合临时聊天
+        <br>• <strong>消息撤回</strong>：发送后2分钟内可撤回消息
+        <br>• <strong>消息引用</strong>：点击消息头像可引用回复
+        <br><br>
         <strong>实现原理：</strong>
         <br>• 使用 <strong>Supabase Realtime</strong> 实现 WebSocket 实时通信，消息秒级同步
-        <br>• 消息存储在云端数据库，支持历史消息加载
+        <br>• 正常模式下消息存储在云端数据库，支持历史消息加载
+        <br>• 临时模式下消息仅通过广播传输，不存储，刷新后消失
         <br>• 通过 Presence 功能追踪在线用户状态
         <br>• 房间通过唯一标识符区分，只有相同房间号的用户才能互相通信
         <br>• 前端采用 Vue3 响应式设计，界面自适应各种屏幕尺寸
@@ -1941,5 +2327,76 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
     box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
     z-index: 50;
   }
+}
+
+/* @提及列表样式 */
+.mention-list-popup {
+  position: absolute;
+  bottom: 100%;
+  left: 80px;
+  max-height: 200px;
+  width: 200px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  overflow-y: auto;
+  z-index: 100;
+  margin-bottom: 8px;
+}
+
+.mention-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.mention-item:hover,
+.mention-item.mention-selected {
+  background-color: #f3f4f6;
+}
+
+.mention-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.mention-name {
+  font-size: 14px;
+  color: #374151;
+}
+
+.mention-empty {
+  padding: 12px;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+/* @提及高亮样式 */
+:deep(.mention-highlight) {
+  color: #3b82f6;
+  font-weight: 500;
+  background-color: rgba(59, 130, 246, 0.1);
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+/* 自己消息中的@提及样式（蓝色背景上显示为白色） */
+:deep(.mention-highlight.mention-self) {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.25);
 }
 </style>
