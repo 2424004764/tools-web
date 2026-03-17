@@ -1574,6 +1574,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
                       msg.isSelf ? 'bg-blue-500 text-white rounded-br-md' : 'bg-white text-gray-800 rounded-bl-md',
                       msg.revoked ? 'italic text-gray-400' : ''
                     ]"
+                    style="white-space: pre-wrap; word-break: break-word;"
                   >
                     <!-- 解析 URL 并渲染链接 -->
                     <template v-if="!msg.revoked" v-for="(part, idx) in parseMessageContent(msg.content)" :key="idx">
@@ -1740,7 +1741,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
               :rows="1"
               :autosize="{ minRows: 1, maxRows: 5 }"
               placeholder="输入消息..."
-              maxlength="500"
+              maxlength="2000"
               show-word-limit
               @keydown="handleKeydown"
               @input="handleInput"
