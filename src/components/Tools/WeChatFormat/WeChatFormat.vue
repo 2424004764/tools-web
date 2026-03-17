@@ -3,7 +3,7 @@ import { reactive, ref, computed, watch, onMounted } from 'vue'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { copy } from '@/utils/string'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox, ElButton } from 'element-plus'
 import type { UploadFile } from 'element-plus'
 import MarkdownIt from 'markdown-it'
 import hljs from 'highlight.js/lib/core'
@@ -18,6 +18,17 @@ import html from 'highlight.js/lib/languages/xml'
 import bash from 'highlight.js/lib/languages/bash'
 import json from 'highlight.js/lib/languages/json'
 import 'highlight.js/styles/github.css'
+
+// 新增：导入主题配置和 composables
+import { getThemeName, getThemeStyles, type ThemeStyles } from './themes'
+import { useEditorHistory } from './composables/useEditorHistory'
+import { useShortcuts, DEFAULT_SHORTCUTS } from './composables/useShortcuts'
+import { useWordCount } from './composables/useWordCount'
+import { useFullscreen } from './composables/useFullscreen'
+import { exportToPDF, printPreview } from './utils/exportPDF'
+import ThemeSelector from './components/ThemeSelector.vue'
+import WordCountDisplay from './components/WordCountDisplay.vue'
+import ShortcutsDialog from './components/ShortcutsDialog.vue'
 
 // 注册常用语言
 hljs.registerLanguage('javascript', javascript)
@@ -39,35 +50,6 @@ hljs.registerLanguage('shell', bash)
 hljs.registerLanguage('json', json)
 
 // ============ 类型定义 ============
-interface ThemeStyles {
-  id: string
-  containerBg: string
-  textColor: string
-  headingColor: string
-  linkColor: string
-  quoteBg: string
-  quoteBorder: string
-  codeBg: string
-  borderColor: string
-  fontFamily: string
-  headingWeight: string
-  containerShadow: string
-  containerRadius: string
-  headingBorder: string
-  quoteStyle: string
-  headingDecoration: string
-  containerBorder: string
-  headingSpacing: string
-  paragraphSpacing: string
-  listIndent: string
-}
-
-interface Theme {
-  id: string
-  name: string
-  styles: ThemeStyles
-}
-
 // 草稿数据结构
 interface Draft {
   id: string
@@ -178,352 +160,52 @@ greet('World');
 // Markdown 内容
 const markdownContent = ref(INITIAL_CONTENT)
 
-// 主题配置
-const themes: Theme[] = [
-  {
-    id: 'simple',
-    name: '简约风格',
-    styles: {
-      id: 'simple',
-      // 颜色
-      containerBg: '#ffffff',
-      textColor: '#3f3f3f',
-      headingColor: '#000000',
-      linkColor: '#576b95',
-      quoteBg: '#f7f7f7',
-      quoteBorder: '#d1d1d1',
-      codeBg: '#f0f0f0',
-      borderColor: '#e0e0e0',
-      // 字体
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-      headingWeight: '600',
-      // 样式
-      containerShadow: 'none',
-      containerRadius: '0px',
-      headingBorder: 'none',
-      quoteStyle: 'left', // left, solid, bg
-      // 装饰
-      headingDecoration: 'none', // none, underline, bg, side-line
-      containerBorder: 'none',
-      // 间距
-      headingSpacing: '1.4em',
-      paragraphSpacing: '1.8em',
-      listIndent: '20px',
-    }
-  },
-  {
-    id: 'business',
-    name: '商务风格',
-    styles: {
-      id: 'business',
-      containerBg: '#ffffff',
-      textColor: '#333333',
-      headingColor: '#1a1a1a',
-      linkColor: '#1890ff',
-      quoteBg: '#f0f7ff',
-      quoteBorder: '#1890ff',
-      codeBg: '#f6f8fa',
-      borderColor: '#d9d9d9',
-      fontFamily: '"Microsoft YaHei", "PingFang SC", "Helvetica Neue", Arial, sans-serif',
-      headingWeight: '700',
-      containerShadow: '0 2px 8px rgba(0,0,0,0.08)',
-      containerRadius: '4px',
-      headingBorder: 'bottom',
-      quoteStyle: 'solid',
-      headingDecoration: 'underline',
-      containerBorder: 'none',
-      headingSpacing: '1.5em',
-      paragraphSpacing: '1.9em',
-      listIndent: '24px',
-    }
-  },
-  {
-    id: 'literary',
-    name: '文艺风格',
-    styles: {
-      id: 'literary',
-      containerBg: '#fffbf0',
-      textColor: '#4a4a4a',
-      headingColor: '#8b4513',
-      linkColor: '#cd853f',
-      quoteBg: '#fff8dc',
-      quoteBorder: '#daa520',
-      codeBg: '#ffefd5',
-      borderColor: '#deb887',
-      fontFamily: '"Kaiti SC", "STKaiti", "KaiTi", "楷体", serif',
-      headingWeight: '600',
-      containerShadow: 'none',
-      containerRadius: '8px',
-      headingBorder: 'none',
-      quoteStyle: 'bg',
-      headingDecoration: 'side-line',
-      containerBorder: 'none',
-      headingSpacing: '1.6em',
-      paragraphSpacing: '2em',
-      listIndent: '22px',
-    }
-  },
-  {
-    id: 'night',
-    name: '深色模式',
-    styles: {
-      id: 'night',
-      containerBg: '#f5f5f5',
-      textColor: '#2c3e50',
-      headingColor: '#1a1a1a',
-      linkColor: '#2980b9',
-      quoteBg: '#ecf0f1',
-      quoteBorder: '#2980b9',
-      codeBg: '#f8f9fa',
-      borderColor: '#bdc3c7',
-      fontFamily: '"SF Mono", "Monaco", "Consolas", "Liberation Mono", monospace',
-      headingWeight: '600',
-      containerShadow: 'none',
-      containerRadius: '8px',
-      headingBorder: 'none',
-      quoteStyle: 'solid',
-      headingDecoration: 'bg',
-      containerBorder: 'none',
-      headingSpacing: '1.4em',
-      paragraphSpacing: '1.7em',
-      listIndent: '24px',
-    }
-  },
-  {
-    id: 'elegant',
-    name: '优雅风格',
-    styles: {
-      id: 'elegant',
-      containerBg: 'linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%)',
-      textColor: '#2c3e50',
-      headingColor: '#34495e',
-      linkColor: '#9b59b6',
-      quoteBg: '#f0f3f7',
-      quoteBorder: '#9b59b6',
-      codeBg: '#eef2f7',
-      borderColor: '#d5dbdf',
-      fontFamily: '"Georgia", "Times New Roman", serif',
-      headingWeight: '600',
-      containerShadow: '0 8px 32px rgba(0,0,0,0.06)',
-      containerRadius: '16px',
-      headingBorder: 'none',
-      quoteStyle: 'bg',
-      headingDecoration: 'none',
-      containerBorder: 'none',
-      headingSpacing: '1.5em',
-      paragraphSpacing: '1.9em',
-      listIndent: '26px',
-    }
-  },
-  {
-    id: 'vibrant',
-    name: '活力风格',
-    styles: {
-      id: 'vibrant',
-      containerBg: '#ffffff',
-      textColor: '#2d3748',
-      headingColor: '#1a202c',
-      linkColor: '#ed8936',
-      quoteBg: '#fffaf0',
-      quoteBorder: '#ed8936',
-      codeBg: '#fff5eb',
-      borderColor: '#fed7aa',
-      fontFamily: '"Segoe UI", "Roboto", "Oxygen", "Ubuntu", sans-serif',
-      headingWeight: '700',
-      containerShadow: '0 4px 20px rgba(237, 137, 54, 0.15)',
-      containerRadius: '12px',
-      headingBorder: 'none',
-      quoteStyle: 'solid',
-      headingDecoration: 'bg',
-      containerBorder: '2px solid #fed7aa',
-      headingSpacing: '1.4em',
-      paragraphSpacing: '1.8em',
-      listIndent: '22px',
-    }
-  },
-  {
-    id: 'cyberpunk',
-    name: '赛博朋克',
-    styles: {
-      id: 'cyberpunk',
-      containerBg: '#0a0a0a',
-      textColor: '#e0e0e0',
-      headingColor: '#ff00ff',
-      linkColor: '#00ffff',
-      quoteBg: 'linear-gradient(135deg, rgba(255, 0, 255, 0.1) 0%, rgba(0, 255, 255, 0.1) 100%)',
-      quoteBorder: '#ff00ff',
-      codeBg: '#1a1a2e',
-      borderColor: '#ff00ff',
-      fontFamily: '"Orbitron", "Rajdhani", "Segoe UI", sans-serif',
-      headingWeight: '900',
-      containerShadow: '0 0 40px rgba(255, 0, 255, 0.5), 0 0 80px rgba(0, 255, 255, 0.3), inset 0 0 20px rgba(255, 0, 255, 0.1)',
-      containerRadius: '0px',
-      headingBorder: 'none',
-      quoteStyle: 'solid',
-      headingDecoration: 'none',
-      containerBorder: '3px solid transparent',
-      headingSpacing: '1.6em',
-      paragraphSpacing: '2em',
-      listIndent: '28px',
-    }
-  },
-  {
-    id: 'neon',
-    name: '霓虹之夜',
-    styles: {
-      id: 'neon',
-      containerBg: '#0d0d0d',
-      textColor: '#ffffff',
-      headingColor: '#ffff00',
-      linkColor: '#ff0066',
-      quoteBg: 'rgba(255, 0, 102, 0.15)',
-      quoteBorder: '#ff0066',
-      codeBg: '#1a1a1a',
-      borderColor: '#00ff00',
-      fontFamily: '"Arial Black", "Impact", sans-serif',
-      headingWeight: '900',
-      containerShadow: '0 0 30px rgba(255, 0, 102, 0.6), 0 0 60px rgba(0, 255, 0, 0.4)',
-      containerRadius: '8px',
-      headingBorder: 'none',
-      quoteStyle: 'solid',
-      headingDecoration: 'none',
-      containerBorder: '4px solid #ff0066',
-      headingSpacing: '1.5em',
-      paragraphSpacing: '1.9em',
-      listIndent: '24px',
-    }
-  },
-  {
-    id: 'aurora',
-    name: '极光幻境',
-    styles: {
-      id: 'aurora',
-      containerBg: 'linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #00f2fe 100%)',
-      textColor: '#ffffff',
-      headingColor: '#ffffff',
-      linkColor: '#ffff00',
-      quoteBg: 'rgba(255, 255, 255, 0.2)',
-      quoteBorder: '#ffffff',
-      codeBg: 'rgba(0, 0, 0, 0.3)',
-      borderColor: 'rgba(255, 255, 255, 0.3)',
-      fontFamily: '"Poppins", "Montserrat", sans-serif',
-      headingWeight: '800',
-      containerShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
-      containerRadius: '20px',
-      headingBorder: 'none',
-      quoteStyle: 'bg',
-      headingDecoration: 'none',
-      containerBorder: 'none',
-      headingSpacing: '1.6em',
-      paragraphSpacing: '2em',
-      listIndent: '26px',
-    }
-  },
-  {
-    id: 'metal',
-    name: '金属机甲',
-    styles: {
-      id: 'metal',
-      containerBg: '#2c2c2c',
-      textColor: '#e8e8e8',
-      headingColor: '#c9c9c9',
-      linkColor: '#4a9eff',
-      quoteBg: 'linear-gradient(90deg, rgba(74, 158, 255, 0.1) 0%, rgba(192, 192, 192, 0.05) 100%)',
-      quoteBorder: '#808080',
-      codeBg: '#1a1a1a',
-      borderColor: '#606060',
-      fontFamily: '"Rajdhani", "Orbitron", "Segoe UI", sans-serif',
-      headingWeight: '700',
-      containerShadow: 'inset 0 1px 0 rgba(255,255,255,0.1), 0 4px 20px rgba(0,0,0,0.5)',
-      containerRadius: '4px',
-      headingBorder: 'none',
-      quoteStyle: 'solid',
-      headingDecoration: 'side-line',
-      containerBorder: '2px solid #404040',
-      headingSpacing: '1.5em',
-      paragraphSpacing: '1.8em',
-      listIndent: '24px',
-    }
-  },
-  {
-    id: 'candy',
-    name: '糖果梦境',
-    styles: {
-      id: 'candy',
-      containerBg: '#fff5f8',
-      textColor: '#6b4c6a',
-      headingColor: '#ff69b4',
-      linkColor: '#ff1493',
-      quoteBg: '#ffe4ec',
-      quoteBorder: '#ff69b4',
-      codeBg: '#fff0f5',
-      borderColor: '#ffb6d9',
-      fontFamily: '"Comic Sans MS", "Chalkboard SE", sans-serif',
-      headingWeight: '800',
-      containerShadow: '0 8px 30px rgba(255, 105, 180, 0.25)',
-      containerRadius: '24px',
-      headingBorder: 'none',
-      quoteStyle: 'bg',
-      headingDecoration: 'bg',
-      containerBorder: '4px dashed #ffb6d9',
-      headingSpacing: '1.5em',
-      paragraphSpacing: '1.9em',
-      listIndent: '26px',
-    }
-  },
-  {
-    id: 'synthwave',
-    name: '合成波',
-    styles: {
-      id: 'synthwave',
-      containerBg: 'linear-gradient(180deg, #0f0c29 0%, #302b63 50%, #24243e 100%)',
-      textColor: '#ff6ec7',
-      headingColor: '#ff6ec7',
-      linkColor: '#00ffff',
-      quoteBg: 'linear-gradient(90deg, rgba(255, 110, 199, 0.2) 0%, rgba(0, 255, 255, 0.1) 100%)',
-      quoteBorder: '#ff6ec7',
-      codeBg: 'rgba(15, 12, 41, 0.8)',
-      borderColor: '#ff6ec7',
-      fontFamily: '"Press Start 2P", "Courier New", monospace',
-      headingWeight: '900',
-      containerShadow: '0 0 50px rgba(255, 110, 199, 0.6), inset 0 0 30px rgba(0, 255, 255, 0.1)',
-      containerRadius: '0px',
-      headingBorder: 'none',
-      quoteStyle: 'solid',
-      headingDecoration: 'none',
-      containerBorder: '4px solid #00ffff',
-      headingSpacing: '1.6em',
-      paragraphSpacing: '2em',
-      listIndent: '30px',
-    }
-  },
-  {
-    id: 'glitch',
-    name: '故障艺术',
-    styles: {
-      id: 'glitch',
-      containerBg: '#000000',
-      textColor: '#00ff00',
-      headingColor: '#ff0000',
-      linkColor: '#00ffff',
-      quoteBg: 'rgba(255, 0, 0, 0.1)',
-      quoteBorder: '#ff0000',
-      codeBg: '#0a0a0a',
-      borderColor: '#00ff00',
-      fontFamily: '"Courier New", "Consolas", monospace',
-      headingWeight: '900',
-      containerShadow: '0 0 20px rgba(0, 255, 0, 0.8), 0 0 40px rgba(255, 0, 0, 0.4)',
-      containerRadius: '0px',
-      headingBorder: 'none',
-      quoteStyle: 'solid',
-      headingDecoration: 'none',
-      containerBorder: '2px solid #00ff00',
-      headingSpacing: '1.4em',
-      paragraphSpacing: '1.8em',
-      listIndent: '22px',
-    }
-  },
-]
+// ========== 新增功能状态 ==========
+// 导入状态（大文件导入优化）
+const isImporting = ref(false)
+
+// 快捷键对话框
+const shortcutsDialogRef = ref<InstanceType<typeof ShortcutsDialog> | null>(null)
+
+// 导入按钮引用
+const importButtonRef = ref<InstanceType<typeof ElButton> | null>(null)
+
+// 触发导入
+const triggerImport = () => {
+  const input = document.querySelector('.el-upload input') as HTMLInputElement
+  input?.click()
+}
+
+// 使用历史记录（撤销/重做）
+const history = useEditorHistory(markdownContent, { maxSize: 50 })
+
+// 监听内容变化，保存历史状态（防抖）
+let historySaveTimer: NodeJS.Timeout | null = null
+watch(markdownContent, () => {
+  if (historySaveTimer) {
+    clearTimeout(historySaveTimer)
+  }
+  historySaveTimer = setTimeout(() => {
+    history.pushState()
+  }, 500) // 500ms 防抖
+})
+
+// 使用字数统计（已移至 WordCountDisplay 组件）
+useWordCount(markdownContent)
+
+// 使用全屏模式
+const fullscreen = useFullscreen()
+const fullscreenTarget = ref<HTMLElement | null>(null)
+
+// 监听 fullscreenTarget 变化并绑定到 fullscreen composable
+watch(fullscreenTarget, (el) => {
+  if (el) {
+    fullscreen.targetElement.value = el
+  }
+}, { immediate: true })
+
+// ========== 主题配置（已移至 themes.ts）==========
+// 使用时: import { themes, getThemeStyles } from './themes'
 
 // 字体样式配置
 const fontStyles = reactive({
@@ -626,11 +308,135 @@ const autoSaveToDraft = () => {
   }
 }
 
+// ========== 快捷键支持 ==========
+useShortcuts([
+  {
+    key: DEFAULT_SHORTCUTS.SAVE.key,
+    ctrl: DEFAULT_SHORTCUTS.SAVE.ctrl,
+    callback: () => saveCurrentDraft(),
+    description: DEFAULT_SHORTCUTS.SAVE.description,
+  },
+  {
+    key: DEFAULT_SHORTCUTS.UNDO.key,
+    ctrl: DEFAULT_SHORTCUTS.UNDO.ctrl,
+    callback: () => {
+      if (history.undo()) {
+        ElMessage.success('已撤销')
+      }
+    },
+    description: DEFAULT_SHORTCUTS.UNDO.description,
+  },
+  {
+    key: DEFAULT_SHORTCUTS.REDO.key,
+    ctrl: DEFAULT_SHORTCUTS.REDO.ctrl,
+    callback: () => {
+      if (history.redo()) {
+        ElMessage.success('已重做')
+      }
+    },
+    description: DEFAULT_SHORTCUTS.REDO.description,
+  },
+  {
+    key: DEFAULT_SHORTCUTS.REDO_ALT.key,
+    ctrl: DEFAULT_SHORTCUTS.REDO_ALT.ctrl,
+    shift: DEFAULT_SHORTCUTS.REDO_ALT.shift,
+    callback: () => {
+      if (history.redo()) {
+        ElMessage.success('已重做')
+      }
+    },
+    description: DEFAULT_SHORTCUTS.REDO_ALT.description,
+  },
+  {
+    key: DEFAULT_SHORTCUTS.BOLD.key,
+    ctrl: DEFAULT_SHORTCUTS.BOLD.ctrl,
+    callback: () => insertSyntax('**粗体文本**'),
+    description: DEFAULT_SHORTCUTS.BOLD.description,
+  },
+  {
+    key: DEFAULT_SHORTCUTS.ITALIC.key,
+    ctrl: DEFAULT_SHORTCUTS.ITALIC.ctrl,
+    callback: () => insertSyntax('*斜体文本*'),
+    description: DEFAULT_SHORTCUTS.ITALIC.description,
+  },
+  {
+    key: DEFAULT_SHORTCUTS.LINK.key,
+    ctrl: DEFAULT_SHORTCUTS.LINK.ctrl,
+    callback: () => insertSyntax('[链接文字](https://example.com)'),
+    description: DEFAULT_SHORTCUTS.LINK.description,
+  },
+  {
+    key: DEFAULT_SHORTCUTS.FULLSCREEN.key,
+    callback: () => fullscreen.toggle(),
+    description: DEFAULT_SHORTCUTS.FULLSCREEN.description,
+  },
+  {
+    key: DEFAULT_SHORTCUTS.ESC.key,
+    callback: () => {
+      if (fullscreen.isFullscreen.value) {
+        fullscreen.exit()
+      }
+    },
+    description: DEFAULT_SHORTCUTS.ESC.description,
+  },
+  {
+    key: '/',
+    ctrl: true,
+    shift: true,
+    callback: () => shortcutsDialogRef.value?.open(),
+    description: '显示快捷键',
+  },
+  {
+    key: 'p',
+    ctrl: true,
+    callback: () => handleExportPDF(),
+    description: '导出 PDF',
+  },
+])
+
 // 组件挂载时加载配置
 onMounted(() => {
   loadFromStorage()
   loadDraftsList()
   loadCurrentDraft()
+})
+
+// ========== 新增方法 ==========
+
+// 撤销
+const handleUndo = () => {
+  if (history.undo()) {
+    ElMessage.success('已撤销')
+  } else {
+    ElMessage.info('没有可撤销的操作')
+  }
+}
+
+// 重做
+const handleRedo = () => {
+  if (history.redo()) {
+    ElMessage.success('已重做')
+  } else {
+    ElMessage.info('没有可重做的操作')
+  }
+}
+
+// 导出 PDF
+const handleExportPDF = async () => {
+  const title = currentDraftTitle.value || '未命名文档'
+  await exportToPDF(previewContent.value, title)
+}
+
+// 打印预览（PDF 导出的备选方案）
+const handlePrintPreview = () => {
+  printPreview(previewContent.value)
+}
+
+// 当前草稿标题（用于显示）
+const currentDraftTitle = computed(() => {
+  if (!currentDraftId.value) return ''
+  const draft = draftList.value.find(d => d.id === currentDraftId.value)
+  return draft?.title || ''
 })
 
 // ============ 草稿管理 ============
@@ -793,28 +599,15 @@ const formatTime = (timestamp: number) => {
   return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
 }
 
-// 当前草稿标题
-const currentDraftTitle = computed(() => {
-  if (!currentDraftId.value) return '未保存草稿'
-  const draft = draftList.value.find(d => d.id === currentDraftId.value)
-  return draft ? draft.title : '未保存草稿'
-})
-
-// 根据主题ID获取主题名称
-const getThemeName = (themeId: string) => {
-  const theme = themes.find(t => t.id === themeId)
-  return theme ? theme.name : '未知主题'
-}
-
 // 预览内容 (HTML)
 const previewContent = computed(() => {
-  const theme = themes.find(t => t.id === info.currentTheme)?.styles || themes[0].styles
+  const theme = getThemeStyles(info.currentTheme)
   return formatMarkdown(markdownContent.value, theme)
 })
 
 // 完整的预览 HTML（包含容器）
 const previewHTML = computed(() => {
-  const theme = themes.find(t => t.id === info.currentTheme)?.styles || themes[0].styles
+  const theme = getThemeStyles(info.currentTheme)
   return wrapWithStyles(previewContent.value, theme)
 })
 
@@ -1435,15 +1228,6 @@ const tocList = computed(() => {
   })
 })
 
-// 字数统计
-const wordCount = computed(() => {
-  const text = markdownContent.value
-  const chineseChars = (text.match(/[\u4e00-\u9fa5]/g) || []).length
-  const englishWords = (text.match(/[a-zA-Z]+/g) || []).length
-  const numbers = (text.match(/\d+/g) || []).length
-  return chineseChars + englishWords + numbers
-})
-
 // 当前激活的目录项
 const activeHeadingId = ref('')
 
@@ -1492,16 +1276,51 @@ const exportMarkdown = () => {
   ElMessage.success('已导出 Markdown 文件')
 }
 
-// 导入 Markdown 文件
-const importMarkdown = (uploadFile: UploadFile) => {
+// 导入 Markdown 文件（带大文件优化）
+const importMarkdown = async (uploadFile: UploadFile) => {
   const file = uploadFile.raw
   if (!file) return
-  const reader = new FileReader()
-  reader.onload = (e) => {
-    markdownContent.value = e.target?.result as string
-    ElMessage.success('已导入 Markdown 文件')
+
+  // 文件大小限制（5MB）
+  const MAX_FILE_SIZE = 5 * 1024 * 1024
+  if (file.size > MAX_FILE_SIZE) {
+    ElMessage.error(`文件过大（超过 5MB），请导入较小的文件`)
+    return
   }
-  reader.readAsText(file)
+
+  // 显示 loading
+  isImporting.value = true
+  const loadingInstance = ElMessage.info({
+    message: '正在导入...',
+    duration: 0,
+  })
+
+  try {
+    // 使用 Promise 包装 FileReader
+    const content = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = (e) => resolve(e.target?.result as string)
+      reader.onerror = () => reject(new Error('文件读取失败'))
+      reader.readAsText(file)
+    })
+
+    // 分批处理大文件（避免 UI 阻塞）
+    if (file.size > 1024 * 1024) { // 大于 1MB
+      await new Promise(resolve => setTimeout(resolve, 100))
+    }
+
+    markdownContent.value = content
+    history.clear() // 清空历史记录
+
+    loadingInstance.close()
+    ElMessage.success(`已导入 Markdown 文件（${(file.size / 1024).toFixed(1)} KB）`)
+  } catch (error) {
+    loadingInstance.close()
+    ElMessage.error('导入失败，请重试')
+    console.error('导入错误:', error)
+  } finally {
+    isImporting.value = false
+  }
 }
 
 // 快速插入 Markdown 语法
@@ -1738,20 +1557,18 @@ const quickSyntaxButtons = [
       <DetailHeader :title="info.title"></DetailHeader>
     </div>
 
-    <!-- 顶部操作栏 -->
-    <div class="p-3 sm:p-4 rounded-2xl bg-white mb-3 sticky top-0 z-50 shadow-sm">
+    <!-- 全屏容器：包含操作栏 + 编辑区 + 预览区 -->
+    <div
+      ref="fullscreenTarget"
+      :class="{ 'fullscreen-mode': fullscreen.isFullscreen.value }"
+    >
+      <!-- 顶部操作栏 -->
+      <div class="p-3 sm:p-4 rounded-2xl bg-white mb-3 shadow-sm" :class="{ 'sticky top-0 z-50': !fullscreen.isFullscreen.value }">
       <div class="grid grid-cols-1 sm:flex sm:flex-wrap items-center gap-3 sm:gap-4">
         <!-- 主题选择 -->
         <div class="flex items-center gap-2">
           <span class="text-sm font-medium shrink-0">主题:</span>
-          <el-select v-model="info.currentTheme" placeholder="选择主题" style="width: 140px" class="flex-1">
-            <el-option
-              v-for="theme in themes"
-              :key="theme.id"
-              :label="theme.name"
-              :value="theme.id"
-            />
-          </el-select>
+          <ThemeSelector v-model="info.currentTheme" class="flex-1" />
         </div>
 
         <!-- 字体设置 -->
@@ -1772,31 +1589,94 @@ const quickSyntaxButtons = [
 
         <!-- 操作按钮 -->
         <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto ml-auto">
+          <!-- 撤销/重做 -->
+          <el-button
+            class="w-full sm:w-auto"
+            :disabled="!history.canUndo()"
+            @click="handleUndo"
+            title="撤销 (Ctrl+Z)"
+          >
+            ↩️
+          </el-button>
+          <el-button
+            class="w-full sm:w-auto"
+            :disabled="!history.canRedo()"
+            @click="handleRedo"
+            title="重做 (Ctrl+Y)"
+          >
+            ↪️
+          </el-button>
+
+          <!-- 主要操作 -->
           <el-button class="w-full sm:w-auto" @click="draftDrawerVisible = true">
             📁 草稿箱
           </el-button>
-          <el-button class="w-full sm:w-auto" @click="saveCurrentDraft">
-            💾 保存草稿
+          <el-button class="w-full sm:w-auto" @click="saveCurrentDraft" title="保存草稿 (Ctrl+S)">
+            💾 保存
           </el-button>
-          <a href="https://mjj.today/" target="_blank" rel="noopener noreferrer">
-            <el-button class="w-full sm:w-auto">🖼️ 图床</el-button>
-          </a>
-          <el-upload :auto-upload="false" :on-change="importMarkdown" :show-file-list="false">
-            <el-button class="w-full sm:w-auto">导入</el-button>
-          </el-upload>
-          <el-button class="w-full sm:w-auto" @click="exportMarkdown">导出</el-button>
-          <el-button class="w-full sm:w-auto" @click="resetContent">还原</el-button>
-          <el-button type="danger" plain class="w-full sm:w-auto" @click="clearContent">清空</el-button>
-          <el-button class="w-full sm:w-auto" @click="copyHTML">复制 HTML</el-button>
-          <el-button type="primary" class="w-full sm:w-auto" @click="copyRichText">复制到微信公众号</el-button>
+
+          <!-- 更多操作下拉菜单 -->
+          <el-dropdown split-button type="primary" class="w-full sm:w-auto" @click="copyRichText">
+            复制到公众号
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item @click="copyHTML">复制 HTML</el-dropdown-item>
+                <el-dropdown-item @click="handleExportPDF">导出 PDF (Ctrl+P)</el-dropdown-item>
+                <el-dropdown-item @click="handlePrintPreview">打印预览</el-dropdown-item>
+                <el-dropdown-item divided @click="shortcutsDialogRef?.open()">⌨️ 快捷键 (Ctrl+/)</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+
+          <!-- 工具按钮 -->
+          <el-button
+            class="w-full sm:w-auto"
+            :type="fullscreen.isFullscreen.value ? 'primary' : 'default'"
+            @click="fullscreen.toggle()"
+            :title="fullscreen.isFullscreen.value ? '退出全屏 (Esc)' : '全屏模式 (F11)'"
+          >
+            {{ fullscreen.isFullscreen.value ? '⛶' : '⛶' }}
+          </el-button>
+
+          <el-dropdown>
+            <el-button class="w-full sm:w-auto">
+              更多
+            </el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item>
+                  <a href="https://mjj.today/" target="_blank" rel="noopener noreferrer" class="block w-full h-full">
+                    🖼️ 图床
+                  </a>
+                </el-dropdown-item>
+                <el-dropdown-item @click="triggerImport">
+                  📥 导入 MD
+                </el-dropdown-item>
+                <el-dropdown-item @click="exportMarkdown">📤 导出 MD</el-dropdown-item>
+                <el-dropdown-item divided @click="resetContent">🔄 还原</el-dropdown-item>
+                <el-dropdown-item @click="clearContent" class="text-red-500">🗑️ 清空</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
         </div>
       </div>
 
       <!-- 字数统计 -->
-      <div class="mt-2 text-xs text-gray-400 flex justify-between">
-        <span>{{ markdownContent.length }} 字符 | {{ wordCount }} 词 | {{ currentDraftTitle }}</span>
-        <span v-if="saveTipVisible" class="text-green-500">草稿已保存到本地</span>
-      </div>
+      <WordCountDisplay
+        :content="markdownContent"
+        :draft-title="currentDraftTitle"
+        :save-tip-visible="saveTipVisible"
+      />
+
+      <!-- 隐藏的文件输入 -->
+      <el-upload
+        :auto-upload="false"
+        :on-change="importMarkdown"
+        :show-file-list="false"
+        style="display: none;"
+      >
+        <el-button ref="importButtonRef" class="hidden">导入</el-button>
+      </el-upload>
     </div>
 
     <!-- 主要内容区 -->
@@ -1858,6 +1738,7 @@ const quickSyntaxButtons = [
         </div>
       </div>
     </div>
+    </div><!-- 关闭全屏容器 -->
 
     <!-- 使用说明 -->
     <ToolDetail title="使用说明">
@@ -2025,6 +1906,9 @@ const quickSyntaxButtons = [
         </div>
       </div>
     </el-drawer>
+
+    <!-- 快捷键对话框 -->
+    <ShortcutsDialog ref="shortcutsDialogRef" />
   </div>
 </template>
 
@@ -2255,5 +2139,41 @@ const quickSyntaxButtons = [
 
 :deep(.el-drawer__body) {
   padding: 16px;
+}
+
+/* 隐藏元素 */
+.hidden {
+  display: none !important;
+}
+
+/* ========== 全屏模式样式 ========== */
+.fullscreen-mode {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  z-index: 9999 !important;
+  border-radius: 0 !important;
+  padding: 16px !important;
+  background: #f5f5f5;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 全屏模式下主要内容区占满剩余空间 */
+.fullscreen-mode > div:nth-child(2) {
+  flex: 1 !important;
+  min-height: 0 !important;
+}
+
+.fullscreen-mode .el-input-number {
+  width: 100px !important;
+}
+
+/* 隐藏外部元素 */
+:deep(.fullscreen-mode) + * {
+  display: none;
 }
 </style>

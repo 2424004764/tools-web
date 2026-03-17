@@ -811,3 +811,47 @@ export class QAModel extends Model {
     })
   }
 }
+
+// WeightMember 模型 - 体重记录成员模型
+export class WeightMemberModel extends Model {
+  constructor(db) {
+    super(db)
+    this.config = {
+      tableName: 'weight_members',
+      fields: {
+        id: { type: 'string', primaryKey: true },
+        uid: { type: 'string' },
+        name: { type: 'string' },
+        height: { type: 'real' },
+        avatarColor: { type: 'string', dbField: 'avatar_color' },
+        avatarEmoji: { type: 'string', dbField: 'avatar_emoji' },
+        isDefault: { type: 'integer', dbField: 'is_default' },
+        goalWeight: { type: 'real', dbField: 'goal_weight' },
+        createTime: { type: 'datetime', dbField: 'create_time' },
+        updateTime: { type: 'datetime', dbField: 'update_time' }
+      }
+    }
+  }
+}
+
+// WeightRecord 模型 - 体重记录模型
+export class WeightRecordModel extends Model {
+  constructor(db) {
+    super(db)
+    this.config = {
+      tableName: 'weight_records',
+      fields: {
+        id: { type: 'string', primaryKey: true },
+        uid: { type: 'string' },
+        memberId: { type: 'string', dbField: 'member_id' },
+        weight: { type: 'real' },
+        height: { type: 'real' },
+        note: { type: 'text' },
+        recordDate: { type: 'string', dbField: 'record_date' },
+        recordTime: { type: 'string', dbField: 'record_time' },
+        createTime: { type: 'datetime', dbField: 'create_time' },
+        updateTime: { type: 'datetime', dbField: 'update_time' }
+      }
+    }
+  }
+}

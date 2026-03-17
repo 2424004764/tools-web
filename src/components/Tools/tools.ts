@@ -944,6 +944,15 @@ export function getToolsCate() {
           cateId: 7,
           cate: '其他工具',
         },
+        {
+          id: 1,
+          title: '体重记录',
+          logo: '/images/logo/weight_tracker.png',
+          desc: '家庭成员体重追踪记录，支持趋势图表展示、BMI自动计算、数据统计分析',
+          url: '/weight-tracker/',
+          cateId: 7,
+          cate: '其他工具',
+        },
       ]
     },
     {

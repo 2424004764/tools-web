@@ -1059,4 +1059,14 @@ export const constantRoute = [
       description: '在线视频转GIF工具，支持选择视频片段、自定义帧率、尺寸和质量，纯前端处理保护隐私，生成后可直接下载'
     }
   },
+  {
+    path: '/weight-tracker',
+    component: () => import('@/components/Tools/WeightTracker/WeightTracker.vue'),
+    name: 'weight-tracker',
+    meta: {
+      title: "体重记录",
+      keywords: '体重记录,体重追踪,体重管理,BMI计算,体重曲线,健康记录,家庭成员体重',
+      description: '在线体重记录工具，支持家庭成员管理、体重趋势折线图展示、BMI自动计算、数据统计分析，帮助您科学管理健康体重'
+    }
+  },
 ]
