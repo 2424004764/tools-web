@@ -501,11 +501,10 @@ const sendMessage = async () => {
     return;
   }
 
-  // XSS 防护 - 转义 HTML 特殊字符
-  const safeContent = escapeHtml(inputMessage.value.trim());
+  const content = inputMessage.value.trim();
 
   // 保存到输入历史
-  inputHistory.value.push(safeContent);
+  inputHistory.value.push(content);
   if (inputHistory.value.length > 50) {
     inputHistory.value = inputHistory.value.slice(-50);
   }
@@ -515,7 +514,7 @@ const sendMessage = async () => {
   lastSendTime.value = now;
 
   const messageData = {
-    content: safeContent,
+    content: content,
     reply_to: replyingTo.value ? {
       id: replyingTo.value.id,
       nickname: replyingTo.value.nickname,
@@ -533,13 +532,6 @@ const sendMessage = async () => {
   } finally {
     isSending.value = false;
   }
-};
-
-// XSS 防护 - 转义 HTML 特殊字符
-const escapeHtml = (text: string) => {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
 };
 
 // 离开房间

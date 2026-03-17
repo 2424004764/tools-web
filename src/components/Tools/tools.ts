@@ -72,15 +72,6 @@ export function getToolsCate() {
         },
         {
           id: 1,
-          title: '在线密码管理',
-          logo: '/images/logo/password_book.png',
-          desc: '安全的密码存储工具，支持分组管理和备注，AES加密保护',
-          url: '/password-manager/',
-          cateId: 2,
-          cate: '开发运维',
-        },
-        {
-          id: 1,
           title: 'URL编码/解码',
           logo: '/images/logo/url.png',
           desc: 'URL在线编码解码工具（UrlEncode编码 和 UrlDecode解码）',
@@ -901,24 +892,6 @@ export function getToolsCate() {
         },
         {
           id: 1,
-          title: '待办事项',
-          logo: '/images/logo/todos.png',
-          desc: '在线待办事项管理，支持优先级设置、截止日期提醒，高效管理任务',
-          url: '/userinfo/todos/',
-          cateId: 7,
-          cate: '其他工具',
-        },
-        {
-          id: 1,
-          title: '简历管理',
-          logo: '/images/logo/resume.png',
-          desc: '在线简历制作与管理，支持多种模板，安全存储个人简历信息',
-          url: '/resume/',
-          cateId: 7,
-          cate: '其他工具',
-        },
-        {
-          id: 1,
           title: '公司对比',
           logo: '/images/logo/company_compare.png',
           desc: '公司待遇对比工具，支持双休情况、福利待遇、工资等多维度对比，历史记录存储',
@@ -941,15 +914,6 @@ export function getToolsCate() {
           logo: '/images/logo/phone_directory.png',
           desc: '各种国家机构、公共服务、紧急救援等常用电话号码查询服务',
           url: '/phone-directory/',
-          cateId: 7,
-          cate: '其他工具',
-        },
-        {
-          id: 1,
-          title: '体重记录',
-          logo: '/images/logo/weight_tracker.png',
-          desc: '家庭成员体重追踪记录，支持趋势图表展示、BMI自动计算、数据统计分析',
-          url: '/weight-tracker/',
           cateId: 7,
           cate: '其他工具',
         },
@@ -1075,6 +1039,49 @@ export function getToolsCate() {
           cateId: 12,
           cate: '好物网站'
         }
+      ]
+    },
+    {
+      id: 13,
+      title: '内容管理',
+      icon: '',
+      list: [
+        {
+          id: 1,
+          title: '在线密码管理',
+          logo: '/images/logo/password_book.png',
+          desc: '安全的密码存储工具，支持分组管理和备注，AES加密保护',
+          url: '/password-manager/',
+          cateId: 13,
+          cate: '内容管理',
+        },
+        {
+          id: 1,
+          title: '待办事项',
+          logo: '/images/logo/todos.png',
+          desc: '在线待办事项管理，支持优先级设置、截止日期提醒，高效管理任务',
+          url: '/userinfo/todos/',
+          cateId: 13,
+          cate: '内容管理',
+        },
+        {
+          id: 1,
+          title: '简历管理',
+          logo: '/images/logo/resume.png',
+          desc: '在线简历制作与管理，支持多种模板，安全存储个人简历信息',
+          url: '/resume/',
+          cateId: 13,
+          cate: '内容管理',
+        },
+        {
+          id: 1,
+          title: '体重记录',
+          logo: '/images/logo/weight_tracker.png',
+          desc: '家庭成员体重追踪记录，支持趋势图表展示、BMI自动计算、数据统计分析',
+          url: '/weight-tracker/',
+          cateId: 13,
+          cate: '内容管理',
+        },
       ]
     }
   ]
