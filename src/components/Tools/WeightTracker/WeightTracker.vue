@@ -17,9 +17,6 @@ const info = { title: '体重记录' }
 // Emoji 头像列表
 const AVATAR_EMOJIS = ['😀', '😊', '🙂', '😎', '🤗', '💪', '🏃', '⭐', '🌟', '❤️', '🎯', '🔥']
 
-// 快捷体重值
-const QUICK_WEIGHTS = [100, 105, 110, 115, 120, 125, 130, 135, 140, 145, 150, 155, 160]
-
 // 默认统计数据
 const defaultStatistics: WeightStatistics = {
   currentWeight: null,
@@ -143,7 +140,7 @@ const goalProgress = computed(() => {
   const diff = goal - current
   const isLosing = diff < 0
   const progress = Math.min(100, Math.abs((current - (currentMember.value.goalWeight || current)) / (currentMember.value.goalWeight || current)) * 100)
-  return { diff, isLosing, progress }
+  return { diff, isLosing, progress: Number(progress.toFixed(2)) }
 })
 
 const displayWeight = computed(() => {
@@ -253,15 +250,6 @@ const achievements = computed((): Achievement[] => {
   })
 
   return achievements
-})
-
-// 常用体重值（基于历史记录）
-const commonWeights = computed(() => {
-  if (records.value.length === 0) return QUICK_WEIGHTS
-  const weights = records.value.map(r => r.weight)
-  const uniqueWeights = [...new Set(weights)].sort((a, b) => a - b)
-  // 取最近的5个不同体重值
-  return uniqueWeights.slice(-5).reverse()
 })
 
 // 变化速度评价
@@ -416,29 +404,6 @@ const handleAddRecord = async () => {
     showRecordDialog.value = false
     // 重置表单
     recordForm.value.noteTag = ''
-    await refreshData()
-  } catch (error) {
-    ElMessage.error('记录失败')
-  }
-}
-
-// 快捷记录
-const quickRecord = async (weight: number) => {
-  if (!currentMemberId.value) {
-    ElMessage.warning('请先添加成员')
-    showMemberDialog.value = true
-    return
-  }
-  try {
-    const now = new Date()
-    await weightApi.createRecord({
-      memberId: currentMemberId.value,
-      weight: weight,
-      note: '',
-      recordDate: now.toISOString().split('T')[0],
-      recordTime: now.toTimeString().slice(0, 5)
-    })
-    ElMessage.success(`已记录 ${weight}斤`)
     await refreshData()
   } catch (error) {
     ElMessage.error('记录失败')
@@ -915,19 +880,6 @@ onMounted(async () => {
               </el-button>
             </div>
           </div>
-
-          <!-- 快捷记录 -->
-          <div v-if="commonWeights.length > 0" class="flex flex-wrap items-center gap-2">
-            <span class="text-xs text-gray-400 mr-1">快捷记录</span>
-            <button
-              v-for="weight in commonWeights.slice(0, 8)"
-              :key="weight"
-              class="quick-btn px-4 py-2 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 text-sm font-medium text-gray-700 hover:from-indigo-50 hover:to-purple-50 hover:border-indigo-200"
-              @click="quickRecord(weight)"
-            >
-              {{ weight }}斤
-            </button>
-          </div>
         </div>
       </div>
 
@@ -1325,10 +1277,6 @@ onMounted(async () => {
             </div>
             <div class="flex items-start gap-2">
               <span class="text-indigo-500">•</span>
-              <span><strong>快捷记录</strong>：常用体重一键记录，支持备注标签</span>
-            </div>
-            <div class="flex items-start gap-2">
-              <span class="text-indigo-500">•</span>
               <span><strong>趋势图表</strong>：折线图直观展示体重变化趋势</span>
             </div>
             <div class="flex items-start gap-2">
@@ -1410,19 +1358,6 @@ export default {
 
 .stat-card:hover::before {
   opacity: 1;
-}
-
-/* 快捷按钮动画 */
-.quick-btn {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.quick-btn:hover {
-  transform: scale(1.05);
-}
-
-.quick-btn:active {
-  transform: scale(0.95);
 }
 
 /* 记录项动画 */
