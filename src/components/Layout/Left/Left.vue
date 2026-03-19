@@ -121,9 +121,21 @@ const updateActive = async () => {
   // 精确匹配工具路径
   for (const cate of toolsStore.cates) {
     for (const tool of cate.list || []) {
-      if (rtrim(tool.url, "/") === path) {
+      const toolPath = rtrim(tool.url, "/");
+      if (toolPath === path) {
         defaultActive.value = `cate_${cate.id}`;
         return; // 找到匹配项后立即返回，避免继续匹配
+      }
+    }
+  }
+
+  // 前缀匹配：支持子页 URL 也保持父分类高亮（比如 /backend-docs/mongodb）
+  for (const cate of toolsStore.cates) {
+    for (const tool of cate.list || []) {
+      const toolPath = rtrim(tool.url, "/");
+      if (toolPath && path.startsWith(toolPath + "/")) {
+        defaultActive.value = `cate_${cate.id}`;
+        return;
       }
     }
   }
