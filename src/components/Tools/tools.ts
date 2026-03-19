@@ -515,6 +515,15 @@ export function getToolsCate() {
           url: '/land-area/',
           cateId: 4,
           cate: '教育学术'
+        },
+        {
+          id: 1,
+          title: '后端技能文档',
+          logo: '/images/logo/backend_docs.png',
+          desc: '系统化学习后端开发技术栈，包含MongoDB、Docker、Go、Redis等主流技术文档',
+          url: '/backend-docs/',
+          cateId: 4,
+          cate: '教育学术'
         }
       ]
     },

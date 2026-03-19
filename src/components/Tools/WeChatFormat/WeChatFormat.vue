@@ -51,6 +51,8 @@ hljs.registerLanguage('json', json)
 
 // ============ 类型定义 ============
 // 草稿数据结构
+type DraftStatus = 'unfinished' | 'completed'
+
 interface Draft {
   id: string
   title: string
@@ -59,6 +61,7 @@ interface Draft {
   fontSize: number
   lineHeight: number
   letterSpacing: number
+  status: DraftStatus
   createdAt: number
   updatedAt: number
 }
@@ -446,7 +449,10 @@ const loadDraftsList = () => {
   try {
     const saved = localStorage.getItem(DRAFTS_STORAGE_KEY)
     if (saved) {
-      draftList.value = JSON.parse(saved)
+      draftList.value = JSON.parse(saved).map((draft: any) => ({
+        ...draft,
+        status: draft.status || 'unfinished',
+      }))
       // 按更新时间倒序排列
       draftList.value.sort((a, b) => b.updatedAt - a.updatedAt)
     }
@@ -489,6 +495,7 @@ const createNewDraft = () => {
     fontSize: fontStyles.fontSize,
     lineHeight: fontStyles.lineHeight,
     letterSpacing: fontStyles.letterSpacing,
+    status: 'unfinished',
     createdAt: Date.now(),
     updatedAt: Date.now(),
   }
@@ -521,6 +528,17 @@ const saveCurrentDraft = () => {
     draftList.value.sort((a, b) => b.updatedAt - a.updatedAt)
     saveDraftsList()
     ElMessage.success('草稿已保存')
+  }
+}
+
+// 切换草稿状态（未完成 / 已完结）
+const toggleDraftStatus = (draftId: string) => {
+  const draftIndex = draftList.value.findIndex((d) => d.id === draftId)
+  if (draftIndex !== -1) {
+    const currentStatus = draftList.value[draftIndex].status
+    draftList.value[draftIndex].status = currentStatus === 'completed' ? 'unfinished' : 'completed'
+    saveDraftsList()
+    ElMessage.success(`草稿状态已标记为：${draftList.value[draftIndex].status === 'completed' ? '已完结' : '未完成'}`)
   }
 }
 
@@ -1873,6 +1891,9 @@ const quickSyntaxButtons = [
                 <p class="text-xs text-gray-400 mt-1 flex items-center flex-wrap gap-1.5">
                   <span>{{ formatTime(draft.updatedAt) }}</span>
                   <span class="px-1.5 py-0.5 rounded text-xs bg-gray-100 text-gray-600">{{ getThemeName(draft.currentTheme) }}</span>
+                  <span :class="draft.status === 'completed' ? 'bg-green-100 text-green-600' : 'bg-yellow-100 text-yellow-600'" class="px-1.5 py-0.5 rounded text-xs">
+                    {{ draft.status === 'completed' ? '已完结' : '未完成' }}
+                  </span>
                   <span v-if="draft.id === currentDraftId" class="text-blue-500">当前</span>
                 </p>
                 <p class="text-xs text-gray-400 mt-0.5">
@@ -1883,6 +1904,15 @@ const quickSyntaxButtons = [
 
             <!-- 操作按钮 -->
             <div class="flex gap-2 mt-3 pt-2 border-t border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
+              <el-button
+                size="small"
+                text
+                type="success"
+                @click.stop="toggleDraftStatus(draft.id)"
+                class="!text-xs"
+              >
+                {{ draft.status === 'completed' ? '标记为未完成' : '标记为已完结' }}
+              </el-button>
               <el-button
                 size="small"
                 text

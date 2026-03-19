@@ -1010,6 +1010,26 @@ export const constantRoute = [
     }
   },
   {
+    path: '/backend-docs',
+    component: () => import('@/components/Tools/BackendDocs/BackendDocs.vue'),
+    name: 'backend-docs',
+    meta: {
+      title: "后端技能文档",
+      keywords: '后端开发,技术文档,MongoDB,Docker,Go,Redis,Nginx,PostgreSQL,数据库教程',
+      description: '后端技能文档提供系统化的后端技术学习资料，涵盖MongoDB、Docker、Go、Redis、Nginx、PostgreSQL等主流技术栈，从基础概念到实战应用的完整学习路径'
+    }
+  },
+  {
+    path: '/backend-docs/:techId',
+    component: () => import('@/components/Tools/BackendDocs/TechDocViewerPage.vue'),
+    name: 'backend-docs-detail',
+    meta: {
+      title: "技术文档详情",
+      keywords: '后端技术,技术文档,编程教程',
+      description: '详细的后端技术文档，包含技术介绍、核心概念和实战案例'
+    }
+  },
+  {
     path: '/password-manager',
     component: () => import('@/components/Tools/PasswordManager/PasswordManager.vue'),
     name: 'password-manager',
