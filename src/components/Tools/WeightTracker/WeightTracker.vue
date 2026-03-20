@@ -155,9 +155,12 @@ const weightUnitText = computed(() => weightUnit.value === 'jin' ? '斤' : 'kg')
 
 const formattedRecords = computed(() => {
   if (!Array.isArray(records.value)) return []
-  // 按添加时间降序排序（最新的在前）
+  // 按记录日期降序排序（最新的在前），这样比较的是日期相邻的记录
   let filteredRecords = [...records.value].sort((a, b) => {
-    return new Date(b.createTime).getTime() - new Date(a.createTime).getTime()
+    const dateCompare = b.recordDate.localeCompare(a.recordDate)
+    if (dateCompare !== 0) return dateCompare
+    // 同一天按时间降序
+    return (b.recordTime || '23:59').localeCompare(a.recordTime || '23:59')
   })
 
   if (dateFilter.value && dateFilter.value.length === 2) {
@@ -167,11 +170,13 @@ const formattedRecords = computed(() => {
     filteredRecords = filteredRecords.filter(r => r.recordDate >= startDateStr && r.recordDate <= endDateStr)
   }
 
-  // 计算与上一条记录的变化
+  // 计算与下一条记录（更早的记录）的变化
   return filteredRecords.map((r, index) => {
     let change = 0
-    if (index > 0) {
-      change = r.weight - (filteredRecords[index - 1]?.weight || r.weight)
+    // 第一条（最新）不显示变化，与下一条（更早的）比较
+    const nextWeight = filteredRecords[index + 1]?.weight
+    if (nextWeight !== undefined) {
+      change = r.weight - nextWeight
     }
     return {
       ...r,
@@ -662,28 +667,27 @@ onMounted(async () => {
       <div class="glass-card-dark rounded-3xl p-4 sm:p-6 mb-6">
         <!-- 成员选择栏 -->
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-gray-100">
-          <div class="flex items-center gap-3 flex-wrap">
+          <div class="flex items-center gap-2 flex-wrap">
             <span class="text-sm font-medium text-gray-500">成员</span>
             <el-select v-model="currentMemberId" placeholder="选择成员" class="!w-32">
               <el-option v-for="member in members" :key="member.id" :label="member.name" :value="member.id" />
             </el-select>
-            <div v-if="currentMember" class="avatar-circle flex items-center justify-center w-10 h-10 rounded-full text-xl cursor-pointer" :style="{ backgroundColor: currentMember.avatarColor }">
+            <div v-if="currentMember" class="avatar-circle flex items-center justify-center w-9 h-9 rounded-full text-lg" :style="{ backgroundColor: currentMember.avatarColor }">
               {{ currentMember.avatarEmoji || currentMember.name.charAt(0) }}
             </div>
-            <el-button size="default" type="primary" @click="showMemberDialog = true">
+            <!-- 成员操作按钮组 -->
+            <template v-if="currentMember">
+              <el-button class="member-action-btn" size="small" @click="handleEditMember(currentMember)">
+                <el-icon><Edit /></el-icon>
+              </el-button>
+              <el-button class="member-action-btn !text-rose-400 hover:!text-rose-500 hover:!bg-rose-50" size="small" @click="handleDeleteMember(currentMember)">
+                <el-icon><Delete /></el-icon>
+              </el-button>
+            </template>
+            <el-divider direction="vertical" class="!mx-1" />
+            <el-button type="primary" @click="showMemberDialog = true">
               <el-icon><Plus /></el-icon> 添加成员
             </el-button>
-            <el-dropdown v-if="currentMember" trigger="click">
-              <el-button type="info" link>
-                <el-icon><MoreFilled /></el-icon>
-              </el-button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item @click="handleEditMember(currentMember)">编辑成员</el-dropdown-item>
-                  <el-dropdown-item divided @click="handleDeleteMember(currentMember)">删除成员</el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
           </div>
           <el-button link @click="showReportDialog = true" class="!text-indigo-500 !font-medium">
             <el-icon class="mr-1"><DataAnalysis /></el-icon> 数据报告
@@ -1310,9 +1314,9 @@ onMounted(async () => {
 </template>
 
 <script lang="ts">
-import { DataAnalysis, Loading, Plus, Share, MoreFilled, TrendCharts, Calendar, Edit, Delete } from '@element-plus/icons-vue'
+import { DataAnalysis, Loading, Plus, Share, TrendCharts, Calendar, Edit, Delete } from '@element-plus/icons-vue'
 export default {
-  components: { DataAnalysis, Loading, Plus, Share, MoreFilled, TrendCharts, Calendar, Edit, Delete }
+  components: { DataAnalysis, Loading, Plus, Share, TrendCharts, Calendar, Edit, Delete }
 }
 </script>
 
@@ -1488,8 +1492,28 @@ export default {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-.avatar-circle:hover {
-  transform: rotate(10deg) scale(1.1);
+/* 成员操作按钮样式 */
+.member-action-btn {
+  width: 32px !important;
+  height: 32px !important;
+  padding: 0 !important;
+  border-radius: 8px !important;
+  background: #f5f5f5 !important;
+  border: none !important;
+  color: #666 !important;
+  transition: all 0.2s ease;
+}
+
+.member-action-btn:hover {
+  background: #e0e0e0 !important;
+  color: #333 !important;
+  transform: scale(1.05);
+}
+
+/* 成员下拉菜单悬停提示 */
+.member-dropdown .avatar-circle:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
 }
 
 /* 主记录按钮样式 */

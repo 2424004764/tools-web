@@ -1089,4 +1089,14 @@ export const constantRoute = [
       description: '在线体重记录工具，支持家庭成员管理、体重趋势折线图展示、BMI自动计算、数据统计分析，帮助您科学管理健康体重'
     }
   },
+  {
+    path: '/logic-training',
+    component: () => import('@/components/Tools/LogicTraining/LogicTraining.vue'),
+    name: 'logic-training',
+    meta: {
+      title: "逻辑思维训练",
+      keywords: '逻辑思维,思维训练,逻辑推理,真话谎话,数学思维,序列推理,智力题,思维游戏',
+      description: '逻辑思维训练工具，包含真话谎话题、逻辑推理题、数学思维题、序列推理题等多种题型，支持难度选择和详细解析，锻炼逻辑思维能力和严谨性'
+    }
+  }
 ]

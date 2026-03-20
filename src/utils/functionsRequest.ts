@@ -7,11 +7,12 @@ import { handleHttpError } from './errorHandler'
 class FunctionsRequest {
   private instance: AxiosInstance
   private proxyUrl: string
+  private isRedirecting: boolean = false
 
   constructor() {
     // 获取代理URL，优先使用环境变量，否则使用默认值
     this.proxyUrl = import.meta.env.VITE_SITE_URL
-    
+
     this.instance = axios.create({
       baseURL: this.proxyUrl,
       timeout: 30000, // 30秒超时
@@ -41,15 +42,22 @@ class FunctionsRequest {
       (error) => {
         if (error.response) {
           const status = error.response.status
-          
+
           if (status === 401) {
+            // 防止多次触发
+            if (this.isRedirecting) return Promise.reject(error)
+
+            this.isRedirecting = true
+            ElMessage.closeAll() // 关闭所有已打开的消息
             ElMessage({
               message: '登录已过期，即将跳转到登录页',
               type: 'error',
-              duration: 2000,
-              showClose: true
+              duration: 1500,
+              showClose: false
             })
             setTimeout(() => {
+              // 清除本地token
+              localStorage.removeItem('TOKEN')
               window.location.href = '/login'
             }, 1500)
           } else {

@@ -95,9 +95,14 @@ export class Model {
       const dbField = fieldConfig.dbField || jsField
       if (data[dbField] !== undefined) {
         let value = data[dbField]
-        // 处理时间字段：添加 UTC 时区标记
-        if (fieldConfig.type === 'datetime' && value && typeof value === 'string' && !value.endsWith('Z')) {
-          value = value + 'Z'
+        // D1 CURRENT_TIMESTAMP 返回 UTC 时间，格式如 "2024-03-20 06:00:00"
+        // 转换为 ISO 格式并添加 UTC 标记，确保前端正确解析
+        if (fieldConfig.type === 'datetime' && value && typeof value === 'string') {
+          // 如果没有时区标记，转换为 ISO 格式（假设数据库存储的是 UTC 时间）
+          if (!value.endsWith('Z') && !value.includes('+') && !value.includes('T')) {
+            // 将 "2024-03-20 06:00:00" 格式转换为 "2024-03-20T06:00:00Z"
+            value = value.replace(' ', 'T') + 'Z'
+          }
         }
         mapped[jsField] = value
       }

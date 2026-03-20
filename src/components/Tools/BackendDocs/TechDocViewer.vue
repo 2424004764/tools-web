@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 
 // Props定义
 interface TechDocData {
@@ -34,6 +33,14 @@ const leftDrawerVisible = ref(false)
 // 当前激活的章节
 const activeChapter = ref('')
 
+// 返回顶部按钮显示状态
+const showBackToTop = ref(false)
+
+// 左侧目录的顶部偏移（动态）
+const sidebarTopOffset = ref(100)
+// 左侧目录的底部偏移
+const sidebarBottomOffset = ref(32)
+
 // 检测移动端
 const checkMobile = () => {
   isMobile.value = window.innerWidth < 768
@@ -52,6 +59,35 @@ const updateActiveChapter = () => {
         break
       }
     }
+  }
+
+  // 控制返回顶部按钮显示
+  showBackToTop.value = window.pageYOffset > 300
+
+  // 动态调整左侧目录顶部偏移：向上滚动时top值逐渐变成0
+  const scrollY = window.pageYOffset
+  const scrollThreshold = 100 // 滚动100px后top值变为0
+  const initialTop = 100 // 初始top值
+
+  if (scrollY < scrollThreshold) {
+    const progress = scrollY / scrollThreshold
+    sidebarTopOffset.value = initialTop * (1 - progress)
+  } else {
+    sidebarTopOffset.value = 0
+  }
+
+  // 动态调整左侧目录底部偏移，避免遮挡500px高度的评论区
+  const scrollPosition = window.pageYOffset + window.innerHeight
+  const pageHeight = document.documentElement.scrollHeight
+  const commentHeight = 600 // 评论区高度（增加一些缓冲）
+
+  // 当接近底部时，增加底部偏移量
+  const distanceToBottom = pageHeight - scrollPosition
+  if (distanceToBottom < commentHeight) {
+    // 增加额外的偏移量系数，让目录收缩得更明显
+    sidebarBottomOffset.value = 32 + (commentHeight - distanceToBottom) * 1.2
+  } else {
+    sidebarBottomOffset.value = 32
   }
 }
 
@@ -137,23 +173,40 @@ const renderContent = (item: any) => {
       return item
   }
 }
+
+// 返回顶部
+const backToTop = () => {
+  const scrollToTop = () => {
+    const currentScroll = window.pageYOffset
+    if (currentScroll > 0) {
+      window.requestAnimationFrame(scrollToTop)
+      window.scrollTo(0, currentScroll - currentScroll / 30) // 约30帧完成，更平滑的过渡
+    }
+  }
+  scrollToTop()
+}
 </script>
 
 <template>
   <div class="flex flex-col mt-3 flex-1">
-    <DetailHeader :title="`${techDoc.name} 技术文档`"></DetailHeader>
+    <!-- <DetailHeader :title="`${techDoc.name} 技术文档`"></DetailHeader> -->
 
     <!-- 主内容区 -->
     <div class="bg-white rounded-2xl flex-1 overflow-hidden">
       <div class="flex h-full relative">
-        <!-- 左侧目录 -->
-        <div
-          :class="[
-            'fixed left-[260px] top-24 h-[calc(100vh-6rem)] bg-gray-50 border-r border-gray-200 transition-all duration-300 z-20 overflow-y-auto',
-            isMobile ? (leftDrawerVisible ? 'w-80' : 'w-0') : 'w-80'
-          ]"
-        >
-          <div class="p-6 h-full overflow-y-auto">
+      <!-- 左侧目录 -->
+      <div
+        :class="[
+          'fixed left-[260px] bg-gray-50 border-r border-gray-200 transition-all duration-300 z-20 flex-shrink-0',
+          isMobile ? (leftDrawerVisible ? 'w-80' : 'w-0') : 'w-80'
+        ]"
+        :style="{
+          top: sidebarTopOffset + 'px',
+          height: `calc(100vh - ${sidebarTopOffset}px - ${sidebarBottomOffset}px)`,
+          overflowY: 'auto'
+        }"
+      >
+          <div class="p-6">
             <!-- 技术栈信息 -->
             <div class="mb-6">
               <div :class="['w-16 h-16 rounded-xl bg-gradient-to-br ' + techDoc.color + ' flex items-center justify-center mb-4 shadow-lg']">
@@ -182,7 +235,7 @@ const renderContent = (item: any) => {
         </div>
 
         <!-- 主内容区 -->
-        <div :class="isMobile ? 'flex-1' : 'ml-[620px] flex-1'">
+        <div :class="isMobile ? 'flex-1' : 'ml-[330px] flex-1'">
           <!-- 移动端目录按钮 -->
           <div v-if="isMobile" class="sticky top-0 bg-white border-b border-gray-200 p-4 z-10">
             <el-button @click="leftDrawerVisible = !leftDrawerVisible" type="text" class="p-2">
@@ -281,13 +334,26 @@ const renderContent = (item: any) => {
         </div>
       </div>
     </div>
+
+    <!-- 返回顶部按钮 -->
+    <Transition name="fade-slide">
+      <button
+        v-if="showBackToTop"
+        @click="backToTop"
+        class="fixed bottom-8 right-8 w-12 h-12 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-lg flex items-center justify-center hover:scale-110 z-50"
+        aria-label="返回顶部"
+        style="transition: all 0.3s ease;"
+      >
+        <el-icon :size="20"><CaretTop /></el-icon>
+      </button>
+    </Transition>
   </div>
 </template>
 
 <script lang="ts">
-import { ArrowLeft, Menu } from '@element-plus/icons-vue'
+import { ArrowLeft, Menu, CaretTop } from '@element-plus/icons-vue'
 export default {
-  components: { ArrowLeft, Menu }
+  components: { ArrowLeft, Menu, CaretTop }
 }
 </script>
 
@@ -342,5 +408,27 @@ table {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
+}
+
+/* 返回顶部按钮动画 */
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: all 0.3s ease;
+}
+
+.fade-slide-enter-from,
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>

@@ -490,19 +490,26 @@ const createNewDraft = () => {
   const newDraft: Draft = {
     id: `draft_${Date.now()}`,
     title: `未命名草稿 ${draftList.value.length + 1}`,
-    content: markdownContent.value,
-    currentTheme: info.currentTheme,
-    fontSize: fontStyles.fontSize,
-    lineHeight: fontStyles.lineHeight,
-    letterSpacing: fontStyles.letterSpacing,
+    content: '',
+    currentTheme: 'literary',
+    fontSize: 16,
+    lineHeight: 1.8,
+    letterSpacing: 0,
     status: 'unfinished',
     createdAt: Date.now(),
     updatedAt: Date.now(),
   }
   draftList.value.unshift(newDraft)
   saveDraftsList()
-  setCurrentDraft(newDraft.id)
-  ElMessage.success('草稿已创建')
+  // 重置编辑区到初始内容
+  markdownContent.value = INITIAL_CONTENT
+  info.currentTheme = 'literary'
+  fontStyles.fontSize = 16
+  fontStyles.lineHeight = 1.8
+  fontStyles.letterSpacing = 0
+  currentDraftId.value = ''
+  localStorage.removeItem(CURRENT_DRAFT_ID_KEY)
+  // 不显示成功提示，因为已重置编辑区
 }
 
 // 保存当前草稿
@@ -601,6 +608,25 @@ const confirmEditTitle = (draft: Draft) => {
 const cancelEditTitle = () => {
   editingDraftId.value = ''
   editingDraftTitle.value = ''
+}
+
+// 复制草稿
+const copyDraft = (draft: Draft) => {
+  const newDraft: Draft = {
+    id: `draft_${Date.now()}`,
+    title: `${draft.title} (副本)`,
+    content: draft.content,
+    currentTheme: draft.currentTheme,
+    fontSize: draft.fontSize,
+    lineHeight: draft.lineHeight,
+    letterSpacing: draft.letterSpacing,
+    status: 'unfinished',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  }
+  draftList.value.unshift(newDraft)
+  saveDraftsList()
+  ElMessage.success(`已复制草稿：${draft.title}`)
 }
 
 // 格式化时间
@@ -1904,6 +1930,15 @@ const quickSyntaxButtons = [
 
             <!-- 操作按钮 -->
             <div class="flex gap-2 mt-3 pt-2 border-t border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
+              <el-button
+                size="small"
+                text
+                type="info"
+                @click.stop="copyDraft(draft)"
+                class="!text-xs"
+              >
+                复制
+              </el-button>
               <el-button
                 size="small"
                 text
