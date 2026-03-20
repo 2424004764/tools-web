@@ -524,6 +524,15 @@ export function getToolsCate() {
           url: '/backend-docs/',
           cateId: 4,
           cate: '教育学术'
+        },
+        {
+          id: 1,
+          title: '逻辑思维训练',
+          logo: '/images/logo/logic_training.png',
+          desc: '真话谎话题、逻辑推理题、数学思维题、序列推理题等多种题型，锻炼逻辑思维能力和严谨性',
+          url: '/logic-training/',
+          cateId: 4,
+          cate: '教育学术'
         }
       ]
     },
