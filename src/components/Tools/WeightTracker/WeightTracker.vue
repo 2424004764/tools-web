@@ -409,7 +409,14 @@ const handleAddRecord = async () => {
     showRecordDialog.value = false
     // 重置表单
     recordForm.value.noteTag = ''
+    // 先关闭对话框，再刷新数据，提升用户体验
+    // 使用 nextTick 确保 DOM 更新后再刷新数据
+    await nextTick()
     await refreshData()
+    // 强制重新渲染图表
+    if (chartInstance) {
+      await fetchChartData()
+    }
   } catch (error) {
     ElMessage.error('记录失败')
   }
@@ -425,6 +432,10 @@ const handleDeleteRecord = async (record: WeightRecord) => {
     await weightApi.deleteRecord(record.id)
     ElMessage.success('删除成功')
     await refreshData()
+    // 强制重新渲染图表
+    if (chartInstance) {
+      await fetchChartData()
+    }
   } catch (error) {
     // 用户取消
   }
@@ -447,6 +458,10 @@ const handleUpdateRecord = async () => {
     ElMessage.success('更新成功')
     showEditDialog.value = false
     await refreshData()
+    // 强制重新渲染图表
+    if (chartInstance) {
+      await fetchChartData()
+    }
   } catch (error) {
     ElMessage.error('更新失败')
   }
@@ -547,7 +562,7 @@ const renderChart = () => {
   if (!chartInstance) return
   if (!chartData.value || !Array.isArray(chartData.value) || chartData.value.length === 0) {
     chartInstance.clear()
-    chartInstance.setOption({ xAxis: { data: [] }, yAxis: {}, series: [] })
+    chartInstance.setOption({ xAxis: { data: [] }, yAxis: {}, series: [] }, { notMerge: true })
     return
   }
 
@@ -558,7 +573,8 @@ const renderChart = () => {
     smooth: true,
     data: chartData.value.map(d => [d.date, d.weight]),
     itemStyle: { color: currentMember.value?.avatarColor || '#409EFF' },
-    lineStyle: { width: 3 }
+    lineStyle: { width: 3 },
+    animationDuration: 500
   }]
 
   // 目标体重线
@@ -569,7 +585,8 @@ const renderChart = () => {
       data: chartData.value.map(d => [d.date, currentMember.value!.goalWeight]),
       itemStyle: { color: '#E6A23C' },
       lineStyle: { type: 'dashed', width: 2 },
-      showSymbol: false
+      showSymbol: false,
+      animationDuration: 500
     })
   }
 
@@ -607,7 +624,8 @@ const renderChart = () => {
     },
     series
   }
-  chartInstance.setOption(option)
+  // 使用 notMerge: true 强制完全替换图表数据，确保实时更新
+  chartInstance.setOption(option, { notMerge: true })
 }
 
 const handleResize = () => {
