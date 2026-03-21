@@ -139,7 +139,30 @@ const goalProgress = computed(() => {
   const goal = currentMember.value.goalWeight
   const diff = goal - current
   const isLosing = diff < 0
-  const progress = Math.min(100, Math.abs((current - (currentMember.value.goalWeight || current)) / (currentMember.value.goalWeight || current)) * 100)
+
+  // 如果目标体重等于当前体重，进度100%
+  if (Math.abs(diff) < 0.1) {
+    return { diff: 0, isLosing, progress: 100 }
+  }
+
+  // 使用历史最高/最低体重作为起始体重来计算进度
+  let startWeight = current
+  if (isLosing && statistics.value.maxWeight) {
+    // 减重：使用历史最高体重作为起始点
+    startWeight = statistics.value.maxWeight
+  } else if (!isLosing && statistics.value.minWeight) {
+    // 增重：使用历史最低体重作为起始点
+    startWeight = statistics.value.minWeight
+  }
+
+  const totalChangeNeeded = Math.abs(startWeight - goal)
+  const currentChange = Math.abs(startWeight - current)
+
+  let progress = 0
+  if (totalChangeNeeded > 0) {
+    progress = Math.min(100, (currentChange / totalChangeNeeded) * 100)
+  }
+
   return { diff, isLosing, progress: Number(progress.toFixed(2)) }
 })
 

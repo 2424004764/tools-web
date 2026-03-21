@@ -74,7 +74,7 @@ const lastTypingTime = ref(0);
 const isTyping = ref(false);
 
 // 临时模式（消息不存储）
-const ephemeralMode = ref(true);
+const ephemeralMode = ref(false);
 const isUpdatingEphemeralMode = ref(false); // 防止循环广播
 const showEphemeralModeInfo = ref(false);
 
@@ -651,6 +651,23 @@ const sendMessage = async () => {
     ElMessage.error("发送失败，请重试");
   } finally {
     isSending.value = false;
+
+    // 发送消息后立即清除正在输入状态
+    if (presenceChannel) {
+      presenceChannel.track({
+        user_id: currentUserId.value,
+        nickname: nickname.value,
+        online_at: new Date().toISOString(),
+        typing: false,
+      });
+    }
+
+    // 清除输入定时器
+    if (typingTimeout.value) {
+      clearTimeout(typingTimeout.value);
+      typingTimeout.value = null;
+    }
+    isTyping.value = false;
   }
 };
 

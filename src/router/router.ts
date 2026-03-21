@@ -660,6 +660,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/gomoku-online',
+    component: () => import('@/components/Tools/GomokuOnline/GomokuOnline.vue'),
+    name: 'gomoku-online',
+    meta: {
+      title: "双人对战五子棋",
+      keywords: '五子棋,双人对战五子棋,在线五子棋,对战五子棋,联机五子棋',
+      description: '在线双人对战五子棋游戏，支持房间匹配、实时对战、悔棋和聊天功能，与好友在线对弈',
+    }
+  },
+  {
     path: '/aihub',
     component: () => import('@/components/Tools/AiHub/AiHub.vue'),
     name: 'aihub',
