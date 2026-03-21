@@ -788,6 +788,15 @@ export function getToolsCate() {
           cateId: 11,
           cate: '趣味互动',
         },
+        {
+          id: 14,
+          title: '双人对战五子棋',
+          logo: '/images/logo/gomoku_online.png',
+          desc: '在线双人对战五子棋，支持房间匹配、实时对战、悔棋和聊天功能',
+          url: '/gomoku-online/',
+          cateId: 11,
+          cate: '趣味互动',
+        },
       ]
     },
     {

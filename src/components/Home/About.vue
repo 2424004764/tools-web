@@ -38,16 +38,20 @@ const siteAddr = ref(import.meta.env.VITE_MY_SITE_ADDR || '')
       <p>
           <el-text>站长个人网站：<el-link type="primary" target="_blank" :href="siteAddr" class="">{{siteAddr}}</el-link></el-text>
         </p>
-        <p class="mt-2">
+         <p class="mt-2">
           <el-text>公众号：<el-text type="primary" class="font-medium">《全栈缝合车间》</el-text></el-text>
         </p>
       </template>
+
+      <h1 class="text-2xl font-bold mt-6 mb-6">友情链接</h1>
+      <p>
+        <el-text>linux.do：<el-link href="https://linux.do" type="primary" target="_blank">https://linux.do</el-link></el-text>
+      </p>
+       
     </div>
   </div>
 </template>
 
 <style scoped>
-.title{
-  /* rgb(51, 54, 57) */
-}
+/* 友链页面样式，暂时无独立类 */
 </style>
