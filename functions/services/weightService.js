@@ -576,10 +576,11 @@ export class WeightService {
 
       const records = await this.recordModel.findAll(queryBuilder)
 
-      // 按日期分组，取每天的平均值或最后一条记录
+      // 按日期分组，取每天体重最高的记录
       const dailyData = new Map()
       for (const record of records) {
-        if (!dailyData.has(record.recordDate)) {
+        const existing = dailyData.get(record.recordDate)
+        if (!existing || record.weight > existing.weight) {
           dailyData.set(record.recordDate, { date: record.recordDate, weight: record.weight, memberId: record.memberId })
         }
       }
