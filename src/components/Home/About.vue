@@ -38,6 +38,9 @@ const siteAddr = ref(import.meta.env.VITE_MY_SITE_ADDR || '')
       <p>
           <el-text>站长个人网站：<el-link type="primary" target="_blank" :href="siteAddr" class="">{{siteAddr}}</el-link></el-text>
         </p>
+        <p class="mt-2">
+          <el-text>公众号：<el-text type="primary" class="font-medium">《全栈缝合车间》</el-text></el-text>
+        </p>
       </template>
     </div>
   </div>
