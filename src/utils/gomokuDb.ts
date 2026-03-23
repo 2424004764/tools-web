@@ -22,6 +22,7 @@ export interface GomokuGame {
   winner: string | null;
   win_type: string | null;
   last_move_at: string;
+  move_history?: string; // 存储落子历史记录的 JSON 字符串
   created_at: string;
   updated_at: string;
 }
@@ -101,7 +102,7 @@ export const gomokuDb = {
   /**
    * 更新游戏状态
    */
-  async updateGame(roomId: string, updates: Partial<GomokuGame>): Promise<void> {
+  async updateGame(roomId: string, updates: Omit<Partial<GomokuGame>, 'move_history'> & { move_history?: string | null }): Promise<void> {
     try {
       const updateData: any = {
         ...updates,
@@ -209,12 +210,14 @@ export const gomokuDb = {
   /**
    * 落子
    */
-  async makeMove(roomId: string, board: number[][], nextPlayer: PlayerColor, _lastMove: { row: number; col: number }): Promise<void> {
+  async makeMove(roomId: string, board: number[][], nextPlayer: PlayerColor, moveHistory: Array<{row: number; col: number; player: PlayerColor; number: number}>): Promise<void> {
     try {
-      await this.updateGame(roomId, {
+      const updateData: any = {
         board,
         current_player: nextPlayer,
-      });
+        move_history: JSON.stringify(moveHistory),
+      };
+      await this.updateGame(roomId, updateData);
     } catch (error) {
       console.error('落子失败:', error);
       throw error;
@@ -264,6 +267,7 @@ export const gomokuDb = {
         game_status: 'playing',
         winner: null,
         win_type: null,
+        move_history: null, // 清空落子历史记录
       });
     } catch (error) {
       console.error('重新开始游戏失败:', error);

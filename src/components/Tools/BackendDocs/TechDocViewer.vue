@@ -1,17 +1,25 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { computed, ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 // Props定义
+interface TechDocChapterChild {
+  id: string
+  title: string
+}
+
+interface TechDocChapter {
+  id: string
+  title: string
+  content: any[]
+  children?: TechDocChapterChild[]
+}
+
 interface TechDocData {
   name: string
   icon: string
   color: string
-  chapters: {
-    id: string
-    title: string
-    content: any[]
-  }[]
+  chapters: TechDocChapter[]
 }
 
 interface Props {
@@ -33,6 +41,13 @@ const leftDrawerVisible = ref(false)
 // 当前激活的章节
 const activeChapter = ref('')
 
+const tocAnchorIds = computed(() =>
+  props.techDoc.chapters.flatMap(chapter => [
+    chapter.id,
+    ...(chapter.children?.map(child => child.id) ?? [])
+  ])
+)
+
 // 返回顶部按钮显示状态
 const showBackToTop = ref(false)
 
@@ -48,18 +63,21 @@ const checkMobile = () => {
 
 // 检测当前可见章节
 const updateActiveChapter = () => {
-  const chapters = props.techDoc.chapters
+  const anchorIds = tocAnchorIds.value
+  let nextActiveChapter = anchorIds[0] || ''
 
-  for (let i = chapters.length - 1; i >= 0; i--) {
-    const element = document.getElementById(chapters[i].id)
+  for (let i = anchorIds.length - 1; i >= 0; i--) {
+    const element = document.getElementById(anchorIds[i])
     if (element) {
       const rect = element.getBoundingClientRect()
       if (rect.top <= 100) { // 章节顶部距离视口顶部100px以内
-        activeChapter.value = chapters[i].id
+        nextActiveChapter = anchorIds[i]
         break
       }
     }
   }
+
+  activeChapter.value = nextActiveChapter
 
   // 控制返回顶部按钮显示
   showBackToTop.value = window.pageYOffset > 300
@@ -119,10 +137,17 @@ const scrollToChapter = (chapterId: string) => {
   }
 }
 
+const hasActiveChild = (chapter: TechDocChapter) =>
+  chapter.children?.some(child => child.id === activeChapter.value) ?? false
+
+const isChapterActive = (chapter: TechDocChapter) =>
+  activeChapter.value === chapter.id || hasActiveChild(chapter)
+
 onMounted(async () => {
   await nextTick()
   window.requestAnimationFrame(() => {
     checkMobile()
+    updateActiveChapter()
   })
   window.addEventListener('resize', checkMobile)
   window.addEventListener('scroll', updateActiveChapter)
@@ -216,20 +241,39 @@ const backToTop = () => {
             </div>
 
             <!-- 章节目录 -->
-            <nav class="space-y-2">
-              <button
-                v-for="chapter in techDoc.chapters"
-                :key="chapter.id"
-                :class="[
-                  'w-full text-left px-3 py-2 rounded-lg transition-all duration-200 text-sm',
-                  activeChapter === chapter.id
-                    ? 'bg-green-100 text-green-700 font-medium'
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-800'
-                ]"
-                @click="scrollToChapter(chapter.id)"
-              >
-                {{ chapter.title }}
-              </button>
+            <nav class="space-y-3">
+              <div v-for="chapter in techDoc.chapters" :key="chapter.id" class="space-y-1">
+                <button
+                  :class="[
+                    'w-full text-left px-3 py-2 rounded-lg transition-all duration-200 text-sm',
+                    isChapterActive(chapter)
+                      ? 'bg-green-100 text-green-700 font-medium'
+                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-800'
+                  ]"
+                  @click="scrollToChapter(chapter.id)"
+                >
+                  {{ chapter.title }}
+                </button>
+
+                <div
+                  v-if="chapter.children?.length"
+                  class="ml-3 pl-3 border-l border-gray-200 space-y-1"
+                >
+                  <button
+                    v-for="child in chapter.children"
+                    :key="child.id"
+                    :class="[
+                      'w-full text-left px-2 py-1.5 rounded-md transition-all duration-200 text-xs leading-5',
+                      activeChapter === child.id
+                        ? 'bg-white text-green-700 font-medium shadow-sm'
+                        : 'text-gray-500 hover:bg-white hover:text-gray-700'
+                    ]"
+                    @click="scrollToChapter(child.id)"
+                  >
+                    {{ child.title }}
+                  </button>
+                </div>
+              </div>
             </nav>
           </div>
         </div>
@@ -270,7 +314,12 @@ const backToTop = () => {
                 <div class="prose prose-gray max-w-none space-y-6">
                   <div v-for="(item, index) in chapter.content" :key="index" class="content-block">
                     <!-- 标题 -->
-                    <h3 v-if="item.type === 'heading'" class="text-xl font-semibold text-gray-800 mt-6 mb-3">
+                    <h3
+                      v-if="item.type === 'heading'"
+                      :id="item.id"
+                      class="doc-subsection-heading text-xl font-semibold text-gray-800 mt-6 mb-3 scroll-mt-20"
+                      tabindex="-1"
+                    >
                       {{ renderContent(item) }}
                     </h3>
 
@@ -387,7 +436,10 @@ table {
 /* 取消锚点聚焦自动黑色边框 */
 .chapter-section:focus,
 .chapter-section:focus-visible,
-.chapter-section:target {
+.chapter-section:target,
+.doc-subsection-heading:focus,
+.doc-subsection-heading:focus-visible,
+.doc-subsection-heading:target {
   outline: none !important;
   box-shadow: none !important;
 }
