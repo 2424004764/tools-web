@@ -16,13 +16,12 @@ const info = reactive({ title: '双人对战五子棋' })
 const boardSize = 15
 const cellSize = 32
 const boardPadding = 16
+const leftCoordinatePadding = 32
 const coordinatePadding = 20 // 坐标标签额外空间
 
 const boardStyle = computed(() => ({
-  width: `${boardSize * cellSize + boardPadding * 2 + coordinatePadding}px`,
-  height: `${boardSize * cellSize + boardPadding * 2 + coordinatePadding}px`,
-  paddingLeft: `${coordinatePadding}px`,
-  paddingTop: `${coordinatePadding}px`
+  width: `${boardSize * cellSize + leftCoordinatePadding}px`,
+  height: `${boardSize * cellSize + coordinatePadding}px`
 }))
 
 /* ========== 游戏状态 ========== */
@@ -45,10 +44,6 @@ const showQrcode = ref(false)
 const showChat = ref(true)
 const showMoveNumbers = ref(true)
 const soundEnabled = ref(true)
-
-// 用于判断订阅回调是否应该跳过更新（避免覆盖自己的更新）
-// 记录自己最后落子的时间
-const myLastMoveTime = ref(0)
 
 const myNicknames = ref<string[]>([])
 const currentUserId = ref(`user-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`)
@@ -95,6 +90,25 @@ let movesChannel: any = null
 const route = useRoute()
 
 /* ========== 工具函数 ========== */
+// 从棋盘状态重建落子历史记录（用于备用恢复）
+const rebuildHistoryFromBoard = (boardData: number[][]) => {
+  const history: Array<{ row: number; col: number; player: 'black' | 'white'; number: number }> = []
+  let moveNumber = 1
+  // 假设黑棋先手，按从左到右、从上到下的顺序扫描
+  for (let row = 0; row < boardSize; row++) {
+    for (let col = 0; col < boardSize; col++) {
+      if (boardData[row][col] !== 0) {
+        const player = boardData[row][col] === 1 ? 'black' : 'white'
+        history.push({ row, col, player, number: moveNumber })
+        moveNumber++
+      }
+    }
+  }
+  return history
+}
+
+void rebuildHistoryFromBoard
+
 const generateRoomId = () => {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
   let result = ''
@@ -234,9 +248,6 @@ const makeMove = async (row: number, col: number) => {
   // 播放落子音效
   playMoveSound()
 
-  // 记录落子时间，用于订阅回调判断
-  myLastMoveTime.value = Date.now()
-
   // 检查胜负
   if (checkWin(row, col, playerValue)) {
     const winColor = movingPlayer
@@ -268,7 +279,7 @@ const makeMove = async (row: number, col: number) => {
   // 更新游戏状态到数据库
   // 创建纯净的数组副本，避免 Vue 响应式属性干扰
   const cleanBoard = JSON.parse(JSON.stringify(board.value))
-  await gomokuDb.makeMove(roomId.value, cleanBoard, nextPlayer, { row, col })
+  await gomokuDb.makeMove(roomId.value, cleanBoard, nextPlayer, moveHistory.value)
 }
 
 const requestUndo = async () => {
@@ -408,6 +419,19 @@ const joinRoom = async () => {
     whitePlayer.value = game.white_player
     spectatorCount.value = game.spectator_count || 0
 
+    // 从数据库恢复落子历史记录（如果有的话）
+    if ((game as any).move_history && (game as any).move_history !== 'null' && (game as any).move_history !== '') {
+      try {
+        const parsedHistory = JSON.parse((game as any).move_history)
+        if (Array.isArray(parsedHistory) && parsedHistory.length > 0) {
+          moveHistory.value = parsedHistory
+        }
+      } catch (e) {
+        // 解析失败，保持空历史
+      }
+    }
+    // 如果数据库没有存储历史记录，保持空历史（不使用 rebuildHistoryFromBoard，因为它不能恢复真实顺序）
+
     // 判断角色（根据更新后的游戏状态）
     if (game.black_player === nickname.value) {
       myRole.value = 'player'
@@ -424,58 +448,61 @@ const joinRoom = async () => {
     gameChannel = gomokuDb.subscribeToGame(normalizedRoomId, async (payload: any) => {
       const updatedGame = payload.new as GomokuGame
 
-      // 检查是否是自己刚刚发起的落子更新（1秒内）
-      const timeSinceMyMove = Date.now() - myLastMoveTime.value
-      const isMyRecentMove = timeSinceMyMove < 1000
+      const newBoard = gomokuDb.parseBoard(updatedGame.board)
+      const stoneCount = newBoard.flat().filter(cell => cell !== 0).length
 
-      // 只有当不是自己刚刚发起的更新时，才同步状态
-      if (!isMyRecentMove) {
-        const newBoard = gomokuDb.parseBoard(updatedGame.board)
+      // 检查棋盘是否被重置（stoneCount 为 0 表示游戏确实被清空了）
+      const isGameRestarted = stoneCount === 0 || (gameStatus.value === 'waiting' && updatedGame.game_status === 'waiting' && stoneCount === 0)
 
-        // 检查棋盘是否被重置（通过比较子数或检查棋盘为空）
-        const stoneCount = newBoard.flat().filter(cell => cell !== 0).length
-        const isGameRestarted = stoneCount < moveHistory.value.length || stoneCount <= 1
-        if (isGameRestarted) {
-          moveHistory.value = []
-          lastMove.value = null
-        }
-
-        // 计算落子差异，添加到历史记录
-        for (let row = 0; row < boardSize; row++) {
-          for (let col = 0; col < boardSize; col++) {
-            if (newBoard[row][col] !== 0 && board.value[row][col] === 0) {
-              // 这是一个新落子
-              const player = newBoard[row][col] === 1 ? 'black' : 'white'
-              const moveNumber = moveHistory.value.length + 1
-              moveHistory.value.push({ row, col, player, number: moveNumber })
-
-              // 播放落子音效
-              playMoveSound()
+      // 从数据库恢复落子历史记录
+      if (isGameRestarted) {
+        moveHistory.value = []
+        lastMove.value = null
+      } else if (updatedGame.move_history && updatedGame.move_history !== 'null' && updatedGame.move_history !== '') {
+        try {
+          const parsedHistory = JSON.parse(updatedGame.move_history)
+          if (Array.isArray(parsedHistory) && parsedHistory.length > 0) {
+            // 只在数据库历史记录比本地长时才更新（避免用旧数据覆盖新数据）
+            if (parsedHistory.length >= moveHistory.value.length) {
+              moveHistory.value = parsedHistory
             }
           }
-        }
-
-        board.value = newBoard
-        currentPlayer.value = updatedGame.current_player
-        gameStatus.value = updatedGame.game_status
-        winner.value = updatedGame.winner
-        blackPlayer.value = updatedGame.black_player
-        whitePlayer.value = updatedGame.white_player
-        spectatorCount.value = updatedGame.spectator_count || 0
-
-        // 如果游戏状态变为 finished，显示消息
-        if (updatedGame.game_status === 'finished') {
-          nextTick(() => {
-            if (updatedGame.winner === '平局') {
-              ElMessage.info('游戏平局！')
-            } else if (updatedGame.winner) {
-              ElMessage.success(`${updatedGame.winner}获胜！`)
-            }
-          })
+        } catch (e) {
+          // 解析失败时保留本地数据
         }
       }
-      // 否则跳过自己的落子更新
+      // 如果数据库没有 move_history，保留本地的 moveHistory（不覆盖）
 
+      // 检测新落子并播放音效
+      const oldBoard = board.value
+      for (let row = 0; row < boardSize; row++) {
+        for (let col = 0; col < boardSize; col++) {
+          if (newBoard[row][col] !== 0 && oldBoard[row][col] === 0) {
+            playMoveSound()
+            break
+          }
+        }
+      }
+
+      // 更新游戏状态
+      board.value = newBoard
+      currentPlayer.value = updatedGame.current_player
+      gameStatus.value = updatedGame.game_status
+      winner.value = updatedGame.winner
+      blackPlayer.value = updatedGame.black_player
+      whitePlayer.value = updatedGame.white_player
+      spectatorCount.value = updatedGame.spectator_count || 0
+
+      // 如果游戏状态变为 finished，显示消息
+      if (updatedGame.game_status === 'finished') {
+        nextTick(() => {
+          if (updatedGame.winner === '平局') {
+            ElMessage.info('游戏平局！')
+          } else if (updatedGame.winner) {
+            ElMessage.success(`${updatedGame.winner}获胜！`)
+          }
+        })
+      }
     })
     undoChannel = gomokuDb.subscribeToUndoRequests(normalizedRoomId, async (payload: any) => {
       const request = payload.new as UndoRequest
@@ -883,26 +910,27 @@ onUnmounted(() => {
           <div class="relative" :style="boardStyle">
             <!-- 棋盘背景 -->
             <div class="absolute inset-0 bg-amber-100 rounded-lg shadow-inner" :style="{
-              left: `${coordinatePadding}px`,
+              left: `${leftCoordinatePadding}px`,
               top: `${coordinatePadding}px`,
-              width: `${boardSize * cellSize + boardPadding * 2}px`,
-              height: `${boardSize * cellSize + boardPadding * 2}px`
+              width: `${boardSize * cellSize}px`,
+              height: `${boardSize * cellSize}px`
             }"></div>
 
             <!-- 坐标标签 -->
             <div class="absolute" :style="{
               top: `0px`,
-              left: `${coordinatePadding + boardPadding}px`,
-              width: `${boardSize * cellSize}px`,
-              height: `16px`
+              left: `${leftCoordinatePadding + boardPadding}px`,
+              width: `${(boardSize - 1) * cellSize}px`,
+              height: `${coordinatePadding}px`
             }">
               <div
                 v-for="col in boardSize"
                 :key="`col-label-${col-1}`"
-                class="absolute text-xs text-gray-600 font-medium"
+                class="absolute w-8 text-center text-xs text-gray-600 font-medium"
                 :style="{
-                  left: `${(col-1) * cellSize + cellSize/2}px`,
-                  transform: 'translateX(-50%)'
+                  left: `${(col-1) * cellSize}px`,
+                  top: '50%',
+                  transform: 'translate(-50%, -50%)'
                 }"
               >
                 {{ getCoordinateLabel(col-1, 'col') }}
@@ -912,15 +940,17 @@ onUnmounted(() => {
             <div class="absolute" :style="{
               top: `${coordinatePadding + boardPadding}px`,
               left: `0px`,
-              width: `16px`,
-              height: `${boardSize * cellSize}px`
+              width: `${leftCoordinatePadding}px`,
+              height: `${(boardSize - 1) * cellSize}px`
             }">
               <div
                 v-for="row in boardSize"
                 :key="`row-label-${row-1}`"
-                class="absolute text-xs text-gray-600 font-medium"
+                class="absolute text-right text-xs text-gray-600 font-medium"
                 :style="{
-                  top: `${(row-1) * cellSize + cellSize/2}px`,
+                  top: `${(row-1) * cellSize}px`,
+                  right: '4px',
+                  width: `${leftCoordinatePadding - 4}px`,
                   transform: 'translateY(-50%)'
                 }"
               >
@@ -930,9 +960,9 @@ onUnmounted(() => {
 
             <!-- 网格线 -->
             <svg class="absolute" :style="{
-              left: `${coordinatePadding}px`,
+              left: `${leftCoordinatePadding}px`,
               top: `${coordinatePadding}px`
-            }" :width="`${boardSize * cellSize + boardPadding * 2}`" :height="`${boardSize * cellSize + boardPadding * 2}`" :viewBox="`0 0 ${boardSize * cellSize + boardPadding * 2} ${boardSize * cellSize + boardPadding * 2}`">
+            }" :width="`${boardSize * cellSize}`" :height="`${boardSize * cellSize}`" :viewBox="`0 0 ${boardSize * cellSize} ${boardSize * cellSize}`">
               <!-- 垂直线 -->
               <line
                 v-for="i in boardSize"
@@ -970,7 +1000,7 @@ onUnmounted(() => {
               class="absolute"
               :style="{
                 top: `${coordinatePadding + boardPadding + (row-1) * cellSize - cellSize/2}px`,
-                left: `${coordinatePadding + boardPadding - cellSize/2}px`,
+                left: `${leftCoordinatePadding + boardPadding - cellSize/2}px`,
                 width: `${boardSize * cellSize}px`,
                 height: `${cellSize}px`
               }"

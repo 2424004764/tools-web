@@ -83,6 +83,17 @@ const cates: Cate[] = [
       },
     ],
   },
+  {
+    title: 'AI资源',
+    list: [
+      {
+        title: '提示词仓库',
+        url: 'https://docs.google.com/spreadsheets/d/1ngoQOhJqdguwNAilCl1joNwTje7FWWN9WiI2bo5VhpU/edit?gid=2093180351#gid=2093180351&range=A1',
+        rating: 4.8,
+        desc: '基于 Google Sheets 维护的提示词资源库，适合集中查看和整理各类 AI 提示词、场景模板与灵感示例，便于检索、收藏和复用'
+      },
+    ],
+  },
 ]
 </script>
 

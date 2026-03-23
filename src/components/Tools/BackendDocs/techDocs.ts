@@ -6,6 +6,10 @@ export interface TechDocData {
   chapters: {
     id: string
     title: string
+    children?: {
+      id: string
+      title: string
+    }[]
     content: any[]
   }[]
 }
@@ -1341,6 +1345,201 @@ log_bin = mysql-bin
 binlog_format = ROW
 binlog_row_image = FULL
 expire_logs_days = 7`
+        }
+      ]
+    },
+    {
+      id: 'request-flow',
+      title: '从请求到 MySQL',
+      children: [
+        { id: 'request-flow-app', title: '应用请求到数据库的链路' },
+        { id: 'request-flow-mysql', title: 'MySQL 内部执行链路' },
+        { id: 'request-flow-select', title: 'SELECT 语句执行' },
+        { id: 'request-flow-write', title: '写语句执行' },
+        { id: 'request-flow-buffer-pool', title: 'Buffer Pool 高频考点' },
+        { id: 'request-flow-buffer-pool-params', title: 'Buffer Pool 关键参数' },
+        { id: 'request-flow-buffer-pool-hit-rate', title: '命中率怎么看' },
+        { id: 'request-flow-interview', title: '常见问题' }
+      ],
+      content: [
+        {
+          type: 'heading',
+          id: 'request-flow-app',
+          text: '应用请求到数据库的链路'
+        },
+        {
+          type: 'paragraph',
+          text: '面试里如果被问“一个请求是怎么查到 MySQL 的”，建议按“应用侧链路 + MySQL 内部执行链路”来回答，表达会更完整。'
+        },
+        {
+          type: 'list',
+          items: [
+            '<strong>1. 请求进入应用</strong>：浏览器或客户端请求先到 Nginx / 网关，再转发到应用服务。',
+            '<strong>2. 业务层组织 SQL</strong>：Controller -> Service -> DAO/Repository，最终由 ORM 或数据库驱动拼出 SQL。',
+            '<strong>3. 连接池获取连接</strong>：应用通常不会每次现建连接，而是从 HikariCP、Druid 等连接池中拿一个可用连接，减少 TCP 建连和鉴权开销。',
+            '<strong>4. SQL 发往 MySQL</strong>：驱动通过 MySQL 协议把 SQL 发给服务端，随后进入 MySQL 内部执行流程。'
+          ]
+        },
+        {
+          type: 'heading',
+          id: 'request-flow-mysql',
+          text: 'MySQL 内部执行链路'
+        },
+        {
+          type: 'list',
+          items: [
+            '<strong>连接器</strong>：负责 TCP 连接、用户认证、权限校验、线程分配。连接建立后，当前会话的权限信息会被缓存到这个连接里。',
+            '<strong>查询缓存</strong>：这是老版本常见考点，但 MySQL 8.0 已移除 Query Cache，面试中最好主动说明这一点。',
+            '<strong>解析器</strong>：先做词法分析，再做语法分析，识别 SQL 关键字、表名、字段名，生成语法树；语法错误一般在这一层报出。',
+            '<strong>预处理器</strong>：检查表和列是否存在，处理别名、权限、类型转换等语义问题。',
+            '<strong>优化器</strong>：基于成本选择执行计划，例如走哪个索引、是否使用覆盖索引、是否索引下推、Join 顺序怎么排。',
+            '<strong>执行器</strong>：按照执行计划调用存储引擎接口，真正把读写请求交给 InnoDB 去完成。'
+          ]
+        },
+        {
+          type: 'heading',
+          id: 'request-flow-select',
+          text: '一条 SELECT 语句会发生什么'
+        },
+        {
+          type: 'list',
+          items: [
+            '<strong>先拿执行计划</strong>：执行器根据优化器选出的索引和访问路径开始查找数据。',
+            '<strong>先查 Buffer Pool</strong>：InnoDB 会先看目标数据页是否已经在 Buffer Pool 中，命中则直接读内存，未命中才去磁盘读取 16KB 页到内存。',
+            '<strong>可能发生回表</strong>：如果先通过二级索引定位到主键，再根据主键去聚簇索引取整行，这就是回表；覆盖索引可以避免这一步。',
+            '<strong>一致性读依赖 MVCC</strong>：普通快照读会结合 undo log 找到当前事务可见的数据版本，减少读写冲突。',
+            '<strong>结果返回客户端</strong>：存储引擎把记录交给执行器，执行器再把结果集返回给应用。'
+          ]
+        },
+        {
+          type: 'heading',
+          id: 'request-flow-write',
+          text: '一条 UPDATE/INSERT/DELETE 语句会发生什么'
+        },
+        {
+          type: 'list',
+          items: [
+            '<strong>先定位记录并加锁</strong>：更新前需要找到目标行，必要时加行锁或间隙锁，防止并发问题。',
+            '<strong>修改 Buffer Pool 中的数据页</strong>：真正的数据页通常先在内存里修改，修改后的页称为脏页。',
+            '<strong>写 Undo Log</strong>：用于事务回滚和 MVCC，保证旧版本可追溯。',
+            '<strong>写 Redo Log</strong>：这是 WAL 思想，先顺序写日志，再择机刷数据页，保证崩溃恢复能力。',
+            '<strong>写 Binlog</strong>：Server 层记录逻辑日志，主要用于主从复制和数据恢复。',
+            '<strong>两阶段提交</strong>：提交事务时要协调 redo log 和 binlog，避免一个成功一个失败导致主从或恢复结果不一致。'
+          ]
+        },
+        {
+          type: 'heading',
+          id: 'request-flow-buffer-pool',
+          text: 'Buffer Pool 高频考点'
+        },
+        {
+          type: 'list',
+          items: [
+            '<strong>它是什么</strong>：InnoDB 的核心内存区域，用来缓存数据页、索引页、undo 页等，MySQL 快很大程度依赖它。',
+            '<strong>为什么能提升性能</strong>：很多查询会反复访问热点页，命中 Buffer Pool 就不需要磁盘随机 I/O。',
+            '<strong>脏页不是坏页</strong>：脏页只是“内存已改、磁盘未刷”的页，后台线程会在合适时机刷盘。',
+            '<strong>和 Redo Log 的关系</strong>：Buffer Pool 负责加速读写，Redo Log 负责持久化保障；一个偏性能，一个偏可靠性。',
+            '<strong>命中率低的原因</strong>：Buffer Pool 太小、全表扫描过多、索引设计差、热点数据分散，都会让磁盘 I/O 上升。'
+          ]
+        },
+        {
+          type: 'heading',
+          id: 'request-flow-buffer-pool-params',
+          text: 'Buffer Pool 关键参数'
+        },
+        {
+          type: 'list',
+          items: [
+            '<strong>innodb_buffer_pool_size</strong>：最核心的参数，决定 Buffer Pool 总大小。线上调优先看它，通常建议分配为机器内存的 50% 到 80%，专用数据库机器可以更高。常见参考值：8GB 内存可先给 4GB~6GB，16GB 内存可先给 8GB~12GB，32GB 内存可先给 16GB~24GB；如果命中率长期低于 99%，优先评估继续增大它。',
+            '<strong>innodb_buffer_pool_instances</strong>：把 Buffer Pool 切成多个实例，降低并发争用。一般在 Buffer Pool 较大时再配置，例如 1GB 以上可以考虑拆分。',
+            '<strong>innodb_buffer_pool_chunk_size</strong>：控制在线调整 Buffer Pool 时的伸缩粒度，和动态扩容、缩容有关。',
+            '<strong>innodb_old_blocks_pct / innodb_old_blocks_time</strong>：控制 LRU 链表里 old 区域比例和停留时间，降低大查询或全表扫描把热点页挤掉的风险。',
+            '<strong>innodb_buffer_pool_dump_at_shutdown / innodb_buffer_pool_load_at_startup</strong>：关闭时导出热点页、启动时预热加载，减少重启后的冷启动问题。'
+          ]
+        },
+        {
+          type: 'heading',
+          id: 'request-flow-buffer-pool-hit-rate',
+          text: '命中率怎么看'
+        },
+        {
+          type: 'paragraph',
+          text: 'Buffer Pool 命中率常用来判断内存是否足够。面试里可以直接说：如果命中率长期小于 99%，通常说明 Buffer Pool 偏小，应优先评估增大 innodb_buffer_pool_size。'
+        },
+        {
+          type: 'code',
+          lang: 'sql',
+          code: `-- 查看 Buffer Pool 相关状态
+SHOW GLOBAL STATUS LIKE 'Innodb_buffer_pool_read%';
+
+-- 关键指标说明
+-- Innodb_buffer_pool_reads: 需要从磁盘读取页的次数
+-- Innodb_buffer_pool_read_requests: 逻辑读请求次数
+
+-- 常见命中率公式
+-- hit rate = 1 - Innodb_buffer_pool_reads / Innodb_buffer_pool_read_requests
+
+-- 如果命中率长期低于 99%，通常优先考虑增大 innodb_buffer_pool_size
+-- 但也要同时排查：
+-- 1. 是否存在大量全表扫描
+-- 2. 是否索引设计不合理
+-- 3. 是否有大查询把热点页挤出缓存`
+        },
+        {
+          type: 'heading',
+          id: 'request-flow-interview',
+          text: '常见问题'
+        },
+        {
+          type: 'list',
+          items: [
+            '<strong>为什么写请求提交成功了，数据页可能还没落盘？</strong>：因为 MySQL 采用 WAL，提交时更关键的是 redo log 落盘，不是马上把脏页刷盘。',
+            '<strong>Redo Log 和 Binlog 有什么区别？</strong>：Redo Log 是 InnoDB 层的物理日志，用于崩溃恢复；Binlog 是 Server 层的逻辑日志，用于复制和恢复。',
+            '<strong>为什么需要两阶段提交？</strong>：为了保证 redo log 和 binlog 一致，否则主库恢复和从库复制可能出现数据不一致。',
+            '<strong>为什么查询有时明明建了索引还是慢？</strong>：可能是优化器判断全表扫描成本更低，也可能发生隐式转换、范围过大、回表过多、统计信息不准。',
+            '<strong>连接池为什么重要？</strong>：如果每个请求都重新建 MySQL 连接，TCP 握手、认证和线程创建的开销会非常明显，吞吐量会下降。',
+            '<strong>为什么不建议把 max_connections 配得特别大？</strong>：连接数太大不等于吞吐更高，反而会带来线程切换、内存占用和锁竞争，很多场景应该优先用连接池和限流。',
+            '<strong>为什么全表扫描会拖慢数据库？</strong>：它会读取大量无效数据页，挤占 Buffer Pool，增加磁盘 I/O，还可能影响其他热点查询。',
+            '<strong>为什么回表会慢？</strong>：二级索引先拿到主键，再去聚簇索引取整行，会多一次甚至多次随机访问；如果能做成覆盖索引，通常会快很多。',
+            '<strong>为什么主键建议尽量短且递增？</strong>：InnoDB 的主键就是聚簇索引，主键越大，二级索引也越大；递增主键还能减少页分裂，写入更稳定。',
+            '<strong>为什么自增主键通常比 UUID 更适合 InnoDB？</strong>：UUID 更随机，容易导致页分裂、索引离散和缓存命中率下降，而自增主键写入更顺序。',
+            '<strong>为什么慢查询不一定只是“没加索引”？</strong>：也可能是 SQL 写法差、返回列太多、排序分组不合理、Join 顺序不好、热点竞争严重。',
+            '<strong>为什么 count(*) 有时也会慢？</strong>：InnoDB 不会像某些引擎那样直接维护精确总行数，大表上 count(*) 仍可能需要扫描较多数据或索引页。',
+            '<strong>为什么短事务比长事务更安全？</strong>：长事务会让 undo log 无法及时清理，增加锁持有时间，放大死锁概率，也会拖慢 purge。',
+            '<strong>为什么会发生死锁？</strong>：本质是不同事务以不同顺序获取资源，互相等待；常见做法是统一加锁顺序、缩小事务范围、尽快提交。',
+            '<strong>为什么 RR 隔离级别下还能解决幻读问题？</strong>：InnoDB 在当前读场景下通过 next-key lock，把记录锁和间隙锁结合起来控制范围插入。',
+            '<strong>为什么刷脏页会影响性能？</strong>：刷盘本身会占用 I/O 带宽，如果脏页堆积过多，后台集中刷盘会让查询和写入都抖动。',
+            '<strong>为什么有时候 CPU 不高，数据库还是很慢？</strong>：瓶颈可能在磁盘 I/O、锁等待、日志刷盘、网络往返或者连接排队，不一定是 CPU。'
+          ]
+        }
+      ]
+    },
+    {
+      id: 'common-errors',
+      title: '常见报错',
+      content: [
+        {
+          type: 'heading',
+          text: '常见报错'
+        },
+        {
+          type: 'list',
+          items: [
+            '<strong>Too many connections</strong>：连接数打满。常见原因是连接池过大、应用连接未释放、慢查询导致连接长时间占用；先看 `max_connections`、连接池配置和慢查询。',
+            '<strong>Access denied for user</strong>：用户名、密码、认证插件、来源 IP 或权限不对。先确认账号是否允许从当前主机连接，再检查授权和密码。',
+            '<strong>Unknown database / Table does not exist / Unknown column</strong>：库、表或字段不存在，或者环境、大小写、发布版本不一致；优先检查 DDL 是否已执行到当前环境。',
+            '<strong>Lock wait timeout exceeded</strong>：锁等待超时，通常是事务太长、更新顺序不一致、索引缺失导致锁范围扩大；先找阻塞会话和未提交事务。',
+            '<strong>Deadlock found when trying to get lock</strong>：死锁。重点排查两个事务的加锁顺序、事务范围和索引是否命中，必要时让业务做重试。',
+            '<strong>Duplicate entry for key PRIMARY/UNIQUE</strong>：主键或唯一索引冲突。常见于并发插入、幂等设计不足、业务唯一约束遗漏。',
+            '<strong>Data too long for column</strong>：写入值超过字段长度，常见于 `varchar` 长度不够、字符集变化后字节数变大、上游未做长度校验。',
+            '<strong>Cannot add or update a child row: a foreign key constraint fails</strong>：外键约束失败，通常是主表记录不存在、删除顺序不对，或关联字段类型不一致。',
+            '<strong>Lost connection to MySQL server during query</strong>：查询时间过长、结果集过大、网络不稳定、`wait_timeout` 太小都可能触发；先区分是执行超时还是连接被中断。',
+            '<strong>MySQL server has gone away</strong>：连接已断开，常见于连接空闲过久、报文过大、服务端重启；要结合 `wait_timeout`、`max_allowed_packet` 和应用重连机制一起看。',
+            '<strong>Packet too large / max_allowed_packet</strong>：单次请求包太大，常见于批量插入过大、BLOB/TEXT 上传过大；可以拆批次，或适当增大 `max_allowed_packet`。',
+            '<strong>Incorrect string value</strong>：字符集或排序规则不匹配，典型场景是表不是 `utf8mb4` 却写入 emoji；检查库表连接三者的字符集是否一致。',
+            '<strong>Out of memory / sort buffer / temporary table 相关报错</strong>：通常不是单纯“机器内存不够”，也可能是并发太高、排序分组过大、临时表过多；要结合 SQL 和参数一起看。',
+            '<strong>磁盘满或只读报错</strong>：例如表空间、binlog、临时目录写满，或者实例进入只读状态；这类问题优先看磁盘、挂载和日志目录，而不是先改 SQL。'
+          ]
         }
       ]
     },
