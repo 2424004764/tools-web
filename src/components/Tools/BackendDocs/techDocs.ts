@@ -5386,6 +5386,402 @@ CREATE TABLE users (
 }
 
 // 技术文档数据映射
+export const tcpUdpDoc: TechDocData = {
+  name: 'TCP/UDP',
+  icon: 'N',
+  color: 'from-sky-400 to-cyan-600',
+  chapters: [
+    {
+      id: 'intro',
+      title: 'TCP 与 UDP 是什么',
+      content: [
+        {
+          type: 'heading',
+          text: '它们属于哪一层'
+        },
+        {
+          type: 'paragraph',
+          text: 'TCP 和 UDP 都属于传输层协议，位于应用层和网络层之间。应用层把数据交给传输层，传输层负责在进程之间传输数据，再由 IP 协议负责把数据送到目标主机。简单说，IP 解决“发到哪台机器”，TCP/UDP 解决“发给机器上的哪个进程，以及怎么发”。'
+        },
+        {
+          type: 'heading',
+          text: 'TCP 是什么'
+        },
+        {
+          type: 'paragraph',
+          text: 'TCP（Transmission Control Protocol，传输控制协议）是一种面向连接、可靠、基于字节流的传输层协议。它在正式传输数据前需要先建立连接，传输过程中会保证数据按序到达、无重复、无丢失，并通过确认应答、重传、流量控制、拥塞控制等机制来提升可靠性。'
+        },
+        {
+          type: 'list',
+          items: [
+            '<strong>面向连接</strong>：通信前先建立连接，通信结束后显式关闭连接',
+            '<strong>可靠传输</strong>：有确认、超时重传、校验、排序、去重等机制',
+            '<strong>面向字节流</strong>：应用看到的是连续字节，不关心底层分成几个报文段',
+            '<strong>全双工通信</strong>：同一条连接上双方都可以同时发送和接收数据'
+          ]
+        },
+        {
+          type: 'heading',
+          text: 'UDP 是什么'
+        },
+        {
+          type: 'paragraph',
+          text: 'UDP（User Datagram Protocol，用户数据报协议）是一种无连接、尽力而为、面向报文的传输层协议。发送端不需要先建立连接，直接把报文发出去；协议本身不保证一定送达、不保证顺序、不保证去重，因此开销更小、时延更低。'
+        },
+        {
+          type: 'list',
+          items: [
+            '<strong>无连接</strong>：不需要像 TCP 一样建立和维护连接状态',
+            '<strong>面向报文</strong>：应用发多少，UDP 就按一个独立数据报发送多少',
+            '<strong>头部开销小</strong>：首部只有 8 字节，适合对实时性敏感的场景',
+            '<strong>协议本身不保证可靠性</strong>：如果业务需要可靠性，通常在应用层自行补偿'
+          ]
+        }
+      ]
+    },
+    {
+      id: 'tcp-vs-udp',
+      title: 'TCP 和 UDP 的核心区别',
+      content: [
+        {
+          type: 'heading',
+          text: '对比表'
+        },
+        {
+          type: 'table',
+          headers: ['维度', 'TCP', 'UDP'],
+          rows: [
+            ['连接方式', '面向连接', '无连接'],
+            ['可靠性', '可靠传输，保证到达顺序和完整性', '尽力而为，不保证到达、不保证顺序'],
+            ['数据形式', '字节流', '报文'],
+            ['首部开销', '较大，通常 20 字节起', '较小，8 字节'],
+            ['传输速度', '相对更慢，控制机制更多', '相对更快，协议开销更低'],
+            ['是否有拥塞/流量控制', '有', '协议本身没有'],
+            ['典型场景', 'HTTP/HTTPS、MySQL、SSH、文件传输', 'DNS、音视频通话、直播、游戏实时消息']
+          ]
+        },
+        {
+          type: 'heading',
+          text: '什么时候选 TCP'
+        },
+        {
+          type: 'list',
+          items: [
+            '不能丢数据，比如订单、支付、数据库同步、文件传输',
+            '要求严格顺序，比如消息必须按发送顺序处理',
+            '更关注正确性而不是极致低延迟'
+          ]
+        },
+        {
+          type: 'heading',
+          text: '什么时候选 UDP'
+        },
+        {
+          type: 'list',
+          items: [
+            '更关注实时性，允许少量丢包，比如语音通话、直播、在线游戏',
+            '一问一答、报文短小，比如 DNS 查询',
+            '业务可以自己实现重试、纠错、排序、丢包恢复等策略'
+          ]
+        },
+        {
+          type: 'heading',
+          text: '一句话理解'
+        },
+        {
+          type: 'paragraph',
+          text: 'TCP 更像“打电话”，先建立通话，再保证双方稳定交流；UDP 更像“寄明信片”，直接发出，快，但不保证一定到、也不保证按顺序到。'
+        }
+      ]
+    },
+    {
+      id: 'tcp-handshake',
+      title: 'TCP 三次握手',
+      children: [
+        { id: 'tcp-handshake-process', title: '三次握手过程' },
+        { id: 'tcp-handshake-why-three', title: '为什么必须三次' },
+        { id: 'tcp-handshake-state', title: '状态变化' }
+      ],
+      content: [
+        {
+          type: 'heading',
+          id: 'tcp-handshake-process',
+          text: '三次握手过程'
+        },
+        {
+          type: 'paragraph',
+          text: '三次握手的目标是让通信双方都确认两件事：第一，对方具备发送和接收能力；第二，双方都已经准备好使用某个初始序列号开始通信。'
+        },
+        {
+          type: 'code',
+          lang: 'text',
+          code: `第一次握手：
+客户端先发消息给服务端，说“我想和你建立连接”。
+这个请求报文叫 SYN 报文，你可以先把它理解成“发起连接请求”。
+如果从报文字段来看，这一步会携带 SYN 标志位，以及客户端自己的初始序列号 seq=x。
+
+第二次握手：
+服务端收到后，会回复客户端两层意思：
+第一层是“我收到你的请求了”；
+第二层是“我也同意建立连接”。
+所以服务端发回的是 SYN + ACK 报文。
+如果从报文字段来看，这一步会带上服务端自己的初始序列号 seq=y，同时用 ack=x+1 表示“客户端刚才那条请求我已经收到了”。
+
+第三次握手：
+客户端再回复服务端，说“我也收到你的回复了，那我们现在就正式开始通信”。
+这一步发送的是 ACK 确认报文。
+如果从报文字段来看，这一步通常会带上 ack=y+1，表示“服务端发来的建立连接响应，我也已经收到了”。
+
+三次握手完成后，双方都确认了两件事：
+1. 对方能正常收发消息；
+2. 双方都已经准备好，可以正式传输数据。`
+        },
+        {
+          type: 'heading',
+          text: '三次握手时序图'
+        },
+        {
+          type: 'code',
+          lang: 'text',
+          code: `客户端                              服务端
+  |                                   |
+  | ---- SYN：我想建立连接 -----------> |
+  |                                   |
+  | <--- SYN + ACK：收到，也同意 ------ |
+  |                                   |
+  | ---- ACK：收到，那开始通信 -------> |
+  |                                   |
+  | ======== 连接建立，开始传输 ======== |
+  |                                   |`
+        },
+        {
+          type: 'heading',
+          id: 'tcp-handshake-why-three',
+          text: '为什么必须是三次，不是两次'
+        },
+        {
+          type: 'list',
+          items: [
+            '两次握手只能保证客户端知道“服务端收到了我的请求”，但不能保证服务端知道“客户端收到了我的确认”。',
+            '第三次握手的本质是客户端告诉服务端：你的确认我已经收到了，你现在可以放心发数据。',
+            '如果只有两次，服务端可能会因为旧的、滞留的连接请求而误以为连接已经建立，造成资源浪费甚至错误连接。'
+          ]
+        },
+        {
+          type: 'heading',
+          id: 'tcp-handshake-state',
+          text: '连接建立时的典型状态变化'
+        },
+        {
+          type: 'code',
+          lang: 'text',
+          code: `客户端：
+CLOSED -> SYN_SENT -> ESTABLISHED
+
+服务端：
+LISTEN -> SYN_RCVD -> ESTABLISHED`
+        },
+        {
+          type: 'heading',
+          text: '握手阶段解决了什么问题'
+        },
+        {
+          type: 'list',
+          items: [
+            '确认双方的收发能力正常',
+            '同步双方的初始序列号，后续可靠传输依赖它',
+            '协商一些连接参数，比如窗口大小、MSS、是否支持 SACK 等'
+          ]
+        }
+      ]
+    },
+    {
+      id: 'tcp-wave',
+      title: 'TCP 四次挥手',
+      children: [
+        { id: 'tcp-wave-process', title: '四次挥手过程' },
+        { id: 'tcp-wave-why-four', title: '为什么是四次' },
+        { id: 'tcp-wave-timewait', title: 'TIME_WAIT 的意义' }
+      ],
+      content: [
+        {
+          type: 'heading',
+          id: 'tcp-wave-process',
+          text: '四次挥手过程'
+        },
+        {
+          type: 'paragraph',
+          text: 'TCP 是全双工协议，双方都可以独立发送数据，所以关闭连接时通常需要分别关闭两个方向的数据流。也正因为如此，连接断开通常是四次挥手。'
+        },
+        {
+          type: 'code',
+          lang: 'text',
+          code: `第一次挥手：
+主动关闭方先发消息给对方，说“我这边已经没有数据要发了，准备关闭连接”。
+这一步发送的是 FIN 报文，你可以先把它理解成“关闭请求”。
+如果从报文字段来看，这一步会携带 FIN 标志位，以及当前的序列号 seq=u。
+但要注意，这里只是表示“我不再发送数据了”，并不代表“我也不能接收数据了”。
+
+第二次挥手：
+被动关闭方收到后，会先回复一句：“我知道了，你这边可以先停止发送了。”
+这一步发送的是 ACK 确认报文。
+如果从报文字段来看，这一步会带上 ack=u+1，表示“你刚才发来的关闭请求我已经收到了”。
+这时连接还没有完全断开，因为被动关闭方可能还有数据没发完。
+
+第三次挥手：
+等被动关闭方也把自己的数据发送完之后，它会再发消息给主动关闭方，说“我这边也没有数据要发了，也准备关闭连接”。
+这一步发送的是 FIN 报文。
+如果从报文字段来看，这一步会携带 FIN 标志位，以及它自己的序列号 seq=v。
+
+第四次挥手：
+主动关闭方收到后，最后再回复一句：“我知道了，你这边也可以关闭了。”
+这一步发送的是 ACK 确认报文。
+如果从报文字段来看，这一步通常会带上 ack=v+1，表示“你最后发来的关闭请求我已经收到了”。
+
+四次挥手完成后，双方都确认了一件事：
+连接的两个方向都已经没有数据要发送了，这条连接可以正式关闭。`
+        },
+        {
+          type: 'heading',
+          text: '四次挥手时序图'
+        },
+        {
+          type: 'code',
+          lang: 'text',
+          code: `主动关闭方                            被动关闭方
+    |                                      |
+    | ---- FIN：我这边准备关闭 -----------> |
+    |                                      |
+    | <--- ACK：收到，你先别发了 ---------- |
+    |                                      |
+    | <--- FIN：我这边也准备关闭 ---------- |
+    |                                      |
+    | ---- ACK：收到，那就正式关闭 -------> |
+    |                                      |
+    | ======== 连接关闭流程完成 ============ |
+    |                                      |`
+        },
+        {
+          type: 'heading',
+          id: 'tcp-wave-why-four',
+          text: '为什么通常是四次，不是三次'
+        },
+        {
+          type: 'list',
+          items: [
+            '收到对方的 FIN 时，只能说明“对方不再发送数据了”，并不代表本方也立刻没有数据可发。',
+            '因此 ACK 和 FIN 往往需要拆开：先确认对方要关闭，再等本方数据发完后单独发送 FIN。',
+            '在特殊情况下，如果被动关闭方刚好没有数据要发送，第二次和第三次可以合并，但本质上仍然是两个动作。'
+          ]
+        },
+        {
+          type: 'heading',
+          id: 'tcp-wave-timewait',
+          text: 'TIME_WAIT 为什么存在'
+        },
+        {
+          type: 'paragraph',
+          text: '主动关闭连接的一方在发送最后一个 ACK 后不会立刻进入 CLOSED，而是进入 TIME_WAIT，通常持续 2MSL。MSL 是报文在网络中的最大生存时间。'
+        },
+        {
+          type: 'list',
+          items: [
+            '<strong>保证最后一个 ACK 能到达</strong>：如果最后的 ACK 丢失，被动关闭方会重发 FIN，主动关闭方在 TIME_WAIT 期间还能再次发送 ACK。',
+            '<strong>让旧连接报文自然消失</strong>：等待足够长时间后，旧连接中的延迟报文基本都会从网络中消失，避免影响后续同四元组的新连接。'
+          ]
+        },
+        {
+          type: 'heading',
+          text: '连接关闭时的典型状态变化'
+        },
+        {
+          type: 'code',
+          lang: 'text',
+          code: `主动关闭方：
+ESTABLISHED -> FIN_WAIT_1 -> FIN_WAIT_2 -> TIME_WAIT -> CLOSED
+
+被动关闭方：
+ESTABLISHED -> CLOSE_WAIT -> LAST_ACK -> CLOSED`
+        }
+      ]
+    },
+    {
+      id: 'reliability',
+      title: 'TCP 为什么可靠，UDP 为什么快',
+      content: [
+        {
+          type: 'heading',
+          text: 'TCP 可靠性的核心机制'
+        },
+        {
+          type: 'list',
+          items: [
+            '<strong>序列号</strong>：每个字节都有编号，保证数据可排序、可去重',
+            '<strong>确认应答 ACK</strong>：接收方收到数据后会确认，发送方据此判断是否送达',
+            '<strong>超时重传</strong>：在规定时间内没收到 ACK，就重新发送',
+            '<strong>滑动窗口</strong>：无需每发一个包都停下来等确认，提高吞吐量',
+            '<strong>流量控制</strong>：根据接收方窗口调节发送速度，避免把对方缓冲区打满',
+            '<strong>拥塞控制</strong>：避免网络被发送方压垮，典型算法包括慢启动、拥塞避免、快重传、快恢复'
+          ]
+        },
+        {
+          type: 'heading',
+          text: 'UDP 为什么更快'
+        },
+        {
+          type: 'list',
+          items: [
+            '没有连接建立和断开的额外往返开销',
+            '没有确认重传、滑动窗口、拥塞控制等复杂机制',
+            '首部更小，处理逻辑更简单',
+            '对实时业务来说，偶发丢包往往比等待重传更可接受'
+          ]
+        },
+        {
+          type: 'heading',
+          text: 'UDP 不可靠就不能用吗'
+        },
+        {
+          type: 'paragraph',
+          text: '不是。UDP 只是把可靠性控制从传输层上移到了应用层。如果业务本身能容忍丢包，或者能在应用层定制自己的重试、纠错、重排策略，那么 UDP 反而更合适。比如音视频通话中，晚到的旧语音包价值很低，很多时候直接丢弃比重传更好。'
+        }
+      ]
+    },
+    {
+      id: 'common-issues',
+      title: '知识点归纳与易错点',
+      content: [
+        {
+          type: 'heading',
+          text: '核心知识点归纳'
+        },
+        {
+          type: 'list',
+          items: [
+            '<strong>TCP 与 UDP 的主要区别</strong>：可以从连接方式、可靠性、传输形式、开销大小、时延特征和适用场景几个维度来理解。',
+            '<strong>TCP 三次握手的作用</strong>：本质是确认双方的收发能力正常，并同步初始序列号，为后续可靠传输做准备。',
+            '<strong>TCP 四次挥手的原因</strong>：因为 TCP 是全双工协议，两个方向的关闭通常需要分开完成。',
+            '<strong>TIME_WAIT 的意义</strong>：既要保证最后一个 ACK 有机会重发，也要避免旧连接中的延迟报文影响新连接。',
+            '<strong>UDP 的可靠性扩展</strong>：如果业务需要，应用层可以补充确认、重试、排序、去重、纠错等机制。'
+          ]
+        },
+        {
+          type: 'heading',
+          text: '理解时容易混淆的点'
+        },
+        {
+          type: 'list',
+          items: [
+            '不要说 UDP “不安全” 或 “一定会丢包”，更准确的说法是：UDP 协议本身不保证可靠传输。',
+            '不要把“面向字节流”和“面向报文”理解成 TCP 一次发送对应一次接收。TCP 会拆包和粘包，应用层需要自行处理消息边界。',
+            '不要把四次挥手理解成双方都立刻关闭。第一次 FIN 只表示一方不再发送，不代表不能接收。'
+          ]
+        }
+      ]
+    }
+  ]
+}
+
 export const techDocs: Record<string, TechDocData> = {
   mongodb: mongodbDoc,
   mysql: mysqlDoc,
@@ -5393,7 +5789,8 @@ export const techDocs: Record<string, TechDocData> = {
   go: goDoc,
   redis: redisDoc,
   nginx: nginxDoc,
-  postgresql: pgsqlDoc
+  postgresql: pgsqlDoc,
+  'tcp-udp': tcpUdpDoc
 }
 
 // 获取技术文档数据

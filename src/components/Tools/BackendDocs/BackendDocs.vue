@@ -67,6 +67,14 @@ const techStacks = ref([
     desc: '强大的开源关系型数据库，支持高级 SQL 特性',
     color: 'from-indigo-400 to-indigo-600',
     status: availableTechStacks.includes('postgresql') ? 'completed' : 'coming'
+  },
+  {
+    id: 'tcp-udp',
+    name: 'TCP/UDP',
+    icon: '',
+    desc: '传输层核心协议文档，包含 TCP、UDP 的基础原理，以及三次握手和四次挥手',
+    color: 'from-sky-400 to-cyan-600',
+    status: availableTechStacks.includes('tcp-udp') ? 'completed' : 'coming'
   }
 ])
 
