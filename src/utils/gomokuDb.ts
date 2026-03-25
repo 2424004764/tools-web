@@ -16,6 +16,8 @@ export interface GomokuGame {
   current_player: PlayerColor;
   black_player: string | null;
   white_player: string | null;
+  black_player_id: string | null;  // 黑方唯一标识
+  white_player_id: string | null;  // 白方唯一标识
   player_count: number;
   spectator_count: number;
   game_status: GameStatus;
@@ -131,41 +133,64 @@ export const gomokuDb = {
 
   /**
    * 加入游戏房间（更新玩家数量）
+   * @param userId 用户唯一标识（UUID）
+   * @param nickname 用户显示昵称
+   * @param onlineNicknames 在线玩家昵称列表（从 presence 获取），用于判断离线玩家位置是否可补位
    */
-  async joinGame(roomId: string, nickname: string): Promise<GomokuGame | null> {
+  async joinGame(roomId: string, userId: string, nickname: string): Promise<GomokuGame | null> {
     try {
       const game = await this.getOrCreateGame(roomId);
       if (!game) return null;
 
       const updates: Partial<GomokuGame> = {};
 
-      // 判断是否可以作为玩家加入（有空位且游戏未结束）
-      const canJoinAsPlayer = game.player_count < 2 &&
-        (!game.black_player || !game.white_player) &&
-        game.game_status !== 'finished';
+      // 通过 userId 判断是否是已在游戏中的玩家（包括离线的）
+      const isBlackPlayer = game.black_player_id === userId;
+      const isWhitePlayer = game.white_player_id === userId;
+      const isAlreadyPlayer = isBlackPlayer || isWhitePlayer;
 
-      if (canJoinAsPlayer) {
-        // 作为玩家加入
-        if (!game.black_player) {
+      if (isAlreadyPlayer) {
+        // 已在游戏中，恢复原位并更新昵称
+        if (isBlackPlayer && game.black_player !== nickname) {
           updates.black_player = nickname;
-        } else if (!game.white_player) {
+        } else if (isWhitePlayer && game.white_player !== nickname) {
           updates.white_player = nickname;
         }
-        updates.player_count = (game.player_count || 0) + 1;
+      } else {
+        // 新玩家加入，检查是否有空位
+        const blackSlotEmpty = !game.black_player_id;
+        const whiteSlotEmpty = !game.white_player_id;
+
+        if (blackSlotEmpty) {
+          updates.black_player = nickname;
+          updates.black_player_id = userId;
+          updates.player_count = ((game.white_player_id ? 1 : 0) + 1);
+        } else if (whiteSlotEmpty) {
+          updates.white_player = nickname;
+          updates.white_player_id = userId;
+          updates.player_count = ((game.black_player_id ? 1 : 0) + 1);
+        } else {
+          // 满员，作为观众加入
+          updates.spectator_count = (game.spectator_count || 0) + 1;
+        }
 
         // 如果两个玩家都到齐了，开始游戏
         if (updates.player_count === 2) {
           updates.game_status = 'playing';
         }
-      } else {
-        // 作为观众加入
-        updates.spectator_count = (game.spectator_count || 0) + 1;
       }
 
-      await this.updateGame(roomId, updates);
+      // 只在有更新时才执行数据库操作
+      if (Object.keys(updates).length > 0) {
+        await this.updateGame(roomId, updates);
+      }
 
       // 返回更新后的游戏
-      return await this.getOrCreateGame(roomId);
+      const updatedGame = await this.getOrCreateGame(roomId);
+      if (!updatedGame) {
+        return null;
+      }
+      return updatedGame;
     } catch (error) {
       console.error('加入游戏失败:', error);
       throw error;
@@ -174,20 +199,23 @@ export const gomokuDb = {
 
   /**
    * 离开游戏房间
+   * @param userId 用户唯一标识（UUID）
    */
-  async leaveGame(roomId: string, nickname: string): Promise<void> {
+  async leaveGame(roomId: string, userId: string, _nickname: string): Promise<void> {
     try {
       const game = await this.getOrCreateGame(roomId);
       if (!game) return;
 
       const updates: Partial<GomokuGame> = {};
 
-      // 检查是否是玩家
-      if (game.black_player === nickname || game.white_player === nickname) {
-        if (game.black_player === nickname) {
+      // 通过 userId 检查是否是玩家
+      if (game.black_player_id === userId || game.white_player_id === userId) {
+        if (game.black_player_id === userId) {
           updates.black_player = null;
-        } else if (game.white_player === nickname) {
+          updates.black_player_id = null;
+        } else if (game.white_player_id === userId) {
           updates.white_player = null;
+          updates.white_player_id = null;
         }
         updates.player_count = Math.max(0, (game.player_count || 0) - 1);
 
@@ -227,11 +255,12 @@ export const gomokuDb = {
   /**
    * 悔棋
    */
-  async undoMove(roomId: string, board: number[][], currentPlayer: PlayerColor): Promise<void> {
+  async undoMove(roomId: string, board: number[][], currentPlayer: PlayerColor, moveHistory: Array<{row: number; col: number; player: PlayerColor; number: number}>): Promise<void> {
     try {
       await this.updateGame(roomId, {
         board,
         current_player: currentPlayer,
+        move_history: JSON.stringify(moveHistory), // 同步更新落子历史
       });
     } catch (error) {
       console.error('悔棋失败:', error);
@@ -396,14 +425,15 @@ export const gomokuDb = {
 
   /**
    * 广播落子事件（用于实时通知，不存数据库）
+   * @param channel 已订阅的 channel（用于发送广播）
    */
-  broadcastMove(roomId: string, move: Move, channel: any) {
+  broadcastMove(roomId: string, move: Move, channel: any): void {
     if (channel) {
       channel.send({
         type: 'broadcast',
         event: 'move',
         payload: { room_id: roomId, ...move },
-      });
+      })
     }
   },
 
@@ -411,15 +441,15 @@ export const gomokuDb = {
    * 订阅落子事件（广播）
    */
   subscribeToMoves(roomId: string, callback: (move: Move) => void) {
-    const channel = supabase.channel(`gomoku-moves-${roomId}`);
+    const channel = supabase.channel(`gomoku-moves-${roomId}`)
 
     channel.on('broadcast', { event: 'move' }, (payload: any) => {
       if (payload.payload.room_id === roomId.toUpperCase()) {
-        callback(payload.payload);
+        callback(payload.payload)
       }
-    });
+    })
 
-    return channel.subscribe();
+    return channel.subscribe()
   },
 
   /**

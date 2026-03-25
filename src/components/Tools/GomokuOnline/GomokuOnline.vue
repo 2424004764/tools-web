@@ -46,12 +46,39 @@ const showMoveNumbers = ref(true)
 const soundEnabled = ref(true)
 
 const myNicknames = ref<string[]>([])
-const currentUserId = ref(`user-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`)
+
+// 生成 UUID v4
+const generateUUID = (): string => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID()
+  }
+  // Fallback for older browsers
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = Math.random() * 16 | 0
+    const v = c === 'x' ? r : (r & 0x3 | 0x8)
+    return v.toString(16)
+  })
+}
+
+// 获取或创建持久化的 user_id
+const getOrCreateUserId = (): string => {
+  let userId = localStorage.getItem('gomoku-user-id')
+  if (!userId) {
+    userId = generateUUID()
+    localStorage.setItem('gomoku-user-id', userId)
+  }
+  return userId
+}
+
+const currentUserId = ref(getOrCreateUserId())
 
 const isConnecting = ref(false)
 
 // 落子历史记录（用于显示序号）
 const moveHistory = ref<Array<{ row: number; col: number; player: 'black' | 'white'; number: number }>>([])
+
+// 对手在线状态
+const opponentOnline = ref(true)
 
 // 落子音效
 const playMoveSound = () => {
@@ -84,7 +111,6 @@ const directions = [[1, 0], [0, 1], [1, 1], [1, -1]]
 let gameChannel: any = null
 let undoChannel: any = null
 let presenceChannel: any = null
-let movesChannel: any = null
 
 /* ========== 路由处理 ========== */
 const route = useRoute()
@@ -119,11 +145,19 @@ const generateRoomId = () => {
 }
 
 const generateNickname = () => {
-  const adjectives = ['快乐的', '聪明的', '可爱的', '勇敢的', '温柔的', '活泼的', '神秘的', '优雅的']
-  const nouns = ['小猫', '小狗', '兔子', '熊猫', '狐狸', '松鼠', '海豚', '企鹅']
+  const adjectives = ['快乐的', '聪明的', '可爱的', '勇敢的', '温柔的', '活泼的', '神秘的', '优雅的',
+    '机智的', '敏捷的', '沉稳的', '热情的', '冷静的', '幽默的', '真诚的', '顽皮的',
+    '安静的', '开朗的', '坚强的', '善良的', '灵活的', '稳健的', '迅速的', '灵巧的',
+    '豪迈的', '潇洒的', '淳朴的', '精致的', '随和的', '刚毅的', '浪漫的', '奇幻的']
+  const nouns = ['小猫', '小狗', '兔子', '熊猫', '狐狸', '松鼠', '海豚', '企鹅',
+    '老虎', '狮子', '大象', '长颈鹿', '斑马', '考拉', '袋鼠', '浣熊',
+    '猫咪', '狗狗', '仓鼠', '龙猫', '刺猬', '水獭', '鸭鸭', '鹅鹅',
+    '锦鲤', '鹦鹉', '猫头鹰', '蝴蝶', '蜜蜂', '蚂蚁', '蜗牛', '乌龟']
   const adj = adjectives[Math.floor(Math.random() * adjectives.length)]
   const noun = nouns[Math.floor(Math.random() * nouns.length)]
-  nickname.value = adj + noun
+  // 添加 1-999 的随机数字，大大降低碰撞概率
+  const randomNum = Math.floor(Math.random() * 999) + 1
+  nickname.value = adj + noun + randomNum
 }
 
 const getRoomLink = computed(() => {
@@ -280,12 +314,25 @@ const makeMove = async (row: number, col: number) => {
   // 创建纯净的数组副本，避免 Vue 响应式属性干扰
   const cleanBoard = JSON.parse(JSON.stringify(board.value))
   await gomokuDb.makeMove(roomId.value, cleanBoard, nextPlayer, moveHistory.value)
+
+  // 广播落子位置，确保对方也能同步 lastMove
+  gomokuDb.broadcastMove(roomId.value, { row, col, player: movingPlayer, timestamp: Date.now() }, presenceChannel)
 }
+
+// 只有刚下过棋的一方才能悔棋（即 current_player 不是自己）
+const canRequestUndo = computed(() => {
+  return lastMove.value && myRole.value === 'player' && gameStatus.value === 'playing' && currentPlayer.value !== myColor.value
+})
 
 const requestUndo = async () => {
   if (gameStatus.value !== 'playing') return
   if (!lastMove.value) {
     ElMessage.warning('没有可以悔的棋')
+    return
+  }
+  // 只有刚下过棋的一方才能悔棋
+  if (currentPlayer.value === myColor.value) {
+    ElMessage.warning('只有刚下过棋的一方才能悔棋')
     return
   }
 
@@ -303,6 +350,9 @@ const requestUndo = async () => {
 
 const handleUndoRequest = async (request: UndoRequest, accept: boolean) => {
   try {
+    // 先更新请求状态，避免重复处理
+    undoRequest.value = null
+
     await gomokuDb.handleUndoRequest(request.id, accept ? 'accepted' : 'rejected')
 
     if (accept && lastMove.value) {
@@ -316,16 +366,18 @@ const handleUndoRequest = async (request: UndoRequest, accept: boolean) => {
       const newPlayer = currentPlayer.value === 'black' ? 'white' : 'black'
       currentPlayer.value = newPlayer
 
+      // 移除最后一步落子历史
+      const updatedMoveHistory = moveHistory.value.slice(0, -1)
+
       const cleanBoard = JSON.parse(JSON.stringify(board.value))
-      await gomokuDb.undoMove(roomId.value, cleanBoard, newPlayer)
+      await gomokuDb.undoMove(roomId.value, cleanBoard, newPlayer, updatedMoveHistory)
       lastMove.value = null
+      moveHistory.value = updatedMoveHistory
 
       ElMessage.success('已同意悔棋')
-    } else {
+    } else if (!accept) {
       ElMessage.info('已拒绝悔棋')
     }
-
-    undoRequest.value = null
   } catch (error) {
     console.error('处理悔棋请求失败:', error)
     ElMessage.error('处理悔棋请求失败')
@@ -404,8 +456,57 @@ const joinRoom = async () => {
 
     const normalizedRoomId = roomId.value.toUpperCase()
 
-    // 加入游戏（自动判断是玩家还是观众）
-    const game = await gomokuDb.joinGame(normalizedRoomId, nickname.value)
+    // 先订阅 presence 以获取在线玩家列表（用于补位判断）
+    presenceChannel = supabase.channel(`gomoku-presence-${normalizedRoomId}`)
+
+    // 获取对手昵称
+    const getOpponentNickname = () => {
+      if (myColor.value === 'black') return whitePlayer.value
+      if (myColor.value === 'white') return blackPlayer.value
+      return null
+    }
+
+    // 检查对手是否在线
+    const checkOpponentOnline = (state: any) => {
+      const opponent = getOpponentNickname()
+      if (!opponent) return
+
+      const allPresences: any[] = []
+      Object.values(state).forEach((presences: any) => {
+        if (Array.isArray(presences)) {
+          allPresences.push(...presences)
+        }
+      })
+
+      const isOnline = allPresences.some((p: any) => p?.nickname === opponent)
+      opponentOnline.value = isOnline
+    }
+
+    await new Promise<void>((resolve) => {
+      presenceChannel
+        .on('presence', { event: 'sync' }, () => {
+          checkOpponentOnline(presenceChannel.presenceState())
+        })
+        .on('presence', { event: 'join' }, () => {
+          checkOpponentOnline(presenceChannel.presenceState())
+        })
+        .on('presence', { event: 'leave' }, () => {
+          checkOpponentOnline(presenceChannel.presenceState())
+        })
+        .on('broadcast', { event: 'move' }, (payload: any) => {
+          const move = payload.payload
+          lastMove.value = { row: move.row, col: move.col }
+        })
+        .subscribe((status: string) => {
+          if (status === 'SUBSCRIBED') {
+            gomokuDb.trackUser(presenceChannel, currentUserId.value, nickname.value, myRole.value, myColor.value)
+            resolve()
+          }
+        })
+    })
+
+    // 加入游戏（离线玩家的位置可以被补位）
+    const game = await gomokuDb.joinGame(normalizedRoomId, currentUserId.value, nickname.value)
     if (!game) {
       throw new Error('加入游戏失败')
     }
@@ -432,11 +533,15 @@ const joinRoom = async () => {
     }
     // 如果数据库没有存储历史记录，保持空历史（不使用 rebuildHistoryFromBoard，因为它不能恢复真实顺序）
 
-    // 判断角色（根据更新后的游戏状态）
-    if (game.black_player === nickname.value) {
+    // 判断角色（根据 player_id 判断，不再依赖昵称）
+    const gameBlackPlayerId = (game as any).black_player_id
+    const gameWhitePlayerId = (game as any).white_player_id
+    const myUserId = currentUserId.value
+
+    if (gameBlackPlayerId === myUserId) {
       myRole.value = 'player'
       myColor.value = 'black'
-    } else if (game.white_player === nickname.value) {
+    } else if (gameWhitePlayerId === myUserId) {
       myRole.value = 'player'
       myColor.value = 'white'
     } else {
@@ -461,9 +566,12 @@ const joinRoom = async () => {
       } else if (updatedGame.move_history && updatedGame.move_history !== 'null' && updatedGame.move_history !== '') {
         try {
           const parsedHistory = JSON.parse(updatedGame.move_history)
-          if (Array.isArray(parsedHistory) && parsedHistory.length > 0) {
-            // 只在数据库历史记录比本地长时才更新（避免用旧数据覆盖新数据）
-            if (parsedHistory.length >= moveHistory.value.length) {
+          if (Array.isArray(parsedHistory)) {
+            // 检查棋盘上的棋子数量是否与历史记录匹配
+            const actualStones = stoneCount
+            const historyStones = parsedHistory.length
+            // 如果历史记录的棋子数与棋盘一致，则更新（处理悔棋、重连等场景）
+            if (actualStones === historyStones || historyStones > moveHistory.value.length) {
               moveHistory.value = parsedHistory
             }
           }
@@ -493,6 +601,36 @@ const joinRoom = async () => {
       whitePlayer.value = updatedGame.white_player
       spectatorCount.value = updatedGame.spectator_count || 0
 
+      // 检查 lastMove 位置是否还有棋子（处理悔棋情况）
+      if (lastMove.value) {
+        const { row, col } = lastMove.value
+        if (newBoard[row] && newBoard[row][col] === 0) {
+          lastMove.value = null
+        }
+      }
+
+      // 当游戏状态或当前玩家改变时，重新检查对手在线状态
+      if (presenceChannel && myRole.value === 'player') {
+        const getOpponentNickname = () => {
+          if (myColor.value === 'black') return whitePlayer.value
+          if (myColor.value === 'white') return blackPlayer.value
+          return null
+        }
+
+        const opponent = getOpponentNickname()
+        if (opponent) {
+          const state = presenceChannel.presenceState()
+          const allPresences: any[] = []
+          Object.values(state).forEach((presences: any) => {
+            if (Array.isArray(presences)) {
+              allPresences.push(...presences)
+            }
+          })
+          const isOnline = allPresences.some((p: any) => p?.nickname === opponent)
+          opponentOnline.value = isOnline
+        }
+      }
+
       // 如果游戏状态变为 finished，显示消息
       if (updatedGame.game_status === 'finished') {
         nextTick(() => {
@@ -509,6 +647,10 @@ const joinRoom = async () => {
 
       // 如果是针对我的请求
       if (request.target === nickname.value && request.status === 'pending') {
+        // 避免重复弹出（检查是否已经在处理这个请求）
+        if (undoRequest.value && undoRequest.value.id === request.id) {
+          return
+        }
         undoRequest.value = request
 
         ElMessageBox.confirm(
@@ -524,8 +666,8 @@ const joinRoom = async () => {
         }).catch(() => {
           handleUndoRequest(request, false)
         })
-      } else if (request.requestor === nickname.value) {
-        // 我发出的请求被处理了
+      } else if (request.requestor === nickname.value && request.status !== 'pending') {
+        // 我发出的请求被处理了（只处理已接受/拒绝的状态）
         if (request.status === 'accepted') {
           ElMessage.success('对方同意了悔棋')
           // 本地棋盘会在游戏状态更新时同步
@@ -537,32 +679,7 @@ const joinRoom = async () => {
     })
 
     // 订阅落子广播
-    movesChannel = gomokuDb.subscribeToMoves(normalizedRoomId, (move) => {
-      lastMove.value = { row: move.row, col: move.col }
-    })
-
-    // 订阅在线状态
-    presenceChannel = supabase.channel(`gomoku-presence-${normalizedRoomId}`)
-
-    presenceChannel
-      .on('presence', { event: 'sync' }, () => {
-        // 在线状态同步
-      })
-      .on('presence', { event: 'join' }, () => {
-        // 有玩家加入
-      })
-      .on('presence', { event: 'leave' }, () => {
-        // 有玩家离开
-      })
-      .on('broadcast', { event: 'move' }, (payload: any) => {
-        const move = payload.payload
-        lastMove.value = { row: move.row, col: move.col }
-      })
-      .subscribe((status: string) => {
-        if (status === 'SUBSCRIBED') {
-          gomokuDb.trackUser(presenceChannel, currentUserId.value, nickname.value, myRole.value, myColor.value)
-        }
-      })
+    // 注意：落子广播已通过 presenceChannel 处理，无需额外订阅
 
     isJoined.value = true
     isConnecting.value = false
@@ -594,14 +711,10 @@ const leaveRoom = () => {
     supabase.removeChannel(presenceChannel)
     presenceChannel = null
   }
-  if (movesChannel) {
-    supabase.removeChannel(movesChannel)
-    movesChannel = null
-  }
 
   // 离开游戏
   if (roomId.value && nickname.value) {
-    gomokuDb.leaveGame(roomId.value, nickname.value).catch(console.error)
+    gomokuDb.leaveGame(roomId.value, currentUserId.value, nickname.value).catch(console.error)
   }
 
   // 重置状态
@@ -618,6 +731,7 @@ const leaveRoom = () => {
   spectatorCount.value = 0
   undoRequest.value = null
   moveHistory.value = []
+  opponentOnline.value = true
 
   generateRoomId()
   generateNickname()
@@ -701,7 +815,13 @@ const getStatusText = () => {
     return `轮到你（${myColor.value === 'black' ? '黑' : '白'}子）`
   }
 
-  return `等待对手（${currentPlayer.value === 'black' ? '黑' : '白'}子）落子...`
+  // 等待对手落子，检查对手是否在线
+  const opponentColor = currentPlayer.value === 'black' ? '黑' : '白'
+  if (!opponentOnline.value) {
+    return `对手（${opponentColor}子）已离线，等待重新连接...`
+  }
+
+  return `等待对手（${opponentColor}子）落子...`
 }
 
 const copyRoomId = async () => {
@@ -841,14 +961,28 @@ onUnmounted(() => {
                 ⚫
               </div>
               <div>
-                <div class="text-sm font-medium">{{ blackPlayer || '等待加入...' }}</div>
+                <div class="flex items-center gap-1">
+                  <span class="text-sm font-medium">{{ blackPlayer || '等待加入...' }}</span>
+                  <span v-if="blackPlayer && myColor !== 'black' && currentPlayer === 'black'"
+                    class="w-2 h-2 rounded-full"
+                    :class="opponentOnline ? 'bg-green-500' : 'bg-gray-400'"
+                    :title="opponentOnline ? '在线' : '离线'">
+                  </span>
+                </div>
                 <div class="text-xs text-gray-500">黑方</div>
               </div>
             </div>
             <div class="text-lg font-bold text-gray-300">VS</div>
             <div class="flex items-center gap-2">
               <div>
-                <div class="text-sm font-medium text-right">{{ whitePlayer || '等待加入...' }}</div>
+                <div class="flex items-center gap-1">
+                  <span class="text-sm font-medium text-right">{{ whitePlayer || '等待加入...' }}</span>
+                  <span v-if="whitePlayer && myColor !== 'white' && currentPlayer === 'white'"
+                    class="w-2 h-2 rounded-full"
+                    :class="opponentOnline ? 'bg-green-500' : 'bg-gray-400'"
+                    :title="opponentOnline ? '在线' : '离线'">
+                  </span>
+                </div>
                 <div class="text-xs text-gray-500 text-right">白方</div>
               </div>
               <div class="w-8 h-8 rounded-full bg-white border-2 border-gray-300 flex items-center justify-center text-sm">
@@ -870,7 +1004,7 @@ onUnmounted(() => {
 
           <!-- 操作按钮 -->
           <div v-if="myRole === 'player' && gameStatus === 'playing'" class="flex gap-2 mb-3 flex-wrap justify-center">
-            <el-button size="small" @click="requestUndo" :disabled="!lastMove">
+            <el-button size="small" @click="requestUndo" :disabled="!canRequestUndo">
               悔棋
             </el-button>
             <el-button size="small" type="warning" @click="surrender">
