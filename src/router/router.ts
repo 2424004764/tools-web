@@ -1090,6 +1090,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/video-parser',
+    component: () => import('@/components/Tools/VideoParser/VideoParser.vue'),
+    name: 'video-parser',
+    meta: {
+      title: "VIP视频解析",
+      keywords: '视频解析,VIP视频,在线视频,腾讯视频,爱奇艺,优酷,芒果TV,免费看VIP',
+      description: '免费VIP视频解析工具，支持腾讯视频、爱奇艺、优酷、芒果TV等主流视频平台，粘贴链接即可在线观看VIP内容，纯网页解析无需下载'
+    }
+  },
+  {
     path: '/weight-tracker',
     component: () => import('@/components/Tools/WeightTracker/WeightTracker.vue'),
     name: 'weight-tracker',
