@@ -35,6 +35,16 @@ const handleClear = () => {
   videoUrl.value = ''
   parseUrl.value = ''
 }
+
+const videoSites = [
+  { name: '腾讯视频', url: 'https://v.qq.com', color: 'bg-orange-500 hover:bg-orange-600' },
+  { name: '爱奇艺', url: 'https://www.iqiyi.com', color: 'bg-green-500 hover:bg-green-600' },
+  { name: '优酷', url: 'https://www.youku.com', color: 'bg-blue-500 hover:bg-blue-600' },
+  { name: '芒果TV', url: 'https://www.mgtv.com', color: 'bg-yellow-500 hover:bg-yellow-600' },
+  { name: 'B站', url: 'https://www.bilibili.com', color: 'bg-pink-500 hover:bg-pink-600' },
+  { name: '搜狐视频', url: 'https://tv.sohu.com', color: 'bg-orange-600 hover:bg-orange-700' },
+  { name: 'PPTV', url: 'https://www.pptv.com', color: 'bg-red-500 hover:bg-red-600' },
+]
 </script>
 
 <template>
@@ -42,6 +52,24 @@ const handleClear = () => {
     <DetailHeader title="VIP视频解析"></DetailHeader>
 
     <div class="p-4 rounded-2xl bg-white">
+      <!-- 常用视频网站快捷入口 -->
+      <div class="mb-4">
+        <p class="text-sm text-gray-500 mb-2">快速跳转到视频网站：</p>
+        <div class="flex flex-wrap gap-2">
+          <a
+            v-for="site in videoSites"
+            :key="site.name"
+            :href="site.url"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="px-3 py-1.5 text-white text-sm rounded-lg transition-colors duration-200"
+            :class="site.color"
+          >
+            {{ site.name }}
+          </a>
+        </div>
+      </div>
+
       <!-- 输入区域 -->
       <div class="mb-4">
         <el-input
