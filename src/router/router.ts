@@ -1090,6 +1090,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/id-photo',
+    component: () => import('@/components/Tools/IdPhoto/IdPhoto.vue'),
+    name: 'id-photo',
+    meta: {
+      title: "证件照生成",
+      keywords: '证件照,证件照制作,一寸照片,二寸照片,身份证照片,护照照片,证件照裁剪,在线证件照',
+      description: '在线证件照生成工具，支持一寸、二寸、护照、身份证等预设尺寸，支持矩形和四边形透视裁剪，可导出JPG和PNG格式，满足各种证件照要求'
+    }
+  },
+  {
     path: '/video-parser',
     component: () => import('@/components/Tools/VideoParser/VideoParser.vue'),
     name: 'video-parser',

@@ -622,6 +622,15 @@ export function getToolsCate() {
           cateId: 5,
           cate: '图片处理'
         },
+        {
+          id: 1,
+          title: '证件照生成',
+          logo: '/images/logo/id_photo.png',
+          desc: '在线制作证件照，支持一寸、二寸、护照、身份证等预设尺寸，支持矩形和四边形透视裁剪，可导出JPG和PNG格式',
+          url: '/id-photo/',
+          cateId: 5,
+          cate: '图片处理'
+        },
       ]
     },
     {
