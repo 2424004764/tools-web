@@ -485,38 +485,47 @@ const loadCurrentDraft = () => {
   }
 }
 
-// 新建草稿
+// 新建草稿（仅用于手动点击"新建草稿"按钮）
 const createNewDraft = () => {
   const newDraft: Draft = {
     id: `draft_${Date.now()}`,
     title: `未命名草稿 ${draftList.value.length + 1}`,
-    content: '',
-    currentTheme: 'literary',
-    fontSize: 16,
-    lineHeight: 1.8,
-    letterSpacing: 0,
+    content: markdownContent.value, // 使用当前编辑区内容
+    currentTheme: info.currentTheme,
+    fontSize: fontStyles.fontSize,
+    lineHeight: fontStyles.lineHeight,
+    letterSpacing: fontStyles.letterSpacing,
     status: 'unfinished',
     createdAt: Date.now(),
     updatedAt: Date.now(),
   }
   draftList.value.unshift(newDraft)
   saveDraftsList()
-  // 重置编辑区到初始内容
-  markdownContent.value = INITIAL_CONTENT
-  info.currentTheme = 'literary'
-  fontStyles.fontSize = 16
-  fontStyles.lineHeight = 1.8
-  fontStyles.letterSpacing = 0
-  currentDraftId.value = ''
-  localStorage.removeItem(CURRENT_DRAFT_ID_KEY)
-  // 不显示成功提示，因为已重置编辑区
+  // 设置为当前草稿
+  setCurrentDraft(newDraft.id)
+  ElMessage.success('已创建新草稿')
 }
 
 // 保存当前草稿
 const saveCurrentDraft = () => {
   if (!currentDraftId.value) {
-    // 如果没有当前草稿，自动创建一个
-    createNewDraft()
+    // 如果没有当前草稿，自动创建一个新草稿并保存当前内容
+    const newDraft: Draft = {
+      id: `draft_${Date.now()}`,
+      title: `未命名草稿 ${draftList.value.length + 1}`,
+      content: markdownContent.value, // 保存当前编辑区内容
+      currentTheme: info.currentTheme,
+      fontSize: fontStyles.fontSize,
+      lineHeight: fontStyles.lineHeight,
+      letterSpacing: fontStyles.letterSpacing,
+      status: 'unfinished',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    }
+    draftList.value.unshift(newDraft)
+    saveDraftsList()
+    setCurrentDraft(newDraft.id)
+    ElMessage.success('草稿已保存')
     return
   }
 
