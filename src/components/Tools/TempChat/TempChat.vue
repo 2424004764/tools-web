@@ -78,6 +78,14 @@ const ephemeralMode = ref(false);
 const isUpdatingEphemeralMode = ref(false); // 防止循环广播
 const showEphemeralModeInfo = ref(false);
 
+// 房间信息
+const roomName = ref('');
+const roomAnnouncement = ref('');
+const showAnnouncementDialog = ref(false);
+const editingAnnouncement = ref('');
+const showRoomNameDialog = ref(false);
+const editingRoomName = ref('');
+
 // 消息搜索
 const showSearchDialog = ref(false);
 const searchKeyword = ref('');
@@ -319,13 +327,45 @@ const joinRoom = async () => {
 
     const normalizedRoomId = roomId.value.toUpperCase();
 
-    // 加载历史消息
+    // 先尝试加载房间配置，判断是否为新房间
     let isNewRoom = false;
+    try {
+      const roomConfig = await chatDb.getRoomConfig(normalizedRoomId);
+      if (!roomConfig) {
+        isNewRoom = true;
+      } else {
+        ephemeralMode.value = roomConfig.ephemeral_mode || false;
+        roomName.value = roomConfig.room_name || `房间${normalizedRoomId}`;
+        roomAnnouncement.value = roomConfig.announcement || '';
+      }
+    } catch (e) {
+      console.error('加载房间配置失败:', e);
+      isNewRoom = true;
+    }
+
+    // 如果是新房间，创建房间记录
+    if (isNewRoom) {
+      try {
+        const newRoomName = roomName.value || `房间${normalizedRoomId}`;
+        await chatDb.createRoom(normalizedRoomId, newRoomName);
+        ephemeralMode.value = false;
+        roomName.value = newRoomName;
+        roomAnnouncement.value = '';
+        await chatDb.sendMessage(normalizedRoomId, '系统', `房间 ${normalizedRoomId} 已创建`);
+        console.log('新房间创建成功:', normalizedRoomId);
+      } catch (e: any) {
+        console.error('创建房间失败:', e);
+        ElMessage.error('创建房间失败: ' + (e.message || '未知错误'));
+        isConnecting.value = false;
+        return;
+      }
+    }
+
+    // 加载历史消息
     try {
       currentOffset.value = 0;
       const historyData = await chatDb.getMessages(normalizedRoomId, PAGE_SIZE);
       if (!historyData || historyData.length === 0) {
-        isNewRoom = true;
         hasMoreMessages.value = false;
       } else {
         hasMoreMessages.value = historyData.length === PAGE_SIZE;
@@ -355,19 +395,8 @@ const joinRoom = async () => {
 
       nextTick(() => scrollToBottom());
     } catch (error: any) {
-      // 如果表不存在，标记为新房间
-      isNewRoom = true;
       hasMoreMessages.value = false;
       console.error("加载历史消息失败:", error);
-    }
-
-    // 如果是新房间，发送一条系统消息标记房间创建
-    if (isNewRoom) {
-      try {
-        await chatDb.sendMessage(normalizedRoomId, '系统', `房间 ${normalizedRoomId} 已创建`);
-      } catch (e) {
-        // 忽略错误
-      }
     }
 
     // 订阅新消息
@@ -428,6 +457,18 @@ const joinRoom = async () => {
       .on('presence', { event: 'join' }, () => {
         updateOnlineUsers();
         updateTypingUsers();
+        // 如果当前用户开启了临时模式，广播给新加入的用户
+        if (ephemeralMode.value) {
+          presenceChannel.send({
+            type: 'broadcast',
+            event: 'ephemeral-mode-change',
+            payload: {
+              enabled: true,
+              sender_id: currentUserId.value,
+              sender_nickname: nickname.value,
+            },
+          });
+        }
       })
       .on('presence', { event: 'leave' }, () => {
         updateOnlineUsers();
@@ -479,6 +520,30 @@ const joinRoom = async () => {
 
         // 可选：显示提示
         // ElMessage.info(`${data.sender_nickname} 将临时模式${data.enabled ? '开启' : '关闭'}`);
+      })
+      // 订阅公告变化
+      .on('broadcast', { event: 'announcement-change' }, (payload: any) => {
+        const data = payload.payload;
+        // 忽略自己发送的变化
+        if (data.sender_id === currentUserId.value) return;
+
+        // 同步公告
+        roomAnnouncement.value = data.announcement;
+
+        // 显示提示
+        ElMessage.info(`${data.sender_nickname} 更新了房间公告`);
+      })
+      // 订阅房间名称变化
+      .on('broadcast', { event: 'room-name-change' }, (payload: any) => {
+        const data = payload.payload;
+        // 忽略自己发送的变化
+        if (data.sender_id === currentUserId.value) return;
+
+        // 同步房间名称
+        roomName.value = data.room_name;
+
+        // 显示提示
+        ElMessage.info(`${data.sender_nickname} 修改了房间名称`);
       })
       .subscribe((status: string) => {
         if (status === 'SUBSCRIBED') {
@@ -705,6 +770,11 @@ const leaveRoom = () => {
   hasMoreMessages.value = false;
   inputHistory.value = [];
   historyIndex.value = -1;
+
+  // 清空房间信息
+  roomName.value = '';
+  roomAnnouncement.value = '';
+  ephemeralMode.value = false;
 
   // 生成新的房间号和昵称
   generateRoomId();
@@ -1459,6 +1529,87 @@ const changeNickname = async () => {
   ElMessage.success("昵称已更改");
 };
 
+// 打开公告编辑对话框
+const openAnnouncementDialog = () => {
+  editingAnnouncement.value = roomAnnouncement.value;
+  showAnnouncementDialog.value = true;
+};
+
+// 更新房间公告
+const updateAnnouncement = async () => {
+  try {
+    await chatDb.updateAnnouncement(roomId.value, editingAnnouncement.value);
+    roomAnnouncement.value = editingAnnouncement.value;
+    showAnnouncementDialog.value = false;
+
+    // 广播公告变化给房间内其他人
+    if (presenceChannel) {
+      presenceChannel.send({
+        type: 'broadcast',
+        event: 'announcement-change',
+        payload: {
+          announcement: editingAnnouncement.value,
+          sender_id: currentUserId.value,
+          sender_nickname: nickname.value,
+        },
+      });
+    }
+
+    // 发送系统消息通知所有人
+    if (editingAnnouncement.value) {
+      await chatDb.sendMessage(roomId.value, '系统', `${nickname.value} 更新了房间公告`);
+    }
+
+    ElMessage.success("公告已更新");
+  } catch (error: any) {
+    console.error("更新公告失败:", error);
+    ElMessage.error("更新失败: " + (error.message || "请重试"));
+  }
+};
+
+// 打开房间名称编辑对话框
+const openRoomNameDialog = () => {
+  editingRoomName.value = roomName.value;
+  showRoomNameDialog.value = true;
+};
+
+// 更新房间名称
+const updateRoomName = async () => {
+  const newName = editingRoomName.value.trim();
+  if (!newName) {
+    ElMessage.warning("房间名称不能为空");
+    return;
+  }
+
+  try {
+    await chatDb.updateRoomName(roomId.value, newName);
+    const oldName = roomName.value;
+    roomName.value = newName;
+    showRoomNameDialog.value = false;
+
+    // 广播房间名称变化给房间内其他人
+    if (presenceChannel) {
+      presenceChannel.send({
+        type: 'broadcast',
+        event: 'room-name-change',
+        payload: {
+          room_name: newName,
+          sender_id: currentUserId.value,
+          sender_nickname: nickname.value,
+        },
+      });
+    }
+
+    // 发送系统消息通知所有人
+    await chatDb.sendMessage(roomId.value, '系统', `${oldName} 更名为 ${newName}`);
+
+    ElMessage.success("房间名称已更新");
+  } catch (error: any) {
+    console.error("更新房间名称失败:", error);
+    ElMessage.error("更新失败: " + (error.message || "请重试"));
+  }
+};
+
 // 选择表情
 const selectEmoji = (emoji: string) => {
   inputMessage.value += emoji;
@@ -1508,20 +1659,21 @@ onMounted(() => {
     messageSoundEnabled.value = JSON.parse(soundEnabled);
   }
 
-  // 加载临时模式设置
-  const ephemeralModeSaved = localStorage.getItem('tempchat-ephemeral-mode');
-  if (ephemeralModeSaved !== null) {
-    ephemeralMode.value = JSON.parse(ephemeralModeSaved);
-  }
-
-  // 监听临时模式变化并保存/广播
-  watch(ephemeralMode, (newValue) => {
-    localStorage.setItem('tempchat-ephemeral-mode', JSON.stringify(newValue));
-
-    // 如果是收到广播后的更新，不再次广播
+  // 监听临时模式变化并保存到数据库/广播
+  watch(ephemeralMode, async (newValue) => {
+    // 如果是收到广播后的更新，不再次保存和广播
     if (isUpdatingEphemeralMode.value) {
       isUpdatingEphemeralMode.value = false;
       return;
+    }
+
+    // 保存到数据库
+    if (roomId.value && isJoined.value) {
+      try {
+        await chatDb.setEphemeralMode(roomId.value, newValue);
+      } catch (e) {
+        console.error('保存临时模式失败:', e);
+      }
     }
 
     // 广播给房间内其他人
@@ -1639,6 +1791,17 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
             </div>
           </div>
 
+          <!-- 房间名称输入 -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">房间名称（可选）</label>
+            <el-input
+              v-model="roomName"
+              placeholder="为新房间设置名称，加入已有房间无需填写"
+              maxlength="30"
+              @keyup.enter="joinRoom"
+            />
+          </div>
+
           <!-- 昵称输入 -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">昵称</label>
@@ -1671,13 +1834,34 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
       <div v-else class="flex flex-col gap-3">
         <!-- 顶部信息栏 -->
         <div class="space-y-3 pb-3 border-b border-gray-200">
+          <!-- 房间公告 -->
+          <div class="rounded-lg p-3" :class="roomAnnouncement ? 'bg-amber-50 border border-amber-200' : 'bg-gray-50 border border-gray-200'">
+            <div class="flex items-start justify-between gap-2">
+              <div class="flex items-center gap-1 text-sm font-medium" :class="roomAnnouncement ? 'text-amber-700' : 'text-gray-500'">
+                <span>📢</span>
+                <span>公告</span>
+              </div>
+              <el-button size="small" text @click="openAnnouncementDialog" class="flex-shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732a2.5 2.5 0 013.536 3.536z"></path>
+                </svg>
+              </el-button>
+            </div>
+            <p v-if="roomAnnouncement" class="text-amber-800 text-sm mt-1 whitespace-pre-wrap">{{ roomAnnouncement }}</p>
+            <p v-else class="text-gray-400 text-sm mt-1">暂无公告，点击编辑按钮添加</p>
+          </div>
+
           <!-- 第一行：房间信息和昵称 -->
-          <div class="flex items-center justify-between">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div class="flex items-center gap-2 flex-1 min-w-0">
               <span class="text-sm text-gray-500 flex-shrink-0">房间:</span>
-              <span class="font-mono font-semibold text-primary truncate">{{ roomId }}</span>
+              <span class="font-semibold text-gray-800 truncate">{{ roomName }}</span>
+              <span class="font-mono text-primary text-sm">({{ roomId }})</span>
               <el-button size="small" text @click="copyRoomId" class="flex-shrink-0">
                 <el-icon :size="16"><CopyDocument /></el-icon>
+              </el-button>
+              <el-button size="small" text @click="openRoomNameDialog" title="修改房间名称" class="flex-shrink-0">
+                ✏️
               </el-button>
             </div>
             <div class="flex items-center gap-2 flex-shrink-0">
@@ -1766,6 +1950,51 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
           <template #footer>
             <el-button @click="showNicknameDialog = false">取消</el-button>
             <el-button type="primary" @click="changeNickname" :disabled="!editingNickname.trim()">
+              确定
+            </el-button>
+          </template>
+        </el-dialog>
+
+        <!-- 公告编辑对话框 -->
+        <el-dialog
+          v-model="showAnnouncementDialog"
+          title="编辑房间公告"
+          width="500px"
+          :close-on-click-modal="false"
+        >
+          <el-input
+            v-model="editingAnnouncement"
+            type="textarea"
+            :rows="4"
+            placeholder="输入房间公告内容..."
+            maxlength="500"
+            show-word-limit
+          />
+          <template #footer>
+            <el-button @click="showAnnouncementDialog = false">取消</el-button>
+            <el-button type="primary" @click="updateAnnouncement">
+              确定
+            </el-button>
+          </template>
+        </el-dialog>
+
+        <!-- 房间名称编辑对话框 -->
+        <el-dialog
+          v-model="showRoomNameDialog"
+          title="修改房间名称"
+          width="400px"
+          :close-on-click-modal="false"
+        >
+          <el-input
+            v-model="editingRoomName"
+            placeholder="输入新的房间名称"
+            maxlength="30"
+            show-word-limit
+            @keyup.enter="updateRoomName"
+          />
+          <template #footer>
+            <el-button @click="showRoomNameDialog = false">取消</el-button>
+            <el-button type="primary" @click="updateRoomName" :disabled="!editingRoomName.trim()">
               确定
             </el-button>
           </template>

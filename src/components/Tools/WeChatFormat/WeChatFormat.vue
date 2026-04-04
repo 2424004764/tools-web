@@ -490,7 +490,7 @@ const createNewDraft = () => {
   const newDraft: Draft = {
     id: `draft_${Date.now()}`,
     title: `未命名草稿 ${draftList.value.length + 1}`,
-    content: markdownContent.value, // 使用当前编辑区内容
+    content: INITIAL_CONTENT,
     currentTheme: info.currentTheme,
     fontSize: fontStyles.fontSize,
     lineHeight: fontStyles.lineHeight,
@@ -501,8 +501,10 @@ const createNewDraft = () => {
   }
   draftList.value.unshift(newDraft)
   saveDraftsList()
-  // 设置为当前草稿
+  // 设置为当前草稿，并重置编辑区内容为默认
   setCurrentDraft(newDraft.id)
+  markdownContent.value = INITIAL_CONTENT
+  history.clear()
   ElMessage.success('已创建新草稿')
 }
 

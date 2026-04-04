@@ -159,6 +159,76 @@ export const chatDb = {
       .lt('created_at', cutoffTime);
     if (error) throw error;
   },
+
+  /**
+   * 创建房间
+   */
+  async createRoom(roomId: string, roomName: string) {
+    const { error } = await supabase
+      .from('chat_rooms')
+      .insert({
+        id: roomId.toUpperCase(),
+        room_name: roomName || `房间 ${roomId.toUpperCase()}`,
+        ephemeral_mode: false,
+        announcement: '',
+      });
+    if (error) throw error;
+  },
+
+  /**
+   * 获取房间配置
+   */
+  async getRoomConfig(roomId: string) {
+    const { data, error } = await supabase
+      .from('chat_rooms')
+      .select('*')
+      .eq('id', roomId.toUpperCase())
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  },
+
+  /**
+   * 设置房间临时模式
+   */
+  async setEphemeralMode(roomId: string, enabled: boolean) {
+    const { error } = await supabase
+      .from('chat_rooms')
+      .update({
+        ephemeral_mode: enabled,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', roomId.toUpperCase());
+    if (error) throw error;
+  },
+
+  /**
+   * 更新房间公告
+   */
+  async updateAnnouncement(roomId: string, announcement: string) {
+    const { error } = await supabase
+      .from('chat_rooms')
+      .update({
+        announcement,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', roomId.toUpperCase());
+    if (error) throw error;
+  },
+
+  /**
+   * 更新房间名称
+   */
+  async updateRoomName(roomId: string, roomName: string) {
+    const { error } = await supabase
+      .from('chat_rooms')
+      .update({
+        room_name: roomName,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', roomId.toUpperCase());
+    if (error) throw error;
+  },
 };
 
 export default supabase;
