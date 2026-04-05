@@ -10,7 +10,7 @@ import { v4 as uuidv4 } from 'uuid'
 const info = reactive({
   title: "UUID生成器",
   resStr: '',
-  pwNum: 5,
+  pwNum: 1,
   autosize: {
     minRows: 5
   },

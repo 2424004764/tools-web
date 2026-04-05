@@ -41,6 +41,10 @@ const signatureInvalid = ref(false)
 
 //解析
 const parser = () => {
+  if (!info.token || !info.token.trim()) {
+    ElMessage.warning('请输入JWT Token')
+    return
+  }
   try {
     decodePayload.value = JSON.stringify(jwtDecode(info.token), null, '\t')
     decodeHeader.value = JSON.stringify(jwtDecode(info.token, {header: true}), null, '\t')
@@ -48,6 +52,7 @@ const parser = () => {
     // 重置校验状态
     signatureValid.value = false
     signatureInvalid.value = false
+    ElMessage.success('解析成功')
   } catch (e) {
     console.log('Invalid token', e)
     invalidToken.value = true
@@ -55,7 +60,8 @@ const parser = () => {
     decodePayload.value = ''
     signatureValid.value = false
     signatureInvalid.value = false
-  }  
+    ElMessage.error('Token格式无效，请检查输入')
+  }
 }
 
 // 添加JWT签名校验功能

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, reactive } from 'vue'
-import { VideoPause,VideoPlay,CopyDocument } from '@element-plus/icons-vue'
+import { VideoPause,VideoPlay,CopyDocument,Refresh } from '@element-plus/icons-vue'
 import { Jh_getTimeStamp,Jh_timeStampToTime,Jh_convertTimeStamp,Jh_getUtcISO8601 } from '@/utils/time'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
@@ -83,6 +83,12 @@ const copyRes = async () => {
   copy('' + info.nowTime)
 }
 
+//同步当前时间戳
+const syncNow = () => {
+  info.waitTimeStamp = Jh_getTimeStamp()
+  timeTran('toDate')
+}
+
 //复制UTC时间
 const copyUtcTime = async () => {
   copy(info.nowUtcTime)
@@ -110,6 +116,9 @@ const copyUtcTime = async () => {
       <div class="flex flex-direction mt-4 justify-start">
         <el-text class="mr-2 w-12">时间戳</el-text>
         <el-input v-model="info.waitTimeStamp" class="h-8 mr-2 w-60 max-w-[30%]" placeholder="毫秒/秒">
+          <template #append>
+            <el-button @click="syncNow"><el-icon class="mr-1"><Refresh /></el-icon>现在</el-button>
+          </template>
         </el-input> 
         <el-button class="mr-2 max-w-[25%]" @click="timeTran('toDate')">转换</el-button>
         <el-input v-model="info.tranDate" class="h-8 w-72 mr-2 max-w-[30%]" placeholder="北京时间"></el-input>

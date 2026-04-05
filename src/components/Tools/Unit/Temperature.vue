@@ -4,54 +4,38 @@ import { reactive } from 'vue'
 const info: {
   [key: string]: string|number
 } = reactive({
-  c: '',
-  f: '',
-  k: '',
-  re: '',
-  r: '',
+  c: 1,
+  f: 33.8,
+  k: 274.15,
+  re: 0.8,
+  r: 493.47,
 })
 
-//clear
 const clear = () => {
   for (let item in info) {
     info[item] = ''
   }
 }
 
-/**
- * 转换
- * @param type 
- */
-const tran = (key: string) => {
-  //转换成摄氏度
+const onInput = (key: string) => {
+  const val = parseFloat(info[key] as string)
+  if (isNaN(val)) return
+
+  let cVal = 0
   switch (key) {
-    case 'c':
-      info.c = parseFloat(info[key] as string) * 1
-      break;
-    case 'f':
-      info.c = parseFloat(info[key] as string) * -17.2222222
-      break;
-    case 'k':
-      info.c = parseFloat(info[key] as string) * -272.15
-      break;
-    case 're':
-      info.c = parseFloat(info[key] as string) * 1.25
-      break;
-    case 'r':
-      info.c = parseFloat(info[key] as string) * -272.5944444
-      break;
-    default:
-      break;
+    case 'c': cVal = val; break
+    case 'f': cVal = (val - 32) / 1.8; break
+    case 'k': cVal = val - 273.15; break
+    case 're': cVal = val * 1.25; break
+    case 'r': cVal = (val - 491.67) / 1.8; break
   }
 
-  //转换成其他单位
-  let val = info.c as number
-  info.f = 32 + (val * 1.8)
-  info.k = 273.15 + val
-  info.re = val / 1.25
-  info.r = (val + 273.15) * 1.8
+  info.c = cVal
+  info.f = 32 + (cVal * 1.8)
+  info.k = 273.15 + cVal
+  info.re = cVal / 1.25
+  info.r = (cVal + 273.15) * 1.8
 }
-
 </script>
 
 <template>
@@ -66,11 +50,8 @@ const tran = (key: string) => {
               v-model="info.c"
               placeholder=""
               class="input-with-select"
-            >
-              <template #append>
-                <el-button @click="tran('c')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('c')"
+            />
           </div>
           <div class="custom-box-single">
             <el-text class="custom-box-text">华氏度(℉)</el-text>
@@ -78,11 +59,8 @@ const tran = (key: string) => {
               v-model="info.f"
               placeholder=""
               class="input-with-select"
-            >
-              <template #append>
-                <el-button @click="tran('f')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('f')"
+            />
           </div>
         </div>
 
@@ -94,11 +72,8 @@ const tran = (key: string) => {
               v-model="info.k"
               placeholder=""
               class="input-with-select"
-            >
-              <template #append>
-                <el-button @click="tran('k')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('k')"
+            />
           </div>
           <div class="custom-box-single">
             <el-text class="custom-box-text">列氏度(°Re)</el-text>
@@ -106,11 +81,8 @@ const tran = (key: string) => {
               v-model="info.re"
               placeholder=""
               class="input-with-select"
-            >
-              <template #append>
-                <el-button @click="tran('re')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('re')"
+            />
           </div>
         </div>
 
@@ -122,11 +94,8 @@ const tran = (key: string) => {
               v-model="info.r"
               placeholder=""
               class="input-with-select"
-            >
-              <template #append>
-                <el-button @click="tran('r')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('r')"
+            />
           </div>
         </div>
 

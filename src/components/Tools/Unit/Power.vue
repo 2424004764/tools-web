@@ -4,54 +4,38 @@ import { reactive } from 'vue'
 const info: {
   [key: string]: string|number
 } = reactive({
-  w: '',
-  mmw: '',
-  kw: '',
-  mw: '',
-  gw: '',
+  w: 1,
+  mmw: 1000,
+  kw: 0.001,
+  mw: 0.000001,
+  gw: 0.000000001,
 })
 
-//clear
 const clear = () => {
   for (let item in info) {
     info[item] = ''
   }
 }
 
-/**
- * 转换
- * @param type 
- */
-const tran = (key: string) => {
-//转换成瓦
-switch (key) {
-    case 'w':
-      info.w = parseFloat(info[key] as string) * 1
-      break;
-    case 'mmw':
-      info.w = parseFloat(info[key] as string) * 0.001
-      break;
-    case 'kw':
-      info.w = parseFloat(info[key] as string) * 1000
-      break;
-    case 'mw':
-      info.w = parseFloat(info[key] as string) * 1000000
-      break;
-    case 'gw':
-      info.w = parseFloat(info[key] as string) * 1000000000
-      break;
-    default:
-      break;
+const onInput = (key: string) => {
+  const val = parseFloat(info[key] as string)
+  if (isNaN(val)) return
+
+  let wVal = 0
+  switch (key) {
+    case 'w': wVal = val; break
+    case 'mmw': wVal = val * 0.001; break
+    case 'kw': wVal = val * 1000; break
+    case 'mw': wVal = val * 1000000; break
+    case 'gw': wVal = val * 1000000000; break
   }
 
-  //转换成其他单位
-  let val = info.w as number
-  info.mmw = val / 0.001
-  info.kw = val / 1000
-  info.mw = val / 1000000
-  info.gw = val / 1000000000
+  info.w = wVal
+  info.mmw = wVal / 0.001
+  info.kw = wVal / 1000
+  info.mw = wVal / 1000000
+  info.gw = wVal / 1000000000
 }
-
 </script>
 
 <template>
@@ -66,11 +50,8 @@ switch (key) {
               v-model="info.w"
               placeholder=""
               class="input-with-select"
-            >
-              <template #append>
-                <el-button @click="tran('w')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('w')"
+            />
           </div>
           <div class="custom-box-single">
             <el-text class="custom-box-text">毫瓦(mW)</el-text>
@@ -78,11 +59,8 @@ switch (key) {
               v-model="info.mmw"
               placeholder=""
               class="input-with-select"
-            >
-              <template #append>
-                <el-button @click="tran('mmw')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('mmw')"
+            />
           </div>
         </div>
 
@@ -94,11 +72,8 @@ switch (key) {
               v-model="info.kw"
               placeholder=""
               class="input-with-select"
-            >
-              <template #append>
-                <el-button @click="tran('kw')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('kw')"
+            />
           </div>
           <div class="custom-box-single">
             <el-text class="custom-box-text">兆瓦(MW)</el-text>
@@ -106,11 +81,8 @@ switch (key) {
               v-model="info.mw"
               placeholder=""
               class="input-with-select"
-            >
-              <template #append>
-                <el-button @click="tran('mw')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('mw')"
+            />
           </div>
         </div>
 
@@ -122,11 +94,8 @@ switch (key) {
               v-model="info.gw"
               placeholder=""
               class="input-with-select"
-            >
-              <template #append>
-                <el-button @click="tran('gw')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('gw')"
+            />
           </div>
         </div>
 

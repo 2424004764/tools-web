@@ -159,15 +159,19 @@ function clearAll() {
 function copyResult() { copy(result.value) }
 
 function fillCsvExample() {
+  mode.value = 'csv2json'
+  opts.delimKey = 'comma'
   csvInput.value = 'name,age,city\nAlice,30,Beijing\nBob,25,Shanghai'
 }
 
 function fillTsvExample() {
+  mode.value = 'csv2json'
   opts.delimKey = 'tab'
   csvInput.value = 'name\tage\tcity\nAlice\t30\tBeijing\nBob\t25\tShanghai'
 }
 
 function fillJsonExample() {
+  mode.value = 'json2csv'
   jsonInput.value = JSON.stringify([
     { name: 'Alice', age: 30, city: 'Beijing' },
     { name: 'Bob', age: 25, city: 'Shanghai' }

@@ -75,6 +75,19 @@ const gen = () => {
 }
 
 const changeCheckBox = (val: any, type: number) => {
+  // 取消勾选时，检查是否是最后一个（val 是变更后的值，此时 v-model 已更新，所以 activeCount 是变更后的）
+  if (!val) {
+    const activeCount = [info.checkedNum, info.checkedLower, info.checkedUpper, info.checkedSign].filter(Boolean).length
+    // activeCount 已经是 0（只剩当前这一个被取消了），说明取消前只有一个
+    if (activeCount === 0) {
+      ElMessage.warning('至少保留一种密码组合')
+      if (type === 0) info.checkedNum = true
+      if (type === 1) info.checkedLower = true
+      if (type === 2) info.checkedUpper = true
+      if (type === 3) info.checkedSign = true
+      return
+    }
+  }
   switch(type) {
     case 0:
       //设置数字字符
@@ -160,22 +173,22 @@ onMounted(() => {
     <div class="p-4 rounded-2xl bg-white">
       <el-text>密码组合</el-text>
       <div>
-        <el-checkbox v-model="info.checkedNum" label="数字(0-9)"  @change="(val: any) => (changeCheckBox(val, 0))"/>
-        <el-checkbox v-model="info.checkedLower" label="小写字母(a-z)"  @change="(val: any) => (changeCheckBox(val, 1))"/>
-        <el-checkbox v-model="info.checkedUpper" label="大写字母(A-Z)" @change="(val: any) => (changeCheckBox(val, 2))"/>
-        <el-checkbox v-model="info.checkedSign" label="其他符号(~!@#$%^&*()-+_=,.)"  @change="(val: any) => (changeCheckBox(val, 3))"/>
+        <el-checkbox v-model="info.checkedNum" :disabled="!info.checkedLower && !info.checkedUpper && !info.checkedSign" label="数字(0-9)" @change="(val: any) => { changeCheckBox(val, 0); gen() }"/>
+        <el-checkbox v-model="info.checkedLower" :disabled="!info.checkedNum && !info.checkedUpper && !info.checkedSign" label="小写字母(a-z)" @change="(val: any) => { changeCheckBox(val, 1); gen() }"/>
+        <el-checkbox v-model="info.checkedUpper" :disabled="!info.checkedNum && !info.checkedLower && !info.checkedSign" label="大写字母(A-Z)" @change="(val: any) => { changeCheckBox(val, 2); gen() }"/>
+        <el-checkbox v-model="info.checkedSign" :disabled="!info.checkedNum && !info.checkedLower && !info.checkedUpper" label="其他符号(~!@#$%^&*()-+_=,.)" @change="(val: any) => { changeCheckBox(val, 3); gen() }"/>
       </div>
       <div>
-        <el-input class="" v-model="info.char">
+        <el-input v-model="info.char" disabled>
           <template #prepend>包含字符:</template>
         </el-input>
         <div class="mt-3">
           <el-text>生成长度: {{ info.pwLen }}</el-text>
-          <el-slider v-model="info.pwLen" :min="1" :max="100" :step="1" />
+          <el-slider v-model="info.pwLen" :min="1" :max="100" :step="1" @change="gen" />
         </div>
         <div class="mt-3">
           <el-text>生成数量: {{ info.pwNum }}</el-text>
-          <el-slider v-model="info.pwNum" :min="1" :max="100" :step="1" />
+          <el-slider v-model="info.pwNum" :min="1" :max="100" :step="1" @change="gen" />
         </div>
         <div class="mt-2">
           <el-text>密码强度: {{ strength.label }}（约 {{ strength.entropy.toFixed(1) }} bits）</el-text>
@@ -232,7 +245,7 @@ onMounted(() => {
     <ToolDetail title="描述">
       <el-text>
         在线生成密码支持开启或关闭大小写 、数字 、特殊符号，支持自定义字符，长度；批量生成密码
-      </el-text> 
+      </el-text>
       <el-text class="block mt-2">
         bits（熵）说明：表示密码的随机信息量，值越大越难被穷举。约需要 2 的 bits 次方次尝试才能遍历所有可能；
         一般参考：≥28 为较弱、≥36 为中等、≥60 为强、≥80 为极强。

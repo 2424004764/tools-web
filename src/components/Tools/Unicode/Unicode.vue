@@ -8,7 +8,7 @@ import "codemirror/mode/javascript/javascript.js";
 
 const info = reactive({
   title: "Unicode转中文",
-  content: '',
+  content: '\\u4f60\\u597d\\u4e16\\u754c',
   tranRes: '',
 })
 
@@ -94,10 +94,16 @@ const clear = () => {
     </div>
 
     <!-- desc -->
-    <ToolDetail title="描述">
+    <ToolDetail title="使用说明">
       <el-text>
-        Unicode是计算机科学领域里的一项业界标准，有时候我们需要对一段文本或者一段内容进行重新排版编译的时候就需要将获取的值进行转码。
-      </el-text> 
+        <p>Unicode（统一码）是计算机科学领域的国际编码标准，为世界上几乎所有的文字系统中的每个字符分配了唯一的数字编号，确保不同平台和程序之间能够一致地处理和显示文本。</p>
+        <p class="mt-2">本工具支持 Unicode 编码与中文之间的双向转换：</p>
+        <ul class="list-disc pl-6 mt-1">
+          <li><strong>Unicode 转中文</strong>：将 <code>\u4f60\u597d</code> 格式的 Unicode 编码转换为对应的中文字符，适用于解码 JSON 数据、网页源码、API 返回值等场景中的中文乱码。</li>
+          <li><strong>中文转 Unicode</strong>：将中文字符转换为 <code>\uXXXX</code> 格式的 Unicode 编码，常用于前端开发、国际化处理、数据传输等需要对中文进行编码的场景。</li>
+        </ul>
+        <p class="mt-2">使用方法：在输入框中粘贴需要转换的内容，点击对应按钮即可完成转换，支持一键复制结果。</p>
+      </el-text>
     </ToolDetail>
 
   </div>

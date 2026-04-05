@@ -4,128 +4,72 @@ import { reactive } from 'vue'
 const lengthInfo: {
   [key: string]: string|number
 } = reactive({
-  km: '',
-  m: '',
-  dm: '',
-  cm: '',
-  mm: '',
-  ha: '',
-  tradition_mu: '',
-  tradition_fen: '',
-  tradition_mill: '',
-  tradition_hao: '',
-  eng_nmi: '',
-  eng_mi: '',
-  eng_acre: '',
-  eng_rd: '',
-  eng_yd: '',
-  eng_ft: '',
-  eng_in: '',
+  km: 1,
+  m: 1000000,
+  dm: 100000000,
+  cm: 10000000000,
+  mm: 1000000000000,
+  ha: 100,
+  tradition_mu: 1500,
+  tradition_fen: 15000,
+  tradition_mill: 150000,
+  tradition_hao: 1500000,
+  eng_nmi: 0.29155335,
+  eng_mi: 0.38610216,
+  eng_acre: 247.10538,
+  eng_rd: 39536.861,
+  eng_yd: 1195990.046,
+  eng_ft: 10763910.417,
+  eng_in: 1550003100.006,
 })
 
-//clear
 const clear = () => {
   for (let item in lengthInfo) {
     lengthInfo[item] = ''
   }
 }
 
-/**
- * 转换
- * @param type 
- */
-const tran = (key: string) => {
-  //转换成平方米
+const onInput = (key: string) => {
+  const val = parseFloat(lengthInfo[key] as string)
+  if (isNaN(val)) return
+
+  let mVal = 0
+  let muVal = 0
+  let engFtVal = 0
+
   switch (key) {
-    case 'km':
-      lengthInfo.m = parseFloat(lengthInfo[key] as string) * (1000 * 1000)
-      break;
-    case 'm':
-      lengthInfo.m = parseFloat(lengthInfo[key] as string) * 1
-      break;
-    case 'dm':
-      lengthInfo.m = parseFloat(lengthInfo[key] as string) * 0.01
-      break;
-    case 'cm':
-      lengthInfo.m = parseFloat(lengthInfo[key] as string) * 0.0001
-      break;
-    case 'mm':
-      lengthInfo.m = parseFloat(lengthInfo[key] as string) * 0.000001
-      break;
-    case 'ha':
-      lengthInfo.m = parseFloat(lengthInfo[key] as string) * 10000
-      break;
-    case 'tradition_mu':
-      lengthInfo.m = parseFloat(lengthInfo[key] as string) * 666.6666667
-      lengthInfo.tradition_mu = parseFloat(lengthInfo[key] as string) * 1
-      break;
-    case 'tradition_fen':
-      lengthInfo.m = parseFloat(lengthInfo[key] as string) * 66.67
-      lengthInfo.tradition_mu = parseFloat(lengthInfo[key] as string) * 0.1
-      break;
-    case 'tradition_mill':
-      lengthInfo.m = parseFloat(lengthInfo[key] as string) * 6.67
-      lengthInfo.tradition_mu = parseFloat(lengthInfo[key] as string) * 0.01
-      break;
-    case 'tradition_hao':
-      lengthInfo.m = parseFloat(lengthInfo[key] as string) * 0.67
-      lengthInfo.tradition_mu = parseFloat(lengthInfo[key] as string) * 0.001
-      break;
-    case 'eng_nmi':
-      lengthInfo.m = parseFloat(lengthInfo[key] as string) * (1852 * 1852)
-      break;
-    case 'eng_mi':
-      lengthInfo.m = parseFloat(lengthInfo[key] as string) * 2589988.110336
-      lengthInfo.eng_ft = parseFloat(lengthInfo[key] as string) * 27878400
-      break;
-    case 'eng_acre':
-      lengthInfo.m = parseFloat(lengthInfo[key] as string) * 4046.8564224
-      lengthInfo.eng_ft = parseFloat(lengthInfo[key] as string) * 43560
-      break;
-    case 'eng_rd':
-      lengthInfo.m = parseFloat(lengthInfo[key] as string) * 25.2928526
-      lengthInfo.eng_ft = parseFloat(lengthInfo[key] as string) * 272.25
-      break;
-    case 'eng_yd':
-      lengthInfo.m = parseFloat(lengthInfo[key] as string) * 0.8361274
-      lengthInfo.eng_ft = parseFloat(lengthInfo[key] as string) * 9
-      break;
-    case 'eng_ft':
-      lengthInfo.m = parseFloat(lengthInfo[key] as string) * 0.092903
-      lengthInfo.eng_ft = parseFloat(lengthInfo[key] as string) * 1
-      break;
-    case 'eng_in':
-      lengthInfo.m = parseFloat(lengthInfo[key] as string) * 0.0006452
-      lengthInfo.eng_ft = parseFloat(lengthInfo[key] as string) * 0.0069444
-      break;
-    default:
-      break;
+    case 'km': mVal = val * 1000000; break
+    case 'm': mVal = val; break
+    case 'dm': mVal = val * 0.01; break
+    case 'cm': mVal = val * 0.0001; break
+    case 'mm': mVal = val * 0.000001; break
+    case 'ha': mVal = val * 10000; break
+    case 'tradition_mu': mVal = val * 666.6666667; muVal = val; break
+    case 'tradition_fen': mVal = val * 66.67; muVal = val * 0.1; break
+    case 'tradition_mill': mVal = val * 6.67; muVal = val * 0.01; break
+    case 'tradition_hao': mVal = val * 0.67; muVal = val * 0.001; break
+    case 'eng_nmi': mVal = val * (1852 * 1852); break
+    case 'eng_mi': mVal = val * 2589988.110336; engFtVal = val * 27878400; break
+    case 'eng_acre': mVal = val * 4046.8564224; engFtVal = val * 43560; break
+    case 'eng_rd': mVal = val * 25.2928526; engFtVal = val * 272.25; break
+    case 'eng_yd': mVal = val * 0.8361274; engFtVal = val * 9; break
+    case 'eng_ft': mVal = val * 0.092903; engFtVal = val; break
+    case 'eng_in': mVal = val * 0.0006452; engFtVal = val * 0.0069444; break
   }
 
-  //平方米转换成其他单位
-  let mVal = lengthInfo.m as number
-  //传统面积处理
-  let muVal = mVal * 0.0015
-  if (['tradition_mu', 'tradition_fen', 'tradition_mill', 'tradition_hao'].includes(key)) {
-    muVal = (lengthInfo.tradition_mu == '' ? muVal : lengthInfo.tradition_mu) as number
-  }
-  //英制
-  let engFtVal = mVal / 0.092903
-  if (['eng_mi', 'eng_acre', 'eng_rd', 'eng_yd', 'eng_ft', 'eng_in'].includes(key)) {
-    engFtVal = (lengthInfo.eng_ft == '' ? engFtVal : lengthInfo.eng_ft) as number
-  }
+  if (!muVal) muVal = mVal * 0.0015
+  if (!engFtVal) engFtVal = mVal / 0.092903
 
   lengthInfo.km = mVal * 0.000001
+  lengthInfo.m = mVal
   lengthInfo.dm = mVal * 100
   lengthInfo.cm = mVal * 10000
   lengthInfo.mm = mVal * 1000000
   lengthInfo.ha = mVal * 0.0001
-
   lengthInfo.tradition_mu = muVal
-  lengthInfo.tradition_fen = muVal / 0.1
-  lengthInfo.tradition_mill = muVal / 0.01
-  lengthInfo.tradition_hao = muVal / 0.001
-
+  lengthInfo.tradition_fen = muVal * 10
+  lengthInfo.tradition_mill = muVal * 100
+  lengthInfo.tradition_hao = muVal * 1000
   lengthInfo.eng_nmi = mVal / (1852 * 1852)
   lengthInfo.eng_mi = engFtVal / 27878400
   lengthInfo.eng_acre = engFtVal / 43560
@@ -134,7 +78,6 @@ const tran = (key: string) => {
   lengthInfo.eng_ft = engFtVal
   lengthInfo.eng_in = engFtVal / 0.0069444
 }
-
 </script>
 
 <template>
@@ -149,11 +92,8 @@ const tran = (key: string) => {
               v-model="lengthInfo.km"
               placeholder=""
               class="input-with-select"
-            >
-              <template #append>
-                <el-button @click="tran('km')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('km')"
+            />
           </div>
           <div class="custom-box-single">
             <el-text class="custom-box-text">平方米(m<sup>2</sup>)</el-text>
@@ -161,12 +101,8 @@ const tran = (key: string) => {
               v-model="lengthInfo.m"
               placeholder=""
               class="input-with-select"
-              type="number"
-            >
-              <template #append>
-                <el-button @click="tran('m')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('m')"
+            />
           </div>
         </div>
         <!-- group -->
@@ -177,12 +113,8 @@ const tran = (key: string) => {
               v-model="lengthInfo.dm"
               placeholder=""
               class="input-with-select"
-              type="number"
-            >
-              <template #append>
-                <el-button @click="tran('dm')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('dm')"
+            />
           </div>
           <div class="custom-box-single">
             <el-text class="custom-box-text">平方厘米(cm<sup>2</sup>)</el-text>
@@ -190,12 +122,8 @@ const tran = (key: string) => {
               v-model="lengthInfo.cm"
               placeholder=""
               class="input-with-select"
-              type="number"
-            >
-              <template #append>
-                <el-button @click="tran('cm')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('cm')"
+            />
           </div>
         </div>
         <!-- group -->
@@ -206,12 +134,8 @@ const tran = (key: string) => {
               v-model="lengthInfo.mm"
               placeholder=""
               class="input-with-select"
-              type="number"
-            >
-              <template #append>
-                <el-button @click="tran('mm')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('mm')"
+            />
           </div>
           <div class="custom-box-single">
             <el-text class="custom-box-text">公顷(ha)</el-text>
@@ -219,12 +143,8 @@ const tran = (key: string) => {
               v-model="lengthInfo.ha"
               placeholder=""
               class="input-with-select"
-              type="number"
-            >
-              <template #append>
-                <el-button @click="tran('ha')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('ha')"
+            />
           </div>
         </div>
         <el-divider content-position="left">中国传统面积单位(市制)</el-divider>
@@ -236,12 +156,8 @@ const tran = (key: string) => {
               v-model="lengthInfo.tradition_mu"
               placeholder=""
               class="input-with-select"
-              type="number"
-            >
-              <template #append>
-                <el-button @click="tran('tradition_mu')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('tradition_mu')"
+            />
           </div>
           <div class="custom-box-single">
             <el-text class="custom-box-text">分</el-text>
@@ -249,12 +165,8 @@ const tran = (key: string) => {
               v-model="lengthInfo.tradition_fen"
               placeholder=""
               class="input-with-select"
-              type="number"
-            >
-              <template #append>
-                <el-button @click="tran('tradition_fen')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('tradition_fen')"
+            />
           </div>
         </div>
         <!-- group -->
@@ -265,12 +177,8 @@ const tran = (key: string) => {
               v-model="lengthInfo.tradition_mill"
               placeholder=""
               class="input-with-select"
-              type="number"
-            >
-              <template #append>
-                <el-button @click="tran('tradition_mill')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('tradition_mill')"
+            />
           </div>
           <div class="custom-box-single">
             <el-text class="custom-box-text">毫</el-text>
@@ -278,12 +186,8 @@ const tran = (key: string) => {
               v-model="lengthInfo.tradition_hao"
               placeholder=""
               class="input-with-select"
-              type="number"
-            >
-              <template #append>
-                <el-button @click="tran('tradition_hao')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('tradition_hao')"
+            />
           </div>
         </div>
         <el-divider content-position="left">英制面积单位</el-divider>
@@ -295,12 +199,8 @@ const tran = (key: string) => {
               v-model="lengthInfo.eng_nmi"
               placeholder=""
               class="input-with-select"
-              type="number"
-            >
-              <template #append>
-                <el-button @click="tran('eng_nmi')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('eng_nmi')"
+            />
           </div>
           <div class="custom-box-single">
             <el-text class="custom-box-text">平方英里(mi<sup>2</sup>)</el-text>
@@ -308,12 +208,8 @@ const tran = (key: string) => {
               v-model="lengthInfo.eng_mi"
               placeholder=""
               class="input-with-select"
-              type="number"
-            >
-              <template #append>
-                <el-button @click="tran('eng_mi')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('eng_mi')"
+            />
           </div>
         </div>
         <!-- group -->
@@ -324,12 +220,8 @@ const tran = (key: string) => {
               v-model="lengthInfo.eng_acre"
               placeholder=""
               class="input-with-select"
-              type="number"
-            >
-              <template #append>
-                <el-button @click="tran('eng_acre')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('eng_acre')"
+            />
           </div>
           <div class="custom-box-single">
             <el-text class="custom-box-text">平方竿(rd<sup>2</sup>)</el-text>
@@ -337,12 +229,8 @@ const tran = (key: string) => {
               v-model="lengthInfo.eng_rd"
               placeholder=""
               class="input-with-select"
-              type="number"
-            >
-              <template #append>
-                <el-button @click="tran('eng_rd')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('eng_rd')"
+            />
           </div>
         </div>
         <!-- group -->
@@ -353,12 +241,8 @@ const tran = (key: string) => {
               v-model="lengthInfo.eng_yd"
               placeholder=""
               class="input-with-select"
-              type="number"
-            >
-              <template #append>
-                <el-button @click="tran('eng_yd')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('eng_yd')"
+            />
           </div>
           <div class="custom-box-single">
             <el-text class="custom-box-text">平方英尺(ft<sup>2</sup>)</el-text>
@@ -366,12 +250,8 @@ const tran = (key: string) => {
               v-model="lengthInfo.eng_ft"
               placeholder=""
               class="input-with-select"
-              type="number"
-            >
-              <template #append>
-                <el-button @click="tran('eng_ft')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('eng_ft')"
+            />
           </div>
         </div>
         <!-- group -->
@@ -382,12 +262,8 @@ const tran = (key: string) => {
               v-model="lengthInfo.eng_in"
               placeholder=""
               class="input-with-select"
-              type="number"
-            >
-              <template #append>
-                <el-button @click="tran('eng_in')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('eng_in')"
+            />
           </div>
         </div>
       </div>

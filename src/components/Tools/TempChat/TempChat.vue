@@ -3,7 +3,7 @@ import { reactive, ref, onMounted, onUnmounted, nextTick, computed, watch } from
 import { useRoute } from "vue-router";
 import DetailHeader from "@/components/Layout/DetailHeader/DetailHeader.vue";
 import ToolDetail from "@/components/Layout/ToolDetail/ToolDetail.vue";
-import { ElMessage } from "element-plus";
+import { ElMessage, ElImageViewer } from "element-plus";
 import { CopyDocument, Close, QuestionFilled } from "@element-plus/icons-vue";
 import QrcodeVue3 from "qrcode-vue3";
 import { supabase, chatDb } from "@/utils/supabase";
@@ -31,6 +31,7 @@ const messages = ref<Array<{
     nickname: string;
     content: string;
   };
+  images?: string[];
 }>>([]);
 const inputMessage = ref("");
 const messagesContainer = ref<HTMLElement | null>(null);
@@ -148,6 +149,21 @@ let heartbeatInterval: any = null;
 
 // 当前用户的唯一ID
 const currentUserId = ref(`user-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`);
+
+// 图片发送
+const pendingImages = ref<string[]>([]);
+const isCompressing = ref(false);
+const imageInputRef = ref<HTMLInputElement | null>(null);
+const isDragOver = ref(false);
+const MAX_PENDING_IMAGES = 4;
+const MAX_IMAGE_DIMENSION = 1200;
+const JPEG_QUALITY = 0.7;
+const MAX_IMAGE_BASE64_SIZE = 500 * 1024;
+
+// 灯箱
+const lightboxVisible = ref(false);
+const lightboxImages = ref<string[]>([]);
+const lightboxCurrentIndex = ref(0);
 
 // 保存昵称到本地存储
 const saveNickname = (nick: string) => {
@@ -496,6 +512,7 @@ const joinRoom = async () => {
           isSelf: false,
           revoked: false,
           mentioned: amIMentioned,
+          images: tempMsg.images || undefined,
         });
 
         // 播放提示音
@@ -639,9 +656,125 @@ const updateTypingUsers = () => {
   typingUsers.value = typing;
 };
 
+// 图片压缩
+const compressImage = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let { width, height } = img;
+        if (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION) {
+          const ratio = Math.min(MAX_IMAGE_DIMENSION / width, MAX_IMAGE_DIMENSION / height);
+          width = Math.round(width * ratio);
+          height = Math.round(height * ratio);
+        }
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
+        let quality = JPEG_QUALITY;
+        let dataUrl = canvas.toDataURL('image/jpeg', quality);
+        while (dataUrl.length > MAX_IMAGE_BASE64_SIZE && quality > 0.1) {
+          quality -= 0.1;
+          dataUrl = canvas.toDataURL('image/jpeg', quality);
+        }
+        if (dataUrl.length > MAX_IMAGE_BASE64_SIZE) {
+          reject(new Error('图片过大，无法发送'));
+          return;
+        }
+        resolve(dataUrl);
+      };
+      img.onerror = () => reject(new Error('图片加载失败'));
+      img.src = e.target!.result as string;
+    };
+    reader.onerror = () => reject(new Error('图片读取失败'));
+    reader.readAsDataURL(file);
+  });
+};
+
+const processImageFile = async (file: File) => {
+  if (!file.type.startsWith('image/')) {
+    ElMessage.warning('请选择图片文件');
+    return;
+  }
+  if (pendingImages.value.length >= MAX_PENDING_IMAGES) {
+    ElMessage.warning(`最多发送 ${MAX_PENDING_IMAGES} 张图片`);
+    return;
+  }
+  isCompressing.value = true;
+  try {
+    const base64 = await compressImage(file);
+    pendingImages.value.push(base64);
+  } catch (err: any) {
+    ElMessage.error(err.message || '图片处理失败');
+  } finally {
+    isCompressing.value = false;
+  }
+};
+
+const removePendingImage = (index: number) => {
+  pendingImages.value.splice(index, 1);
+};
+
+const handleImageFileSelect = (e: Event) => {
+  const target = e.target as HTMLInputElement;
+  const files = target.files;
+  if (!files) return;
+  for (const file of Array.from(files)) {
+    if (pendingImages.value.length >= MAX_PENDING_IMAGES) break;
+    processImageFile(file);
+  }
+  target.value = '';
+};
+
+const handlePaste = (e: ClipboardEvent) => {
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  for (const item of Array.from(items)) {
+    if (item.type.startsWith('image/')) {
+      e.preventDefault();
+      const file = item.getAsFile();
+      if (file) processImageFile(file);
+      return;
+    }
+  }
+};
+
+const handleDragOver = (e: DragEvent) => {
+  if (e.dataTransfer?.types.includes('Files')) {
+    isDragOver.value = true;
+  }
+};
+
+const handleDragLeave = () => {
+  isDragOver.value = false;
+};
+
+const handleDrop = (e: DragEvent) => {
+  isDragOver.value = false;
+  const files = e.dataTransfer?.files;
+  if (!files) return;
+  for (const file of Array.from(files)) {
+    if (file.type.startsWith('image/') && pendingImages.value.length < MAX_PENDING_IMAGES) {
+      processImageFile(file);
+    }
+  }
+};
+
+const openLightbox = (images: string[], index: number) => {
+  lightboxImages.value = images;
+  lightboxCurrentIndex.value = index;
+  lightboxVisible.value = true;
+};
+
 // 发送消息
 const sendMessage = async () => {
-  if (!inputMessage.value.trim() || isSending.value) return;
+  const hasImages = pendingImages.value.length > 0;
+  const hasText = inputMessage.value.trim().length > 0;
+
+  if (!hasText && !hasImages) return;
+  if (isSending.value) return;
 
   // 频率限制
   const now = Date.now();
@@ -651,49 +784,91 @@ const sendMessage = async () => {
   }
 
   const content = inputMessage.value.trim();
+  const images = [...pendingImages.value];
 
   // 保存到输入历史
-  inputHistory.value.push(content);
-  if (inputHistory.value.length > 50) {
-    inputHistory.value = inputHistory.value.slice(-50);
+  if (content) {
+    inputHistory.value.push(content);
+    if (inputHistory.value.length > 50) {
+      inputHistory.value = inputHistory.value.slice(-50);
+    }
   }
   historyIndex.value = -1;
 
   isSending.value = true;
   lastSendTime.value = now;
 
-  const messageData = {
-    content: content,
-    reply_to: replyingTo.value ? {
-      id: replyingTo.value.id,
-      nickname: replyingTo.value.nickname,
-      content: replyingTo.value.content,
-    } : undefined,
-  };
+  const replyTo = replyingTo.value ? {
+    id: replyingTo.value.id,
+    nickname: replyingTo.value.nickname,
+    content: replyingTo.value.content,
+  } : undefined;
 
   try {
-    if (ephemeralMode.value) {
-      // 临时模式：通过 presenceChannel 广播消息，不存储
+    if (hasImages) {
+      // 含图片的消息始终通过广播发送（图片不持久化）
       if (!presenceChannel) {
         ElMessage.error("请先加入房间");
+        isSending.value = false;
+        return;
+      }
+
+      // 校验广播 payload 大小
+      const totalImageSize = images.reduce((sum, img) => sum + img.length, 0);
+      const textPayload = JSON.stringify({ content, replyTo }).length;
+      if (totalImageSize + textPayload > 900 * 1024) {
+        ElMessage.warning('图片总大小过大，请减少图片数量');
+        isSending.value = false;
         return;
       }
 
       const tempMessage = {
         id: `temp-${Date.now()}-${Math.random()}`,
         nickname: nickname.value,
-        content: messageData.content,
+        content: content || '',
         timestamp: Date.now(),
         isSelf: true,
         revoked: false,
-        replyTo: messageData.reply_to,
+        replyTo: replyTo,
+        images: images,
       };
 
-      // 添加到本地消息列表
       messages.value.push(tempMessage);
       nextTick(() => scrollToBottom());
 
-      // 通过 presenceChannel 广播消息
+      presenceChannel.send({
+        type: 'broadcast',
+        event: 'ephemeral-message',
+        payload: {
+          ...tempMessage,
+          room_id: roomId.value,
+        },
+      });
+
+      inputMessage.value = "";
+      pendingImages.value = [];
+      cancelReply();
+    } else if (ephemeralMode.value) {
+      // 临时模式（纯文字）：通过 presenceChannel 广播消息，不存储
+      if (!presenceChannel) {
+        ElMessage.error("请先加入房间");
+        isSending.value = false;
+        return;
+      }
+
+      const tempMessage = {
+        id: `temp-${Date.now()}-${Math.random()}`,
+        nickname: nickname.value,
+        content: content,
+        timestamp: Date.now(),
+        isSelf: true,
+        revoked: false,
+        replyTo: replyTo,
+      };
+
+      messages.value.push(tempMessage);
+      nextTick(() => scrollToBottom());
+
       presenceChannel.send({
         type: 'broadcast',
         event: 'ephemeral-message',
@@ -706,14 +881,18 @@ const sendMessage = async () => {
       inputMessage.value = "";
       cancelReply();
     } else {
-      // 正常模式：存储到数据库
-      await chatDb.sendMessage(roomId.value, nickname.value, messageData.content, messageData.reply_to);
+      // 正常模式（纯文字）：存储到数据库
+      await chatDb.sendMessage(roomId.value, nickname.value, content, replyTo);
       inputMessage.value = "";
-      cancelReply(); // 清除回复状态
+      cancelReply();
     }
   } catch (error: any) {
     console.error("发送消息失败:", error);
     ElMessage.error("发送失败，请重试");
+    // 恢复图片
+    if (pendingImages.value.length === 0 && images.length > 0) {
+      pendingImages.value = images;
+    }
   } finally {
     isSending.value = false;
 
@@ -762,6 +941,7 @@ const leaveRoom = () => {
   messages.value = [];
   onlineUsers.value = [];
   typingUsers.value = [];
+  pendingImages.value = [];
   isJoined.value = false;
   hasNewMessages.value = false;
   replyingTo.value = null;
@@ -2125,7 +2305,20 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
           class="flex-1 overflow-y-auto overflow-x-hidden space-y-3 pr-2 bg-gray-50 rounded-lg p-4 relative"
           style="min-height: 350px; max-height: 55vh;"
           @scroll="handleScroll"
+          @dragover.prevent="handleDragOver"
+          @dragleave="handleDragLeave"
+          @drop.prevent="handleDrop"
         >
+          <!-- 拖拽上传蒙层 -->
+          <div
+            v-if="isDragOver"
+            class="absolute inset-0 bg-blue-50/90 flex items-center justify-center z-20 rounded-lg border-2 border-dashed border-blue-400"
+          >
+            <div class="text-center text-blue-600">
+              <div class="text-4xl mb-2">📷</div>
+              <p class="text-lg font-medium">拖拽图片到此处发送</p>
+            </div>
+          </div>
           <!-- 加载更多提示 -->
           <div v-if="hasMoreMessages" class="text-center py-2">
             <el-button size="small" text @click="loadMoreMessages" :loading="isLoadingMore">
@@ -2170,6 +2363,40 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
                   <div v-if="msg.replyTo" class="mb-1 pl-2 border-l-2 border-gray-300">
                     <div class="text-xs text-gray-500">@{{ msg.replyTo.nickname }}</div>
                     <div class="text-sm text-gray-600 truncate max-w-xs">{{ msg.replyTo.content }}</div>
+                  </div>
+
+                  <!-- 图片 -->
+                  <div v-if="msg.images && msg.images.length > 0" class="mb-2" :class="{ 'mt-1': msg.content }">
+                    <div v-if="msg.images.length === 1" class="max-w-[240px]">
+                      <img
+                        :src="msg.images[0]"
+                        class="rounded-lg cursor-pointer hover:opacity-90 transition-opacity max-h-[240px] w-auto"
+                        @click="openLightbox(msg.images!, 0)"
+                      />
+                    </div>
+                    <div
+                      v-else
+                      class="grid gap-1"
+                      :class="{
+                        'grid-cols-2': msg.images.length === 2 || msg.images.length === 4,
+                        'grid-cols-3': msg.images.length === 3 || msg.images.length > 4,
+                      }"
+                    >
+                      <div
+                        v-for="(img, imgIdx) in msg.images.slice(0, 5)"
+                        :key="imgIdx"
+                        class="relative w-full aspect-square rounded overflow-hidden cursor-pointer"
+                        @click="openLightbox(msg.images!, imgIdx)"
+                      >
+                        <img :src="img" class="w-full h-full object-cover hover:opacity-90 transition-opacity" />
+                        <div
+                          v-if="imgIdx === 4 && msg.images.length > 5"
+                          class="absolute inset-0 bg-black/50 flex items-center justify-center text-white text-lg font-bold"
+                        >
+                          +{{ msg.images.length - 5 }}
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   <div
@@ -2333,12 +2560,40 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
             {{ typingUsers.join('、') }} 正在输入...
           </div>
 
+          <!-- 图片预览 -->
+          <div v-if="pendingImages.length > 0" class="mb-2 flex gap-2 flex-wrap">
+            <div
+              v-for="(img, idx) in pendingImages"
+              :key="idx"
+              class="relative group/img w-20 h-20 rounded-lg overflow-hidden border border-gray-200 flex-shrink-0"
+            >
+              <img :src="img" class="w-full h-full object-cover" />
+              <div
+                class="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
+                @click="removePendingImage(idx)"
+              >
+                <el-icon class="text-white text-lg"><Close /></el-icon>
+              </div>
+            </div>
+            <div v-if="isCompressing" class="w-20 h-20 rounded-lg border border-gray-200 flex items-center justify-center">
+              <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+            </div>
+          </div>
+
           <div class="flex gap-2 items-end">
             <el-button
               @click="showEmojiPicker = !showEmojiPicker"
               :type="showEmojiPicker ? 'primary' : 'default'"
             >
               {{ showEmojiPicker ? '收起' : '😊' }}
+            </el-button>
+            <input ref="imageInputRef" type="file" accept="image/*" multiple class="hidden" @change="handleImageFileSelect" />
+            <el-button
+              @click="imageInputRef?.click()"
+              :disabled="isCompressing"
+              title="发送图片"
+            >
+              📷
             </el-button>
             <el-input
               v-model="inputMessage"
@@ -2350,9 +2605,10 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
               show-word-limit
               @keydown="handleKeydown"
               @input="handleInput"
+              @paste="handlePaste"
               class="flex-1"
             />
-            <el-button type="primary" @click="sendMessage" :disabled="!inputMessage.trim()" :loading="isSending">
+            <el-button type="primary" @click="sendMessage" :disabled="(!inputMessage.trim() && pendingImages.length === 0) || isSending" :loading="isSending">
               发送
             </el-button>
           </div>
@@ -2411,6 +2667,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
         <strong>特色功能：</strong>
         <br>• <strong>@提及</strong>：输入@可提及在线用户，被提及者会收到特殊提示
         <br>• <strong>临时模式</strong>：消息不存储到数据库，刷新页面后消失，适合临时聊天
+        <br>• <strong>发送图片</strong>：图片不存储到数据库，仅对话时可见，刷新页面后图片将消失
         <br>• <strong>消息撤回</strong>：发送后2分钟内可撤回消息
         <br>• <strong>消息引用</strong>：点击消息头像可引用回复
         <br><br>
@@ -2423,6 +2680,15 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
         <br>• 前端采用 Vue3 响应式设计，界面自适应各种屏幕尺寸
       </el-text>
     </ToolDetail>
+
+    <!-- 图片灯箱 -->
+    <el-image-viewer
+      v-if="lightboxVisible"
+      :url-list="lightboxImages"
+      :initial-index="lightboxCurrentIndex"
+      @close="lightboxVisible = false"
+      :z-index="3000"
+    />
   </div>
 </template>
 

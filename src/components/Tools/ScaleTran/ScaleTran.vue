@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive } from 'vue'
+import { reactive, watch, onMounted } from 'vue'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { ElMessage } from 'element-plus'
@@ -10,7 +10,7 @@ import { scale58ToBase, scale62ToBase, scale64ToBase, baseToScale58, baseToScale
 
 const info = reactive({
   title: "常用进制转换",
-  content: '',
+  content: '10',
   chooseTranOptions: '10',
   tranOptions: [
     {
@@ -110,62 +110,43 @@ const baseToTailScale = (num: number, scale: number): string => {
   return res
 }
 
-//转换前 - check
-const tranCheck = () => {
+//转换前 - check（silent=true 时不弹提示，用于自动转换）
+const tranCheck = (silent = false) => {
   if (!info.content) {
-    ElMessage({
-      message: "请输入转换数值",
-      type: "warning",
-      duration: 1500
-    })
+    if (!silent) ElMessage({ message: "请输入转换数值", type: "warning", duration: 1500 })
     return false
   }
 
   if (info.chooseTranOptions == '2' && isBinary(info.content) == false) {
-    ElMessage({
-      message: "不是二进制值",
-      type: "warning",
-      duration: 1500
-    })
+    if (!silent) ElMessage({ message: "不是二进制值", type: "warning", duration: 1500 })
     return false
   }
 
   if (info.chooseTranOptions == '8' && isOctal(info.content) == false) {
-    ElMessage({
-      message: "不是八进制值",
-      type: "warning",
-      duration: 1500
-    })
+    if (!silent) ElMessage({ message: "不是八进制值", type: "warning", duration: 1500 })
     return false
   }
 
   if (info.chooseTranOptions == '10' && isDecimal(info.content) == false) {
-    ElMessage({
-      message: "不是十进制值",
-      type: "warning",
-      duration: 1500
-    })
+    if (!silent) ElMessage({ message: "不是十进制值", type: "warning", duration: 1500 })
     return false
   }
 
   if (info.chooseTranOptions == '16' && isHexadecimal(info.content) == false) {
-    ElMessage({
-      message: "不是十六进制值",
-      type: "warning",
-      duration: 1500
-    })
+    if (!silent) ElMessage({ message: "不是十六进制值", type: "warning", duration: 1500 })
     return false
   }
 
   return true
 }
 
-//转换
-const tran = () => {
-  //转换前 - check
-  if (!tranCheck()) {
+//转换（silent=true 时静默校验，不弹提示）
+const tran = (silent = false) => {
+  if (!tranCheck(silent)) {
+    if (silent) info.tranOptions.forEach(item => item.tranValue = '')
     return
   }
+  if (!silent) ElMessage({ message: "转换成功", type: "success", duration: 1500 })
 
   //当前输入的内容转换成10进制
   let tranContent
@@ -186,6 +167,15 @@ const tran = () => {
     }
   }
 }
+
+// 输入内容或进制变化时自动转换
+watch(() => [info.content, info.chooseTranOptions], () => {
+  tran(true)
+})
+
+onMounted(() => {
+  tran()
+})
 
 //copy
 const copyRes = async (index: any) => {
@@ -250,10 +240,31 @@ const copyRes = async (index: any) => {
     </div>
     
     <!-- desc -->
-    <ToolDetail title="描述">
+    <ToolDetail title="使用说明">
       <el-text>
-        进位制其实是一种记数的方式，所以也称为进位记数法/位值计数法，可以用有限的数字符号代表所有的数值。 可使用数字符号的数目称为基数（英文：radix）或底数，基数为n，即可称n进位制，简称n进制。 例如平常生活中我们经常用到的十进制，就是使用10个阿拉伯数字0-9进行记数，所以它的基数就是10，称为十进制。
-      </el-text> 
+        <p>进位制是一种记数方式，也称为进位记数法/位值计数法，可以用有限的数字符号代表所有的数值。可使用数字符号的数目称为基数（radix），基数为n即称n进制。</p>
+
+        <p class="mt-3 font-bold">常见进制说明：</p>
+        <ul class="list-disc pl-6 mt-1 space-y-1">
+          <li><strong>二进制（Base-2）</strong>：使用 0、1 两个数字，是计算机底层的基础，所有数据最终都以二进制形式存储和运算。</li>
+          <li><strong>八进制（Base-8）</strong>：使用 0~7 共8个数字，常用于 Unix/Linux 文件权限表示，如 <code>chmod 755</code>。</li>
+          <li><strong>十进制（Base-10）</strong>：使用 0~9 共10个数字，日常生活中最常用的计数方式。</li>
+          <li><strong>十六进制（Base-16）</strong>：使用 0~9 和 A~F，广泛用于颜色值（如 <code>#FF5733</code>）、内存地址、MAC地址等场景。</li>
+          <li><strong>三十二进制（Base-32）</strong>：使用数字 + 大写字母，去除了易混淆的 I、L、O、U 字符，常用于编码和序列号生成。</li>
+          <li><strong>五十八进制（Base-58）</strong>：使用数字 + 大小写字母，去除了 0、O、l、I 等易混淆字符，广泛应用于比特币地址、IPFS 哈希等。</li>
+          <li><strong>六十二进制（Base-62）</strong>：使用 0~9、a~z、A~Z 共62个字符，常用于短链接生成、唯一ID编码等场景。</li>
+          <li><strong>六十四进制（Base-64）</strong>：使用数字 + 大小写字母 + <code>+/</code> 两个特殊字符，广泛用于数据编码传输，如邮件附件、图片Base64编码等。</li>
+        </ul>
+
+        <p class="mt-3 font-bold">常见转换方法：</p>
+        <ul class="list-disc pl-6 mt-1 space-y-1">
+          <li><strong>十进制 → 二进制</strong>：除2取余法，将十进制数不断除以2，取余数从下往上排列。例如：10 ÷ 2 = 5…0，5 ÷ 2 = 2…1，2 ÷ 2 = 1…0，1 ÷ 2 = 0…1，结果为 <code>1010</code>。</li>
+          <li><strong>二进制 → 十进制</strong>：按权展开法，从右到左每一位乘以 2 的对应次方后求和。例如：<code>1010</code> = 1×2³ + 0×2² + 1×2¹ + 0×2⁰ = 8 + 0 + 2 + 0 = <code>10</code>。</li>
+          <li><strong>十进制 → 十六进制</strong>：除16取余法，类似二进制转换，余数大于9时用 A~F 表示。例如：255 = <code>FF</code>。</li>
+          <li><strong>二进制 → 十六进制</strong>：每4位二进制为一组，分别转换为对应的十六进制数字。例如：<code>1010 1111</code> = <code>AF</code>。</li>
+          <li><strong>二进制 → 八进制</strong>：每3位二进制为一组，分别转换为对应的八进制数字。例如：<code>001 010</code> = <code>12</code>。</li>
+        </ul>
+      </el-text>
     </ToolDetail>
 
   </div>

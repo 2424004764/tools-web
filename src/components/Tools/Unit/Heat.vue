@@ -4,59 +4,41 @@ import { reactive } from 'vue'
 const info: {
   [key: string]: string|number
 } = reactive({
-  wh: '',
-  mmwh: '',
-  kwh: '',
-  mwh: '',
-  j: '',
-  kj: '',
+  wh: 1,
+  mmwh: 1000,
+  kwh: 0.001,
+  mwh: 0.000001,
+  j: 3600,
+  kj: 3.6,
 })
 
-//clear
 const clear = () => {
   for (let item in info) {
     info[item] = ''
   }
 }
 
-/**
- * 转换
- * @param type 
- */
-const tran = (key: string) => {
-  //转换成瓦
+const onInput = (key: string) => {
+  const val = parseFloat(info[key] as string)
+  if (isNaN(val)) return
+
+  let whVal = 0
   switch (key) {
-    case 'wh':
-      info.wh = parseFloat(info[key] as string) * 1
-      break;
-    case 'mmwh':
-      info.wh = parseFloat(info[key] as string) * 0.001
-      break;
-    case 'kwh':
-      info.wh = parseFloat(info[key] as string) * 1000
-      break;
-    case 'mwh':
-      info.wh = parseFloat(info[key] as string) * 1000000
-      break;
-    case 'j':
-      info.wh = parseFloat(info[key] as string) * 0.0002777777777777778
-      break;
-    case 'kj':
-      info.wh = parseFloat(info[key] as string) * 0.2777777777777778
-      break;
-    default:
-      break;
+    case 'wh': whVal = val; break
+    case 'mmwh': whVal = val * 0.001; break
+    case 'kwh': whVal = val * 1000; break
+    case 'mwh': whVal = val * 1000000; break
+    case 'j': whVal = val * 0.0002777777777777778; break
+    case 'kj': whVal = val * 0.2777777777777778; break
   }
 
-  //转换成其他单位
-  let val = info.wh as number
-  info.mmwh = val / 0.001
-  info.kwh = val / 1000
-  info.mwh = val / 1000000
-  info.j = val / 0.0002777777777777778
+  info.wh = whVal
+  info.mmwh = whVal / 0.001
+  info.kwh = whVal / 1000
+  info.mwh = whVal / 1000000
+  info.j = whVal / 0.0002777777777777778
   info.kj = info.j / 1000
 }
-
 </script>
 
 <template>
@@ -66,16 +48,13 @@ const tran = (key: string) => {
         <!-- group -->
         <div class="custom-box">
           <div class="custom-box-single">
-            <el-text class="custom-box-text">瓦(Wh)</el-text>
+            <el-text class="custom-box-text">瓦时(Wh)</el-text>
             <el-input
               v-model="info.wh"
               placeholder=""
               class="input-with-select"
-            >
-              <template #append>
-                <el-button @click="tran('wh')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('wh')"
+            />
           </div>
           <div class="custom-box-single">
             <el-text class="custom-box-text">毫瓦时(mWh)</el-text>
@@ -83,11 +62,8 @@ const tran = (key: string) => {
               v-model="info.mmwh"
               placeholder=""
               class="input-with-select"
-            >
-              <template #append>
-                <el-button @click="tran('mmwh')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('mmwh')"
+            />
           </div>
         </div>
 
@@ -99,11 +75,8 @@ const tran = (key: string) => {
               v-model="info.kwh"
               placeholder=""
               class="input-with-select"
-            >
-              <template #append>
-                <el-button @click="tran('kwh')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('kwh')"
+            />
           </div>
           <div class="custom-box-single">
             <el-text class="custom-box-text">兆瓦时(MWh)</el-text>
@@ -111,11 +84,8 @@ const tran = (key: string) => {
               v-model="info.mwh"
               placeholder=""
               class="input-with-select"
-            >
-              <template #append>
-                <el-button @click="tran('mwh')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('mwh')"
+            />
           </div>
         </div>
 
@@ -127,11 +97,8 @@ const tran = (key: string) => {
               v-model="info.j"
               placeholder=""
               class="input-with-select"
-            >
-              <template #append>
-                <el-button @click="tran('j')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('j')"
+            />
           </div>
           <div class="custom-box-single">
             <el-text class="custom-box-text">千焦(kJ)</el-text>
@@ -139,11 +106,8 @@ const tran = (key: string) => {
               v-model="info.kj"
               placeholder=""
               class="input-with-select"
-            >
-              <template #append>
-                <el-button @click="tran('kj')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('kj')"
+            />
           </div>
         </div>
 
