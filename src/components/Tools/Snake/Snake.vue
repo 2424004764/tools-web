@@ -548,58 +548,58 @@ const getCurrentColorScheme = () => {
   <div class="flex flex-col mt-3 ml-4 flex-1 mr-3">
     <DetailHeader :title="info.title"></DetailHeader>
 
-    <div class="p-6 rounded-2xl bg-white shadow-sm border border-gray-200">
+    <div class="p-3 sm:p-6 rounded-2xl bg-white shadow-sm border border-gray-200">
       <div class="max-w-2xl mx-auto">
         <!-- 游戏信息 -->
-        <div class="flex justify-between items-center mb-6">
+        <div class="flex justify-between items-center mb-6 gap-2">
           <div
-            class="text-center bg-blue-50 p-4 rounded-lg border border-blue-200 flex-1 mx-2"
+            class="text-center bg-blue-50 p-2 sm:p-4 rounded-lg border border-blue-200 flex-1"
           >
-            <h3 class="text-lg font-medium text-blue-900">得分</h3>
-            <p class="text-2xl font-bold text-blue-600">
+            <h3 class="text-xs sm:text-lg font-medium text-blue-900">得分</h3>
+            <p class="text-lg sm:text-2xl font-bold text-blue-600">
               {{ gameState.score }}
             </p>
           </div>
           <div
-            class="text-center bg-green-50 p-4 rounded-lg border border-green-200 flex-1 mx-2 relative"
+            class="text-center bg-green-50 p-2 sm:p-4 rounded-lg border border-green-200 flex-1 relative"
           >
-            <h3 class="text-lg font-medium text-green-900">最高分</h3>
-            <div class="flex items-center justify-center space-x-2">
-              <p class="text-2xl font-bold text-green-600">
+            <h3 class="text-xs sm:text-lg font-medium text-green-900">最高分</h3>
+            <div class="flex items-center justify-center space-x-1 sm:space-x-2">
+              <p class="text-lg sm:text-2xl font-bold text-green-600">
                 {{ gameState.highScore }}
               </p>
               <!-- 清空最高分按钮 -->
-              <el-button 
+              <el-button
                 @click="clearHighScore"
                 type="danger"
                 size="small"
                 :disabled="gameState.isPlaying || (!gameState.gameOver && gameState.gameTime > 0)"
-                class="bg-red-500 hover:bg-red-600 border-red-600 text-xs h-6 px-2"
+                class="bg-red-500 hover:bg-red-600 border-red-600 text-xs h-5 px-1 sm:h-6 sm:px-2"
               >
                 清空
               </el-button>
             </div>
           </div>
           <div
-            class="text-center bg-purple-50 p-4 rounded-lg border border-purple-200 flex-1 mx-2"
+            class="text-center bg-purple-50 p-2 sm:p-4 rounded-lg border border-purple-200 flex-1"
           >
-            <h3 class="text-lg font-medium text-purple-900">游戏时间</h3>
-            <p class="text-2xl font-bold text-purple-600">
+            <h3 class="text-xs sm:text-lg font-medium text-purple-900">游戏时间</h3>
+            <p class="text-lg sm:text-2xl font-bold text-purple-600">
               {{ formatTime(gameState.gameTime) }}
             </p>
           </div>
         </div>
 
         <!-- 游戏设置 -->
-        <div class="flex justify-between items-center mb-6">
-          <div class="flex items-center space-x-6">
-            <div class="flex items-center space-x-3">
+        <div class="flex flex-col sm:flex-row sm:justify-between items-stretch sm:items-center mb-6 gap-3">
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center sm:space-x-6 gap-3 sm:gap-0">
+            <div class="flex items-center space-x-2 sm:space-x-3 flex-1 sm:flex-none">
               <label class="text-sm font-medium text-gray-700 whitespace-nowrap">游戏速度：</label>
-              <el-select 
-                v-model="config.speed" 
+              <el-select
+                v-model="config.speed"
                 @change="handleSpeedChange"
                 :disabled="gameState.isPlaying"
-                :style="{ width: '100px' }"
+                class="flex-1 sm:flex-none snake-speed-select"
               >
                 <el-option
                   v-for="option in speedOptions"
@@ -609,14 +609,14 @@ const getCurrentColorScheme = () => {
                 />
               </el-select>
             </div>
-            
+
             <!-- 颜色主题选择 -->
-            <div class="flex items-center space-x-3">
+            <div class="flex items-center space-x-2 sm:space-x-3 flex-1 sm:flex-none">
               <label class="text-sm font-medium text-gray-700 whitespace-nowrap">颜色主题：</label>
-              <el-select 
-                v-model="selectedColorScheme" 
+              <el-select
+                v-model="selectedColorScheme"
                 :disabled="gameState.isPlaying"
-                :style="{ width: '120px' }"
+                class="flex-1 sm:flex-none snake-theme-select"
               >
                 <el-option
                   v-for="(scheme, index) in colorSchemes"
@@ -886,5 +886,15 @@ const getCurrentColorScheme = () => {
 
 .animate-pulse {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* 桌面端设置区域 select 固定宽度 */
+@media (min-width: 640px) {
+  .snake-speed-select {
+    width: 100px !important;
+  }
+  .snake-theme-select {
+    width: 120px !important;
+  }
 }
 </style> 

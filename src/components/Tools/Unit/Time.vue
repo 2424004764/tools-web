@@ -4,69 +4,47 @@ import { reactive } from 'vue'
 const info: {
   [key: string]: string|number
 } = reactive({
-  year: '',
-  month: '',
-  d: '',
-  h: '',
-  min: '',
-  s: '',
-  ms: '',
-  week: ''
+  year: 1,
+  month: 12,
+  d: 365,
+  h: 8760,
+  min: 525600,
+  s: 31536000,
+  ms: 31536000000,
+  week: 52.14285714,
 })
 
-//clear
 const clear = () => {
   for (let item in info) {
     info[item] = ''
   }
 }
 
-/**
- * 转换
- * @param type 
- */
-const tran = (key: string) => {
-  //转换成秒
+const onInput = (key: string) => {
+  const val = parseFloat(info[key] as string)
+  if (isNaN(val)) return
+
+  let sVal = 0
   switch (key) {
-    case 'year':
-      info.s = parseFloat(info[key] as string) * 31536000
-      break;
-    case 'month':
-      info.s = parseFloat(info[key] as string) * 2629800
-      break;
-    case 'd':
-      info.s = parseFloat(info[key] as string) * 86400
-      break;
-    case 'h':
-      info.s = parseFloat(info[key] as string) * 3600
-      break;
-    case 'min':
-      info.s = parseFloat(info[key] as string) * 60
-      break;
-    case 's':
-      info.s = parseFloat(info[key] as string) * 1
-      break;
-    case 'ms':
-      info.s = parseFloat(info[key] as string) * 0.001
-      break;
-    case 'week':
-      info.s = parseFloat(info[key] as string) * 604800
-      break;
-    default:
-      break;
+    case 'year': sVal = val * 31536000; break
+    case 'month': sVal = val * 2629800; break
+    case 'd': sVal = val * 86400; break
+    case 'h': sVal = val * 3600; break
+    case 'min': sVal = val * 60; break
+    case 's': sVal = val; break
+    case 'ms': sVal = val * 0.001; break
+    case 'week': sVal = val * 604800; break
   }
 
-  //转换成其他单位
-  let val = info.s as number
-  info.year = val / 31536000
+  info.year = sVal / 31536000
   info.month = info.year * 12
-  info.d = val / 86400
-  info.h = val / 3600
-  info.min = val / 60
-  info.ms = val / 0.001
-  info.week = val / 604800
+  info.d = sVal / 86400
+  info.h = sVal / 3600
+  info.min = sVal / 60
+  info.s = sVal
+  info.ms = sVal / 0.001
+  info.week = sVal / 604800
 }
-
 </script>
 
 <template>
@@ -81,11 +59,8 @@ const tran = (key: string) => {
               v-model="info.year"
               placeholder=""
               class="input-with-select"
-            >
-              <template #append>
-                <el-button @click="tran('year')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('year')"
+            />
           </div>
           <div class="custom-box-single">
             <el-text class="custom-box-text">月(month)</el-text>
@@ -93,11 +68,8 @@ const tran = (key: string) => {
               v-model="info.month"
               placeholder=""
               class="input-with-select"
-            >
-              <template #append>
-                <el-button @click="tran('month')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('month')"
+            />
           </div>
         </div>
 
@@ -109,11 +81,8 @@ const tran = (key: string) => {
               v-model="info.d"
               placeholder=""
               class="input-with-select"
-            >
-              <template #append>
-                <el-button @click="tran('d')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('d')"
+            />
           </div>
           <div class="custom-box-single">
             <el-text class="custom-box-text">时(h)</el-text>
@@ -121,11 +90,8 @@ const tran = (key: string) => {
               v-model="info.h"
               placeholder=""
               class="input-with-select"
-            >
-              <template #append>
-                <el-button @click="tran('h')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('h')"
+            />
           </div>
         </div>
 
@@ -137,11 +103,8 @@ const tran = (key: string) => {
               v-model="info.min"
               placeholder=""
               class="input-with-select"
-            >
-              <template #append>
-                <el-button @click="tran('min')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('min')"
+            />
           </div>
           <div class="custom-box-single">
             <el-text class="custom-box-text">秒(s)</el-text>
@@ -149,11 +112,8 @@ const tran = (key: string) => {
               v-model="info.s"
               placeholder=""
               class="input-with-select"
-            >
-              <template #append>
-                <el-button @click="tran('s')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('s')"
+            />
           </div>
         </div>
 
@@ -165,11 +125,8 @@ const tran = (key: string) => {
               v-model="info.ms"
               placeholder=""
               class="input-with-select"
-            >
-              <template #append>
-                <el-button @click="tran('ms')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('ms')"
+            />
           </div>
           <div class="custom-box-single">
             <el-text class="custom-box-text">周(week)</el-text>
@@ -177,11 +134,8 @@ const tran = (key: string) => {
               v-model="info.week"
               placeholder=""
               class="input-with-select"
-            >
-              <template #append>
-                <el-button @click="tran('week')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('week')"
+            />
           </div>
         </div>
 

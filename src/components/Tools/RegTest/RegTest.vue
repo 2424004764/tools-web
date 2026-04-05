@@ -233,7 +233,7 @@ const execMatch = () => {
           </li>
         </ul>
         <div class="flex items-center mt-4">
-          <el-input v-model="info.reg" class="mr-2" placeholder="正则表达式"></el-input>
+          <el-input v-model="info.reg" class="mr-2" placeholder="正则表达式" clearable />
           
           <div class="mr-2">
             <el-checkbox v-model="info.isAll" label="全局搜索" size="large"/>

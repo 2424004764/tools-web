@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import Header from "@/components/Layout/Header/Header.vue";
 import Left from "@/components/Layout/Left/Left.vue";
 import Floor from "@/components/Layout/Floor/Floor.vue";
@@ -8,6 +8,27 @@ import { useComponentStore } from "@/store/modules/component";
 import SimilarRecommend from "@/components/Layout/SimilarRecommend/SimilarRecommend.vue";
 import Comments from "@/components/Layout/Comments/Comments.vue";
 import { useRoute } from 'vue-router';
+import { Top } from '@element-plus/icons-vue';
+
+const showBackTop = ref(false)
+const onScroll = () => {
+  showBackTop.value = (window.pageYOffset || document.documentElement.scrollTop) > 300
+}
+const smoothScrollTop = () => {
+  const scrollTop = document.documentElement.scrollTop || document.body.scrollTop
+  if (scrollTop <= 0) return
+  const step = () => {
+    const current = document.documentElement.scrollTop || document.body.scrollTop
+    if (current <= 0) return
+    const distance = Math.max(current / 6, 10)
+    document.documentElement.scrollTop = current - distance
+    document.body.scrollTop = current - distance
+    requestAnimationFrame(step)
+  }
+  requestAnimationFrame(step)
+}
+onMounted(() => window.addEventListener('scroll', onScroll, { passive: true }))
+onUnmounted(() => window.removeEventListener('scroll', onScroll))
 //store
 const componentStore = useComponentStore();
 const route = useRoute();
@@ -65,6 +86,17 @@ const isHomePage = computed(() => {
         <Floor />
       </el-footer>
     </el-container>
+
+    <!-- 回到顶部 -->
+    <transition name="backtop-fade">
+      <div
+        v-show="showBackTop && !isHomePage"
+        class="fixed right-[30px] bottom-[60px] z-50 cursor-pointer w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center hover:bg-blue-50 transition-colors border border-gray-100"
+        @click="smoothScrollTop"
+      >
+        <el-icon :size="20" color="#409EFF"><Top /></el-icon>
+      </div>
+    </transition>
   </el-container>
 </template>
 
@@ -86,6 +118,16 @@ const isHomePage = computed(() => {
 
 .fade-leave-active {
   transition: opacity 0.1s ease-in;
+}
+
+/* 回到顶部按钮淡入淡出 */
+.backtop-fade-enter-active,
+.backtop-fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+.backtop-fade-enter-from,
+.backtop-fade-leave-to {
+  opacity: 0;
 }
 
 /* 手机端header固定后，el-header不占据空间 */

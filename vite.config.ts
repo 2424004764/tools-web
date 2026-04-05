@@ -22,7 +22,7 @@ export default defineConfig(({command, mode}) => {
     resolve: {
       alias: {
         "@": path.resolve("./src"),
-        'v-code-diff': path.resolve(__dirname, 'node_modules/v-code-diff/src/CodeDiff.vue'),
+        'v-code-diff': path.resolve(__dirname, 'node_modules/v-code-diff/dist/v3/index.es.js'),
       }
     },
     // 新增构建优化配置

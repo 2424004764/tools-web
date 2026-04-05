@@ -4,64 +4,44 @@ import { reactive } from 'vue'
 const info: {
   [key: string]: string|number
 } = reactive({
-  pa: '',
-  hpa: '',
-  kpa: '',
-  mpa: '',
-  bar: '',
-  torr: '',
-  psi: '',
+  pa: 1,
+  hpa: 0.01,
+  kpa: 0.001,
+  mpa: 0.000001,
+  bar: 0.00001,
+  torr: 0.00750062,
+  psi: 0.00014504,
 })
 
-//clear
 const clear = () => {
   for (let item in info) {
     info[item] = ''
   }
 }
 
-/**
- * 转换
- * @param type 
- */
-const tran = (key: string) => {
-  //转换成帕
+const onInput = (key: string) => {
+  const val = parseFloat(info[key] as string)
+  if (isNaN(val)) return
+
+  let paVal = 0
   switch (key) {
-    case 'pa':
-      info.pa = parseFloat(info[key] as string) * 1
-      break;
-    case 'hpa':
-      info.pa = parseFloat(info[key] as string) * 100
-      break;
-    case 'kpa':
-      info.pa = parseFloat(info[key] as string) * 1000
-      break;
-    case 'mpa':
-      info.pa = parseFloat(info[key] as string) * 1000000
-      break;
-    case 'bar':
-      info.pa = parseFloat(info[key] as string) * 100000
-      break;
-    case 'torr':
-      info.pa = parseFloat(info[key] as string) * 133.322368
-      break;
-    case 'psi':
-      info.pa = parseFloat(info[key] as string) * 6894.76
-      break;
-    default:
-      break;
+    case 'pa': paVal = val; break
+    case 'hpa': paVal = val * 100; break
+    case 'kpa': paVal = val * 1000; break
+    case 'mpa': paVal = val * 1000000; break
+    case 'bar': paVal = val * 100000; break
+    case 'torr': paVal = val * 133.322368; break
+    case 'psi': paVal = val * 6894.76; break
   }
 
-  //转换成其他单位
-  let val = info.pa as number
-  info.hpa = val / 100
-  info.kpa = val / 1000
-  info.mpa = val / 1000000
-  info.bar = val / 100000
-  info.torr = val / 133.322368
-  info.psi = val / 6894.76
+  info.pa = paVal
+  info.hpa = paVal / 100
+  info.kpa = paVal / 1000
+  info.mpa = paVal / 1000000
+  info.bar = paVal / 100000
+  info.torr = paVal / 133.322368
+  info.psi = paVal / 6894.76
 }
-
 </script>
 
 <template>
@@ -76,11 +56,8 @@ const tran = (key: string) => {
               v-model="info.pa"
               placeholder=""
               class="input-with-select"
-            >
-              <template #append>
-                <el-button @click="tran('pa')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('pa')"
+            />
           </div>
           <div class="custom-box-single">
             <el-text class="custom-box-text">百帕(hPa)</el-text>
@@ -88,11 +65,8 @@ const tran = (key: string) => {
               v-model="info.hpa"
               placeholder=""
               class="input-with-select"
-            >
-              <template #append>
-                <el-button @click="tran('hpa')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('hpa')"
+            />
           </div>
         </div>
 
@@ -104,11 +78,8 @@ const tran = (key: string) => {
               v-model="info.kpa"
               placeholder=""
               class="input-with-select"
-            >
-              <template #append>
-                <el-button @click="tran('kpa')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('kpa')"
+            />
           </div>
           <div class="custom-box-single">
             <el-text class="custom-box-text">兆帕(MPa)</el-text>
@@ -116,11 +87,8 @@ const tran = (key: string) => {
               v-model="info.mpa"
               placeholder=""
               class="input-with-select"
-            >
-              <template #append>
-                <el-button @click="tran('mpa')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('mpa')"
+            />
           </div>
         </div>
 
@@ -132,11 +100,8 @@ const tran = (key: string) => {
               v-model="info.bar"
               placeholder=""
               class="input-with-select"
-            >
-              <template #append>
-                <el-button @click="tran('bar')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('bar')"
+            />
           </div>
           <div class="custom-box-single">
             <el-text class="custom-box-text">托(torr)</el-text>
@@ -144,11 +109,8 @@ const tran = (key: string) => {
               v-model="info.torr"
               placeholder=""
               class="input-with-select"
-            >
-              <template #append>
-                <el-button @click="tran('torr')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('torr')"
+            />
           </div>
         </div>
 
@@ -160,11 +122,8 @@ const tran = (key: string) => {
               v-model="info.psi"
               placeholder=""
               class="input-with-select"
-            >
-              <template #append>
-                <el-button @click="tran('psi')">转换</el-button>
-              </template>
-            </el-input>
+              @input="onInput('psi')"
+            />
           </div>
         </div>
 

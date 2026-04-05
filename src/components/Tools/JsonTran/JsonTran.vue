@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { reactive } from 'vue'
+import { ElMessage } from 'element-plus'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { transferred, copy } from '@/utils/string';
@@ -8,7 +9,21 @@ import "codemirror/mode/javascript/javascript.js";
 
 const info = reactive({
   title: "Json在线转换",
-  code: '',
+  code: JSON.stringify({
+  "name": "Tools-Web",
+  "version": "1.0.0",
+  "description": "在线工具箱",
+  "features": ["JSON格式化", "压缩", "转义", "去转义"],
+  "author": {
+    "name": "yifang",
+    "site": "https://tools-web.com"
+  },
+  "settings": {
+    "theme": "light",
+    "language": "zh-CN",
+    "autoSave": true
+  }
+}, null, 2),
   isParseErr: false,
   parseErr: ''
 })
@@ -33,15 +48,33 @@ const formatJson = () => {
     // 1、JSON.parse：把JSON字符串转换为JSON对象
     // 2、JSON.stringify：把JSON对象 转换为 有缩进的 JSON字符串格式
     info.code = JSON.stringify(JSON.parse(info.code), null, '\t');
-  } catch(error) {
+    ElMessage.success('格式化成功')
+  } catch(error: any) {
     info.isParseErr = true;
-    info.parseErr = '无效的JSON'
+    const msg = error?.message || '未知错误';
+    // 从错误信息中提取位置，如 "position 15"
+    const posMatch = msg.match(/position\s+(\d+)/i);
+    if (posMatch) {
+      const pos = parseInt(posMatch[1]);
+      // 计算行列号
+      const before = info.code.substring(0, pos);
+      const line = before.split('\n').length;
+      const col = pos - before.lastIndexOf('\n');
+      info.parseErr = `无效的JSON：${msg}\n错误位置：第 ${line} 行，第 ${col} 列`;
+    } else {
+      info.parseErr = `无效的JSON：${msg}`;
+    }
   }
 }
 
 //压缩
 const compress = () => {
-  info.code = info.code.replace(/[\r\n\t]/g, "")
+  try {
+    info.code = JSON.stringify(JSON.parse(info.code))
+    ElMessage.success('压缩成功')
+  } catch {
+    ElMessage.error('JSON格式错误，无法压缩')
+  }
 }
 
 //转义
