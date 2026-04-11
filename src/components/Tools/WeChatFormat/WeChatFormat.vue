@@ -1663,8 +1663,9 @@ const quickSyntaxButtons = [
           </el-button>
 
           <!-- 主要操作 -->
-          <el-button class="w-full sm:w-auto" @click="draftDrawerVisible = true">
+          <el-button class="w-full sm:w-auto relative" @click="draftDrawerVisible = true">
             📁 草稿箱
+            <span v-if="draftList.length > 0" class="absolute -top-1.5 -right-1.5 bg-blue-500 text-white text-xs rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 leading-none">{{ draftList.length }}</span>
           </el-button>
           <el-button class="w-full sm:w-auto" @click="saveCurrentDraft" title="保存草稿 (Ctrl+S)">
             💾 保存
@@ -1878,7 +1879,7 @@ const quickSyntaxButtons = [
     >
       <template #header>
         <div class="flex items-center justify-between">
-          <span class="text-lg font-semibold">📁 草稿箱</span>
+          <span class="text-lg font-semibold">📁 草稿箱 <span v-if="draftList.length > 0" class="text-sm text-gray-400 font-normal">({{ draftList.length }})</span></span>
           <el-button
             type="primary"
             size="small"
