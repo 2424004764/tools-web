@@ -9,7 +9,7 @@ const parseUrl = ref('')
 const activeApiIndex = ref(0)
 
 const parseApis = [
-  { name: '线路一2', url: 'https://jx.xmflv.com/?url=' },
+  { name: '线路一', url: 'https://jx.xmflv.com/?url=' },
   { name: '线路二', url: 'https://jx.m3u8.tv/jiexi/?url=' },
   { name: '线路三', url: 'https://jx.playerjy.com/?url=' },
   { name: '线路四', url: 'https://jx.hls.one/?url=' },
