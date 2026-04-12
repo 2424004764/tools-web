@@ -6,9 +6,14 @@ import { ElMessage } from 'element-plus'
 
 const videoUrl = ref('')
 const parseUrl = ref('')
-const loading = ref(false)
+const activeApiIndex = ref(0)
 
-const parseApi = 'https://jx.xmflv.com/?url='
+const parseApis = [
+  { name: '线路一2', url: 'https://jx.xmflv.com/?url=' },
+  { name: '线路二', url: 'https://jx.m3u8.tv/jiexi/?url=' },
+  { name: '线路三', url: 'https://jx.playerjy.com/?url=' },
+  { name: '线路四', url: 'https://jx.hls.one/?url=' },
+]
 
 const isValidUrl = computed(() => {
   return videoUrl.value.trim().length > 0
@@ -24,16 +29,20 @@ const handleParse = () => {
     ElMessage.warning('请输入有效的视频地址（以http://或https://开头）')
     return
   }
-  loading.value = true
-  parseUrl.value = parseApi + encodeURIComponent(url)
-  setTimeout(() => {
-    loading.value = false
-  }, 500)
+  parseUrl.value = parseApis[activeApiIndex.value].url + encodeURIComponent(url)
+}
+
+const switchApi = (index: number) => {
+  activeApiIndex.value = index
+  if (videoUrl.value.trim()) {
+    parseUrl.value = parseApis[index].url + encodeURIComponent(videoUrl.value.trim())
+  }
 }
 
 const handleClear = () => {
   videoUrl.value = ''
   parseUrl.value = ''
+  activeApiIndex.value = 0
 }
 
 const videoSites = [
@@ -83,13 +92,30 @@ const videoSites = [
         </el-input>
       </div>
 
+      <!-- 解析线路选择 -->
+      <div class="mb-4">
+        <p class="text-sm text-gray-500 mb-2">选择解析线路：</p>
+        <div class="flex flex-wrap gap-2">
+          <button
+            v-for="(api, index) in parseApis"
+            :key="index"
+            class="px-3 py-1.5 text-sm rounded-lg transition-all duration-200 border"
+            :class="activeApiIndex === index
+              ? 'bg-blue-500 text-white border-blue-500 shadow-sm'
+              : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400 hover:text-blue-500'"
+            @click="switchApi(index)"
+          >
+            {{ api.name }}
+          </button>
+        </div>
+      </div>
+
       <!-- 操作按钮 -->
       <div class="flex gap-3 mb-4">
         <el-button
           type="primary"
           size="large"
           :disabled="!isValidUrl"
-          :loading="loading"
           @click="handleParse"
         >
           开始解析
