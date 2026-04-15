@@ -203,6 +203,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/arithmetic-practice',
+    component: () => import('@/components/Tools/ArithmeticPractice/ArithmeticPractice.vue'),
+    name: 'arithmetic-practice',
+    meta: {
+      title: "小学加减法练习",
+      keywords: '加减法练习,小学数学,数学题生成,口算训练,算术练习',
+      description: '面向小学生的加减法练习工具，支持加法、减法与加减混合题型，自动生成题目并在线批改答案。',
+    }
+  },
+  {
     path: '/qrcode',
     component: () => import('@/components/Tools/Qrcode/Qrcode.vue'),
     name: 'qrcode',
