@@ -805,6 +805,15 @@ export function getToolsCate() {
           url: '/temp-chat/',
           cateId: 11,
           cate: '趣味互动',
+        },
+        {
+          id: 15,
+          title: '翻页时钟',
+          logo: '/images/logo/flip_clock.svg',
+          desc: '经典翻页时钟，3D翻转动画效果，实时显示时间和日期',
+          url: '/flip-clock/',
+          cateId: 11,
+          cate: '趣味互动',
         }
       ]
     },
