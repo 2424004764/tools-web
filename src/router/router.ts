@@ -554,6 +554,16 @@ export const constantRoute = [
       description: 'Tools-Web工具箱用户登录页面，登录后享受更多个性化功能',
     }
   },
+  {
+    path: '/flip-clock',
+    component: () => import('@/components/Tools/FlipClock/FlipClock.vue'),
+    name: 'flip-clock',
+    meta: {
+      title: "翻页时钟",
+      keywords: '翻页时钟,flip clock,在线时钟,桌面时钟,翻页动画,时间显示',
+      description: '精美翻页时钟，经典机械翻页动画效果，纯CSS实现流畅翻转动画，实时显示时间日期，支持移动端和PC端',
+    }
+  },
   //其他路由
   {
     path: '/404',
