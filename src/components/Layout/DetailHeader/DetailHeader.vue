@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ArrowLeft } from '@element-plus/icons-vue'
-import { onMounted, ref } from 'vue';
+import { onMounted, computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router'
 import { useToolsStore } from '@/store/modules/tools'
 import {rtrim} from '@/utils/string'
 import { ElMessage } from 'element-plus'
+import QrcodeVue3 from 'qrcode-vue3'
 const props = defineProps({
   title: String,
   id: Number
@@ -52,12 +53,21 @@ const goBack = () => {
   }
 }
 
-const shareTool = async () => {
-  const url = window.location.href
-  const text = `推荐一个好用的工具：${props.title}，快来试试吧！\n${url}`
+const showQrcode = ref(false)
+const toolLink = computed(() => window.location.href)
+
+const toggleQrcode = () => {
+  showQrcode.value = !showQrcode.value
+}
+
+const shareText = computed(() => {
+  return `推荐一个好用的工具：${props.title}，快来试试吧！\n${toolLink.value}`
+})
+
+const copyShareText = async () => {
   try {
-    await navigator.clipboard.writeText(text)
-    ElMessage.success('分享内容已复制到剪贴板')
+    await navigator.clipboard.writeText(shareText.value)
+    ElMessage.success('分享文本已复制到剪贴板')
   } catch {
     ElMessage.error('复制失败')
   }
@@ -70,11 +80,11 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="flex items-center rounded-2xl bg-white p-4 mt-5 mb-5">
+  <div class="flex flex-col sm:flex-row sm:items-center rounded-2xl bg-white p-4 mt-5 mb-5 gap-3">
     <!-- 返回按钮 -->
     <button
       @click="goBack"
-      class="flex items-center gap-2 text-warm-700 hover:text-warm-600 transition-colors duration-200 mr-4 px-3 py-2 rounded-lg hover:bg-warm-50"
+      class="flex items-center gap-2 text-warm-700 hover:text-warm-600 transition-colors duration-200 px-3 py-2 rounded-lg hover:bg-warm-50"
     >
       <el-icon :size="20">
         <ArrowLeft />
@@ -83,21 +93,50 @@ onMounted(() => {
     </button>
 
     <!-- 标题 -->
-    <div class="text-xl font-semibold text-warm-900 flex-1">
+    <div class="text-xl font-semibold text-warm-900 flex-1 min-w-0">
       {{ props.title }}
     </div>
 
-    <!-- 分享按钮 -->
-    <button
-      @click="shareTool"
-      class="flex items-center gap-1 text-warm-700 hover:text-warm-600 transition-colors duration-200 px-3 py-2 rounded-lg hover:bg-warm-50"
-      title="分享给好友"
-    >
-      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-      </svg>
-      <span class="text-sm font-medium">分享</span>
-    </button>
+    <div class="flex flex-wrap gap-2 justify-start items-center w-full sm:w-auto">
+      <!-- 扫码访问/分享按钮 -->
+      <button
+        @click="toggleQrcode"
+        class="flex items-center gap-1 text-warm-700 hover:text-warm-600 transition-colors duration-200 px-3 py-2 rounded-lg hover:bg-warm-50"
+        title="扫码访问/分享当前工具"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="6" height="6" rx="1" />
+          <rect x="15" y="3" width="6" height="6" rx="1" />
+          <rect x="3" y="15" width="6" height="6" rx="1" />
+          <path d="M15 15h2v2h-2z" />
+          <path d="M19 19h2v2h-2z" />
+        </svg>
+        <span class="text-sm font-medium">扫码访问/分享</span>
+      </button>
+    </div>
+  </div>
+
+  <div v-if="showQrcode" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click="toggleQrcode">
+    <div class="bg-white rounded-2xl p-5 max-w-sm w-full mx-4" @click.stop>
+      <div class="flex justify-between items-center mb-4">
+        <div>
+          <div class="text-lg font-semibold">扫码访问</div>
+          <div class="text-sm text-slate-500">当前工具链接</div>
+        </div>
+        <el-button text size="small" @click="toggleQrcode">关闭</el-button>
+      </div>
+      <div class="flex flex-col items-center gap-4">
+        <div class="bg-white p-4 rounded-2xl border border-slate-200">
+          <QrcodeVue3 :value="toolLink" :size="200" :margin="2" :level="'M'" />
+        </div>
+        <div class="w-full bg-slate-50 rounded-2xl border border-slate-200 p-4 text-sm text-slate-700 break-words whitespace-pre-wrap">
+          推荐一个好用的工具：{{ props.title }}，快来试试吧！
+          <br />
+          {{ toolLink }}
+        </div>
+        <el-button type="primary" size="small" @click="copyShareText">复制分享文本</el-button>
+      </div>
+    </div>
   </div>
 </template>
 

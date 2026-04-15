@@ -533,6 +533,15 @@ export function getToolsCate() {
           url: '/logic-training/',
           cateId: 4,
           cate: '教育学术'
+        },
+        {
+          id: 1,
+          title: '小学加减法练习',
+          logo: '/images/logo/arithmetic_practice.png',
+          desc: '面向小学生的加减法练习工具，支持加法、减法和加减混合题型快速生成与批改',
+          url: '/arithmetic-practice/',
+          cateId: 4,
+          cate: '教育学术'
         }
       ]
     },
