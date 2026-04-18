@@ -365,6 +365,24 @@ export function getToolsCate() {
           cateId: 3,
           cate: '文本处理'
         },
+        {
+          id: 1,
+          title: '词频统计分析',
+          logo: '/images/logo/word_frequency.png',
+          desc: '文本词频分析工具，支持中英文混合分词，自动统计词语出现频率并可视化展示，支持导出CSV',
+          url: '/word-frequency/',
+          cateId: 3,
+          cate: '文本处理'
+        },
+        {
+          id: 1,
+          title: '文本加密/解密',
+          logo: '/images/logo/base64.png',
+          desc: 'AES-GCM 文本加密解密工具，支持密码派生秘钥与 Base64 输出，适合保护敏感文本。',
+          url: '/text-crypto/',
+          cateId: 3,
+          cate: '文本处理'
+        },
       ]
     },
     {
@@ -536,10 +554,46 @@ export function getToolsCate() {
         },
         {
           id: 1,
+          title: '倒计时计时器',
+          logo: '/images/logo/countdown.png',
+          desc: '自定义倒计时工具，支持分钟/秒钟设置、开始、暂停和重置，适合专注学习、办公和运动场景。',
+          url: '/countdown-timer/',
+          cateId: 4,
+          cate: '教育学术'
+        },
+        {
+          id: 1,
+          title: '番茄工作法',
+          logo: '/images/logo/pomodoro_technique.png',
+          desc: '番茄工作法计时器，支持工作/短休息/长休息周期设置，自动循环切换，提升专注效率。',
+          url: '/pomodoro-timer/',
+          cateId: 4,
+          cate: '教育学术'
+        },
+        {
+          id: 1,
           title: '小学加减法练习',
           logo: '/images/logo/arithmetic_practice.png',
           desc: '面向小学生的加减法练习工具，支持加法、减法和加减混合题型快速生成与批改',
           url: '/arithmetic-practice/',
+          cateId: 4,
+          cate: '教育学术'
+        },
+        {
+          id: 1,
+          title: '星座运势查询',
+          logo: '/images/logo/horoscope.png',
+          desc: '星座运势查询工具，根据出生日期自动判断星座，提供今日、本周和本月运势分析。',
+          url: '/zodiac-fortune/',
+          cateId: 4,
+          cate: '教育学术'
+        },
+        {
+          id: 1,
+          title: '命理八卦工具',
+          logo: '/images/logo/numerology_and_gossip.png',
+          desc: '命理八卦工具，根据出生日期生成生肖和八卦卦象，提供五行属性、吉祥色与吉位建议。',
+          url: '/bagua-fortune/',
           cateId: 4,
           cate: '教育学术'
         }
