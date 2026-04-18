@@ -213,6 +213,26 @@ export const constantRoute = [
     }
   },
   {
+    path: '/countdown-timer',
+    component: () => import('@/components/Tools/CountdownTimer/CountdownTimer.vue'),
+    name: 'countdown-timer',
+    meta: {
+      title: "倒计时计时器",
+      keywords: '倒计时,计时器,专注计时,定时提醒,学习计时',
+      description: '在线倒计时计时器，支持自定义分钟和秒钟输入，开始、暂停和重置操作，适合学习、办公和运动场景。',
+    }
+  },
+  {
+    path: '/pomodoro-timer',
+    component: () => import('@/components/Tools/PomodoroTimer/PomodoroTimer.vue'),
+    name: 'pomodoro-timer',
+    meta: {
+      title: "番茄工作法",
+      keywords: '番茄工作法,Pomodoro,专注计时,休息周期,工作休息交替',
+      description: '在线番茄工作法计时器，支持自定义工作时长、短休息和长休息，自动切换阶段，帮助提升专注效率。',
+    }
+  },
+  {
     path: '/qrcode',
     component: () => import('@/components/Tools/Qrcode/Qrcode.vue'),
     name: 'qrcode',
@@ -520,6 +540,46 @@ export const constantRoute = [
       title: "在线文本编辑/HTML获取",
       keywords: '文本编辑，富文本预览，在线编辑文本，文本编辑获取html',
       description: '在线富文本编辑, html实时预览，在线编辑文本，文本编辑获取html',
+    }
+  },
+  {
+    path: '/word-frequency',
+    component: () => import('@/components/Tools/WordFrequency/WordFrequency.vue'),
+    name: 'word-frequency',
+    meta: {
+      title: "词频统计分析",
+      keywords: '词频统计,文本分析,词语统计,频率分析,中英文分词',
+      description: '在线词频统计分析工具，支持中英文混合分词，自动分析文本中出现最频繁的词语并可视化展示',
+    }
+  },
+  {
+    path: '/text-crypto',
+    component: () => import('@/components/Tools/TextCrypto/TextCrypto.vue'),
+    name: 'text-crypto',
+    meta: {
+      title: "文本加密/解密",
+      keywords: '文本加密,文本解密,AES-GCM,Base64,密码派生',
+      description: '在线文本加密解密工具，使用 AES-GCM 和密码派生秘钥进行加密，结果以 Base64 输出，支持相同秘钥解密。',
+    }
+  },
+  {
+    path: '/zodiac-fortune',
+    component: () => import('@/components/Tools/ZodiacFortune/ZodiacFortune.vue'),
+    name: 'zodiac-fortune',
+    meta: {
+      title: "星座运势查询",
+      keywords: '星座运势,今日运势,本周运势,本月运势,十二星座',
+      description: '在线星座运势查询工具，根据出生日期自动判断星座，并提供今日、本周和本月的恋爱、事业、财富、健康运势。',
+    }
+  },
+  {
+    path: '/bagua-fortune',
+    component: () => import('@/components/Tools/FortuneBagua/FortuneBagua.vue'),
+    name: 'bagua-fortune',
+    meta: {
+      title: "命理八卦工具",
+      keywords: '命理,八卦,生肖,五行,吉祥色,吉位',
+      description: '在线命理八卦工具，根据出生日期生成生肖与八卦卦象，提供五行属性、吉祥颜色与吉位方向建议。',
     }
   },
   {

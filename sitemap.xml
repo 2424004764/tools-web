@@ -25,6 +25,8 @@
   <url><loc>https://tool.fologde.com/palettes</loc><changefreq>monthly</changefreq><priority>0.4</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/unit</loc><changefreq>monthly</changefreq><priority>0.5</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/arithmetic-practice</loc><changefreq>monthly</changefreq><priority>0.5</priority><lastmod>2026-04-15T00:00:00+00:00</lastmod></url>
+  <url><loc>https://tool.fologde.com/countdown-timer</loc><changefreq>weekly</changefreq><priority>0.5</priority><lastmod>2026-04-15T00:00:00+00:00</lastmod></url>
+  <url><loc>https://tool.fologde.com/pomodoro-timer</loc><changefreq>weekly</changefreq><priority>0.5</priority><lastmod>2026-04-15T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/qrcode</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/qrcode-scan</loc><changefreq>weekly</changefreq><priority>0.5</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/filesize</loc><changefreq>monthly</changefreq><priority>0.4</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
@@ -36,6 +38,10 @@
   <url><loc>https://tool.fologde.com/stringclean</loc><changefreq>monthly</changefreq><priority>0.5</priority><lastmod>2025-01-13T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/markdown</loc><changefreq>weekly</changefreq><priority>0.5</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/texttoimg</loc><changefreq>weekly</changefreq><priority>0.5</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
+  <url><loc>https://tool.fologde.com/word-frequency</loc><changefreq>weekly</changefreq><priority>0.5</priority><lastmod>2026-04-15T00:00:00+00:00</lastmod></url>
+  <url><loc>https://tool.fologde.com/text-crypto</loc><changefreq>weekly</changefreq><priority>0.5</priority><lastmod>2026-04-15T00:00:00+00:00</lastmod></url>
+  <url><loc>https://tool.fologde.com/zodiac-fortune</loc><changefreq>weekly</changefreq><priority>0.5</priority><lastmod>2026-04-15T00:00:00+00:00</lastmod></url>
+  <url><loc>https://tool.fologde.com/bagua-fortune</loc><changefreq>weekly</changefreq><priority>0.5</priority><lastmod>2026-04-15T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/webinfo</loc><changefreq>monthly</changefreq><priority>0.4</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
 
   <!-- 图表 -->
