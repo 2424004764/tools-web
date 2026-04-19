@@ -127,7 +127,7 @@ export function getToolsCate() {
         {
           id: 1,
           title: 'JSON/YAML 格式化对比',
-          logo: '/images/logo/json.png',
+          logo: '/images/logo/json-yaml.png',
           desc: 'JSON/YAML 格式化对比，支持两种格式的对比和转换',
           url: '/json-yaml/',
           cateId: 2,
