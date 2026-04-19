@@ -13,7 +13,7 @@
   <url><loc>https://tool.fologde.com/json-yaml</loc><changefreq>monthly</changefreq><priority>0.5</priority><lastmod>2026-04-19T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/reg</loc><changefreq>monthly</changefreq><priority>0.5</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/reg-viz</loc><changefreq>monthly</changefreq><priority>0.5</priority><lastmod>2026-04-19T00:00:00+00:00</lastmod></url>
-  <url><loc>https://tool.fologde.com/cron</loc><changefreq>monthly</changefreq><priority>0.5</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
+    <url><loc>https://tool.fologde.com/cron</loc><changefreq>monthly</changefreq><priority>0.5</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/unicode</loc><changefreq>monthly</changefreq><priority>0.5</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/wordcount</loc><changefreq>monthly</changefreq><priority>0.5</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/ip</loc><changefreq>monthly</changefreq><priority>0.4</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
@@ -34,6 +34,7 @@
   <url><loc>https://tool.fologde.com/filesize</loc><changefreq>monthly</changefreq><priority>0.4</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/decision</loc><changefreq>monthly</changefreq><priority>0.4</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/morse</loc><changefreq>monthly</changefreq><priority>0.4</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
+  <url><loc>https://tool.fologde.com/physics</loc><changefreq>monthly</changefreq><priority>0.5</priority><lastmod>2026-04-19T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/random</loc><changefreq>monthly</changefreq><priority>0.4</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/numbertochinese</loc><changefreq>monthly</changefreq><priority>0.4</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/diff</loc><changefreq>weekly</changefreq><priority>0.5</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>

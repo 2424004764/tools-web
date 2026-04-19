@@ -92,7 +92,7 @@ export const constantRoute = [
       description: '正则表达式可视化工具，图形化展示正则匹配过程，颜色标记匹配结果，逐步播放理解正则',
     }
   },
-  {
+    {
     path: '/cron',
     component: () => import('@/components/Tools/CronGenerator/CronGenerator.vue'),
     name: 'cron',
@@ -300,6 +300,16 @@ export const constantRoute = [
       title: "摩斯电码",
       keywords: 'morse电码,摩斯电码',
       description: '摩斯电码编码解码',
+    }
+  },
+  {
+    path: '/physics',
+    component: () => import('@/components/Tools/PhysicsFormula/PhysicsFormula.vue'),
+    name: 'physics',
+    meta: {
+      title: "物理公式查询",
+      keywords: '物理公式,公式查询,高中物理,大学物理',
+      description: '常用物理公式速查工具，涵盖力学、热学、电学、光学、原子物理等',
     }
   },
   {
