@@ -73,6 +73,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/reg-viz',
+    component: () => import('@/components/Tools/RegViz/RegViz.vue'),
+    name: 'reg-viz',
+    meta: {
+      title: "正则表达式可视化",
+      keywords: '正则表达式可视化,正则匹配过程,图形化正则',
+      description: '正则表达式可视化工具，图形化展示正则匹配过程，颜色标记匹配结果，逐步播放理解正则',
+    }
+  },
+  {
     path: '/cron',
     component: () => import('@/components/Tools/CronGenerator/CronGenerator.vue'),
     name: 'cron',
