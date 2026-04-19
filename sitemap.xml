@@ -10,6 +10,7 @@
   <url><loc>https://tool.fologde.com/md5</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/json</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/csv-json</loc><changefreq>weekly</changefreq><priority>0.5</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
+  <url><loc>https://tool.fologde.com/json-yaml</loc><changefreq>monthly</changefreq><priority>0.5</priority><lastmod>2026-04-19T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/reg</loc><changefreq>monthly</changefreq><priority>0.5</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/reg-viz</loc><changefreq>monthly</changefreq><priority>0.5</priority><lastmod>2026-04-19T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/cron</loc><changefreq>monthly</changefreq><priority>0.5</priority><lastmod>2025-08-11T00:00:00+00:00</lastmod></url>

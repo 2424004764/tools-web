@@ -126,6 +126,15 @@ export function getToolsCate() {
         },
         {
           id: 1,
+          title: 'JSON/YAML 格式化对比',
+          logo: '/images/logo/json.png',
+          desc: 'JSON/YAML 格式化对比，支持两种格式的对比和转换',
+          url: '/json-yaml/',
+          cateId: 2,
+          cate: '开发运维',
+        },
+        {
+          id: 1,
           title: '正则测试工具',
           logo: '/images/logo/reg.png',
           desc: '正则表达式测试工具, 常用正则表达式',
