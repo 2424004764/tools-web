@@ -63,6 +63,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/json-yaml',
+    component: () => import('@/components/Tools/JsonYaml/JsonYaml.vue'),
+    name: 'json-yaml',
+    meta: {
+      title: 'JSON/YAML 格式化对比',
+      keywords: 'JSON,YAML,格式化,对比,转换',
+      description: 'JSON/YAML 格式化对比，支持两种格式的对比和转换',
+    }
+  },
+  {
     path: '/reg',
     component: () => import('@/components/Tools/RegTest/RegTest.vue'),
     name: 'reg',
