@@ -313,6 +313,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/math',
+    component: () => import('@/components/Tools/MathFormula/MathFormula.vue'),
+    name: 'math',
+    meta: {
+      title: "数学公式查询",
+      keywords: '数学公式,公式查询,代数,三角函数,几何,微积分,线性代数,概率统计',
+      description: '常用数学公式速查工具，涵盖代数、三角函数、几何、微积分、线性代数、概率统计等',
+    }
+  },
+  {
     path: '/random',
     component: () => import('@/components/Tools/Random/Random.vue'),
     name: 'random',
