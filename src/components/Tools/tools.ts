@@ -151,7 +151,7 @@ export function getToolsCate() {
           cateId: 2,
           cate: '开发运维',
         },
-        {
+                {
           id: 1,
           title: 'Unicode转中文',
           logo: '/images/logo/union.png',
@@ -414,6 +414,15 @@ export function getToolsCate() {
           logo: '/images/logo/unit.png',
           desc: '在线重量、长度、面积、时间、角度、速度、温度、压力、热量、功率等换算',
           url: '/unit/',
+          cateId: 4,
+          cate: '教育学术'
+        },
+        {
+          id: 1,
+          title: '物理公式查询',
+          logo: '/images/logo/physics.png',
+          desc: '常用物理公式速查工具，涵盖力学、热学、电学、光学、原子物理等',
+          url: '/physics/',
           cateId: 4,
           cate: '教育学术'
         },
