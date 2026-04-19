@@ -428,6 +428,15 @@ export function getToolsCate() {
         },
         {
           id: 1,
+          title: '数学公式查询',
+          logo: '/images/logo/math.png',
+          desc: '常用数学公式速查工具，涵盖代数、三角函数、几何、微积分、线性代数、概率统计等',
+          url: '/math/',
+          cateId: 4,
+          cate: '教育学术'
+        },
+        {
+          id: 1,
           title: '摩斯电码',
           logo: '/images/logo/medium.png',
           desc: '支持中文的摩斯电码编码解码',
