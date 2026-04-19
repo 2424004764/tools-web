@@ -135,6 +135,15 @@ export function getToolsCate() {
         },
         {
           id: 1,
+          title: '正则表达式可视化',
+          logo: '/images/logo/reg-viz.png',
+          desc: '图形化展示正则匹配过程，颜色标记匹配结果，逐步播放理解正则',
+          url: '/reg-viz/',
+          cateId: 2,
+          cate: '开发运维',
+        },
+        {
+          id: 1,
           title: 'Unicode转中文',
           logo: '/images/logo/union.png',
           desc: 'Unicode和中文的相互转换',
