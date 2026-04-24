@@ -268,10 +268,10 @@ const stop = () => {
 }
 
 // 当前高亮的匹配
-const currentHighlight = computed(() => {
-  if (!info.isPlaying || info.matchResults.length === 0) return null
-  return info.matchResults[info.stepIndex]
-})
+// const currentHighlight = computed(() => {
+//   if (!info.isPlaying || info.matchResults.length === 0) return null
+//   return info.matchResults[info.stepIndex]
+// })
 
 // 清理
 watch(() => info.pattern, () => {

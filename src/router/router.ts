@@ -1220,6 +1220,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/img-watermark',
+    component: () => import('@/components/Tools/ImgWatermark/ImgWatermark.vue'),
+    name: 'img-watermark',
+    meta: {
+      title: "图片水印",
+      keywords: '图片水印,水印添加,文字水印,图片水印,水印工具',
+      description: '在线图片水印添加工具，支持文字水印和图片水印，可自定义位置、透明度、缩放等参数，纯前端处理保护隐私'
+    }
+  },
+  {
     path: '/video-parser',
     component: () => import('@/components/Tools/VideoParser/VideoParser.vue'),
     name: 'video-parser',

@@ -51,6 +51,13 @@ export const goodSitesData = [
     desc: '互联网上最大的免费资源集合！提供流媒体、下载、种子、游戏、阅读、教育等各类免费内容导航，涵盖广告拦截、AI工具、Android/iOS应用、Linux/macOS软件等丰富分类，是寻找免费资源的首选平台',
     category: '免费资源'
   },
+  {
+    title: 'awesome-gpt-image-2-prompts',
+    url: 'https://github.com/EvoLinkAI/awesome-gpt-image-2-prompts/blob/main/README_zh-CN.md',
+    rating: 4.8,
+    desc: 'GPT-Image-2 高质量提示词库，收录人像摄影、海报插画、角色设计、UI截图等场景的优秀案例。大多数案例来源于 X/Twitter 上的创作者社区，包含完整的提示词文本和效果预览',
+    category: 'AI工具'
+  },
 ]
 
 //获取tools分类与对应的工具
@@ -727,6 +734,15 @@ export function getToolsCate() {
           logo: '/images/logo/id_photo.png',
           desc: '在线制作证件照，支持一寸、二寸、护照、身份证等预设尺寸，支持矩形和四边形透视裁剪，可导出JPG和PNG格式',
           url: '/id-photo/',
+          cateId: 5,
+          cate: '图片处理'
+        },
+        {
+          id: 1,
+          title: '图片水印',
+          logo: '/images/logo/img_watermark.png',
+          desc: '在线图片水印添加工具，支持文字水印和图片水印，可自定义位置、透明度、缩放等参数',
+          url: '/img-watermark/',
           cateId: 5,
           cate: '图片处理'
         },
