@@ -302,6 +302,15 @@ export function getToolsCate() {
           cateId: 2,
           cate: '开发运维',
         },
+        {
+          id: 1,
+          title: 'MongoDB JSON 转 SQLite SQL',
+          logo: '/images/logo/mongo_to_sqlite.png',
+          desc: '将MongoDB导出的JSON数据转换为SQLite SQL语句，支持JSON数组和NDJSON格式，自动推断表结构，可复制或下载SQL文件',
+          url: '/mongo-to-sqlite/',
+          cateId: 2,
+          cate: '开发运维',
+        },
       ]
     },
     {

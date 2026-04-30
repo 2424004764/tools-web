@@ -1050,6 +1050,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/mongo-to-sqlite',
+    component: () => import('@/components/Tools/MongoToSqlite/MongoToSqlite.vue'),
+    name: 'mongo-to-sqlite',
+    meta: {
+      title: "MongoDB JSON 转 SQLite SQL",
+      keywords: 'MongoDB,SQLite,JSON转SQL,NDJSON,mongoexport,数据库转换,SQL语句生成',
+      description: '将MongoDB导出的JSON数据转换为SQLite SQL语句，支持JSON数组和NDJSON格式，自动推断表结构，支持字段选择和嵌套对象展开',
+    }
+  },
+  {
     path: '/base64',
     component: () => import('@/components/Tools/Base64/Base64.vue'),
     name: 'base64',
