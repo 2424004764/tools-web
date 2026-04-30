@@ -20,8 +20,8 @@ const giscusConfig = {
   'data-repo-id': 'R_kgDOPUcsXg', // 需要替换为实际的 repo-id
   'data-category': 'General', // 需要替换为实际的 category
   'data-category-id': 'DIC_kwDOPUcsXs4C1Y2z', // 需要替换为实际的 category-id
-  'data-mapping': 'pathname',
-  'data-strict': '0',
+  'data-mapping': 'title',
+  'data-strict': '1',
   'data-reactions-enabled': '1',
   'data-emit-metadata': '0',
   'data-input-position': 'bottom',
