@@ -8,6 +8,17 @@ const info = reactive({
   title: "MySQL转Go结构体",
 })
 
+interface ParsedField {
+  name: string
+  columnName: string
+  type: string
+  goBaseType: string
+  comment: string
+  key: string
+}
+
+const parsedFields = ref<ParsedField[]>([])
+
 // 表单数据
 const formData = reactive({
   mysqlDDL: '',
@@ -206,148 +217,159 @@ const parseMySQLDDL = (ddl: string) => {
   return fields
 }
 
-// 转换为Go结构体
+// 解析DDL并填充字段表
 const convertToGoStruct = () => {
   errorMessage.value = ''
   warnings.value = []
-  
+
   if (!formData.mysqlDDL.trim()) {
     result.value = ''
+    parsedFields.value = []
     return
   }
-  
-  // 验证DDL
+
   const validation = validateDDL(formData.mysqlDDL)
   warnings.value = validation.warnings
-  
+
   if (!validation.isValid) {
     errorMessage.value = validation.errors.join('; ')
     result.value = ''
+    parsedFields.value = []
     return
   }
-  
+
   try {
     const fields = parseMySQLDDL(formData.mysqlDDL)
     if (fields.length === 0) {
       errorMessage.value = '未能解析到有效的字段信息，请检查DDL格式'
       result.value = ''
+      parsedFields.value = []
       return
     }
-    
-    // 从DDL中提取表名
-    const tableName = extractTableName(formData.mysqlDDL)
-    if (!tableName) {
-      errorMessage.value = '未能从DDL中提取到表名，请检查CREATE TABLE语句格式'
-      result.value = ''
-      return
-    }
-    
-    const structName = tableNameToStructName(tableName)
-    
-    let goCode = `type ${structName} struct {\n`
-    
-    for (const field of fields) {
-      let goType = mysqlToGoTypeMap[field.type] || 'string'
-      
-      // 处理可空类型
-      if (formData.useNull) {
-        if (goType === 'string') goType = '*string'
-        else if (goType === 'int') goType = '*int'
-        else if (goType === 'int64') goType = '*int64'
-        else if (goType === 'float64') goType = '*float64'
-        else if (goType === 'bool') goType = '*bool'
-        else if (goType === 'time.Time') goType = '*time.Time'
-      }
-      
-      // 处理指针类型
-      if (formData.usePointer && !goType.startsWith('*')) {
-        goType = '*' + goType
-      }
-      
-      // 转换为PascalCase字段名
-      const fieldName = field.name.split('_').map(word => 
+
+    parsedFields.value = fields.map(f => ({
+      name: f.name.split('_').map(word =>
         word.charAt(0).toUpperCase() + word.slice(1)
-      ).join('')
-      
-      goCode += `\t${fieldName}`
-      
-      // 添加类型
-      if (formData.usePointer && !goType.startsWith('*')) {
-        goCode += ` *${goType}`
-      } else {
-        goCode += ` ${goType}`
-      }
-      
-      // 添加标签
-      const tags: string[] = []
-      
-      if (formData.addJsonTag) {
-        tags.push(`json:"${field.name}"`)
-      }
-      
-      if (formData.addGormTag) {
-        let gormTag = `gorm:"column:${field.name}`
-        if (field.key === 'PRI') gormTag += ';primaryKey'
-        if (field.comment) gormTag += `;comment:${field.comment}`
-        gormTag += '"'
-        tags.push(gormTag)
-      }
-      
-      if (formData.addXormTag) {
-        let xormTag = `xorm:"'${field.name}'`
-        if (field.key === 'PRI') xormTag += ' pk'
-        if (field.comment) xormTag += ` comment('${field.comment}')`
-        xormTag += '"'
-        tags.push(xormTag)
-      }
-      
-      if (formData.addGinTag) {
-        tags.push(`form:"${field.name}" binding:"required"`)
-      }
-      
-      if (tags.length > 0) {
-        goCode += ` \`${tags.join(' ')}\``
-      }
-      
-      // 添加注释
-      if (field.comment) {
-        goCode += ` // ${field.comment}`
-      }
-      
-      goCode += '\n'
-    }
-    
-    goCode += '}'
-    
-    // 如果需要time包，添加import
-    if (formData.useTime && fields.some(field => mysqlToGoTypeMap[field.type] === 'time.Time')) {
-      goCode = `import "time"\n\n` + goCode
-    }
-    
-    result.value = goCode
+      ).join(''),
+      columnName: f.name,
+      type: f.type,
+      goBaseType: mysqlToGoTypeMap[f.type] || 'string',
+      comment: f.comment,
+      key: f.key
+    }))
+    generateGoCode()
   } catch (error) {
     errorMessage.value = `转换失败: ${error}`
     result.value = ''
+    parsedFields.value = []
   }
+}
+
+// 从字段表生成Go结构体
+const generateGoCode = () => {
+  const fields = parsedFields.value
+  if (fields.length === 0) {
+    result.value = ''
+    return
+  }
+
+  const tableName = extractTableName(formData.mysqlDDL)
+  const structName = tableNameToStructName(tableName)
+
+  let goCode = `type ${structName} struct {\n`
+
+  for (const field of fields) {
+    let goType = field.goBaseType
+
+    if (formData.useNull) {
+      if (goType === 'string') goType = '*string'
+      else if (goType === 'int') goType = '*int'
+      else if (goType === 'int64') goType = '*int64'
+      else if (goType === 'float64') goType = '*float64'
+      else if (goType === 'bool') goType = '*bool'
+      else if (goType === 'time.Time') goType = '*time.Time'
+    }
+
+    if (formData.usePointer && !goType.startsWith('*')) {
+      goType = '*' + goType
+    }
+
+    goCode += `\t${field.name}`
+
+    if (formData.usePointer && !goType.startsWith('*')) {
+      goCode += ` *${goType}`
+    } else {
+      goCode += ` ${goType}`
+    }
+
+    const tags: string[] = []
+
+    if (formData.addJsonTag) {
+      tags.push(`json:"${field.columnName}"`)
+    }
+
+    if (formData.addGormTag) {
+      let gormTag = `gorm:"column:${field.columnName}`
+      if (field.key === 'PRI') gormTag += ';primaryKey'
+      if (field.comment) gormTag += `;comment:${field.comment}`
+      gormTag += '"'
+      tags.push(gormTag)
+    }
+
+    if (formData.addXormTag) {
+      let xormTag = `xorm:"'${field.columnName}'`
+      if (field.key === 'PRI') xormTag += ' pk'
+      if (field.comment) xormTag += ` comment('${field.comment}')`
+      xormTag += '"'
+      tags.push(xormTag)
+    }
+
+    if (formData.addGinTag) {
+      tags.push(`form:"${field.columnName}" binding:"required"`)
+    }
+
+    if (tags.length > 0) {
+      goCode += ` \`${tags.join(' ')}\``
+    }
+
+    if (field.comment) {
+      goCode += ` // ${field.comment}`
+    }
+
+    goCode += '\n'
+  }
+
+  goCode += '}'
+
+  if (formData.useTime && fields.some(f => f.goBaseType === 'time.Time')) {
+    goCode = `import "time"\n\n` + goCode
+  }
+
+  result.value = goCode
 }
 
 // 监听DDL变化，自动转换和验证
 watch(() => formData.mysqlDDL, (newValue) => {
-  // 立即验证
   const validation = validateDDL(newValue)
   warnings.value = validation.warnings
-  
+
   if (!validation.isValid) {
     errorMessage.value = validation.errors.join('; ')
     result.value = ''
+    parsedFields.value = []
   } else {
     errorMessage.value = ''
-    // 如果没有错误，则进行转换
     convertToGoStruct()
   }
 }, { immediate: true })
 
-// 监听配置变化，自动转换
+// 编辑字段名时触发
+const onFieldNameInput = (index: number, value: string) => {
+  parsedFields.value[index].name = value
+  generateGoCode()
+}
+
+// 监听配置变化，重新生成代码
 watch([
   () => formData.addJsonTag,
   () => formData.addGormTag,
@@ -357,8 +379,8 @@ watch([
   () => formData.useTime,
   () => formData.useNull
 ], () => {
-  if (formData.mysqlDDL.trim()) {
-    convertToGoStruct()
+  if (parsedFields.value.length > 0) {
+    generateGoCode()
   }
 })
 
@@ -375,6 +397,7 @@ const clearAll = () => {
   result.value = ''
   errorMessage.value = ''
   warnings.value = []
+  parsedFields.value = []
 }
 
 // 示例DDL
@@ -466,14 +489,37 @@ const loadExample = () => {
 
         <!-- 操作按钮 -->
         <div class="flex flex-wrap gap-2">
+          <el-button type="primary" @click="convertToGoStruct">转换</el-button>
           <el-button @click="loadExample">加载示例</el-button>
           <el-button @click="clearAll">清空</el-button>
         </div>
       </el-form>
     </div>
 
+    <!-- 字段选择 & 表结构预览 -->
+    <div v-if="parsedFields.length > 0" class="p-4 rounded-2xl bg-white mt-4">
+      <h3 class="text-lg font-semibold mb-3">字段选择 & 表结构预览</h3>
+      <div class="text-sm text-gray-500 mb-3">双击字段名或点击编辑，修改后将同步更新到转换结果</div>
+      <el-table :data="parsedFields" border stripe max-height="400" size="small">
+        <el-table-column label="字段名" min-width="170">
+          <template #default="{ row, $index }">
+            <el-input
+              :model-value="row.name"
+              @input="(val) => onFieldNameInput($index, val)"
+              size="small"
+              placeholder="输入字段名"
+            />
+          </template>
+        </el-table-column>
+        <el-table-column label="数据库列名" prop="columnName" width="140" />
+        <el-table-column label="MySQL类型" prop="type" width="130" />
+        <el-table-column label="Go类型" prop="goBaseType" width="110" />
+        <el-table-column label="注释" prop="comment" min-width="200" show-overflow-tooltip />
+      </el-table>
+    </div>
+
     <!-- 转换结果 -->
-    <div v-if="result" class="p-4 rounded-2xl bg-white">
+    <div v-if="result" class="p-4 rounded-2xl bg-white mt-4">
       <div class="flex justify-between items-center mb-3">
         <h3 class="text-lg font-semibold">转换结果</h3>
         <el-button type="primary" @click="copyResult">复制结果</el-button>
@@ -504,10 +550,11 @@ const loadExample = () => {
         <ol class="list-decimal list-inside space-y-1 text-sm">
           <li>在"MySQL DDL"文本框中粘贴完整的CREATE TABLE语句</li>
           <li>系统会实时检查DDL格式，如有问题会显示错误或警告信息</li>
-          <li>系统会自动从DDL中提取表名并转换为结构体名</li>
+          <li>点击"转换"按钮或在输入DDL后系统会自动解析字段，显示字段预览表</li>
+          <li>在字段预览表中可以直接编辑"字段名"列，修改Go结构体的字段名称</li>
           <li>根据需要配置标签选项（JSON、GORM、XORM、Gin等）</li>
           <li>配置其他选项（指针类型、时间包、可空类型等）</li>
-          <li>转换结果会实时显示，点击"复制结果"按钮复制生成的Go代码</li>
+          <li>转换结果会实时更新，点击"复制结果"按钮复制生成的Go代码</li>
         </ol>
         <p class="text-sm text-gray-600 mt-2">
           <strong>提示：</strong>可以点击"加载示例"按钮查看示例DDL语句。

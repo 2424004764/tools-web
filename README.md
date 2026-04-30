@@ -115,7 +115,7 @@ pnpm build:pro
 
 git提交
 ```
-git add . && git commit -m "新增xx功能" && git push origin master
+git add . && git commit -m "feat 新增xx功能" && git push origin master
 ```
 
 ### Cloudflare部署
@@ -165,6 +165,7 @@ wrangler pages dev .
 - 2025-01-13: 图片转Base64功能升级，支持Base64转图片，实现图片与Base64双向互转
 - 2025-03-20: 新增逻辑思维训练功能，包含真话谎话题、逻辑推理题、数学思维题、序列推理题等多种题型
 - 2025-03-28: 新增证件照生成功能，支持一寸、二寸、护照、身份证等预设尺寸，支持矩形和四边形透视裁剪，可导出JPG和PNG格式
+- 2026-04-25: 新增MongoDB JSON转SQLite功能，支持JSON数组和NDJSON格式导入，自动推断表结构，支持嵌套对象展开和下载SQLite数据库文件
 
 ## 工具列表
 
@@ -196,6 +197,7 @@ wrangler pages dev .
   - Base64编码/解码
   - 算法可视化
   - MySQL转Go结构体
+  - MongoDB JSON 转 SQLite
 
 - 文本处理
   - 文本对比
