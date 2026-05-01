@@ -648,6 +648,15 @@ export function getToolsCate() {
           url: '/bagua-fortune/',
           cateId: 4,
           cate: '教育学术'
+        },
+        {
+          id: 1,
+          title: '毛选名句',
+          logo: '/images/logo/mao_quotes.png',
+          desc: '精选《毛泽东选集》经典名句，精致卡片展示，适合日常励志、学习思考与分享',
+          url: '/mao-quotes/',
+          cateId: 4,
+          cate: '教育学术'
         }
       ]
     },

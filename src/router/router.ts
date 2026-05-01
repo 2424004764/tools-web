@@ -1268,5 +1268,15 @@ export const constantRoute = [
       keywords: '逻辑思维,思维训练,逻辑推理,真话谎话,数学思维,序列推理,智力题,思维游戏',
       description: '逻辑思维训练工具，包含真话谎话题、逻辑推理题、数学思维题、序列推理题等多种题型，支持难度选择和详细解析，锻炼逻辑思维能力和严谨性'
     }
+  },
+  {
+    path: '/mao-quotes',
+    component: () => import('@/components/Tools/MaoQuotes/MaoQuotes.vue'),
+    name: 'mao-quotes',
+    meta: {
+      title: "毛选名句卡片",
+      keywords: '毛选名句,毛泽东选集,经典语录,励志名言,红色经典,毛主席语录',
+      description: '精选《毛泽东选集》经典名句，精致卡片展示，涵盖革命实践、辩证思维、人生哲理，适合日常励志、学习思考与朋友圈分享'
+    }
   }
 ]
