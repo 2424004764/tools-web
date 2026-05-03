@@ -19,7 +19,11 @@
     "/github-auth",
 
     "/cron/test",
-    "/cron/clean-chat"
+    "/cron/clean-chat",
+
+    "/api/links",
+    "/api/links/*",
+    "/s/*"
   ],
   "exclude": []
 }

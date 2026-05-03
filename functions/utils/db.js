@@ -839,6 +839,36 @@ export class WeightMemberModel extends Model {
   }
 }
 
+// Link 模型 - 短链接模型
+export class LinkModel extends Model {
+  constructor(db) {
+    super(db)
+    this.config = {
+      tableName: 'short_links',
+      fields: {
+        id: { type: 'string', primaryKey: true },
+        slug: { type: 'string' },
+        url: { type: 'string' },
+        title: { type: 'string' },
+        uid: { type: 'string' },
+        clicks: { type: 'integer' },
+        expireAt: { type: 'datetime', dbField: 'expire_at' },
+        createTime: { type: 'datetime', dbField: 'create_time' },
+        updateTime: { type: 'datetime', dbField: 'update_time' }
+      }
+    }
+  }
+
+  async findBySlug(slug) {
+    return this.findOne(new QueryBuilder().where('slug', '=', slug))
+  }
+
+  async incrementClicks(slug) {
+    const sql = `UPDATE ${this.config.tableName} SET clicks = clicks + 1, update_time = CURRENT_TIMESTAMP WHERE slug = ?`
+    await this.db.prepare(sql).bind(slug).run()
+  }
+}
+
 // WeightRecord 模型 - 体重记录模型
 export class WeightRecordModel extends Model {
   constructor(db) {

@@ -311,6 +311,15 @@ export function getToolsCate() {
           cateId: 2,
           cate: '开发运维',
         },
+        {
+          id: 1,
+          title: '短链接生成器',
+          logo: '/images/logo/link.png',
+          desc: '将长链接转换为短链接，支持自定义后缀，方便分享',
+          url: '/short-link/',
+          cateId: 2,
+          cate: '开发运维',
+        },
       ]
     },
     {
