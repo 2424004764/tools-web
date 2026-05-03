@@ -79,6 +79,14 @@ export default defineConfig(({command, mode}) => {
           target: env.VITE_SERVE,
           changeOrigin: true,
         },
+        '/api/links': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
+        '/s/': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
         '/api/pollinations': {
           target: 'https://image.pollinations.ai',
           changeOrigin: true,

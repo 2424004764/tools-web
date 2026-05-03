@@ -870,6 +870,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/short-link',
+    component: () => import('@/components/Tools/ShortLinkGenerator/ShortLinkGenerator.vue'),
+    name: 'short-link',
+    meta: {
+      title: '短链接生成器',
+      keywords: '短链接,短网址,URL缩短,链接压缩,自定义短链',
+      description: '在线短链接生成工具，将冗长的URL转换为简短链接，支持自定义后缀，方便分享与记忆',
+    }
+  },
+  {
     path: '/ai-translate',
     component: () => import('@/components/Tools/AiTranslate/AiTranslate.vue'),
     name: 'ai-translate',
