@@ -1230,6 +1230,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/img-convert',
+    component: () => import('@/components/Tools/ImgConverter/ImgConverter.vue'),
+    name: 'img-convert',
+    meta: {
+      title: "PNG/JPG格式互转",
+      keywords: 'PNG转JPG,JPG转PNG,图片格式转换,PNG转换,JPG转换,在线格式转换',
+      description: '在线PNG与JPG格式互转工具，支持质量调节，实时预览对比，纯前端Canvas处理保护隐私'
+    }
+  },
+  {
     path: '/img-watermark',
     component: () => import('@/components/Tools/ImgWatermark/ImgWatermark.vue'),
     name: 'img-watermark',

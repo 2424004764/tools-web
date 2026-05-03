@@ -305,7 +305,7 @@ export function getToolsCate() {
         {
           id: 1,
           title: 'MongoDB JSON 转 SQLite SQL',
-          logo: '/images/logo/mongo_to_sqlite.png',
+          logo: '/images/logo/mongo_to_sqlite.jpg',
           desc: '将MongoDB导出的JSON数据转换为SQLite SQL语句，支持JSON数组和NDJSON格式，自动推断表结构，可复制或下载SQL文件',
           url: '/mongo-to-sqlite/',
           cateId: 2,
@@ -752,6 +752,15 @@ export function getToolsCate() {
           logo: '/images/logo/id_photo.png',
           desc: '在线制作证件照，支持一寸、二寸、护照、身份证等预设尺寸，支持矩形和四边形透视裁剪，可导出JPG和PNG格式',
           url: '/id-photo/',
+          cateId: 5,
+          cate: '图片处理'
+        },
+        {
+          id: 1,
+          title: 'PNG/JPG格式互转',
+          logo: '/images/logo/img_convert.png',
+          desc: '在线PNG与JPG格式互转工具，支持质量调节，实时预览对比，纯前端处理保护隐私',
+          url: '/img-convert/',
           cateId: 5,
           cate: '图片处理'
         },
