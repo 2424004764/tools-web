@@ -32,6 +32,12 @@ const qqLoading = ref(false);  // 添加QQ登录loading状态
 const googleInitialized = ref(false);
 const userStore = useUserStore();
 
+// 登录成功后跳转的目标地址，优先使用 redirect 参数
+const redirectUrl = computed(() => {
+  const params = new URLSearchParams(window.location.search)
+  return params.get('redirect') || '/userinfo'
+})
+
 // 谷歌登录配置
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
@@ -42,9 +48,9 @@ onMounted(() => {
   // 初始化用户状态
   userStore.initUserState();
 
-  // 如果已登录则跳转到用户信息页
+  // 如果已登录则跳转
   if (userStore.getLoginStatus) {
-    window.location.href = "/userinfo";
+    window.location.href = redirectUrl.value;
     return;
   }
 
@@ -145,8 +151,8 @@ const handleGoogleSignIn = async (response: any) => {
         localStorage.setItem("TOKEN", result.data.token);
         // 更新store中的用户状态
         userStore.initUserState();
-        // 登录成功后跳转到用户信息页
-        window.location.href = "/userinfo";
+        // 登录成功后跳转
+        window.location.href = redirectUrl.value;
       } else {
         throw new Error(result.data.error || "认证失败");
       }
@@ -325,8 +331,8 @@ const handleLoginMessage = (event: MessageEvent) => {
     userStore.initUserState();
     // 显示成功消息
     ElMessage.success(event.data.message || "登录成功");
-    // 跳转到用户信息页
-    window.location.href = "/userinfo";
+    // 跳转
+    window.location.href = redirectUrl.value;
   } else if (event.data.type === 'error' || !event.data.success) {
     // 显示错误消息
     ElMessage.error(event.data.message || "登录失败，请重试");

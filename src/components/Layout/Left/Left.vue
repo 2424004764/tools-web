@@ -100,7 +100,7 @@ const updateActive = async () => {
       hasInitializedDefaultCategory.value = true;
     }
     // 如果没有query.value，使用默认的第一个分类
-    else if (!defaultActive.value && toolsStore.cates.length > 0) {
+    else if (toolsStore.cates.length > 0) {
       defaultActive.value = `cate_${toolsStore.cates[0].id}`;
       hasInitializedDefaultCategory.value = true;
     }

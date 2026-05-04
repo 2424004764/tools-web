@@ -23,7 +23,9 @@
 
     "/api/links",
     "/api/links/*",
-    "/s/*"
+    "/s/*",
+    "/api/bookmarks",
+    "/api/bookmarks/*"
   ],
   "exclude": []
 }

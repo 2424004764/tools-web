@@ -1305,6 +1305,15 @@ export function getToolsCate() {
           cateId: 13,
           cate: '内容管理',
         },
+        {
+          id: 1,
+          title: '收藏夹/稍后读',
+          logo: '/images/logo/bookmarks.png',
+          desc: '在线链接收藏与管理工具，支持标签分类、阅读状态标记、搜索筛选',
+          url: '/bookmarks/',
+          cateId: 13,
+          cate: '内容管理',
+        },
       ]
     }
   ]

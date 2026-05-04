@@ -75,8 +75,8 @@ const operationLoading = ref(false)
 onMounted(() => {
   if (!userStore.getLoginStatus) {
     ElMessage.warning('请先登录')
-    router.push('/login')
-    return
+    const currentPath = window.location.pathname
+    router.push('/login?redirect=' + encodeURIComponent(currentPath))
   }
   fetchQAList()
 })

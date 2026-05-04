@@ -10,7 +10,7 @@ const router = useRouter();
 onMounted(() => {
   // 检查用户是否已登录
   if (!userStore.getLoginStatus) {
-    router.push("/login");
+    router.push("/login?redirect=" + encodeURIComponent(router.currentRoute.value.fullPath));
     return;
   }
 });
