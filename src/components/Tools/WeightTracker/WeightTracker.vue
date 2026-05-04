@@ -45,6 +45,7 @@ const statistics = ref<WeightStatistics>(defaultStatistics)
 const chartData = ref<ChartDataPoint[]>([])
 
 // UI 状态
+const notLoggedIn = ref(false)
 const timeRange = ref<TimeRange>('30')
 const weightUnit = ref<WeightUnit>('jin')
 const showMemberDialog = ref(false)
@@ -304,8 +305,12 @@ const fetchMembers = async () => {
       currentMemberId.value = defaultMember.id
     }
     isFirstTime.value = members.value.length === 0
-  } catch (error) {
-    ElMessage.error('获取成员列表失败')
+  } catch (error: any) {
+    if (error?.response?.status === 401) {
+      notLoggedIn.value = true
+    } else {
+      ElMessage.error('获取成员列表失败')
+    }
   }
 }
 
@@ -655,6 +660,10 @@ const handleResize = () => {
   chartInstance?.resize()
 }
 
+const goToLogin = () => {
+  window.location.href = '/login?redirect=/weight-tracker/'
+}
+
 // ===== 监听（带防抖）=====
 const debouncedFetchChartData = debounce(async () => {
   await fetchChartData()
@@ -678,6 +687,10 @@ watch(dateFilter, async () => {
 // ===== 生命周期 =====
 onMounted(async () => {
   userStore.initUserState()
+  if (!userStore.isLoggedIn) {
+    notLoggedIn.value = true
+    return
+  }
   await fetchMembers()
   if (currentMemberId.value) {
     await refreshData()
@@ -693,8 +706,18 @@ onMounted(async () => {
   <div class="flex flex-col mt-3 min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50">
     <DetailHeader :title="info.title" />
 
+    <!-- 未登录提示 -->
+    <div v-if="notLoggedIn" class="mx-3 sm:mx-0 p-8 rounded-3xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 mb-6 text-center shadow-xl">
+      <div class="text-6xl mb-4">🔒</div>
+      <h3 class="text-xl font-bold text-white mb-3">请先登录</h3>
+      <p class="text-white/90 mb-6 max-w-md mx-auto">体重记录需要登录后使用，数据将同步到您的账户</p>
+      <el-button size="large" class="!bg-white !text-purple-600 !border-none hover:!bg-gray-100" @click="goToLogin">
+        <el-icon class="mr-1"><Promotion /></el-icon> 前往登录
+      </el-button>
+    </div>
+
     <!-- 首次使用引导 -->
-    <div v-if="isFirstTime" class="mx-3 sm:mx-0 p-8 rounded-3xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 mb-6 text-center shadow-xl">
+    <div v-else-if="isFirstTime" class="mx-3 sm:mx-0 p-8 rounded-3xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 mb-6 text-center shadow-xl">
       <div class="text-6xl mb-4 animate-bounce">⚖️</div>
       <h3 class="text-xl font-bold text-white mb-3">欢迎使用体重记录</h3>
       <p class="text-white/90 mb-6 max-w-md mx-auto">添加您的第一个成员，开启健康体重管理之旅</p>
@@ -1355,9 +1378,9 @@ onMounted(async () => {
 </template>
 
 <script lang="ts">
-import { DataAnalysis, Loading, Plus, Share, TrendCharts, Calendar, Edit, Delete } from '@element-plus/icons-vue'
+import { DataAnalysis, Loading, Plus, Promotion, Share, TrendCharts, Calendar, Edit, Delete } from '@element-plus/icons-vue'
 export default {
-  components: { DataAnalysis, Loading, Plus, Share, TrendCharts, Calendar, Edit, Delete }
+  components: { DataAnalysis, Loading, Plus, Promotion, Share, TrendCharts, Calendar, Edit, Delete }
 }
 </script>
 

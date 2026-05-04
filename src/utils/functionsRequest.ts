@@ -47,9 +47,10 @@ class FunctionsRequest {
               message = '登录已过期，请重新登录'
               // 清空本地登录态
               logout()
-              // 跳转到登录页面
+              // 跳转到登录页面，带上当前页面地址作为 redirect
               setTimeout(() => {
-                window.location.href = '/login'
+                const currentPath = window.location.pathname
+                window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`
               }, 1000)
               break
             case 403:

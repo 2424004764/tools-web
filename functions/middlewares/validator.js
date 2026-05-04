@@ -271,6 +271,70 @@ export class Validator {
     }
   }
 
+  // 验证书签创建数据
+  static validateCreateBookmark(data) {
+    const errors = []
+
+    if (!data.url || typeof data.url !== 'string' || data.url.trim().length === 0) {
+      errors.push('链接地址不能为空')
+    }
+
+    if (data.url && data.url.length > 2000) {
+      errors.push('链接地址长度不能超过2000个字符')
+    }
+
+    if (data.title && data.title.length > 500) {
+      errors.push('标题长度不能超过500个字符')
+    }
+
+    if (data.description && data.description.length > 2000) {
+      errors.push('描述长度不能超过2000个字符')
+    }
+
+    if (data.tags && !Array.isArray(data.tags)) {
+      errors.push('标签格式错误')
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    }
+  }
+
+  // 验证书签更新数据
+  static validateUpdateBookmark(data) {
+    const errors = []
+
+    if (data.url !== undefined && (typeof data.url !== 'string' || data.url.trim().length === 0)) {
+      errors.push('链接地址不能为空')
+    }
+
+    if (data.url && data.url.length > 2000) {
+      errors.push('链接地址长度不能超过2000个字符')
+    }
+
+    if (data.title && data.title.length > 500) {
+      errors.push('标题长度不能超过500个字符')
+    }
+
+    if (data.description && data.description.length > 2000) {
+      errors.push('描述长度不能超过2000个字符')
+    }
+
+    if (data.tags !== undefined && !Array.isArray(data.tags)) {
+      errors.push('标签格式错误')
+    }
+
+    if (data.isRead !== undefined && typeof data.isRead !== 'boolean') {
+      errors.push('阅读状态格式错误')
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    }
+  }
+
   // 创建验证错误响应
   static createValidationErrorResponse(errors) {
     return ApiResponse.error(`参数验证失败: ${errors.join(', ')}`, 400)

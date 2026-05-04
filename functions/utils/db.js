@@ -869,6 +869,50 @@ export class LinkModel extends Model {
   }
 }
 
+// Bookmark 模型 - 收藏夹/稍后读模型
+export class BookmarkModel extends Model {
+  constructor(db) {
+    super(db)
+    this.config = {
+      tableName: 'bookmarks',
+      fields: {
+        id: { type: 'string', primaryKey: true },
+        uid: { type: 'string' },
+        url: { type: 'string' },
+        title: { type: 'string' },
+        description: { type: 'text' },
+        tags: { type: 'text' },
+        isRead: { type: 'integer', dbField: 'is_read' },
+        createTime: { type: 'datetime', dbField: 'create_time' },
+        updateTime: { type: 'datetime', dbField: 'update_time' }
+      }
+    }
+  }
+
+  // 重写 findAll 以反序列化 tags
+  async findAll(queryBuilder) {
+    const results = await super.findAll(queryBuilder)
+    return results.map(item => this._deserialize(item))
+  }
+
+  // 重写 findOne 以反序列化 tags
+  async findOne(queryBuilder) {
+    const result = await super.findOne(queryBuilder)
+    return result ? this._deserialize(result) : null
+  }
+
+  _deserialize(item) {
+    if (item.tags && typeof item.tags === 'string') {
+      try {
+        item.tags = JSON.parse(item.tags)
+      } catch {
+        item.tags = []
+      }
+    }
+    return item
+  }
+}
+
 // WeightRecord 模型 - 体重记录模型
 export class WeightRecordModel extends Model {
   constructor(db) {

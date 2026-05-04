@@ -59,7 +59,8 @@ export function handle401Error(options: ErrorHandlerOptions = {}) {
     setTimeout(() => {
       // 如果当前不在登录页，则跳转
       if (!window.location.pathname.includes('/login')) {
-        window.location.href = '/login'
+        const currentPath = window.location.pathname
+        window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`
       }
     }, 1000)
   }

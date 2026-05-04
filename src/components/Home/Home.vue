@@ -6,6 +6,7 @@ import { useToolsStore } from '@/store/modules/tools'
 import { useComponentStore } from '@/store/modules/component'
 // import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from "vue-router"
+import { Top } from '@element-plus/icons-vue'
 //store
 const toolsStore = useToolsStore()
 const componentStore = useComponentStore()
@@ -19,6 +20,23 @@ const router = useRouter()
 //   }
 // }
 
+
+const showBackTop = ref(false)
+
+const scrollToTop = () => {
+  history.replaceState(null, '', '/')
+  const scrollTop = document.documentElement.scrollTop || document.body.scrollTop
+  if (scrollTop <= 0) return
+  const step = () => {
+    const current = document.documentElement.scrollTop || document.body.scrollTop
+    if (current <= 0) return
+    const distance = Math.max(current / 12, 3)
+    document.documentElement.scrollTop = current - distance
+    document.body.scrollTop = current - distance
+    requestAnimationFrame(step)
+  }
+  requestAnimationFrame(step)
+}
 
 const scrollToAnchor = async () => {
   const v = route.query?.value as any
@@ -58,6 +76,7 @@ const isScrollTriggeredUpdate = ref(false)
 
 // 滚动监听函数
 const handleScroll = () => {
+  showBackTop.value = (window.pageYOffset || document.documentElement.scrollTop) > 300
   if (!isScrollListenerActive.value) return
   // 如果用户正在点击分类，暂时跳过滚动监听
   if (isUserClickingCategory.value) return
@@ -236,7 +255,15 @@ watch(() => toolsStore.cates.length, () => {
     </div>
 
     <!-- 返回顶部 -->
-    <el-backtop :right="10" :bottom="50" />
+    <transition name="fade">
+      <div
+        v-show="showBackTop"
+        class="fixed right-[10px] bottom-[50px] z-50 cursor-pointer w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center hover:bg-blue-50 transition-colors border border-gray-100"
+        @click="scrollToTop"
+      >
+        <el-icon :size="20" color="#409EFF"><Top /></el-icon>
+      </div>
+    </transition>
   </div>
 </template>
 
@@ -244,5 +271,14 @@ watch(() => toolsStore.cates.length, () => {
 .self-card-div:after{
   content: "";
   width: 24%
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>
