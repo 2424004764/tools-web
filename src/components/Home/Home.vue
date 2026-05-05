@@ -258,10 +258,10 @@ watch(() => toolsStore.cates.length, () => {
     <transition name="fade">
       <div
         v-show="showBackTop"
-        class="fixed right-[10px] bottom-[50px] z-50 cursor-pointer w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center hover:bg-blue-50 transition-colors border border-gray-100"
+        class="fixed right-[30px] bottom-[60px] z-50 cursor-pointer w-14 h-14 rounded-full bg-white shadow-lg flex items-center justify-center hover:bg-blue-50 transition-colors border border-gray-100"
         @click="scrollToTop"
       >
-        <el-icon :size="20" color="#409EFF"><Top /></el-icon>
+        <el-icon :size="28" color="#409EFF"><Top /></el-icon>
       </div>
     </transition>
   </div>
