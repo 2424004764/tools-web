@@ -30,7 +30,7 @@ async function getAuthUrl(request, env, origin) {
         
         // GitHub OAuth配置信息
         const CLIENT_ID = env.GITHUB_CLIENT_ID;
-        const REDIRECT_URI = env.GITHUB_REDIRECT_URI || `${env.SITE_URL || 'https://tools.ranblogs.com'}/functions/github-auth`;
+        const REDIRECT_URI = env.GITHUB_REDIRECT_URI;
         const AUTH_URL = 'https://github.com/login/oauth/authorize';
 
         console.log('GitHub OAuth配置详情:', {
@@ -216,7 +216,7 @@ async function exchangeCodeForToken(code, env) {
         
         const clientId = env.GITHUB_CLIENT_ID;
         const clientSecret = env.GITHUB_CLIENT_SECRET;
-        const redirectUri = env.GITHUB_REDIRECT_URI || `${env.SITE_URL || 'https://tools.ranblogs.com'}/functions/github-auth`;
+        const redirectUri = env.GITHUB_REDIRECT_URI;
 
         console.log('令牌交换配置:', {
             clientId: clientId ? `${clientId.substring(0, 10)}...` : 'MISSING',

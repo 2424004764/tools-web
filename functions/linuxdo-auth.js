@@ -28,7 +28,7 @@ async function getAuthUrl(request, env, origin) {
   try {
     // 配置信息
     const CLIENT_ID = env.LINUXDO_CLIENT_ID;
-    const REDIRECT_URI = env.LINUXDO_REDIRECT_URI || `${new URL(request.url).origin}/functions/linuxdo-auth`;
+    const REDIRECT_URI = env.LINUXDO_REDIRECT_URI;
     const AUTH_URL = 'https://connect.linux.do/oauth2/authorize';
     
     // 检查必要的配置
@@ -142,7 +142,7 @@ async function exchangeCodeForToken(code, env) {
   try {
     const clientId = env.LINUXDO_CLIENT_ID;
     const clientSecret = env.LINUXDO_CLIENT_SECRET;
-    const redirectUri = env.LINUXDO_REDIRECT_URI || `${env.SITE_URL || 'https://tools.ranblogs.com'}/functions/linuxdo-auth`;
+    const redirectUri = env.LINUXDO_REDIRECT_URI;
     
     if (!clientId || !clientSecret) {
       throw new Error('缺少Linux.do应用配置');
