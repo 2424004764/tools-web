@@ -6,7 +6,6 @@ import { jwtDecode } from "jwt-decode";
 import { useUserStore } from "@/store/modules/user";
 import axios from "axios";
 const appTitle = ref(import.meta.env.VITE_APP_TITLE || "");
-const siteUrl = ref(import.meta.env.VITE_SITE_URL || "");
 
 // 谷歌API类型声明
 declare global {
