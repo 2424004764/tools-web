@@ -28,7 +28,7 @@ async function getAuthUrl(request, env, origin) {
     try {
         // QQ互联配置信息
         const CLIENT_ID = env.QQ_CLIENT_ID;
-        const REDIRECT_URI = env.QQ_REDIRECT_URI;
+        const REDIRECT_URI = env.QQ_REDIRECT_URI || `${env.SITE_URL || 'https://tools.ranblogs.com'}/qq-auth`;
         const AUTH_URL = 'https://graph.qq.com/oauth2.0/authorize';
 
         // 检查必要的配置
@@ -143,7 +143,7 @@ async function handleAuthCallback(request, env, origin) {
 function createCallbackResponse(type, data) {
     const script = `
     window.opener && window.opener.postMessage(${JSON.stringify({ type, ...data })}, '*');
-    window.close();
+    setTimeout(function(){window.close()}, 0);
   `;
 
     return new Response(`<script>${script}</script>`, {
@@ -156,7 +156,7 @@ async function exchangeCodeForToken(code, env) {
     try {
         const clientId = env.QQ_CLIENT_ID;
         const clientSecret = env.QQ_CLIENT_SECRET;
-        const redirectUri = env.QQ_REDIRECT_URI || `${env.SITE_URL || 'https://tools.ranblogs.com'}/functions/qq-auth`;
+        const redirectUri = env.QQ_REDIRECT_URI;
 
         if (!clientId || !clientSecret) {
             throw new Error('缺少QQ应用配置');

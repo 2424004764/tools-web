@@ -133,7 +133,7 @@ async function handleAuthCallback(request, env, origin) {
 function createCallbackResponse(type, data) {
     const script = `
     window.opener && window.opener.postMessage(${JSON.stringify({ type, ...data })}, '*');
-    window.close();
+    setTimeout(function(){window.close()}, 0);
   `;
 
     return new Response(`<script>${script}</script>`, {
