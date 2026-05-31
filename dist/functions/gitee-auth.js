@@ -133,7 +133,7 @@ async function handleAuthCallback(request, env, origin) {
 function createCallbackResponse(type, data) {
     const script = `
     window.opener && window.opener.postMessage(${JSON.stringify({ type, ...data })}, '*');
-    setTimeout(function(){window.close()}, 0);
+    window.close();
   `;
 
     return new Response(`<script>${script}</script>`, {
@@ -146,7 +146,7 @@ async function exchangeCodeForToken(code, env) {
     try {
         const clientId = env.GITEE_CLIENT_ID;
         const clientSecret = env.GITEE_CLIENT_SECRET;
-        const redirectUri = env.GITEE_REDIRECT_URI;
+        const redirectUri = env.GITEE_REDIRECT_URI || `${env.SITE_URL || 'https://tools.ranblogs.com'}/functions/gitee-auth`;
 
         if (!clientId || !clientSecret) {
             throw new Error('缺少Gitee应用配置');

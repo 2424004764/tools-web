@@ -17,7 +17,6 @@
     "/linuxdo-auth",
     "/gitee-auth",
     "/github-auth",
-    "/qq-auth",
 
     "/cron/test",
     "/cron/clean-chat",
