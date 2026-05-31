@@ -8,8 +8,6 @@ const userStore = useUserStore();
 const router = useRouter();
 
 onMounted(() => {
-  // 初始化用户状态（从 localStorage 读取 token）
-  userStore.initUserState();
   // 检查用户是否已登录
   if (!userStore.getLoginStatus) {
     router.push("/login?redirect=" + encodeURIComponent(router.currentRoute.value.fullPath));
