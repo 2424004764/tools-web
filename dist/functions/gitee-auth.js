@@ -146,7 +146,7 @@ async function exchangeCodeForToken(code, env) {
     try {
         const clientId = env.GITEE_CLIENT_ID;
         const clientSecret = env.GITEE_CLIENT_SECRET;
-        const redirectUri = env.GITEE_REDIRECT_URI || `${env.SITE_URL || 'https://tools.ranblogs.com'}/functions/gitee-auth`;
+        const redirectUri = env.GITEE_REDIRECT_URI;
 
         if (!clientId || !clientSecret) {
             throw new Error('缺少Gitee应用配置');
