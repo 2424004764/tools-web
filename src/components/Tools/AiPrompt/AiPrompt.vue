@@ -4,6 +4,7 @@ import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { copy } from '@/utils/string'
 import 'viewerjs/dist/viewer.css'
+import { directive as vViewer } from 'v-viewer'
 import { ArrowDown, ArrowRight, Menu, Close } from '@element-plus/icons-vue'
 const gitUrl = ref(import.meta.env.VITE_GIT_URL || '')
 

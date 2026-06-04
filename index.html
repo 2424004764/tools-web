@@ -7,15 +7,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="renderer" content="webkit">
 
-    <!-- 预加载关键资源 -->
-    <link rel="preload" href="/src/styles/tailwind.css" as="style">
-    <link rel="preload" href="/src/main.ts" as="script">
-
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="/manifest.webmanifest">
+    <!-- 预加载关键CSS -->
+    <link rel="preload" href="/src/styles/tailwind.css" as="style" fetchpriority="high">
 
     <!-- DNS 预解析 -->
     <link rel="dns-prefetch" href="//image.pollinations.ai">
+    <link rel="dns-prefetch" href="//static.cloudflareinsights.com">
+    <link rel="dns-prefetch" href="//accounts.google.com">
 
     <!-- SEO Meta 标签 -->
     <meta name="keywords" content="开源工具,免费工具,在线工具,开发工具,MD5加密,JSON格式化,二维码生成,二维码识别,密码生成器,UUID生成器,时间戳转换,URL编码解码,Base64编码解码,正则表达式,JWT解析,Cron表达式,HTTP状态码,文本对比,Markdown编辑器,字数统计,文本去重,单位换算,进制转换,摩斯电码,ASCII码表,PDF转图片,图片压缩,图片分割,文本转图片,Base64图片转换,闲鱼海报,柱状图,折线图,饼图,散点图,贪吃蛇,俄罗斯方块,2048,扫雷,数独,五子棋,随机数生成器,抛硬币,投骰子,色板,颜色选择器,手持弹幕,简历管理,公司对比,最低工资标准,号码查询,AI绘画,文生图,AI翻译,AI起名,AI起变量名,AI对话,AI面试,AI小学作文,AI励志鸡汤,AI提示词,AI工具导航,算法可视化,3D数学方程式,土地亩数计算器,数字转金额大写,哈希校验,HMAC,Cookie解析,命名风格转换,MySQL转Go结构体,ASCII字形生成器,HTML实体转义,在线请求调试,URL参数解析,CSV JSON互转,Unicode转中文,文件大小转换,长度面积重量时间温度压力热量功率单位转换,记忆力翻牌,打地鼠,数字华容道,猜数字游戏,数字序号记忆,假如你有100亿,好物网站导航,号码一览">

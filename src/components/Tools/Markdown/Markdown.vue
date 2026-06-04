@@ -2,6 +2,14 @@
 import { reactive } from 'vue'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
+import VueMarkdownEditor from '@kangc/v-md-editor'
+import '@kangc/v-md-editor/lib/style/base-editor.css'
+import vuepressTheme from '@kangc/v-md-editor/lib/theme/vuepress.js'
+import '@kangc/v-md-editor/lib/theme/style/vuepress.css'
+import Prism from 'prismjs'
+
+VueMarkdownEditor.use(vuepressTheme, { Prism })
+
 const info = reactive({
   title: "在线markdown编辑器",
   content: '',

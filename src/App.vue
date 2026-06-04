@@ -9,7 +9,7 @@ import SimilarRecommend from "@/components/Layout/SimilarRecommend/SimilarRecomm
 import Comments from "@/components/Layout/Comments/Comments.vue";
 import { useRoute } from 'vue-router';
 import { Top } from '@element-plus/icons-vue';
-import PwaUpdatePrompt from '@/components/PwaUpdatePrompt.vue'
+import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
 
 const showBackTop = ref(false)
 const onScroll = () => {
@@ -47,7 +47,8 @@ const isHomePage = computed(() => {
 </script>
 
 <template>
-  <el-container>
+  <el-config-provider :locale="zhCn">
+    <el-container>
     <!-- left -->
     <el-aside
       v-if="!isQAViewPage"
@@ -98,9 +99,8 @@ const isHomePage = computed(() => {
         <el-icon :size="20" color="#409EFF"><Top /></el-icon>
       </div>
     </transition>
-    <!-- PWA 更新提示 -->
-    <PwaUpdatePrompt />
   </el-container>
+</el-config-provider>
 </template>
 
 <style scoped>
