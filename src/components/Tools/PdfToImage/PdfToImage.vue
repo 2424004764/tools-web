@@ -5,8 +5,8 @@ import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { ElMessage } from 'element-plus'
 import { GlobalWorkerOptions } from "pdfjs-dist"
 import worker from "pdfjs-dist/build/pdf.worker?url"
-// 引入v-viewer
 import 'viewerjs/dist/viewer.css'
+import { directive as vViewer } from 'v-viewer'
 
 // 设置PDF.js worker
 GlobalWorkerOptions.workerSrc = worker

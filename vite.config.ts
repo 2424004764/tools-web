@@ -2,6 +2,11 @@ import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { createSvgIconsPlugin } from 'vite-plugin-svg-icons'
 import path from 'path'
+import Components from 'unplugin-vue-components/vite'
+import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
+import ElementPlus from 'unplugin-element-plus/vite'
+import AutoImport from 'unplugin-auto-import/vite'
+import viteCompression from 'vite-plugin-compression'
 
 // https://vitejs.dev/config/
 export default defineConfig(({command, mode}) => {
@@ -15,6 +20,25 @@ export default defineConfig(({command, mode}) => {
       createSvgIconsPlugin({
         iconDirs: [path.resolve(process.cwd(), 'src/assets/icons')],
         symbolId: 'icon-[dir]-[name]',
+      }),
+      Components({
+        resolvers: [ElementPlusResolver()],
+        dts: 'src/types/components.d.ts',
+      }),
+      ElementPlus({}),
+      AutoImport({
+        resolvers: [ElementPlusResolver()],
+        dts: 'src/types/auto-imports.d.ts',
+      }),
+      viteCompression({
+        algorithm: 'brotliCompress',
+        threshold: 10240,
+        ext: '.br',
+      }),
+      viteCompression({
+        algorithm: 'gzip',
+        threshold: 10240,
+        ext: '.gz',
       }),
     ],
     resolve: {
@@ -38,8 +62,7 @@ export default defineConfig(({command, mode}) => {
         output: {
           manualChunks: {
             vue: ['vue', 'vue-router', 'pinia'],
-            'element-plus': ['element-plus'],
-            editors: ['@wangeditor/editor', '@wangeditor/editor-for-vue', '@kangc/v-md-editor'],
+            editors: ['@wangeditor/editor', '@wangeditor/editor-for-vue'],
             charts: ['echarts'],
             utils: ['lodash', 'axios', 'uuid'],
             codemirror: ['codemirror', '@codemirror/commands', '@codemirror/lang-javascript', '@codemirror/lang-json'],
