@@ -39,6 +39,16 @@ const isQAViewPage = computed(() => {
   return route.name === 'qa-view';
 });
 
+// 判断是否为信件查看页面
+const isLetterViewPage = computed(() => {
+  return route.name === 'letterView';
+});
+
+// 判断是否为特殊页面（需要隐藏导航等元素）
+const isSpecialPage = computed(() => {
+  return isQAViewPage.value || isLetterViewPage.value;
+});
+
 // 判断是否为首页
 const isHomePage = computed(() => {
   return route.name === 'home' || route.path === '/';
@@ -51,7 +61,7 @@ const isHomePage = computed(() => {
     <el-container>
     <!-- left -->
     <el-aside
-      v-if="!isQAViewPage"
+      v-if="!isSpecialPage"
       class="fixed top-0 left-0 h-full z-10 c-md:block c-sm:hidden c-xs:hidden"
       width="240px"
       v-show="!componentStore.leftCom"
@@ -59,7 +69,7 @@ const isHomePage = computed(() => {
       <Left></Left>
     </el-aside>
     <el-drawer
-      v-if="!isQAViewPage"
+      v-if="!isSpecialPage"
       show-close
       size="240px"
       :with-header="false"
@@ -71,20 +81,20 @@ const isHomePage = computed(() => {
     </el-drawer>
 
     <!-- right -->
-    <el-container :class="!componentStore.leftCom && !isQAViewPage ? 'c-md:ml-[240px]' : ''">
-      <el-header v-if="!isQAViewPage">
+    <el-container :class="!componentStore.leftCom && !isSpecialPage ? 'c-md:ml-[240px]' : ''">
+      <el-header v-if="!isSpecialPage">
         <Header />
       </el-header>
-      <el-main class="c-xs:pt-16">
+      <el-main :class="isSpecialPage ? '' : 'c-xs:pt-16'">
         <router-view v-slot="{ Component, route }">
           <transition name="fade" mode="out-in">
             <component :is="Component" :key="route.path"></component>
           </transition>
         </router-view>
-        <SimilarRecommend v-if="!isQAViewPage" />
-        <Comments v-if="!isQAViewPage && !isHomePage" />
+        <SimilarRecommend v-if="!isSpecialPage" />
+        <Comments v-if="!isSpecialPage && !isHomePage" />
       </el-main>
-      <el-footer v-if="!isQAViewPage" class="md:mb-6 mt-12 c-xs:mb-12">
+      <el-footer v-if="!isSpecialPage" class="md:mb-6 mt-12 c-xs:mb-12">
         <Floor />
       </el-footer>
     </el-container>

@@ -30,7 +30,10 @@
     "/api/mock-schemas",
     "/api/mock-schemas/*",
     "/api/mock-samples",
-    "/api/mock/*"
+    "/api/mock/*",
+    "/api/letters",
+    "/api/letters/*",
+    "/api/letter/*"
   ],
   "exclude": []
 }

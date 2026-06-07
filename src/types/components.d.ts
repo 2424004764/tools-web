@@ -148,6 +148,8 @@ declare module 'vue' {
     LandArea: typeof import('./../components/Tools/LandArea/LandArea.vue')['default']
     Left: typeof import('./../components/Layout/Left/Left.vue')['default']
     Length: typeof import('./../components/Tools/Unit/Length.vue')['default']
+    LetterView: typeof import('./../components/Tools/LetterWriter/LetterView.vue')['default']
+    LetterWriter: typeof import('./../components/Tools/LetterWriter/LetterWriter.vue')['default']
     Line: typeof import('./../components/Tools/Chart/Line/Line.vue')['default']
     LogicTraining: typeof import('./../components/Tools/LogicTraining/LogicTraining.vue')['default']
     Login: typeof import('./../components/Home/Login.vue')['default']

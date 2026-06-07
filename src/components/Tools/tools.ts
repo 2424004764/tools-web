@@ -1323,6 +1323,15 @@ export function getToolsCate() {
           cateId: 13,
           cate: '内容管理',
         },
+        {
+          id: 1,
+          title: '在线写信工具',
+          logo: '/images/logo/letter.png',
+          desc: '在线写信工具，支持多种精美信纸风格和主题，生成唯一分享链接，永久保存',
+          url: '/letter-writer/',
+          cateId: 13,
+          cate: '内容管理',
+        },
       ]
     }
   ]
