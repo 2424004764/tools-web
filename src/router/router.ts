@@ -1308,5 +1308,15 @@ export const constantRoute = [
       keywords: '收藏夹,稍后读,书签管理,链接收藏,网页收藏,在线书签,标签分类',
       description: '在线收藏夹与稍后读工具，帮助您收藏和管理感兴趣的网页链接，支持标签分类、阅读状态标记和搜索筛选',
     }
+  },
+  {
+    path: '/mock-data',
+    component: () => import('@/components/Tools/MockData/MockData.vue'),
+    name: 'mock-data',
+    meta: {
+      title: "Mock 数据生成器",
+      keywords: 'Mock数据,假数据生成,测试数据,接口mock,faker,字段定义,Schema,JSON生成',
+      description: '在线 Mock 数据生成器：可视化定义字段 Schema，支持 16 种类型（字符串、整数、邮箱、中文姓名、手机号、UUID、地址等），一键生成测试用 JSON 数据；预置用户/文章/商品示例；登录后自动同步配方至云端（Cloudflare D1），多端通用。',
+    }
   }
 ]

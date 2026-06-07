@@ -39,11 +39,15 @@ export class QueryBuilder {
 
     this.whereConditions.forEach(condition => {
       const dbField = model.config.fields[condition.field]?.dbField || condition.field
-      
+
       if (condition.operator === 'IN' || condition.operator === 'NOT IN') {
         const placeholders = Array(condition.value.length).fill('?').join(', ')
         conditions.push(`${dbField} ${condition.operator} (${placeholders})`)
         params.push(...condition.value)
+      } else if (condition.operator === 'IS' || condition.operator === 'IS NOT') {
+        // 处理 IS NULL / IS NOT NULL（不使用占位符）
+        const nullValue = condition.value === null ? 'NULL' : condition.value
+        conditions.push(`${dbField} ${condition.operator} ${nullValue}`)
       } else {
         conditions.push(`${dbField} ${condition.operator} ?`)
         params.push(condition.value)
@@ -932,5 +936,50 @@ export class WeightRecordModel extends Model {
         updateTime: { type: 'datetime', dbField: 'update_time' }
       }
     }
+  }
+}
+
+// MockSchema 模型 - Mock 数据生成器配方
+export class MockSchemaModel extends Model {
+  constructor(db) {
+    super(db)
+    this.config = {
+      tableName: 'mock_schemas',
+      fields: {
+        id: { type: 'string', primaryKey: true },
+        uid: { type: 'string' },
+        name: { type: 'string' },
+        description: { type: 'text' },
+        schema: { type: 'text' },
+        createTime: { type: 'datetime', dbField: 'create_time' },
+        updateTime: { type: 'datetime', dbField: 'update_time' }
+      }
+    }
+  }
+
+  // schema 字段在 DB 里是 JSON 字符串，读出时反序列化为数组
+  _deserialize(item) {
+    if (item && typeof item.schema === 'string') {
+      try {
+        item.schema = JSON.parse(item.schema)
+      } catch {
+        item.schema = []
+      }
+    }
+    return item
+  }
+
+  async findAll(queryBuilder) {
+    const results = await super.findAll(queryBuilder)
+    return results.map(item => this._deserialize(item))
+  }
+
+  async findOne(queryBuilder) {
+    const result = await super.findOne(queryBuilder)
+    return result ? this._deserialize(result) : null
+  }
+
+  async findById(id) {
+    return this.findOne(new QueryBuilder().where('id', '=', id))
   }
 }

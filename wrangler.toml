@@ -1,4 +1,5 @@
 name = "tool-web"
+account_id = "974e77b1692d56d57b27a1cef7fcc08c"
 # type = "typescript"  # 或者 "typescript" 根据你使用的语言类型
 
 # D1 数据库配置 仅用以本地调试，线上走pages绑定的db
@@ -20,6 +21,7 @@ database_id = "afdabfae-6edd-4def-8e77-6a1171009b9c"
 #  密码条目表：wrangler d1 execute yifang-tool --command="CREATE TABLE password_entries (   id TEXT PRIMARY KEY,   uid TEXT NOT NULL,   title TEXT NOT NULL,   username TEXT,   password TEXT NOT NULL,   url TEXT,   group_id TEXT,   notes TEXT,   create_time DATETIME DEFAULT CURRENT_TIMESTAMP,   update_time DATETIME DEFAULT CURRENT_TIMESTAMP )"
 #  体重成员表：wrangler d1 execute yifang-tool --command="CREATE TABLE weight_members (   id TEXT PRIMARY KEY,   uid TEXT NOT NULL,   name TEXT NOT NULL,   height REAL,   avatar_color TEXT,   avatar_emoji TEXT,   is_default INTEGER DEFAULT 0,   goal_weight REAL,   create_time DATETIME DEFAULT CURRENT_TIMESTAMP,   update_time DATETIME DEFAULT CURRENT_TIMESTAMP )"
 #  体重记录表：wrangler d1 execute yifang-tool --command="CREATE TABLE weight_records (   id TEXT PRIMARY KEY,   uid TEXT NOT NULL,   member_id TEXT NOT NULL,   weight REAL NOT NULL,   height REAL,   note TEXT,   record_date TEXT NOT NULL,   record_time TEXT NOT NULL,   create_time DATETIME DEFAULT CURRENT_TIMESTAMP,   update_time DATETIME DEFAULT CURRENT_TIMESTAMP )"
+#  mock 配方表：wrangler d1 execute yifang-tool --command="CREATE TABLE mock_schemas (   id TEXT PRIMARY KEY,   uid TEXT,   name TEXT NOT NULL,   description TEXT,   schema TEXT NOT NULL,   create_time DATETIME DEFAULT CURRENT_TIMESTAMP,   update_time DATETIME DEFAULT CURRENT_TIMESTAMP )"
 
 # 使用该命令查看本地有哪些表：wrangler d1 execute yifang-tool --command="SELECT name FROM sqlite_master WHERE type='table';"
 
