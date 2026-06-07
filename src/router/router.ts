@@ -880,6 +880,26 @@ export const constantRoute = [
     }
   },
   {
+    path: '/letter-writer/',
+    component: () => import('@/components/Tools/LetterWriter/LetterWriter.vue'),
+    name: 'letterWriter',
+    meta: {
+      title: '在线写信工具 - 精美信件生成分享',
+      keywords: '写信工具,在线写信,信件生成器,电子信件,情书,感谢信,邀请函,信件分享',
+      description: '在线写信工具，支持多种精美信纸风格和主题，编写正式商务信、感谢信、道歉信、情书等，生成唯一分享链接，永久保存'
+    }
+  },
+  {
+    path: '/letter/:slug',
+    component: () => import('@/components/Tools/LetterWriter/LetterView.vue'),
+    name: 'letterView',
+    meta: {
+      title: '查看信件',
+      keywords: '在线信件,查看信件',
+      description: '查看分享的信件内容'
+    }
+  },
+  {
     path: '/ai-translate',
     component: () => import('@/components/Tools/AiTranslate/AiTranslate.vue'),
     name: 'ai-translate',

@@ -233,7 +233,7 @@ watch(() => toolsStore.cates.length, () => {
       </div>
       <!-- card -->
       <div class="flex justify-between flex-wrap self-card-div c-xs:ml-0" :gutter="10">
-          <router-link v-for="(item, index) in cate.list" :key="index" :to="item.url" class="flex flex-col mt-5 border-solid rounded-2xl border-warm-400 w-[24%] p-2 bg-white shadow-lg hover:bg-warm-50 hover:shadow-xl hover:border-warm-500 c-xs:w-[99.5%] c-md:w-[24%] c-sm:w-[32%] p-5 hover:-translate-y-3 duration-300 transition-all">
+          <router-link v-for="(item, index) in cate.list" :key="index" :to="item.url" class="flex flex-col mt-5 border-solid rounded-2xl border-warm-400 p-2 bg-white shadow-lg hover:bg-warm-50 hover:shadow-xl hover:border-warm-500 w-full sm:w-[49%] md:w-[32%] lg:w-[24%] xl:w-[19%] p-5 hover:-translate-y-3 duration-300 transition-all">
             <div class="flex items-center border-b border-warm-300 pb-2">
               <img :src="item.logo" loading="lazy" class="w-10 h-10 min-h-[2.5rem] min-w-[2.5rem] object-contain" alt="">
               <div class="flex flex-col ml-2 w-full">
@@ -250,7 +250,7 @@ watch(() => toolsStore.cates.length, () => {
             </div>
           </router-link>
           <!-- 占位 div -->
-          <div class="w-[24%] c-md:w-[24%] c-sm:w-[32%] "></div>
+          <div class="w-full sm:w-[49%] md:w-[32%] lg:w-[24%] xl:w-[19%]"></div>
       </div>
     </div>
 

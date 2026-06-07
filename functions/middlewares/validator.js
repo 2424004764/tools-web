@@ -335,8 +335,68 @@ export class Validator {
     }
   }
 
+  // 验证信件创建数据
+  static validateCreateLetter(data) {
+    const errors = []
+
+    if (!data.title || typeof data.title !== 'string' || data.title.trim().length === 0) {
+      errors.push('标题不能为空')
+    }
+
+    if (data.title && data.title.length > 200) {
+      errors.push('标题长度不能超过200个字符')
+    }
+
+    if (!data.recipient || typeof data.recipient !== 'string' || data.recipient.trim().length === 0) {
+      errors.push('收件人不能为空')
+    }
+
+    if (data.recipient && data.recipient.length > 100) {
+      errors.push('收件人长度不能超过100个字符')
+    }
+
+    if (!data.sender || typeof data.sender !== 'string' || data.sender.trim().length === 0) {
+      errors.push('署名不能为空')
+    }
+
+    if (data.sender && data.sender.length > 100) {
+      errors.push('署名长度不能超过100个字符')
+    }
+
+    if (!data.style || typeof data.style !== 'string') {
+      errors.push('风格不能为空')
+    }
+
+    const validStyles = ['formal', 'casual', 'romantic', 'vintage', 'modern']
+    if (data.style && !validStyles.includes(data.style)) {
+      errors.push('风格必须是 formal、casual、romantic、vintage 或 modern')
+    }
+
+    if (!data.theme || typeof data.theme !== 'string') {
+      errors.push('主题不能为空')
+    }
+
+    const validThemes = ['thanks', 'invitation', 'apology', 'blessing', 'love', 'other']
+    if (data.theme && !validThemes.includes(data.theme)) {
+      errors.push('主题必须是 thanks、invitation、apology、blessing、love 或 other')
+    }
+
+    if (!data.content || typeof data.content !== 'string' || data.content.trim().length === 0) {
+      errors.push('内容不能为空')
+    }
+
+    if (data.content && data.content.length > 10000) {
+      errors.push('内容长度不能超过10000个字符')
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    }
+  }
+
   // 创建验证错误响应
-  static createValidationErrorResponse(errors) {
-    return ApiResponse.error(`参数验证失败: ${errors.join(', ')}`, 400)
+  static createValidationErrorResponse(errors, origin) {
+    return ApiResponse.error(`参数验证失败: ${errors.join(', ')}`, origin, 400)
   }
 }

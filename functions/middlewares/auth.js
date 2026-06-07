@@ -101,9 +101,42 @@ export class AuthMiddleware {
     }
   }
 
+  // 从请求中提取用户信息（可选，不强制要求认证）
+  static async extractUserFromRequestOptional(request, env) {
+    try {
+      const authHeader = request.headers.get('Authorization')
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return { success: true, user: null } // 未登录但允许继续
+      }
+
+      const token = authHeader.substring(7)
+
+      if (!env.JWT_SECRET) {
+        return { success: true, user: null }
+      }
+
+      const verifyResult = await this.verifyToken(token, env.JWT_SECRET)
+      if (!verifyResult.success) {
+        return { success: true, user: null } // Token 无效但允许继续
+      }
+
+      return {
+        success: true,
+        user: {
+          id: verifyResult.payload.uid,
+          email: verifyResult.payload.email,
+          avatar: verifyResult.payload.avatar,
+          username: verifyResult.payload.username
+        }
+      }
+    } catch (error) {
+      return { success: true, user: null }
+    }
+  }
+
   // 创建认证失败响应
-  static createAuthErrorResponse(message, status = 401) {
-    return ApiResponse.error(message, status)
+  static createAuthErrorResponse(message, origin, status = 401) {
+    return ApiResponse.error(message, origin, status)
   }
 
   // 认证中间件装饰器
