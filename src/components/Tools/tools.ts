@@ -320,6 +320,15 @@ export function getToolsCate() {
           cateId: 2,
           cate: '开发运维',
         },
+        {
+          id: 1,
+          title: 'Mock 数据生成器',
+          logo: '/images/logo/mock-data.png',
+          desc: '可视化定义字段 Schema，一键生成测试用假数据，支持 16 种字段类型与登录后云端同步',
+          url: '/mock-data/',
+          cateId: 2,
+          cate: '开发运维',
+        },
       ]
     },
     {

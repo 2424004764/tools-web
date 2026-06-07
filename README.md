@@ -168,6 +168,7 @@ wrangler pages dev .
 - 2026-04-25: 新增MongoDB JSON转SQLite功能，支持JSON数组和NDJSON格式导入，自动推断表结构，支持嵌套对象展开和下载SQLite数据库文件
 - 2026-05-02: 新增PNG/JPG格式互转功能
 - 2026-05-03: 新增短链接生成器功能，支持自定义后缀和访问统计
+- 2026-06-06: 新增 Mock 数据生成器，可视化定义字段 Schema 生成测试用假数据，预置用户/文章/商品示例，登录后自动同步配方至云端（Cloudflare D1）
 
 ## 工具列表
 
@@ -200,6 +201,7 @@ wrangler pages dev .
   - 算法可视化
   - MySQL转Go结构体
   - MongoDB JSON 转 SQLite
+  - Mock 数据生成器
 
 - 文本处理
   - 文本对比

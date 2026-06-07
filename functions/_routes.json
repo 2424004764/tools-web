@@ -26,7 +26,11 @@
     "/api/links/*",
     "/s/*",
     "/api/bookmarks",
-    "/api/bookmarks/*"
+    "/api/bookmarks/*",
+    "/api/mock-schemas",
+    "/api/mock-schemas/*",
+    "/api/mock-samples",
+    "/api/mock/*"
   ],
   "exclude": []
 }
