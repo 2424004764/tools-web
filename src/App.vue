@@ -82,17 +82,17 @@ const isHomePage = computed(() => {
 
     <!-- right -->
     <el-container :class="!componentStore.leftCom && !isSpecialPage ? 'c-md:ml-[240px]' : ''">
-      <el-header v-if="!isSpecialPage">
+      <el-header v-if="!isSpecialPage && !componentStore.hideAllUI">
         <Header />
       </el-header>
-      <el-main :class="isSpecialPage ? '' : 'c-xs:pt-16'">
+      <el-main :class="[isSpecialPage ? '' : 'c-xs:pt-16', componentStore.hideAllUI && !isSpecialPage ? 'c-xs:pt-0' : '']">
         <router-view v-slot="{ Component, route }">
           <transition name="fade" mode="out-in">
             <component :is="Component" :key="route.path"></component>
           </transition>
         </router-view>
-        <SimilarRecommend v-if="!isSpecialPage" />
-        <Comments v-if="!isSpecialPage && !isHomePage" />
+        <SimilarRecommend v-if="!isSpecialPage && !componentStore.hideAllUI" />
+        <Comments v-if="!isSpecialPage && !isHomePage && !componentStore.hideAllUI" />
       </el-main>
       <el-footer v-if="!isSpecialPage" class="md:mb-6 mt-12 c-xs:mb-12">
         <Floor />

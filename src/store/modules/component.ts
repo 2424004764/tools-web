@@ -6,6 +6,7 @@ export const useComponentStore = defineStore('component', {
     leftCom: false,
     leftComDrawer: false,
     activeCategory: '', // 新增：当前活跃的分类ID
+    hideAllUI: false, // 新增：隐藏所有UI元素（侧边栏、顶部搜索、底部推荐和评论）
   }),
   //方法
   actions: {
@@ -22,6 +23,18 @@ export const useComponentStore = defineStore('component', {
     //设置当前活跃的分类
     setActiveCategory(categoryId: string) {
       this.activeCategory = categoryId
+    },
+    //设置隐藏所有UI状态
+    setHideAllUI(status: boolean) {
+      this.hideAllUI = status
+      // 打开专注模式时关闭侧边栏
+      if (status) {
+        this.leftCom = true
+        this.leftComDrawer = false
+      } else {
+        // 关闭专注模式时恢复侧边栏
+        this.leftCom = false
+      }
     }
   }
 })

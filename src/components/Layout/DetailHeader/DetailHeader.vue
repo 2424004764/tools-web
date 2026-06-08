@@ -3,6 +3,7 @@ import { ArrowLeft } from '@element-plus/icons-vue'
 import { onMounted, computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router'
 import { useToolsStore } from '@/store/modules/tools'
+import { useComponentStore } from '@/store/modules/component'
 import {rtrim} from '@/utils/string'
 import { ElMessage } from 'element-plus'
 import QrcodeVue3 from 'qrcode-vue3'
@@ -14,6 +15,7 @@ const route = useRoute()
 const router = useRouter()
 //store
 const toolsStore = useToolsStore()
+const componentStore = useComponentStore()
 // 保存工具所属的分类ID
 const toolCateId = ref<number>(0)
 
@@ -73,6 +75,15 @@ const copyShareText = async () => {
   }
 }
 
+const toggleSidebar = (value: boolean) => {
+  componentStore.setHideAllUI(value)
+  if (value) {
+    ElMessage.success('已进入专注模式')
+  } else {
+    ElMessage.success('已退出专注模式')
+  }
+}
+
 onMounted(() => {
   findToolCateId()
 })
@@ -98,6 +109,16 @@ onMounted(() => {
     </div>
 
     <div class="flex flex-wrap gap-2 justify-start items-center w-full sm:w-auto">
+      <!-- 专注模式开关 -->
+      <div class="flex items-center gap-2 px-3 py-2">
+        <span class="text-sm font-medium text-warm-700">专注模式</span>
+        <el-switch
+          v-model="componentStore.hideAllUI"
+          @change="toggleSidebar"
+          size="default"
+        />
+      </div>
+
       <!-- 扫码访问/分享按钮 -->
       <button
         @click="toggleQrcode"
