@@ -75,9 +75,10 @@ const copyShareText = async () => {
   }
 }
 
-const toggleSidebar = (value: boolean) => {
-  componentStore.setHideAllUI(value)
-  if (value) {
+const toggleSidebar = (value: string | number | boolean) => {
+  const boolValue = Boolean(value)
+  componentStore.setHideAllUI(boolValue)
+  if (boolValue) {
     ElMessage.success('已进入专注模式')
   } else {
     ElMessage.success('已退出专注模式')
