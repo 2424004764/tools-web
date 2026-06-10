@@ -52,7 +52,7 @@ const loadLetter = async () => {
       return
     }
 
-    state.letter = data.data
+    state.letter = data
     state.loading = false
   } catch (error) {
     console.error('加载信件失败:', error)
