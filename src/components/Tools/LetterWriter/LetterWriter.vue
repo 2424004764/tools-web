@@ -176,7 +176,7 @@ const generate = async () => {
         return
       }
 
-      state.resultSlug = data.data.slug
+      state.resultSlug = data.slug
       await fetchServerLetters()
     } else {
       // 未登录用户：本地生成 slug 和保存
