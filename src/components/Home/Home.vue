@@ -232,7 +232,7 @@ watch(() => toolsStore.cates.length, () => {
         {{ cate.title }}
       </div>
       <!-- card -->
-      <div class="flex justify-between flex-wrap self-card-div c-xs:ml-0" :gutter="10">
+      <div class="flex justify-start flex-wrap gap-[1.25%] c-xs:ml-0">
           <router-link v-for="(item, index) in cate.list" :key="index" :to="item.url" class="flex flex-col mt-5 border-solid rounded-2xl border-warm-400 p-2 bg-white shadow-lg hover:bg-warm-50 hover:shadow-xl hover:border-warm-500 w-full sm:w-[49%] md:w-[32%] lg:w-[24%] xl:w-[19%] p-5 hover:-translate-y-3 duration-300 transition-all">
             <div class="flex items-center border-b border-warm-300 pb-2">
               <img :src="item.logo" loading="lazy" class="w-10 h-10 min-h-[2.5rem] min-w-[2.5rem] object-contain" alt="">
@@ -249,8 +249,6 @@ watch(() => toolsStore.cates.length, () => {
               <el-text line-clamp="2" class="text-warm-800">{{ item.desc }}</el-text>
             </div>
           </router-link>
-          <!-- 占位 div -->
-          <div class="w-full sm:w-[49%] md:w-[32%] lg:w-[24%] xl:w-[19%]"></div>
       </div>
     </div>
 
@@ -268,11 +266,6 @@ watch(() => toolsStore.cates.length, () => {
 </template>
 
 <style scoped>
-.self-card-div:after{
-  content: "";
-  width: 24%
-}
-
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.3s ease;
