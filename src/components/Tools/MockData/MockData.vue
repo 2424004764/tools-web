@@ -205,6 +205,7 @@ const recipes = ref<Recipe[]>([])
 const samples = ref<Sample[]>([])
 const loadingSamples = ref(false)
 const syncing = ref(false)
+const saving = ref(false)
 const editingRecipeId = ref<string | null>(null)
 
 // ==================== localStorage 工具 ====================
@@ -406,8 +407,11 @@ const handleSaveRecipe = async () => {
     ElMessage.warning('请至少添加一个字段')
     return
   }
+
+  saving.value = true
+
   const now = new Date().toISOString()
-  // 递归压缩字段：去除 id，保留所有业务字段（含 children/itemChildren）
+  // 递归压缩字段:去除 id,保留所有业务字段(含 children/itemChildren)
   const cleanField = (f: Field): any => {
     const out: any = {
       name: f.name,
@@ -436,10 +440,10 @@ const handleSaveRecipe = async () => {
     schema: fields.value.map(cleanField)
   }
 
-  // 未登录用户：也保存到云端（匿名配方，uid 为 null）
+  // 未登录用户:也保存到云端(匿名配方,uid 为 null)
   try {
     if (editingRecipeId.value) {
-      // 更新现有配方：统一调用云端 API
+      // 更新现有配方:统一调用云端 API
       await functionsRequest.put(`/api/mock-schemas/${editingRecipeId.value}`, payload)
       ElMessage.success('已更新')
 
@@ -453,19 +457,19 @@ const handleSaveRecipe = async () => {
         }
       }
     } else {
-      // 创建新配方：登录或未登录都保存到云端
+      // 创建新配方:登录或未登录都保存到云端
       const res = await functionsRequest.post('/api/mock-schemas', payload)
       if (res.status === 201 && res.data) {
         const newRecipe = res.data
         editingRecipeId.value = newRecipe.id
         recipes.value.unshift(newRecipe)
-        ElMessage.success(useRemote.value ? '已保存到云端' : '已保存（登录后可管理）')
+        ElMessage.success(useRemote.value ? '已保存到云端' : '已保存(登录后可管理)')
       }
     }
     captureBaseline()
   } catch (e) {
     console.error('保存到云端失败:', e)
-    // 未登录用户保存失败，降级到 localStorage
+    // 未登录用户保存失败,降级到 localStorage
     if (!useRemote.value) {
       if (editingRecipeId.value) {
         const idx = recipes.value.findIndex(r => r.id === editingRecipeId.value)
@@ -491,6 +495,8 @@ const handleSaveRecipe = async () => {
     } else {
       ElMessage.error('保存失败')
     }
+  } finally {
+    saving.value = false
   }
 }
 
@@ -677,7 +683,7 @@ onMounted(() => {
         </div>
 
         <div class="mt-4 flex gap-2">
-          <el-button type="primary" :icon="Edit" @click="handleSaveRecipe">
+          <el-button type="primary" :icon="Edit" :loading="saving" @click="handleSaveRecipe">
             {{ editingRecipeId ? '更新配方' : '保存配方' }}
           </el-button>
           <el-button v-if="editingRecipeId" :icon="Refresh" @click="newRecipe">取消编辑</el-button>
