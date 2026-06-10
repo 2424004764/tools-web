@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, computed, reactive } from "vue";
 import { ElMessage } from "element-plus";
 import { Loading } from "@element-plus/icons-vue";
 import { jwtDecode } from "jwt-decode";
@@ -26,6 +26,19 @@ declare global {
 const loading = ref(false);
 const googleInitialized = ref(false);
 const userStore = useUserStore();
+
+// 邮箱登录相关状态
+const activeTab = ref('email-login') // email-login / email-register / email-reset
+const loginMethod = ref('password') // password / code
+const emailForm = reactive({
+  email: '',
+  password: '',
+  username: '',
+  code: '',
+  newPassword: ''
+})
+const sendingCode = ref(false)
+const countdown = ref(0)
 
 // 登录成功后跳转的目标地址，优先使用 redirect 参数
 const redirectUrl = computed(() => {
@@ -156,6 +169,142 @@ const handleGoogleSignIn = async (response: any) => {
     }
   }
 };
+
+// 发送验证码
+const sendVerificationCode = async () => {
+  if (!emailForm.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailForm.email)) {
+    ElMessage.warning('请输入正确的邮箱地址')
+    return
+  }
+
+  sendingCode.value = true
+  try {
+    const type = activeTab.value === 'email-register' ? 'register' : activeTab.value === 'email-reset' ? 'reset' : 'login'
+    const result = await axios.post('/api/send-verification-code', { email: emailForm.email, type })
+
+    if (result.data.message) {
+      ElMessage.success(result.data.message)
+      countdown.value = 60
+      const timer = setInterval(() => {
+        countdown.value--
+        if (countdown.value <= 0) clearInterval(timer)
+      }, 1000)
+    }
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.error || '发送失败')
+  } finally {
+    sendingCode.value = false
+  }
+}
+
+// 邮箱注册
+const handleEmailRegister = async () => {
+  if (!emailForm.email || !emailForm.password || !emailForm.code || !emailForm.username) {
+    ElMessage.warning('请填写完整信息')
+    return
+  }
+
+  loading.value = true
+  try {
+    const result = await axios.post('/api/email-register', {
+      email: emailForm.email,
+      password: emailForm.password,
+      code: emailForm.code,
+      username: emailForm.username
+    })
+
+    if (result.data.token) {
+      ElMessage.success(`注册成功，欢迎 ${result.data.username}！`)
+      localStorage.setItem('TOKEN', result.data.token)
+      userStore.initUserState()
+      window.location.href = redirectUrl.value
+    }
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.error || '注册失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 邮箱验证码登录
+const handleEmailCodeLogin = async () => {
+  if (!emailForm.email || !emailForm.code) {
+    ElMessage.warning('请填写邮箱和验证码')
+    return
+  }
+
+  loading.value = true
+  try {
+    const result = await axios.post('/api/email-login', {
+      email: emailForm.email,
+      code: emailForm.code
+    })
+
+    if (result.data.token) {
+      ElMessage.success(`欢迎回来，${result.data.username}！`)
+      localStorage.setItem('TOKEN', result.data.token)
+      userStore.initUserState()
+      window.location.href = redirectUrl.value
+    }
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.error || '登录失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 邮箱密码登录
+const handleEmailPasswordLogin = async () => {
+  if (!emailForm.email || !emailForm.password) {
+    ElMessage.warning('请填写邮箱和密码')
+    return
+  }
+
+  loading.value = true
+  try {
+    const result = await axios.post('/api/email-password-login', {
+      email: emailForm.email,
+      password: emailForm.password
+    })
+
+    if (result.data.token) {
+      ElMessage.success(`欢迎回来，${result.data.user.username}！`)
+      localStorage.setItem('TOKEN', result.data.token)
+      userStore.initUserState()
+      window.location.href = redirectUrl.value
+    }
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.error || '登录失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 重置密码
+const handleResetPassword = async () => {
+  if (!emailForm.email || !emailForm.code || !emailForm.newPassword) {
+    ElMessage.warning('请填写完整信息')
+    return
+  }
+
+  loading.value = true
+  try {
+    await axios.post('/api/reset-password', {
+      email: emailForm.email,
+      code: emailForm.code,
+      newPassword: emailForm.newPassword
+    })
+
+    ElMessage.success('密码重置成功，请登录')
+    activeTab.value = 'email-login'
+    emailForm.code = ''
+    emailForm.newPassword = ''
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.error || '重置失败')
+  } finally {
+    loading.value = false
+  }
+}
 
 // Linux.do登录处理
 // const handleLinuxdoLogin = async () => {
@@ -357,6 +506,78 @@ const handleSignOut = () => {
       </div>
 
       <div class="space-y-4 sm:space-y-6">
+        <!-- 邮箱登录/注册表单 -->
+        <div class="border border-gray-200 rounded-lg p-4">
+          <!-- Tab 切换 -->
+          <div class="flex border-b border-gray-200 mb-4">
+            <button @click="activeTab = 'email-login'" :class="['flex-1 pb-2 text-sm font-medium', activeTab === 'email-login' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500']">邮箱登录</button>
+            <button @click="activeTab = 'email-register'" :class="['flex-1 pb-2 text-sm font-medium', activeTab === 'email-register' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500']">注册</button>
+            <button @click="activeTab = 'email-reset'" :class="['flex-1 pb-2 text-sm font-medium', activeTab === 'email-reset' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500']">找回密码</button>
+          </div>
+
+          <!-- 邮箱登录 -->
+          <div v-if="activeTab === 'email-login'">
+            <!-- 登录方式子Tab -->
+            <div class="flex gap-2 mb-3">
+              <button @click="loginMethod = 'password'" :class="['flex-1 py-1.5 text-sm rounded', loginMethod === 'password' ? 'bg-blue-50 text-blue-600 font-medium' : 'bg-gray-100 text-gray-600']">密码登录</button>
+              <button @click="loginMethod = 'code'" :class="['flex-1 py-1.5 text-sm rounded', loginMethod === 'code' ? 'bg-blue-50 text-blue-600 font-medium' : 'bg-gray-100 text-gray-600']">验证码登录</button>
+            </div>
+
+            <!-- 密码登录 -->
+            <div v-if="loginMethod === 'password'" class="space-y-3">
+              <el-input v-model="emailForm.email" placeholder="请输入邮箱" />
+              <el-input v-model="emailForm.password" type="password" placeholder="请输入密码" show-password />
+              <el-button type="primary" class="w-full" @click="handleEmailPasswordLogin" :loading="loading">登录</el-button>
+            </div>
+
+            <!-- 验证码登录 -->
+            <div v-if="loginMethod === 'code'" class="space-y-3">
+              <el-input v-model="emailForm.email" placeholder="请输入邮箱" />
+              <div class="flex gap-2">
+                <el-input v-model="emailForm.code" placeholder="验证码" class="flex-1" />
+                <el-button @click="sendVerificationCode" :loading="sendingCode" :disabled="countdown > 0">
+                  {{ countdown > 0 ? `${countdown}秒` : '发送验证码' }}
+                </el-button>
+              </div>
+              <el-button type="primary" class="w-full" @click="handleEmailCodeLogin" :loading="loading">登录</el-button>
+            </div>
+          </div>
+
+          <!-- 邮箱注册 -->
+          <div v-if="activeTab === 'email-register'" class="space-y-3">
+            <el-input v-model="emailForm.email" placeholder="请输入邮箱" />
+            <el-input v-model="emailForm.username" placeholder="用户名" maxlength="20" />
+            <el-input v-model="emailForm.password" type="password" placeholder="密码（至少6位）" show-password />
+            <div class="flex gap-2">
+              <el-input v-model="emailForm.code" placeholder="验证码" class="flex-1" />
+              <el-button @click="sendVerificationCode" :loading="sendingCode" :disabled="countdown > 0">
+                {{ countdown > 0 ? `${countdown}秒` : '发送验证码' }}
+              </el-button>
+            </div>
+            <el-button type="primary" class="w-full" @click="handleEmailRegister" :loading="loading">注册</el-button>
+          </div>
+
+          <!-- 找回密码 -->
+          <div v-if="activeTab === 'email-reset'" class="space-y-3">
+            <el-input v-model="emailForm.email" placeholder="请输入邮箱" />
+            <div class="flex gap-2">
+              <el-input v-model="emailForm.code" placeholder="验证码" class="flex-1" />
+              <el-button @click="sendVerificationCode" :loading="sendingCode" :disabled="countdown > 0">
+                {{ countdown > 0 ? `${countdown}秒` : '发送验证码' }}
+              </el-button>
+            </div>
+            <el-input v-model="emailForm.newPassword" type="password" placeholder="新密码（至少6位）" show-password />
+            <el-button type="primary" class="w-full" @click="handleResetPassword" :loading="loading">重置密码</el-button>
+          </div>
+        </div>
+
+        <!-- 分割线 -->
+        <div class="flex items-center">
+          <div class="flex-1 border-t border-gray-300"></div>
+          <span class="px-3 text-sm text-gray-500">或</span>
+          <div class="flex-1 border-t border-gray-300"></div>
+        </div>
+
         <!-- 自定义谷歌登录按钮 -->
         <div class="flex justify-center">
           <button
@@ -395,7 +616,7 @@ const handleSignOut = () => {
 
         <!-- 登录说明 -->
         <div class="text-center text-gray-500 text-xs sm:text-sm px-2">
-          <p>支持谷歌账号登录</p>
+          <p>支持邮箱验证码登录 / 谷歌账号登录</p>
           <p class="mt-2">登录后可以享受更多个性化功能</p>
         </div>
 

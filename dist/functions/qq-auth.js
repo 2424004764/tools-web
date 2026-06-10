@@ -307,9 +307,9 @@ async function processUserLogin(userData, openId, env) {
         const province = userData.province || '';
         const city = userData.city || '';
 
-        // 查询是否已有用户
-        const found = await db.prepare(`
-      SELECT id FROM user 
+        // QQ不提供真实邮箱，但仍尝试账号统一（通过 third_party_uid 查找）
+        let found = await db.prepare(`
+      SELECT id FROM user
       WHERE third_party_uid = ? AND third_party_type = 'qq'
     `).bind(thirdPartyUid).first();
 
@@ -318,7 +318,7 @@ async function processUserLogin(userData, openId, env) {
             userId = found.id;
             // 更新用户信息
             await db.prepare(`
-        UPDATE user SET 
+        UPDATE user SET
           avatar = ?,
           last_login = ?,
           username = ?
@@ -328,7 +328,7 @@ async function processUserLogin(userData, openId, env) {
             // 创建新用户
             userId = crypto.randomUUID();
             await db.prepare(`
-        INSERT INTO user (id, email, avatar, created_at, last_login, third_party_uid, username, user_level, third_party_type) 
+        INSERT INTO user (id, email, avatar, created_at, last_login, third_party_uid, username, user_level, third_party_type)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(userId, email, avatar, nowStr, nowStr, thirdPartyUid, username, 1, 'qq').run();
         }

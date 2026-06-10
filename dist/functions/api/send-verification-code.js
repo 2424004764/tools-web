@@ -6,29 +6,26 @@ const verificationCodes = new Map()
 // 生成6位数字验证码
 const generateCode = () => Math.floor(100000 + Math.random() * 900000).toString()
 
-// 发送邮件通过 MailChannels
-const sendEmail = async (to, subject, text, html) => {
+// 发送邮件通过 Resend
+const sendEmail = async (to, subject, text, html, apiKey, fromEmail) => {
   try {
-    const response = await fetch('https://api.mailchannels.net/tx/v1/send', {
+    const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
       body: JSON.stringify({
-        personalizations: [{ to: [{ email: to }] }],
-        from: {
-          email: 'noreply@tool.fologde.com', // 修改为你的域名
-          name: '一方工具箱'
-        },
+        from: fromEmail,
+        to: [to],
         subject,
-        content: [
-          { type: 'text/plain', value: text },
-          { type: 'text/html', value: html }
-        ]
+        html
       })
     })
 
     return response.ok
   } catch (error) {
-    console.error('MailChannels error:', error)
+    console.error('Resend error:', error)
     return false
   }
 }
@@ -53,7 +50,7 @@ export async function onRequest(context) {
 
     // 检查邮箱是否已注册（仅注册时检查）
     if (type === 'register') {
-      const existing = await env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(email).first()
+      const existing = await env.DB.prepare('SELECT id FROM user WHERE email = ?').bind(email).first()
       if (existing) {
         return ApiResponse.error('该邮箱已注册', request.headers.get('Origin'))
       }
@@ -61,7 +58,7 @@ export async function onRequest(context) {
 
     // 检查邮箱是否存在（登录和重置密码时检查）
     if (type === 'login' || type === 'reset') {
-      const existing = await env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(email).first()
+      const existing = await env.DB.prepare('SELECT id FROM user WHERE email = ?').bind(email).first()
       if (!existing) {
         return ApiResponse.error('该邮箱未注册', request.headers.get('Origin'))
       }
@@ -91,7 +88,7 @@ export async function onRequest(context) {
       </div>
     `
 
-    const sent = await sendEmail(email, subject, text, html)
+    const sent = await sendEmail(email, subject, text, html, env.RESEND_API_KEY, env.RESEND_FROM_EMAIL)
 
     if (!sent) {
       return ApiResponse.error('验证码发送失败，请稍后重试', request.headers.get('Origin'))

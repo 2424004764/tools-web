@@ -170,6 +170,7 @@ wrangler pages dev .
 - 2026-05-03: 新增短链接生成器功能，支持自定义后缀和访问统计
 - 2026-06-06: 新增 Mock 数据生成器，可视化定义字段 Schema 生成测试用假数据，预置用户/文章/商品示例，登录后自动同步配方至云端（Cloudflare D1）
 - 2026-06-10: 新增在线写信工具，支持多种信纸风格（正式商务/友好随意/浪漫温馨/复古怀旧/简约现代），生成永久分享链接，登录用户云端保存
+- 2026-06-10: 新增邮箱注册登录功能，支持邮箱验证码登录、注册和找回密码，使用 Resend 发送验证码邮件，密码采用 SHA-256 + 随机盐加密
 
 ## 工具列表
 
@@ -334,6 +335,20 @@ VITE_POLLINATIONS_PROXY_URL=https://your-domain.com/proxy
 2. 创建项目并启用 Google+ API
 3. 创建 OAuth 2.0 凭据，设置授权重定向 URI：`https://your-domain.com/login`
 4. 将 Client ID 和 Client Secret 填入环境变量
+
+### Resend 邮件服务配置（邮箱注册登录功能需要）
+
+1. 访问 [Resend](https://resend.com/signup) 注册账号
+2. 在 Settings > Domains 中添加并验证你的域名
+3. 在 API Keys 中创建 API Key
+4. 在 Cloudflare Pages 环境变量中添加：
+   - `RESEND_API_KEY`：你的 API Key
+   - `RESEND_FROM_EMAIL`：发件邮箱，格式如 `网站名 <noreply@your-domain.com>`
+
+**邮件功能说明：**
+- 支持邮箱验证码登录、注册、找回密码
+- 验证码 5 分钟有效
+- 密码采用 SHA-256 + 随机盐加密
 
 ### Supabase 临时聊天室配置
 
