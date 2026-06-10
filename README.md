@@ -169,150 +169,173 @@ wrangler pages dev .
 - 2026-05-02: 新增PNG/JPG格式互转功能
 - 2026-05-03: 新增短链接生成器功能，支持自定义后缀和访问统计
 - 2026-06-06: 新增 Mock 数据生成器，可视化定义字段 Schema 生成测试用假数据，预置用户/文章/商品示例，登录后自动同步配方至云端（Cloudflare D1）
+- 2026-06-10: 新增在线写信工具，支持多种信纸风格（正式商务/友好随意/浪漫温馨/复古怀旧/简约现代），生成永久分享链接，登录用户云端保存
 
 ## 工具列表
 
 ### 用户管理
-- 用户登录 (Google OAuth)
+- 用户登录（Google / GitHub / Gitee / QQ / Linux.do OAuth）
 - 用户信息管理
 - 个人简历
 
-- 开发运维
-  - 随机密码生成
-  - URL编码/解码
-  - UUID生成器
-  - 时间戳转换
-  - MD5在线加密
-  - Json在线转换
-  - CSV/TSV ↔ JSON 互转
-  - 正则测试工具
-  - Unicode转中文
-  - HTTP状态码
-  - JWT解析
-  - 文件大小转换
-  - Cron表达式生成器
-  - html实体转义
-  - 在线请求调试
-  - URL 参数解析/构造
-  - 命名风格转换
-  - 哈希校验/HMAC
-  - Cookie解析
-  - Base64编码/解码
-  - 算法可视化
-  - MySQL转Go结构体
-  - MongoDB JSON 转 SQLite
-  - Mock 数据生成器
+### 开发运维
+- 随机密码生成
+- URL编码/解码
+- UUID生成器
+- 时间戳转换
+- MD5在线加密
+- Json在线转换
+- CSV/TSV ↔ JSON 互转
+- 正则测试工具
+- Unicode转中文
+- HTTP状态码
+- JWT解析
+- 文件大小转换
+- Cron表达式生成器
+- html实体转义
+- 在线请求调试
+- URL 参数解析/构造
+- 命名风格转换
+- 哈希校验/HMAC
+- Cookie解析
+- Base64编码/解码
+- 算法可视化
+- MySQL转Go结构体
+- MongoDB JSON 转 SQLite
+- Mock 数据生成器
 
-- 文本处理
-  - 文本对比
-  - markdown编辑器
-  - 字数统计
-  - 文本去重
-  - 字符串去空格
-  - ASCII字形生成器
-  - 在线文本编辑/HTML获取
+### 文本处理
+- 文本对比
+- markdown编辑器
+- 字数统计
+- 文本去重
+- 字符串去空格
+- ASCII字形生成器
+- 在线文本编辑/HTML获取
 
-- 图片处理
-  - 二维码生成
-  - 二维码识别
-  - 文本转图片
-  - 图片分割
-  - 图片转Base64（支持Base64转图片）
-  - 在线编辑图片
-  - pdf转图片
-  - 证件照生成
-  - 图片水印
-  - PNG/JPG格式互转
+### 图片处理
+- 二维码生成
+- 二维码识别
+- 文本转图片
+- 图片分割
+- 图片转Base64（支持Base64转图片）
+- 在线编辑图片
+- pdf转图片
+- 证件照生成
+- 图片水印
+- PNG/JPG格式互转
 
-- 数据图表
-  - 柱状图
-  - 折线图
-  - 饼图
-  - 散点图
+### 数据图表
+- 柱状图
+- 折线图
+- 饼图
+- 散点图
 
-- 选择随机
-  - 生成随机数
-  - 帮我决定
-  - 抛硬币
-  - 投骰子
+### 选择随机
+- 生成随机数
+- 帮我决定
+- 抛硬币
+- 投骰子
 
-- 教育学术
-  - 单位换算
-  - 常用进制转换
-  - ASCII码表
-  - 长度单位转换
-  - 面积单位转换
-  - 重量单位转换
-  - 时间单位转换
-  - 温度单位转换
-  - 压力单位转换
-  - 热量单位转换
-  - 功率单位转换
-  - 摩斯电码
-  - 数学公式查询
-  - 物品辐射量示例
-  - 3D数学方程式
-  - 逻辑思维训练
-  - 毛选名句
+### 教育学术
+- 单位换算
+- 常用进制转换
+- ASCII码表
+- 长度单位转换
+- 面积单位转换
+- 重量单位转换
+- 时间单位转换
+- 温度单位转换
+- 压力单位转换
+- 热量单位转换
+- 功率单位转换
+- 摩斯电码
+- 数学公式查询
+- 物品辐射量示例
+- 3D数学方程式
+- 逻辑思维训练
+- 毛选名句
 
-- 趣味互动
-  - 贪吃蛇
-  - 记忆力翻牌
-  - 俄罗斯方块
-  - 打地鼠
-  - 2048
-  - 扫雷
-  - 数字华容道
-  - 数独游戏
-  - AI五子棋
-  - 假如你有100亿
-  - 数字序号记忆
+### 趣味互动
+- 贪吃蛇
+- 记忆力翻牌
+- 俄罗斯方块
+- 打地鼠
+- 2048
+- 扫雷
+- 数字华容道
+- 数独游戏
+- AI五子棋
+- 猜数字游戏
+- 假如你有100亿
+- 数字序号记忆
 
-- 好物网站
-  - 好物网站导航
+### 好物网站
+- 好物网站导航
+- AI工具导航
 
-- 查询相关
-  - IP查询
-  - 网站信息获取
+### 查询相关
+- IP查询
+- 网站信息获取
 
-- 其他工具
-  - 数字转金额大写
-  - 手持弹幕
-  - 色板
-  - Color选择器
-  - 简历管理
-  - 公司对比
-  - 最低工资标准查询
-  - 号码一览
-  - QA问答页面制作
+### 其他工具
+- 数字转金额大写
+- 手持弹幕
+- 色板
+- Color选择器
+- 简历管理
+- 公司对比
+- 最低工资标准查询
+- 号码一览
+- QA问答页面制作
+- 在线写信工具
+- 短链接生成器
 
-- AI 工具
-  - 在线文生图
-  - AI工具导航
-  - AI起变量名
-  - AI起名
-  - AI翻译
-  - AI小学作文
-  - AI每日励志鸡汤文
-  - AI对话
-  - AI面试
-  - AI提示词仓库
+### AI 工具
+- 在线文生图
+- AI对话
+- AI起变量名
+- AI起名
+- AI翻译
+- AI小学作文
+- AI每日励志鸡汤文
+- AI面试
+- AI提示词仓库
 
-- 笔记备忘录 - 在线笔记记录工具，支持创建、编辑、删除笔记，数据安全存储
-
+### 数据管理
+- 笔记备忘录 - 在线笔记记录工具，支持创建、编辑、删除笔记，数据安全存储在 D1 数据库
 - 临时聊天室 - 基于 Supabase Realtime 的临时聊天室，支持扫码加入、链接分享、口令进入
 
 ## 环境变量配置
 
-项目使用 `.env.development` 和 `.env.production` 管理环境变量。主要配置项：
+项目使用 `.env.development` 和 `.env.production` 管理环境变量。复制 `.env.example` 文件并重命名后按需修改。主要配置项：
 
 ```env
-# Supabase 配置（临时聊天室功能需要）
-VITE_SUPABASE_URL='https://your-project.supabase.co'
-VITE_SUPABASE_ANON_KEY='your-anon-key'
+# 站点信息
+VITE_APP_TITLE=一方工具箱
+VITE_SITE_URL=https://your-domain.com
+
+# Google OAuth（用户登录功能需要）
+VITE_GOOGLE_CLIENT_ID=your-google-client-id
+VITE_GOOGLE_CLIENT_SECRET=your-google-client-secret
+
+# Supabase（临时聊天室功能需要）
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+
+# AI 工具配置（文生图功能需要）
+VITE_POLLINATIONS_API_KEY=your-api-key
+VITE_POLLINATIONS_PROXY_URL=https://your-domain.com/proxy
 ```
 
-### Supabase 临时聊天室配置（有免费额度，小项目使用）
+### Google OAuth 登录配置
+
+1. 访问 [Google Cloud Console](https://console.cloud.google.com/)
+2. 创建项目并启用 Google+ API
+3. 创建 OAuth 2.0 凭据，设置授权重定向 URI：`https://your-domain.com/login`
+4. 将 Client ID 和 Client Secret 填入环境变量
+
+### Supabase 临时聊天室配置
 
 1. **创建 Supabase 项目**：访问 https://supabase.com 创建免费项目
 
@@ -331,6 +354,27 @@ ALTER PUBLICATION supabase_realtime ADD TABLE chat_messages;
 ```
 
 3. **获取密钥**：在 Project Settings > API 中复制 URL 和 anon key，填入环境变量
+
+### Cloudflare D1 数据库配置（需要部署到 Cloudflare Pages）
+
+本项目使用 Cloudflare D1 数据库存储用户数据（笔记、简历、公司对比、QA问答、在线写信、Mock数据配方、短链接等）。
+
+1. 创建 D1 数据库：
+```bash
+wrangler d1 create tools-web-db
+```
+
+2. 将返回的 database_id 填入 `wrangler.toml`：
+```toml
+[[d1_databases]]
+binding = "DB"
+database_name = "tools-web-db"
+database_id = "your-database-id"
+```
+
+3. 执行数据库初始化（项目根目录下应该有 SQL 初始化脚本）
+
+4. 部署到 Cloudflare Pages 后，D1 数据库会自动绑定到 Functions
 
 ## 其他
 
