@@ -82,20 +82,12 @@ export default defineConfig(({command, mode}) => {
       reportCompressedSize: false,
       rollupOptions: {
         output: {
-          manualChunks: (id) => {
-            // 动态分包策略
-            if (id.includes('node_modules')) {
-              if (id.includes('element-plus')) return 'element-plus'
-              if (id.includes('vue') || id.includes('pinia') || id.includes('router')) return 'vue'
-              if (id.includes('@wangeditor')) return 'editor'
-              if (id.includes('echarts')) return 'charts'
-              if (id.includes('codemirror') || id.includes('@codemirror')) return 'codemirror'
-              if (id.includes('xlsx') || id.includes('jszip')) return 'excel'
-              if (id.includes('three')) return 'three'
-              if (id.includes('pdfjs')) return 'pdf'
-              if (id.includes('lodash') || id.includes('axios') || id.includes('crypto')) return 'utils'
-              return 'vendor'
-            }
+          manualChunks: {
+            'element-plus': ['element-plus'],
+            'vue': ['vue', 'vue-router', 'pinia'],
+            'editor': ['@wangeditor/editor', '@wangeditor/editor-for-vue'],
+            'charts': ['echarts'],
+            'codemirror': ['codemirror', '@codemirror/commands', '@codemirror/lang-javascript', '@codemirror/lang-json'],
           },
           chunkFileNames: 'js/[name]-[hash].js',
           entryFileNames: 'js/[name]-[hash].js',
