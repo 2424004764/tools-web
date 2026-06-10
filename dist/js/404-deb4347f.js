@@ -1,1 +1,0 @@
-import{_ as s}from"../assets/index-d54cb833.js";import{E as r}from"./chunk-7b158e88.js";import{a as n,c as o,P as t}from"./chunk-9ab39ee1.js";import"./chunk-55e5e838.js";const a=s({},[["render",function(s,a){const e=r;return n(),o("div",null,[t(e,{"image-size":200})])}]]);export{a as default};

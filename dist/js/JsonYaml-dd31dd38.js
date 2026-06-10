@@ -1,0 +1,27 @@
+import{c as O,B as A,C as b,v as $}from"./element-plus-b303aa14.js";import{_ as Y}from"./DetailHeader.vue_vue_type_script_setup_true_lang-101883c5.js";import{_ as j}from"./ToolDetail.vue_vue_type_script_setup_true_lang-db560f7e.js";import{l as k,X as L,L as S,o as h,m as v,H as m,s as e,z as d,E as f,F as N,D as M}from"./vue-d8787598.js";import"./utils-3abbd3e6.js";import"./codemirror-55018815.js";import"./excel-8532110e.js";import"./vendor-481121de.js";import"./pdf-31a66ccc.js";import"./index-ddfcc67c.js";import"./editor-e3ad51ad.js";const V={class:"flex flex-col mt-3 flex-1"},w={class:"p-4 rounded-2xl bg-white space-y-4"},C={class:"flex items-center flex-wrap gap-2"},W={class:"flex items-center gap-2 ml-auto"},B={class:"grid grid-cols-1 lg:grid-cols-2 gap-4"},E={class:"text-sm font-medium text-gray-700 mb-1 block"},z={class:"text-sm font-medium text-gray-700 mb-1 block"},I={key:0,class:"text-red-500 text-sm bg-red-50 p-3 rounded"},D=`{
+  "name": "张三",
+  "age": 25,
+  "address": {
+    "city": "北京",
+    "district": "朝阳区"
+  },
+  "skills": ["JavaScript", "Python", "Go"]
+}`,R=`name: 李四
+age: 30
+address:
+  city: 上海
+  district: 浦东新区
+skills:
+  - JavaScript
+  - TypeScript
+  - Rust`,st=k({__name:"JsonYaml",setup(U){const s=L({title:"JSON/YAML 格式化对比",input:`{
+  "name": "tools-web",
+  "version": "1.0.0",
+  "features": [
+    "JSON处理",
+    "YAML转换",
+    "格式对比"
+  ]
+}`,output:"",format:"json",error:""}),g=()=>{if(s.error="",s.output="",!!s.input.trim())try{if(s.format==="json"){const u=JSON.parse(s.input),t=[],i=(r,p=0)=>{const a="  ".repeat(p);if(Array.isArray(r)){const n=[];for(const l of r)typeof l=="object"&&l!==null?(n.push(`${a}-`),n.push(...i(l,p+1))):n.push(`${a}- ${JSON.stringify(l)}`);return n}if(typeof r=="object"&&r!==null)for(const[n,l]of Object.entries(r))typeof l=="object"&&l!==null?(t.push(`${a}${n}:`),t.push(...i(l,p+1))):Array.isArray(l)?(t.push(`${a}${n}:`),t.push(...i(l,p))):typeof l=="string"?t.push(`${a}${n}: "${l}"`):t.push(`${a}${n}: ${JSON.stringify(l)}`);return t};i(u),s.output=t.join(`
+`)}else{const u=s.input.split(`
+`),t={},i=[t],r=[0];for(const p of u){if(!p.trim())continue;const a=p.search(/\S/),n=p.trim();for(;r.length>1&&a<=r[r.length-1];)i.pop(),r.pop();if(n.startsWith("- ")){const l=n.slice(2).trim(),c=i[i.length-1];if(!Array.isArray(c)){const _=[],y=`__array_${Date.now()}`;c[y]=_,i.push(_),r.push(a)}const o=i[i.length-1];l.startsWith('"')||l.startsWith("'")?o.push(l.slice(1,-1)):l==="true"||l==="false"?o.push(l==="true"):l==="null"?o.push(null):isNaN(Number(l))?o.push(l):o.push(Number(l))}else if(n.includes(":")){const l=n.indexOf(":"),c=n.slice(0,l).trim();let o=n.slice(l+1).trim();o===""||o==="null"?o=null:o==="true"||o==="false"?o=o==="true":isNaN(Number(o))?(o.startsWith('"')&&o.endsWith('"')||o.startsWith("'")&&o.endsWith("'"))&&(o=o.slice(1,-1)):o=Number(o);const _=i[i.length-1];if(_[c]=o,o===null||typeof o=="string"&&o===""){const y={};_[c]=y,i.push(y),r.push(a)}}}s.output=JSON.stringify(t,null,2)}}catch(u){s.error=u.message}};S(()=>s.input,g,{immediate:!0}),S(()=>s.format,g),g();const x=u=>{s.input=u==="json"?D:R,s.format=u==="json"?"yaml":"json"},J=()=>{const u=s.input;s.input=s.output,s.output=u,s.format=s.format==="json"?"yaml":"json",s.error=""};return(u,t)=>{const i=O,r=A,p=b,a=$;return h(),v("div",V,[m(Y,{title:s.title},null,8,["title"]),e("div",w,[e("div",C,[t[11]||(t[11]=e("span",{class:"text-sm text-gray-500"},"示例：",-1)),m(i,{size:"small",onClick:t[0]||(t[0]=n=>x("json"))},{default:d(()=>t[5]||(t[5]=[f("JSON示例",-1)])),_:1,__:[5]}),m(i,{size:"small",onClick:t[1]||(t[1]=n=>x("yaml"))},{default:d(()=>t[6]||(t[6]=[f("YAML示例",-1)])),_:1,__:[6]}),m(i,{size:"small",onClick:J},{default:d(()=>t[7]||(t[7]=[f("交换输入/输出",-1)])),_:1,__:[7]}),e("div",W,[t[10]||(t[10]=e("span",{class:"text-sm text-gray-500"},"转换方向：",-1)),m(p,{modelValue:s.format,"onUpdate:modelValue":t[2]||(t[2]=n=>s.format=n),size:"small"},{default:d(()=>[m(r,{value:"json"},{default:d(()=>t[8]||(t[8]=[f("JSON → YAML",-1)])),_:1,__:[8]}),m(r,{value:"yaml"},{default:d(()=>t[9]||(t[9]=[f("YAML → JSON",-1)])),_:1,__:[9]})]),_:1},8,["modelValue"])])]),e("div",B,[e("div",null,[e("label",E,N(s.format==="json"?"JSON 输入":"YAML 输入"),1),m(a,{modelValue:s.input,"onUpdate:modelValue":t[3]||(t[3]=n=>s.input=n),type:"textarea",rows:12,placeholder:s.format==="json"?"输入 JSON...":"输入 YAML...",class:"font-mono text-sm"},null,8,["modelValue","placeholder"])]),e("div",null,[e("label",z,N(s.format==="json"?"YAML 输出":"JSON 输出"),1),m(a,{modelValue:s.output,"onUpdate:modelValue":t[4]||(t[4]=n=>s.output=n),type:"textarea",rows:12,readonly:"",placeholder:"转换结果...",class:"font-mono text-sm"},null,8,["modelValue"])])]),s.error?(h(),v("div",I,N(s.error),1)):M("",!0)]),m(j,{title:"描述"},{default:d(()=>t[12]||(t[12]=[e("div",{class:"text-sm leading-7 space-y-2"},[e("p",{class:"font-bold"},"功能说明"),e("p",null,"JSON/YAML 格式化对比工具，支持两种格式之间的相互转换。"),e("ul",{class:"list-disc ml-5"},[e("li",null,[e("strong",null,"JSON → YAML"),f("：将 JSON 格式转换为 YAML 格式")]),e("li",null,[e("strong",null,"YAML → JSON"),f("：将 YAML 格式转换为 JSON 格式")]),e("li",null,[e("strong",null,"交换"),f("：一键交换输入和输出内容")]),e("li",null,[e("strong",null,"示例"),f("：提供 JSON 和 YAML 示例数据")])]),e("br"),e("p",{class:"font-bold"},"使用场景"),e("ul",{class:"list-disc ml-5"},[e("li",null,"配置文件格式转换（docker-compose.yaml ↔ config.json）"),e("li",null,"API 文档格式转换"),e("li",null,"数据导入导出格式兼容")])],-1)])),_:1,__:[12]})])}}});export{st as default};

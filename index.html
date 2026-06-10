@@ -8,12 +8,9 @@
     <meta name="renderer" content="webkit">
     <meta name="referrer" content="no-referrer-when-downgrade">
 
-    <!-- 预加载关键CSS -->
-    <link rel="preload" href="/src/styles/tailwind.css" as="style" fetchpriority="high">
-
-    <!-- DNS 预解析 -->
-    <link rel="dns-prefetch" href="//image.pollinations.ai">
-    <link rel="dns-prefetch" href="//static.cloudflareinsights.com">
+    <!-- DNS 预连接（优先级更高） -->
+    <link rel="preconnect" href="https://image.pollinations.ai" crossorigin>
+    <link rel="preconnect" href="https://static.cloudflareinsights.com" crossorigin>
     <link rel="dns-prefetch" href="//accounts.google.com">
 
     <!-- SEO Meta 标签 -->
@@ -65,6 +62,7 @@
     <![endif]-->
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
-    <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "aa656fca6431414db229be50c453d628"}'></script><!-- End Cloudflare Web Analytics -->
+    <!-- Cloudflare Web Analytics -->
+    <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "aa656fca6431414db229be50c453d628"}'></script>
   </body>
 </html>
