@@ -249,29 +249,31 @@ async function processUserLogin(userData, env) {
         const location = userData.location || '';
         const blog = userData.blog || '';
 
-        // 查询是否已有用户
-        const found = await db.prepare(`
-      SELECT id FROM user 
-      WHERE third_party_uid = ? AND third_party_type = 'gitee'
-    `).bind(thirdPartyUid).first();
+        // 优先通过邮箱查找用户（统一账号）
+        let found = null;
+        if (email && email.indexOf('@') > -1 && !email.endsWith('@gitee.user')) {
+            found = await db.prepare(`SELECT id FROM user WHERE email = ?`).bind(email).first();
+        }
 
         let userId;
         if (found && found.id) {
             userId = found.id;
-            // 更新用户信息
+            // 更新用户信息并关联 Gitee 账号
             await db.prepare(`
-        UPDATE user SET 
+        UPDATE user SET
           avatar = ?,
           last_login = ?,
           username = ?,
-          email = ?
+          third_party_uid = ?,
+          third_party_type = 'gitee',
+          user_level = ?
         WHERE id = ?
-      `).bind(avatar, nowStr, username, email, userId).run();
+      `).bind(avatar, nowStr, username, thirdPartyUid, 1, userId).run();
         } else {
             // 创建新用户
             userId = crypto.randomUUID();
             await db.prepare(`
-        INSERT INTO user (id, email, avatar, created_at, last_login, third_party_uid, username, user_level, third_party_type) 
+        INSERT INTO user (id, email, avatar, created_at, last_login, third_party_uid, username, user_level, third_party_type)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(userId, email, avatar, nowStr, nowStr, thirdPartyUid, username, 1, 'gitee').run();
         }

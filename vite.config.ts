@@ -96,6 +96,26 @@ export default defineConfig(({command, mode}) => {
           target: 'http://127.0.0.1:8788',
           changeOrigin: true,
         },
+        '/api/send-verification-code': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
+        '/api/email-register': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
+        '/api/email-login': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
+        '/api/email-password-login': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
+        '/api/reset-password': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
         '/s/': {
           target: 'http://127.0.0.1:8788',
           changeOrigin: true,

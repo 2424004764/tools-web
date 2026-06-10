@@ -235,30 +235,31 @@ async function processUserLogin(userData, env) {
       '';
     const thirdPartyLevel = userData.trust_level || 0;  // Linux.do的trust_level
     
-    // 查询是否已有用户
-    const found = await db.prepare(`
-      SELECT id FROM user 
-      WHERE third_party_uid = ? AND third_party_type = 'linuxdo'
-    `).bind(thirdPartyUid).first();
-    
+    // 优先通过邮箱查找用户（统一账号）
+    let found = null;
+    if (email && email.indexOf('@') > -1 && !email.endsWith('@linux.do')) {
+      found = await db.prepare(`SELECT id FROM user WHERE email = ?`).bind(email).first();
+    }
+
     let userId;
     if (found && found.id) {
       userId = found.id;
-      // 更新用户信息
+      // 更新用户信息并关联 Linux.do 账号
       await db.prepare(`
-        UPDATE user SET 
+        UPDATE user SET
           avatar = ?,
           last_login = ?,
-          email = ?,
           username = ?,
+          third_party_uid = ?,
+          third_party_type = 'linuxdo',
           user_level = ?
         WHERE id = ?
-      `).bind(avatar, nowStr, email, username, thirdPartyLevel, userId).run();
+      `).bind(avatar, nowStr, username, thirdPartyUid, thirdPartyLevel, userId).run();
     } else {
       // 创建新用户
       userId = crypto.randomUUID();
       await db.prepare(`
-        INSERT INTO user (id, email, avatar, created_at, last_login, third_party_uid, username, user_level, third_party_type) 
+        INSERT INTO user (id, email, avatar, created_at, last_login, third_party_uid, username, user_level, third_party_type)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(userId, email, avatar, nowStr, nowStr, thirdPartyUid, username, thirdPartyLevel, 'linuxdo').run();
     }

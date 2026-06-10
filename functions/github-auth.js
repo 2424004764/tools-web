@@ -496,12 +496,12 @@ async function processUserLogin(userData, env) {
             avatar
         });
 
-        // 查询是否已有用户
+        // 优先通过邮箱查找用户（统一账号）
         console.log('检查用户是否已存在...');
-        const found = await db.prepare(`
-            SELECT id FROM user 
-            WHERE third_party_uid = ? AND third_party_type = 'github'
-        `).bind(thirdPartyUid).first();
+        let found = null;
+        if (email && email.indexOf('@') > -1 && !email.endsWith('@github.user')) {
+            found = await db.prepare(`SELECT id FROM user WHERE email = ?`).bind(email).first();
+        }
 
         console.log('现有用户查询结果:', found);
 
@@ -509,19 +509,20 @@ async function processUserLogin(userData, env) {
         let isNewUser = false;
 
         if (found && found.id) {
-            // 用户已存在，更新信息
+            // 用户已存在，更新信息并关联 GitHub 账号
             userId = found.id;
             console.log('用户已存在，更新信息，userId:', userId);
 
-            // 更新用户信息
             const updateResult = await db.prepare(`
-                UPDATE user SET 
+                UPDATE user SET
                     avatar = ?,
                     last_login = ?,
-                    email = ?,
-                    username = ?
+                    username = ?,
+                    third_party_uid = ?,
+                    third_party_type = 'github',
+                    user_level = ?
                 WHERE id = ?
-            `).bind(avatar, nowStr, email, username, userId).run();
+            `).bind(avatar, nowStr, username, thirdPartyUid, 0, userId).run();
 
             console.log('用户信息更新结果:', updateResult);
         } else {
@@ -529,23 +530,8 @@ async function processUserLogin(userData, env) {
             isNewUser = true;
             console.log('创建新用户...');
 
-            // 检查邮箱是否已被其他账号使用
-            if (email && email.indexOf('@') > -1 && !email.endsWith('@github.user')) {
-                console.log('检查邮箱是否已被使用:', email);
-                const emailExists = await db.prepare('SELECT id FROM user WHERE email = ? AND third_party_type != ?')
-                    .bind(email, 'github')
-                    .first();
-
-                if (emailExists) {
-                    console.error('邮箱已被其他账号使用:', email);
-                    throw new Error('该邮箱已被其他账号使用');
-                }
-            }
-
-            // 生成新用户ID
             userId = crypto.randomUUID();
-            
-            // 插入新用户
+
             const insertResult = await db.prepare(`
                 INSERT INTO user (id, email, avatar, created_at, last_login, third_party_uid, username, user_level, third_party_type)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)

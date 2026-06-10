@@ -68,29 +68,29 @@ export async function onRequest(context) {
     const db = env.DB;
     const nowStr = formatNow();
 
-    // 查是否已有用户
-    const found = await db.prepare(`
-      SELECT id FROM user 
-      WHERE third_party_uid = ? AND third_party_type = 'google'
-    `).bind(thirdPartyUid).first();
+    // 优先通过邮箱查找用户（统一账号）
+    let found = await db.prepare(`
+      SELECT id FROM user WHERE email = ?
+    `).bind(email).first();
 
     let userId;
     if (found && found.id) {
       userId = found.id;
-      // 更新用户信息
+      // 更新用户信息，关联第三方账号
       await db.prepare(`
-        UPDATE user SET 
-          avatar = ?, 
-          last_login = ?, 
-          email = ?,
+        UPDATE user SET
+          avatar = ?,
+          last_login = ?,
           username = ?,
+          third_party_uid = ?,
+          third_party_type = 'google',
           user_level = ?
         WHERE id = ?
-      `).bind(avatar, nowStr, email, username, 0, userId).run();
+      `).bind(avatar, nowStr, username, thirdPartyUid, 0, userId).run();
     } else {
       userId = crypto.randomUUID();
       await db.prepare(`
-        INSERT INTO user (id, email, avatar, created_at, last_login, third_party_uid, username, user_level, third_party_type) 
+        INSERT INTO user (id, email, avatar, created_at, last_login, third_party_uid, username, user_level, third_party_type)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(userId, email, avatar, nowStr, nowStr, thirdPartyUid, username, 0, 'google').run();
     }
