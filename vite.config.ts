@@ -69,11 +69,17 @@ export default defineConfig(({command, mode}) => {
       }
     },
     build: {
-      target: 'es2020', // 现代浏览器，减小打包体积
+      target: 'es2015',
       cssCodeSplit: true,
       sourcemap: false,
-      minify: 'esbuild', // esbuild 比 terser 快 20-40 倍
-      reportCompressedSize: false, // 关闭压缩大小报告，加快构建
+      minify: 'terser',
+      terserOptions: {
+        compress: {
+          drop_console: true,
+          drop_debugger: true,
+        },
+      },
+      reportCompressedSize: false,
       rollupOptions: {
         output: {
           manualChunks: (id) => {
