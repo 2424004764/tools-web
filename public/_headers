@@ -1,0 +1,52 @@
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+/js/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/css/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.js
+  Cache-Control: public, max-age=31536000, immutable
+  Content-Type: application/javascript; charset=utf-8
+
+/*.css
+  Cache-Control: public, max-age=31536000, immutable
+  Content-Type: text/css; charset=utf-8
+
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/*.woff2
+  Cache-Control: public, max-age=31536000, immutable
+  Content-Type: font/woff2
+
+/*.woff
+  Cache-Control: public, max-age=31536000, immutable
+  Content-Type: font/woff
+
+/*.ttf
+  Cache-Control: public, max-age=31536000, immutable
+  Content-Type: font/ttf
+
+/*.webp
+  Cache-Control: public, max-age=31536000, immutable
+  Content-Type: image/webp
+
+/*.png
+  Cache-Control: public, max-age=31536000, immutable
+  Content-Type: image/png
+
+/*.jpg
+  Cache-Control: public, max-age=31536000, immutable
+  Content-Type: image/jpeg
+
+/*.svg
+  Cache-Control: public, max-age=31536000, immutable
+  Content-Type: image/svg+xml

@@ -11,35 +11,56 @@ import viteCompression from 'vite-plugin-compression'
 // https://vitejs.dev/config/
 export default defineConfig(({command, mode}) => {
   let env = loadEnv(mode, process.cwd())
+  const isProd = mode === 'production'
+
   return {
     define: {
-      'process.env.NODE_ENV': JSON.stringify('production')
+      'process.env.NODE_ENV': JSON.stringify(mode)
     },
+    // 编译优化
+    esbuild: {
+      drop: isProd ? ['console', 'debugger'] : [],
+      legalComments: 'none',
+    },
+    // 持久化缓存
+    cacheDir: 'node_modules/.vite',
+
     plugins: [
-      vue(),
+      vue({
+        template: {
+          compilerOptions: {
+            whitespace: 'condense', // 压缩模板空格
+          }
+        }
+      }),
       createSvgIconsPlugin({
         iconDirs: [path.resolve(process.cwd(), 'src/assets/icons')],
         symbolId: 'icon-[dir]-[name]',
       }),
       Components({
-        resolvers: [ElementPlusResolver()],
-        dts: 'src/types/components.d.ts',
+        resolvers: [ElementPlusResolver({ importStyle: 'sass' })],
+        dts: false, // 生产环境禁用 dts 生成
       }),
       ElementPlus({}),
       AutoImport({
         resolvers: [ElementPlusResolver()],
-        dts: 'src/types/auto-imports.d.ts',
+        dts: false, // 生产环境禁用 dts 生成
       }),
-      viteCompression({
-        algorithm: 'brotliCompress',
-        threshold: 10240,
-        ext: '.br',
-      }),
-      viteCompression({
-        algorithm: 'gzip',
-        threshold: 10240,
-        ext: '.gz',
-      }),
+      // 仅生产环境压缩
+      ...(isProd ? [
+        viteCompression({
+          algorithm: 'brotliCompress',
+          threshold: 5120, // 5KB 以上才压缩
+          ext: '.br',
+          deleteOriginFile: false,
+        }),
+        viteCompression({
+          algorithm: 'gzip',
+          threshold: 5120,
+          ext: '.gz',
+          deleteOriginFile: false,
+        }),
+      ] : []),
     ],
     resolve: {
       alias: {
@@ -48,37 +69,44 @@ export default defineConfig(({command, mode}) => {
       }
     },
     build: {
-      target: 'es2015',
+      target: 'es2020', // 现代浏览器，减小打包体积
       cssCodeSplit: true,
       sourcemap: false,
-      minify: 'terser',
-      terserOptions: {
-        compress: {
-          drop_console: true,
-          drop_debugger: true,
-        },
-      },
+      minify: 'esbuild', // esbuild 比 terser 快 20-40 倍
+      reportCompressedSize: false, // 关闭压缩大小报告，加快构建
       rollupOptions: {
         output: {
-          manualChunks: {
-            vue: ['vue', 'vue-router', 'pinia'],
-            editors: ['@wangeditor/editor', '@wangeditor/editor-for-vue'],
-            charts: ['echarts'],
-            utils: ['lodash', 'axios', 'uuid'],
-            codemirror: ['codemirror', '@codemirror/commands', '@codemirror/lang-javascript', '@codemirror/lang-json'],
+          manualChunks: (id) => {
+            // 动态分包策略
+            if (id.includes('node_modules')) {
+              if (id.includes('element-plus')) return 'element-plus'
+              if (id.includes('vue') || id.includes('pinia') || id.includes('router')) return 'vue'
+              if (id.includes('@wangeditor')) return 'editor'
+              if (id.includes('echarts')) return 'charts'
+              if (id.includes('codemirror') || id.includes('@codemirror')) return 'codemirror'
+              if (id.includes('xlsx') || id.includes('jszip')) return 'excel'
+              if (id.includes('three')) return 'three'
+              if (id.includes('pdfjs')) return 'pdf'
+              if (id.includes('lodash') || id.includes('axios') || id.includes('crypto')) return 'utils'
+              return 'vendor'
+            }
           },
-          chunkFileNames: (chunkInfo) => {
-            const facadeModuleId = chunkInfo.facadeModuleId
-            ? chunkInfo.facadeModuleId.split('/').pop().replace(/\.\w+$/, '')
-            : 'chunk'
-            return `js/${facadeModuleId}-[hash].js`
-          }
+          chunkFileNames: 'js/[name]-[hash].js',
+          entryFileNames: 'js/[name]-[hash].js',
+          assetFileNames: (assetInfo) => {
+            if (assetInfo.name.endsWith('.css')) return 'css/[name]-[hash][extname]'
+            return 'assets/[name]-[hash][extname]'
+          },
         }
       },
-      chunkSizeWarningLimit: 1000,
+      chunkSizeWarningLimit: 800,
     },
     server: {
       host: env.VITE_HOST,
+      // 预热常用模块
+      warmup: {
+        clientFiles: ['./src/main.ts', './src/App.vue', './src/router/index.ts'],
+      },
       proxy: {
         [env.VITE_APP_BASE_API] : {
           target: env.VITE_SERVE,
@@ -129,6 +157,18 @@ export default defineConfig(({command, mode}) => {
           }
         }
       }
-    }
+    },
+    // 依赖优化
+    optimizeDeps: {
+      include: [
+        'vue',
+        'vue-router',
+        'pinia',
+        'axios',
+        'element-plus',
+        'lodash',
+      ],
+      exclude: ['@wangeditor/editor', 'echarts', 'three', 'pdfjs-dist'],
+    },
   }
 })
