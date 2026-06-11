@@ -632,6 +632,16 @@ export const constantRoute = [
       description: '提供在线免费无限次数的文生图服务',
     }
   },
+  {
+    path: '/ai-text-to-video',
+    component: () => import('@/components/Tools/AiTextToVideo/AiTextToVideo.vue'),
+    name: 'AiTextToVideo',
+    meta: {
+      title: "AI文生视频",
+      keywords: 'AI文生视频,文本生成视频,AI视频生成,短视频创作',
+      description: '输入主题自动生成视频文案并创作短视频，支持5秒/10秒时长',
+    }
+  },
   // {
   //   path: '/ai-text-to-speech',
   //   component: () => import('@/components/Tools/AiTextToSpeech/AiTextToSpeech.vue'),

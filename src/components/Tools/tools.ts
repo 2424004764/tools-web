@@ -1228,6 +1228,15 @@ export function getToolsCate() {
           cateId: 10,
           cate: 'AI工具'
         },
+        {
+          id: 11,
+          title: 'AI文生视频',
+          logo: '/images/logo/ai_text_to_video.png',
+          desc: '输入主题自动生成视频文案并创作短视频，支持5秒/10秒时长',
+          url: '/ai-text-to-video/',
+          cateId: 10,
+          cate: 'AI工具'
+        },
         // {
         //   id: 2,
         //   title: '在线文本转语音',

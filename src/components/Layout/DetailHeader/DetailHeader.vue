@@ -78,15 +78,26 @@ const copyShareText = async () => {
 const toggleSidebar = (value: string | number | boolean) => {
   const boolValue = Boolean(value)
   componentStore.setHideAllUI(boolValue)
+
+  // 同步到 URL 参数
+  const query = { ...route.query }
   if (boolValue) {
+    query.focus = '1'
     ElMessage.success('已进入专注模式')
   } else {
+    delete query.focus
     ElMessage.success('已退出专注模式')
   }
+  router.replace({ query })
 }
 
 onMounted(() => {
   findToolCateId()
+
+  // 从 URL 恢复专注模式
+  if (route.query.focus === '1') {
+    componentStore.setHideAllUI(true)
+  }
 })
 
 </script>
