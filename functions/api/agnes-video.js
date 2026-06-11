@@ -23,7 +23,7 @@ export async function onRequest(context) {
     const body = await request.text()
     const authHeader = request.headers.get('Authorization')
 
-    const response = await fetch('https://agnes-ai.com/api/v1/chat/completions', {
+    const response = await fetch('https://apihub.agnes-ai.com/v1/videos', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

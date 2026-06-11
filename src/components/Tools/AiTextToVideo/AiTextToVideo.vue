@@ -102,7 +102,7 @@ const generateScript = async (topicText: string): Promise<string> => {
     throw new Error('本地开发环境暂不支持，请部署到生产环境测试')
   }
 
-  const response = await fetch('/api/agnes/chat/completions', {
+  const response = await fetch('/api/agnes-chat', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -129,7 +129,7 @@ const generateScript = async (topicText: string): Promise<string> => {
 }
 
 const generateVideoFromScript = async (script: string, frames: number): Promise<string> => {
-  const response = await fetch('/api/agnes/videos/generations', {
+  const response = await fetch('/api/agnes-video', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -138,7 +138,8 @@ const generateVideoFromScript = async (script: string, frames: number): Promise<
     body: JSON.stringify({
       model: 'agnes-video-v2.0',
       prompt: script,
-      num_frames: frames
+      num_frames: frames,
+      frame_rate: 25
     })
   })
 
