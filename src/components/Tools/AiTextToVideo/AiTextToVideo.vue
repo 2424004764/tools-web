@@ -97,6 +97,11 @@ const generateVideo = async () => {
 }
 
 const generateScript = async (topicText: string): Promise<string> => {
+  // 开发环境提示
+  if (import.meta.env.DEV) {
+    throw new Error('本地开发环境暂不支持，请部署到生产环境测试')
+  }
+
   const response = await fetch('/api/agnes/chat/completions', {
     method: 'POST',
     headers: {
