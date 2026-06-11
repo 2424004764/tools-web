@@ -105,6 +105,18 @@ export default defineConfig(({command, mode}) => {
         clientFiles: ['./src/main.ts', './src/App.vue', './src/router/index.ts'],
       },
       proxy: {
+        '/api/agnes-chat': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
+        '/api/agnes-video': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
+        '/api/agnes-video-status': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
         '/api/agnes/chat': {
           target: 'https://agnes-ai.com/api/v1',
           changeOrigin: true,
