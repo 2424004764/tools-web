@@ -105,6 +105,18 @@ export default defineConfig(({command, mode}) => {
         clientFiles: ['./src/main.ts', './src/App.vue', './src/router/index.ts'],
       },
       proxy: {
+        '/api/agnes/chat': {
+          target: 'https://agnes-ai.com/api/v1',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/agnes\/chat/, '/chat'),
+          secure: false
+        },
+        '/api/agnes/videos': {
+          target: 'https://agnes-ai.com/api/v1',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/agnes\/videos/, '/videos'),
+          secure: false
+        },
         '/api/agnes': {
           target: 'https://agnes-ai.com',
           changeOrigin: true,
