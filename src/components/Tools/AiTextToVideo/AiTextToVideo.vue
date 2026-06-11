@@ -149,7 +149,37 @@ const generateVideoFromScript = async (script: string, frames: number): Promise<
   }
 
   const data = await response.json()
-  return data.data[0].url
+  const videoId = data.video_id
+
+  // 轮询查询视频状态
+  while (true) {
+    await new Promise(resolve => setTimeout(resolve, 5000)) // 等待5秒
+
+    currentStep.value = '视频生成中，请稍候...'
+
+    const statusResponse = await fetch(`/api/agnes-video-status?video_id=${encodeURIComponent(videoId)}`, {
+      headers: {
+        'Authorization': `Bearer ${apiKey.value.trim()}`
+      }
+    })
+
+    if (!statusResponse.ok) {
+      throw new Error('查询视频状态失败')
+    }
+
+    const statusData = await statusResponse.json()
+
+    if (statusData.status === 'completed') {
+      return statusData.remixed_from_video_id
+    } else if (statusData.status === 'failed' || statusData.error) {
+      throw new Error(statusData.error || '视频生成失败')
+    }
+
+    // 更新进度
+    if (statusData.progress) {
+      currentStep.value = `视频生成中 ${statusData.progress}%...`
+    }
+  }
 }
 
 const downloadVideo = () => {
