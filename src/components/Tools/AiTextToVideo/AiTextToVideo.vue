@@ -97,14 +97,13 @@ const generateVideo = async () => {
 }
 
 const generateScript = async (topicText: string): Promise<string> => {
-  const response = await fetch('/api/agnes-proxy', {
+  const response = await fetch('/api/agnes/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${apiKey.value.trim()}`
     },
     body: JSON.stringify({
-      endpoint: 'chat/completions',
       model: 'agnes-2.0-flash',
       messages: [
         {
@@ -125,14 +124,13 @@ const generateScript = async (topicText: string): Promise<string> => {
 }
 
 const generateVideoFromScript = async (script: string, frames: number): Promise<string> => {
-  const response = await fetch('/api/agnes-proxy', {
+  const response = await fetch('/api/agnes/videos/generations', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${apiKey.value.trim()}`
     },
     body: JSON.stringify({
-      endpoint: 'videos/generations',
       model: 'agnes-video-v2.0',
       prompt: script,
       num_frames: frames
