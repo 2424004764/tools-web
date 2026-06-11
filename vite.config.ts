@@ -105,6 +105,20 @@ export default defineConfig(({command, mode}) => {
         clientFiles: ['./src/main.ts', './src/App.vue', './src/router/index.ts'],
       },
       proxy: {
+        '/api/agnes': {
+          target: 'https://agnes-ai.com',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/agnes/, '/api/v1'),
+          secure: false
+        },
+        '/api/pollinations': {
+          target: 'https://image.pollinations.ai',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/pollinations/, ''),
+          headers: {
+            Authorization: 'Bearer NpgaKlHjioTlyo2B'
+          }
+        },
         [env.VITE_APP_BASE_API] : {
           target: env.VITE_SERVE,
           changeOrigin: true,
@@ -145,14 +159,6 @@ export default defineConfig(({command, mode}) => {
           target: 'http://127.0.0.1:8788',
           changeOrigin: true,
         },
-        '/api/pollinations': {
-          target: 'https://image.pollinations.ai',
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api\/pollinations/, ''),
-          headers: {
-            Authorization: 'Bearer NpgaKlHjioTlyo2B'
-          }
-        }
       }
     },
     // 依赖优化
