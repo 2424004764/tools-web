@@ -117,6 +117,10 @@ export default defineConfig(({command, mode}) => {
           target: 'http://127.0.0.1:8788',
           changeOrigin: true,
         },
+        '/api/agnes-image-generations': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
         '/api/agnes/chat': {
           target: 'https://agnes-ai.com/api/v1',
           changeOrigin: true,
