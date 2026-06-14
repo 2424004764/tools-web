@@ -1,0 +1,1652 @@
+<script setup lang="ts">
+// @ts-nocheck
+import { ref, onMounted, computed } from 'vue'
+import { ElMessage } from 'element-plus'
+import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
+import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
+import { useUserStore } from '@/store/modules/user'
+import MarkdownIt from 'markdown-it'
+
+const userStore = useUserStore()
+const md = new MarkdownIt({
+  html: true,
+  linkify: true,
+  typographer: true,
+  breaks: true
+})
+
+const apiKey = ref('')
+const activeTab = ref<'api-config' | 'text-to-video' | 'image-to-video' | 'text-to-image' | 'ai-chat'>('api-config')
+const topic = ref('')
+const duration = ref(5)
+const aspectRatio = ref('9:16')
+const isGenerating = ref(false)
+const currentStep = ref('')
+const generatedScript = ref('')
+const generatedVideoUrl = ref('')
+const scriptGenerateTime = ref(0)
+const videoGenerateTime = ref(0)
+const currentStageStartTime = ref(0)
+const elapsedTimer = ref<number | null>(null)
+const currentStage = ref(0) // 0:未开始 1:生成文案 2:生成视频 3:完成
+const showVideoModal = ref(false)
+const videoDuration = ref(0)
+const videoRef = ref<HTMLVideoElement | null>(null)
+const videoProgress = ref(0)
+const isVideoPlaying = ref(false)
+
+// 图生视频相关
+const imageMode = ref<'single' | 'double'>('single')
+const uploadedImages = ref<string[]>([])
+const videoPrompt = ref('')
+const isUploading = ref(false)
+
+// 文生图相关
+const imageModel = ref<'agnes-image-2.1-flash' | 'agnes-image-2.0'>('agnes-image-2.1-flash')
+const imagePrompt = ref('')
+const imageCount = ref(1)
+const imageAspectRatio = ref('9:16')
+const generatedImages = ref<string[]>([])
+const imageGenerateTime = ref(0)
+
+// AI对话相关
+const chatModel = ref<'agnes-2.0-flash' | 'agnes-2.0'>('agnes-2.0-flash')
+const chatInput = ref('')
+const chatSessions = ref<Array<{id: string, title: string, messages: Array<{role: 'user' | 'assistant', content: string}>}>>([])
+const currentSessionId = ref<string | null>(null)
+const isChatting = ref(false)
+const chatContainerRef = ref<HTMLDivElement | null>(null)
+
+const currentSession = computed(() => {
+  return chatSessions.value.find(s => s.id === currentSessionId.value)
+})
+
+// 预设示例图片
+const presetImages = [
+  {
+    name: '日落海滩',
+    url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&h=600&fit=crop'
+  },
+  {
+    name: '城市夜景',
+    url: 'https://images.unsplash.com/photo-1514565131-fce0801e5785?w=800&h=600&fit=crop'
+  },
+  {
+    name: '森林小路',
+    url: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&h=600&fit=crop'
+  },
+  {
+    name: '雪山风景',
+    url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop'
+  },
+  {
+    name: '花田美景',
+    url: 'https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=800&h=600&fit=crop'
+  },
+  {
+    name: '星空银河',
+    url: 'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=800&h=600&fit=crop'
+  }
+]
+
+const topicExamples = [
+  '特写镜头，一只拥有明亮眼睛的橘色幼猫在春日的翠绿草地上雀跃，正调皮地扑向一只轻盈飞舞的斑斓蝴蝶。阳光穿透树叶，在猫咪细腻的毛发和草地上洒下斑驳的金色光影。慢镜头（Slow-motion）捕捉它腾空跃起的瞬间，空气中漂浮着微小的草屑。柔和的自然光照，浅景深背景虚化，温馨治愈的电影质感。',
+  '电影级广角低角度仰拍。日落时分（Golden hour），巨大的金色太阳悬挂在海平线上，翻滚的金黄色海浪带着细腻的白色泡沫激烈拍打着黑色的巨大礁石。几只海鸥在火烧云般的天空中盘旋。镜头随着海浪起伏缓慢向前推进，温暖的黄昏色调，高动态范围（HDR），波光粼粼的浪漫电影质感。',
+  '城市高空俯视大远景延时摄影（Timelapse）。繁华的科幻都市夜幕低垂，密集的摩天大楼上巨幅 3D 全息广告牌霓虹闪烁，变幻着迷幻的色彩。密集的车流化作红蓝相间的流光长带在立体交错的街道上穿梭。镜头以极慢的速度向下俯冲推进，深蓝与赛博朋克霓虹紫色调，超高清晰度。',
+  '4K 精细画质，镜头跟随。一条清澈见底的林间小溪在布满青苔的鹅卵石间缓缓流淌，水中能看到游动的细小鱼儿。清晨的阳光穿透古老的森林树冠，形成完美的丁达尔光束（God rays）笔直地洒在升腾的微弱水雾上。翠绿与微金调性，环境音仿佛能听到清脆的水流声，宁静祥和的顶级自然纪录片质感。',
+  '史诗级科幻大片质感。一名身着高科技白色太空服的宇航员在浩瀚无垠的宇宙中缓慢漂浮，宇航员金色面罩上倒映着星云。远处的蓝色地球散发着柔和而宏大的半弧形光晕，无数璀璨星光交织成星河。广角镜头围绕宇航员进行 360 度缓慢环绕旋转，展现极致的孤独与宏伟感。',
+  '慢速过肩跟拍（Over-the-shoulder tracking shot）。一整片盛开的樱花树夹道相迎，唯美的粉色花瓣随风如雨般飘落。一对身着棉麻质感便服的情侣手牵手，在落满花瓣的小道上缓缓漫步。阳光柔和地打在他们的侧影上，画面带有微弱的光晕（Lens flare）。日系清新风格，低饱和度，明亮而浪漫的青春动画质感。',
+  '新海诚动画风格（Makoto Shinkai style）。暴雨初霁的都市黄昏街道，天空中划过一道绚丽的彩虹与晚霞。湿润的路面宛如镜面，完美倒映着路边店铺五彩斑斓的霓虹灯光和路灯。行人撑着透明的雨伞匆匆走过。镜头水平横移，捕捉地面积水的微澜，冷色调街道与暖色调灯光强烈对比，每一帧都是壁纸。',
+  '穿透云海的无人机升降航拍（FPV drone shot）。巍峨的雪山之巅银装素裹，在刺眼的阳光下反射着凛冽的白光。一名身穿鲜艳红色冲锋衣的登山者伫立在顶峰，高举着一面迎风剧烈猎猎作响的旗帜。背景是波澜壮阔、延绵到天边的云海。镜头从低角度急速拉高升起，展现人类征服自然的壮阔史诗感。',
+  '35mm 怀旧胶片质感，大光圈浅景深。复古温馨的咖啡馆内，柔和的暖黄灯光笼罩着精致的木质桌椅。窗边一位穿着高领毛衣的优雅读者正专注看书，双手捧着一只精致的瓷杯，咖啡表面升腾着丝丝缕缕飘渺的蒸汽。微观特写镜头（Macro close-up），画面带有细腻的胶片颗粒感（Film grain），极具文艺气息。',
+  '动态跟焦（Focus tracking），低视角拍摄。一只活泼可爱的金毛幼犬在色彩斑斓的无尽花田中欢快奔跑，摇晃着尾巴追逐几只翩翩飞舞的黄色蝴蝶。各色野花在明媚的阳光下随风剧烈摇曳。镜头紧跟小狗的视线水平移动，色彩饱和度高且鲜艳，充满阳光与童话般的梦幻烂漫氛围。',
+  '前卫科幻风格。超现实的未来主义巨型城市，流线型的高耸摩天大楼直插云霄，透明的磁悬浮飞行汽车在错综复杂的空中半透明轨道间高速穿梭。巨大的全息虚拟AI助手在楼体间闪烁。镜头从幽暗的街道底层垂直仰拍至充满科技感的天空，冷色调科技蓝与极光绿交织，工业设计感十足。',
+  '航拍慢速旋转上升（Slow cinematic spiral-up drone shot）。一片无边无际的深秋枫叶林，浓郁的火红与金黄色交织。微风吹过，无数落叶在空中如蝴蝶般飞舞旋转落下。午后的阳光穿透密集的树冠，形成一道道清晰的光束。镜头在大树之间缓慢盘旋上升，温暖的秋日色调，诗意唯美，充满高级艺术感。',
+  '一只毛茸茸的橘猫在春日花园中奔跑追逐彩色蝴蝶，周围盛开的雏菊与郁金香轻轻摇曳，微风吹动柔软毛发，阳光穿过树叶形成斑驳光影洒落地面，蝴蝶缓慢飞舞环绕猫咪，镜头低机位跟拍并缓慢推进，偶尔切换特写捕捉灵动眼神，电影级景深，暖金色自然光，超真实毛发细节，治愈系动画电影质感，8K超清画面。',
+  '辽阔海岸线上，金色夕阳缓缓沉入海平面，汹涌海浪拍打黑色礁石激起层层白色浪花，海鸥在天空自由盘旋，空气中漂浮细微水雾颗粒，镜头从礁石缝隙穿出向远方推进，无人机缓慢升空俯瞰整个海湾，逆光轮廓光勾勒海浪边缘，橙金色晚霞铺满天空，电影大片级调色，壮丽唯美，IMAX视觉风格。',
+  '未来科技都市的雨夜，巨型全息广告在高楼之间闪烁变换，悬浮飞行汽车高速穿梭，街道被霓虹灯映照成蓝紫色海洋，细密雨丝从空中落下，地面倒映着炫彩灯光，镜头从街头缓慢穿行并向上仰拍，经过机械改造人群与智能机器人，动态光影不断变化，体积雾效果，赛博朋克2077风格，电影级科幻视觉。',
+  '樱花盛开的林荫小道上，数万片粉色花瓣如雪般漫天飞舞，一对年轻情侣牵手漫步其中，微风吹起发丝与衣角，阳光柔和洒落形成温暖光晕，镜头从背后缓慢跟随，随后环绕人物旋转拍摄，花瓣从镜头前飘过形成自然转场，浅景深虚化背景，粉白色调，日系青春电影风格，浪漫唯美。',
+  '浩瀚宇宙深处，一名宇航员缓慢漂浮在失重空间中，银白色宇航服反射遥远恒星的微光，巨大的蓝色地球悬挂在背景中央，极光沿地球边缘流动闪耀，周围无数星辰缓慢移动，镜头环绕宇航员360度旋转，随后缓缓拉远展现宇宙尺度，深邃蓝黑色调，史诗级科幻电影质感，震撼而孤独。',
+  '雨后的东京街头，湿润路面倒映着绚丽霓虹灯光，红绿信号灯闪烁变换，行人撑着透明雨伞匆匆经过，远处电车缓缓驶过，空气中漂浮细小水汽，镜头横向平移穿过街道，偶尔捕捉雨滴落入积水形成涟漪，冷暖光源交织，蓝橙对比色调，新海诚动画电影风格，梦幻而真实。',
+  '皑皑雪山之巅，登山者站在悬崖边高举鲜红旗帜，狂风吹动衣物与旗帜猎猎作响，下方云海翻滚流动，远方群山层层叠叠延伸至天际，镜头从脚下雪地快速上升至空中，无人机环绕拍摄，阳光从云层缝隙射出形成神圣光柱，冷峻蓝白色调，国家地理纪录片风格，震撼壮阔。',
+  '安静温暖的复古咖啡馆内，木质桌椅散发岁月气息，窗边年轻女孩捧着热咖啡阅读书籍，咖啡杯升起袅袅蒸汽，阳光透过玻璃洒在书页和桌面，空气中漂浮细小尘埃颗粒，镜头缓慢推进至人物特写，浅景深虚化背景，胶片颗粒感，暖黄色调，文艺电影氛围。',
+  '神秘森林深处，发光精灵在空中轻盈飞舞，蓝绿色荧光植物遍布地面，古老巨树高耸入云，藤蔓缠绕树干，阳光穿过浓密树冠形成梦幻丁达尔光束，镜头跟随精灵穿梭树林，掠过发光花朵与蘑菇群落，奇幻色彩丰富，迪士尼魔法世界风格，童话般梦境体验。',
+  '云海翻腾的群山之间，一条金色东方神龙盘旋腾空而起，龙鳞反射耀眼阳光，龙须随风舞动，周围雷电闪烁穿梭于乌云之间，镜头从山谷快速冲向天空，环绕神龙飞行并逐渐拉远，全景展现天地壮阔，金色与青蓝色调交织，中国神话史诗风格，震撼电影级特效。',
+  '云雾缭绕的仙山之巅，一袭白衣剑客独立悬崖边缘，长发与衣袂随风飘扬，远方群峰若隐若现，仙鹤掠过天际，瀑布从山间倾泻而下，镜头从云海穿出缓慢接近人物背影，再环绕一周展现仙境全貌，水墨与写实融合风格，空灵悠远，东方仙侠电影质感。',
+  '暴风雨后的蔚蓝大海，一头巨大的座头鲸从海面腾空跃起，阳光穿透乌云照射鲸身，数万吨海水四散飞溅形成晶莹水幕，海面波涛翻滚，镜头采用高速摄影捕捉每一滴水珠，随后切换无人机广角俯拍，史诗级自然纪录片风格，震撼生命力量。',
+  '电影级横移镜头（Tracking shot）。深夜的赛博朋克风格街道，密集的雨滴击打着地面，形成细腻的水雾。街道两旁悬挂着巨大的粉色和青色霓虹灯招牌，倒映在潮湿如镜面的沥青路上。一名穿着连帽雨衣的行人背影穿梭其中，脚步溅起细小的水花。冷暖色调强烈对比，4K分辨率，极高光影动态范围。',
+  '极近距离微观特写（Macro shot）。浓稠的金黄色蜂蜜从木质搅拌棒上缓慢滴落，包裹住一颗硕大的、带有晶莹水珠的新鲜草莓。镜头以极慢的速度绕其旋转，捕捉蜂蜜流动的丝滑质感和草莓表面的凹凸细节。暖色调柔光，浅景深虚化背景，高帧率慢动作，垂涎欲滴的视觉冲击力。',
+  '创意艺术风格。画面初始为一张古老的宣纸，随后黑色的墨滴坠入水中并迅速晕染开，幻化成层峦叠嶂的群山。白色的云雾在墨色山间流淌，镜头穿过雾气，呈现出一叶扁舟在江面缓缓滑行。墨点在空气中化作飞鸟，画面结合了传统国画的写意与 3D 粒子的流动感，黑白灰色调穿插极少量的赭石色。',
+  '航拍广角镜头。一座位于沙漠中心的白色流线型未来主义图书馆，建筑结构灵感来自莫比乌斯环。阳光照在洁白的纳米材料外墙上，产生柔和的散射。巨大的透明玻璃幕墙映射出湛蓝的天空。镜头从建筑内部的螺旋楼梯向上盘旋升起，展现出极致的空间结构美感和极简主义设计，冷色调，充满神圣感。'
+]
+
+const videoPromptExamples = [
+  'Smooth slow-motion zoom in, soft natural lighting with warm golden hour tones, cinematic depth of field with bokeh effect, gentle camera movement from wide to close-up, film grain texture, professional color grading with rich contrast',
+  'Elegant tracking shot moving forward steadily, ethereal morning mist atmosphere, diffused sunlight creating soft shadows, subtle depth changes revealing layers, dreamy pastel color palette, artistic composition with balanced framing',
+  'Graceful rotating camera movement around the subject, dramatic side lighting with deep shadows, shallow depth of field isolating the focus, smooth parallax effect, moody cinematic atmosphere, high contrast with desaturated tones',
+  'Gentle floating camera motion with slight drift, soft ambient lighting from multiple angles, delicate color transitions from cool to warm, smooth breathing-like zoom, romantic film aesthetic, natural vignette effect',
+  'Fluid crane-like ascending movement, golden hour backlighting creating rim light effect, gradual focus pull from foreground to background, serene and peaceful atmosphere, warm color temperature, professional cinematography quality',
+  'Slow panoramic horizontal sweep, sunset warm orange and pink tones, dynamic range with rich detail in shadows and highlights, gentle breeze effect, nostalgic vintage film look, subtle lens flare',
+  'Smooth dolly-in camera approach, soft window light with natural shadows, photorealistic texture and detail, calm meditative pace, muted earth tone palette, artistic shallow focus transitions',
+  'Steady orbital rotation around center point, cool blue hour lighting with city lights, depth layering with atmospheric haze, elegant smooth motion, modern clean aesthetic, color graded with teal and orange tones',
+  'Flowing serpentine camera path, dynamic lighting changes from dark to light, cinematic widescreen composition, emotional storytelling pace, rich saturated colors, film noir dramatic contrast',
+  'Gentle rising crane shot revealing the scene, soft diffused overcast lighting, natural color palette with enhanced greens, smooth continuous motion, documentary realism style, organic handheld-like subtle movements'
+]
+
+const durationOptions = [
+  { label: '5秒', value: 5, frames: 121 },
+  { label: '10秒', value: 10, frames: 241 },
+  { label: '15秒', value: 15, frames: 361 }
+]
+
+const aspectRatioOptions = [
+  { label: '横屏 16:9', value: '16:9', width: 1280, height: 720 },
+  { label: '竖屏 9:16', value: '9:16', width: 720, height: 1280 },
+  { label: '方形 1:1', value: '1:1', width: 1024, height: 1024 },
+  { label: '标准 4:3', value: '4:3', width: 1024, height: 768 },
+  { label: '竖屏 3:4', value: '3:4', width: 768, height: 1024 }
+]
+
+const imagePromptExamples = [
+  '一位穿着飘逸白裙的少女站在薰衣草花田中，夕阳余晖洒在她的长发上，微风吹动裙摆，背景是连绵的紫色花海和远山，梦幻唯美的油画风格，柔和的光影，浪漫氛围',
+  '赛博朋克风格的未来都市夜景，高耸的摩天大楼布满巨型霓虹广告牌，悬浮飞车穿梭空中，街道湿润反射着五彩灯光，细腻的雨滴效果，超现实主义风格，冷色调科技感',
+  '一只威严的白狮王站在非洲草原的巨石上仰天长啸，金色晨光从云层中洒下照亮它的鬃毛，远处是辽阔的草原和成群的动物剪影，史诗级写实风格，戏剧性光影',
+  '古风中国山水意境，云雾缭绕的青山之间有一座古朴的亭台，身着古装的女子撑着油纸伞独立于石桥上，桃花飘落水面，水墨画风格，空灵诗意',
+  '宇宙深处的星云漩涡，璀璨的星光和多彩的星云气体交织，一颗蓝色的行星悬浮其中，周围环绕着小行星带，超高清天文摄影风格，壮丽神秘',
+  '温馨的圣诞节场景，壁炉前的客厅摆满礼物和装饰，窗外飘着雪花，一家人围坐在圣诞树旁露出幸福笑容，暖黄灯光，温馨治愈的插画风格',
+  '中世纪欧洲城堡全景，城堡矗立在山崖之上，周围是茂密的森林和流淌的河流，城堡高塔飘扬着旗帜，乌云密布天空透出丝缕阳光，史诗级奇幻概念艺术',
+  '日式和风庭院，樱花树下的石灯笼和小桥流水，锦鲤在池塘中游动，远处是传统日式建筑和竹林，清晨薄雾弥漫，细腻的日系动画风格，宁静雅致',
+  '科幻机甲战士全身像，银白色金属装甲布满蓝色能量纹路，背后展开巨大的能量翼，单膝跪地握着光剑，背景是废墟战场和烟尘，超精细机械设计，硬核科幻风',
+  '魔法森林深处，古老巨树环绕着发光的蘑菇群，精灵在空中飞舞留下光迹，树根间流淌着荧光溪流，神秘的蓝紫色调，奇幻插画风格，梦幻迷离',
+  '北欧极光下的雪山风光，绚丽的绿色极光在夜空中舞动，雪白的山峰倒映在冰冻的湖面上，远处有一座孤独的小木屋透出温暖灯光，超现实自然摄影风格',
+  '蒸汽朋克风格的机械城市，巨大的齿轮和蒸汽管道构成建筑，铜制的飞艇在空中航行，街道上是复古机械装置和穿着维多利亚服饰的人群，复古科幻风格'
+]
+
+const formatTime = (seconds: number): string => {
+  if (seconds < 60) {
+    return `${seconds}秒`
+  }
+  const minutes = Math.floor(seconds / 60)
+  const remainingSeconds = seconds % 60
+  return remainingSeconds > 0 ? `${minutes}分${remainingSeconds}秒` : `${minutes}分钟`
+}
+
+const randomTopic = () => {
+  topic.value = topicExamples[Math.floor(Math.random() * topicExamples.length)]
+}
+
+const randomVideoPrompt = () => {
+  videoPrompt.value = videoPromptExamples[Math.floor(Math.random() * videoPromptExamples.length)]
+}
+
+const handleImageUpload = async (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const files = target.files
+  if (!files || files.length === 0) return
+
+  const maxImages = imageMode.value === 'single' ? 1 : 2
+  const filesToProcess = Array.from(files).slice(0, maxImages - uploadedImages.value.length)
+
+  isUploading.value = true
+
+  try {
+    for (const file of filesToProcess) {
+      // 转换为base64
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = (e) => resolve((e.target?.result as string).split(',')[1])
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
+
+      // 上传到ImgBB
+      const formData = new FormData()
+      formData.append('image', base64)
+
+      const response = await fetch('https://api.imgbb.com/1/upload?key=df54760d0a641fb1f8cf178e59b603e4', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (!response.ok) {
+        throw new Error('图片上传失败')
+      }
+
+      const data = await response.json()
+      if (data.success) {
+        uploadedImages.value.push(data.data.url)
+      }
+    }
+
+    ElMessage.success('图片上传成功')
+  } catch (error: any) {
+    ElMessage.error(error.message || '图片上传失败')
+  } finally {
+    isUploading.value = false
+    // 清空input
+    if (target) target.value = ''
+  }
+}
+
+const removeImage = (index: number) => {
+  uploadedImages.value.splice(index, 1)
+}
+
+const addPresetImage = (url: string) => {
+  const maxImages = imageMode.value === 'single' ? 1 : 2
+  if (uploadedImages.value.length >= maxImages) {
+    ElMessage.warning(`${imageMode.value === 'single' ? '单图模式只能添加1张' : '双图模式只能添加2张'}图片`)
+    return
+  }
+  uploadedImages.value.push(url)
+  ElMessage.success('已添加预设图片')
+}
+
+const switchImageMode = (mode: 'single' | 'double') => {
+  imageMode.value = mode
+  if (mode === 'single' && uploadedImages.value.length > 1) {
+    uploadedImages.value = [uploadedImages.value[0]]
+  }
+}
+
+const switchTab = (tab: 'api-config' | 'text-to-video' | 'image-to-video' | 'text-to-image' | 'ai-chat') => {
+  activeTab.value = tab
+  // 不清空结果，保持各Tab独立
+  currentStage.value = 0
+  currentStep.value = ''
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const sendChatMessage = async () => {
+  if (isChatting.value) {
+    return // 发送中时不允许再次发送
+  }
+
+  if (!apiKey.value.trim()) {
+    ElMessage.warning('请先填写并保存API Key')
+    return
+  }
+
+  if (!chatInput.value.trim()) {
+    ElMessage.warning('请输入消息')
+    return
+  }
+
+  // 如果没有当前会话，创建新会话
+  if (!currentSessionId.value) {
+    createNewSession()
+  }
+
+  const currentSession = chatSessions.value.find(s => s.id === currentSessionId.value)
+  if (!currentSession) return
+
+  const userMessage = chatInput.value.trim()
+  chatInput.value = ''
+
+  // 添加用户消息
+  currentSession.messages.push({
+    role: 'user',
+    content: userMessage
+  })
+
+  // 添加一个空的AI消息占位
+  const aiMessageIndex = currentSession.messages.length
+  currentSession.messages.push({
+    role: 'assistant',
+    content: ''
+  })
+
+  // 滚动到底部
+  setTimeout(() => {
+    if (chatContainerRef.value) {
+      chatContainerRef.value.scrollTop = chatContainerRef.value.scrollHeight
+    }
+  }, 100)
+
+  isChatting.value = true
+
+  try {
+    const response = await fetch('/api/agnes-chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey.value.trim()}`
+      },
+      body: JSON.stringify({
+        model: chatModel.value,
+        messages: currentSession.messages.slice(0, -1), // 不包含空的AI消息
+        stream: true
+      })
+    })
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}))
+      throw new Error(error.error?.message || '对话失败')
+    }
+
+    const reader = response.body?.getReader()
+    const decoder = new TextDecoder()
+
+    if (!reader) {
+      throw new Error('无法获取响应流')
+    }
+
+    let fullContent = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      const chunk = decoder.decode(value, { stream: true })
+      const lines = chunk.split('\n')
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6)
+          if (data === '[DONE]') continue
+
+          try {
+            const json = JSON.parse(data)
+            const content = json.choices[0]?.delta?.content || ''
+            if (content) {
+              fullContent += content
+              currentSession.messages[aiMessageIndex].content = fullContent
+
+              // 实时滚动到底部
+              setTimeout(() => {
+                if (chatContainerRef.value) {
+                  chatContainerRef.value.scrollTop = chatContainerRef.value.scrollHeight
+                }
+              }, 10)
+            }
+          } catch (e) {
+            // 忽略解析错误
+          }
+        }
+      }
+    }
+
+    // 更新会话标题（用第一条用户消息）
+    if (currentSession.messages.length === 2 && currentSession.title === '新对话') {
+      currentSession.title = userMessage.slice(0, 20) + (userMessage.length > 20 ? '...' : '')
+    }
+  } catch (error: any) {
+    ElMessage.error(error.message || '对话失败')
+    // 移除刚才添加的用户消息和AI消息
+    currentSession.messages.pop()
+    currentSession.messages.pop()
+  } finally {
+    isChatting.value = false
+  }
+}
+
+const createNewSession = () => {
+  const newSession = {
+    id: Date.now().toString(),
+    title: '新对话',
+    messages: []
+  }
+  chatSessions.value.unshift(newSession)
+  currentSessionId.value = newSession.id
+}
+
+const selectSession = (sessionId: string) => {
+  currentSessionId.value = sessionId
+}
+
+const deleteSession = (sessionId: string) => {
+  const index = chatSessions.value.findIndex(s => s.id === sessionId)
+  if (index !== -1) {
+    chatSessions.value.splice(index, 1)
+    if (currentSessionId.value === sessionId) {
+      currentSessionId.value = chatSessions.value[0]?.id || null
+    }
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const clearChat = () => {
+  if (currentSessionId.value) {
+    const session = chatSessions.value.find(s => s.id === currentSessionId.value)
+    if (session) {
+      session.messages = []
+      ElMessage.success('当前对话已清空')
+    }
+  }
+}
+
+const copyMessage = (content: string) => {
+  navigator.clipboard.writeText(content).then(() => {
+    ElMessage.success('已复制到剪贴板')
+  }).catch(() => {
+    ElMessage.error('复制失败')
+  })
+}
+
+const renderMarkdown = (content: string) => {
+  return md.render(content)
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const randomImagePrompt = () => {
+  imagePrompt.value = imagePromptExamples[Math.floor(Math.random() * imagePromptExamples.length)]
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const generateTextToImage = async () => {
+  if (!apiKey.value.trim()) {
+    ElMessage.warning('请先填写并保存API Key')
+    return
+  }
+
+  if (!imagePrompt.value.trim()) {
+    ElMessage.warning('请输入图片描述')
+    return
+  }
+
+  isGenerating.value = true
+  generatedImages.value = []
+  imageGenerateTime.value = 0
+
+  try {
+    const selectedAspectRatio = aspectRatioOptions.find(r => r.value === imageAspectRatio.value)!
+
+    currentStageStartTime.value = Date.now()
+    startElapsedTimer('正在生成图片')
+
+    const response = await fetch('https://apihub.agnes-ai.com/v1/images/generations', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey.value.trim()}`
+      },
+      body: JSON.stringify({
+        model: imageModel.value,
+        prompt: imagePrompt.value.trim(),
+        n: imageCount.value,
+        size: `${selectedAspectRatio.width}x${selectedAspectRatio.height}`,
+        extra_body: {
+          response_format: 'url'
+        }
+      })
+    })
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}))
+      throw new Error(error.error?.message || '图片生成失败')
+    }
+
+    const data = await response.json()
+    generatedImages.value = data.data.map((item: any) => item.url)
+
+    stopElapsedTimer()
+    imageGenerateTime.value = Math.round((Date.now() - currentStageStartTime.value) / 1000)
+    currentStep.value = `图片生成完成！耗时 ${formatTime(imageGenerateTime.value)}`
+    ElMessage.success('图片生成成功')
+  } catch (error: any) {
+    stopElapsedTimer()
+    ElMessage.error(error.message || '生成失败')
+    currentStep.value = `生成失败: ${error.message || '未知错误'}`
+    console.error('文生图错误:', error)
+  } finally {
+    isGenerating.value = false
+  }
+}
+
+const downloadImage = (url: string, index: number) => {
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `image_${index + 1}_${Date.now()}.png`
+  a.click()
+}
+
+onMounted(() => {
+  const stored = localStorage.getItem('agnes_api_key')
+  if (stored) apiKey.value = stored
+
+  // AI对话默认创建一个会话
+  if (chatSessions.value.length === 0) {
+    createNewSession()
+  }
+})
+
+const saveApiKey = async () => {
+  if (!apiKey.value.trim()) {
+    ElMessage.warning('请输入API Key')
+    return
+  }
+
+  if (userStore.user?.uid) {
+    // TODO: 调用接口保存到服务器
+    ElMessage.warning('暂不支持保存到服务器')
+  }
+
+  localStorage.setItem('agnes_api_key', apiKey.value.trim())
+  ElMessage.success('API Key已保存到本地')
+}
+
+const startElapsedTimer = (stage: string) => {
+  if (elapsedTimer.value) {
+    clearInterval(elapsedTimer.value)
+  }
+  currentStageStartTime.value = Date.now()
+  elapsedTimer.value = window.setInterval(() => {
+    const elapsed = Math.round((Date.now() - currentStageStartTime.value) / 1000)
+    currentStep.value = `${stage} (已耗时 ${elapsed}秒)...`
+  }, 1000)
+}
+
+const stopElapsedTimer = () => {
+  if (elapsedTimer.value) {
+    clearInterval(elapsedTimer.value)
+    elapsedTimer.value = null
+  }
+}
+
+const generateVideo = async () => {
+  if (!apiKey.value.trim()) {
+    ElMessage.warning('请先填写并保存API Key')
+    return
+  }
+
+  if (!topic.value.trim()) {
+    ElMessage.warning('请输入视频主题')
+    return
+  }
+
+  isGenerating.value = true
+  generatedScript.value = ''
+  generatedVideoUrl.value = ''
+  scriptGenerateTime.value = 0
+  videoGenerateTime.value = 0
+  currentStage.value = 0
+
+  try {
+    // 第一步：生成文案
+    currentStage.value = 1
+    startElapsedTimer('正在生成视频文案')
+    const script = await generateScript(topic.value.trim())
+    stopElapsedTimer()
+    scriptGenerateTime.value = Math.round((Date.now() - currentStageStartTime.value) / 1000)
+    generatedScript.value = script
+
+    // 第二步：生成视频
+    currentStage.value = 2
+    const selectedDuration = durationOptions.find(d => d.value === duration.value)!
+    const videoUrl = await generateVideoFromScript(script, selectedDuration.frames)
+    stopElapsedTimer()
+    videoGenerateTime.value = Math.round((Date.now() - currentStageStartTime.value) / 1000)
+    generatedVideoUrl.value = videoUrl
+
+    currentStage.value = 3
+    currentStep.value = `视频生成完成！`
+    ElMessage.success('视频生成成功')
+  } catch (error: any) {
+    stopElapsedTimer()
+    ElMessage.error(error.message || '生成失败')
+    currentStep.value = `生成失败: ${error.message || '未知错误'}`
+    console.error('文生视频错误:', error)
+  } finally {
+    isGenerating.value = false
+  }
+}
+
+const generateScript = async (topicText: string): Promise<string> => {
+  const response = await fetch('/api/agnes-chat', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey.value.trim()}`
+    },
+    body: JSON.stringify({
+      model: 'agnes-2.0-flash',
+      messages: [
+        {
+          role: 'user',
+          content: `请为以下主题创作一个${duration.value}秒的短视频提示词(Prompt)，要求：
+1. 描述主体、动作、场景、镜头运动、光照和视觉风格
+2. 结构：[主体] + [动作] + [场景] + [镜头运动] + [光照] + [风格]
+3. 用中文输出，生动细腻
+4. 示例格式：一位年轻的宇航员走过红色沙漠星球，沙尘随风飘扬，缓慢的电影级跟踪镜头，戏剧性的日落光照，写实科幻风格
+
+主题：${topicText}`
+        }
+      ]
+    })
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}))
+    throw new Error(error.error?.message || '文案生成失败')
+  }
+
+  const data = await response.json()
+  return data.choices[0].message.content
+}
+
+const generateVideoFromScript = async (script: string, frames: number): Promise<string> => {
+  const selectedAspectRatio = aspectRatioOptions.find(r => r.value === aspectRatio.value)!
+
+  // 提交视频生成任务
+  startElapsedTimer('正在提交视频生成任务')
+  const response = await fetch('/api/agnes-video', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey.value.trim()}`
+    },
+    body: JSON.stringify({
+      model: 'agnes-video-v2.0',
+      prompt: script,
+      num_frames: frames,
+      frame_rate: 24,
+      width: selectedAspectRatio.width,
+      height: selectedAspectRatio.height
+    })
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}))
+    throw new Error(error.error?.message || '视频生成失败')
+  }
+
+  const data = await response.json()
+  const videoId = data.video_id
+
+  // 轮询查询视频状态
+  currentStageStartTime.value = Date.now()
+  startElapsedTimer('视频生成中')
+
+  while (true) {
+    await new Promise(resolve => setTimeout(resolve, 5000)) // 等待5秒
+
+    const elapsed = Math.round((Date.now() - currentStageStartTime.value) / 1000)
+
+    const statusResponse = await fetch(`/api/agnes-video-status?video_id=${encodeURIComponent(videoId)}`, {
+      headers: {
+        'Authorization': `Bearer ${apiKey.value.trim()}`
+      }
+    })
+
+    if (!statusResponse.ok) {
+      throw new Error('查询视频状态失败')
+    }
+
+    const statusData = await statusResponse.json()
+
+    if (statusData.status === 'completed') {
+      return statusData.remixed_from_video_id
+    } else if (statusData.status === 'failed' || statusData.error) {
+      throw new Error(statusData.error || '视频生成失败')
+    }
+
+    // 更新进度（手动更新，不依赖定时器）
+    if (statusData.progress) {
+      currentStep.value = `视频生成中 ${statusData.progress}% (已耗时 ${elapsed}秒)...`
+    } else {
+      currentStep.value = `视频生成中 (已耗时 ${elapsed}秒)...`
+    }
+  }
+}
+
+const downloadVideo = () => {
+  const a = document.createElement('a')
+  a.href = generatedVideoUrl.value
+  a.download = `video_${Date.now()}.mp4`
+  a.click()
+}
+
+const handleVideoLoaded = (event: Event) => {
+  const video = event.target as HTMLVideoElement
+  videoDuration.value = Math.round(video.duration)
+}
+
+const handleVideoTimeUpdate = (event: Event) => {
+  const video = event.target as HTMLVideoElement
+  if (video.duration > 0) {
+    videoProgress.value = (video.currentTime / video.duration) * 100
+  }
+}
+
+const handleVideoMouseEnter = (event: Event) => {
+  const video = event.target as HTMLVideoElement
+  isVideoPlaying.value = true
+  video.play()
+}
+
+const handleVideoMouseLeave = (event: Event) => {
+  const video = event.target as HTMLVideoElement
+  isVideoPlaying.value = false
+  video.pause()
+  video.currentTime = 0
+  videoProgress.value = 0
+}
+
+const generateImageToVideo = async () => {
+  if (!apiKey.value.trim()) {
+    ElMessage.warning('请先填写并保存API Key')
+    return
+  }
+
+  if (uploadedImages.value.length === 0) {
+    ElMessage.warning('请先上传图片')
+    return
+  }
+
+  if (imageMode.value === 'double' && uploadedImages.value.length < 2) {
+    ElMessage.warning('双图模式需要上传2张图片')
+    return
+  }
+
+  if (!videoPrompt.value.trim()) {
+    ElMessage.warning('请输入视频描述')
+    return
+  }
+
+  isGenerating.value = true
+  generatedVideoUrl.value = ''
+  videoGenerateTime.value = 0
+  currentStage.value = 2 // 直接进入视频生成阶段
+
+  try {
+    const selectedDuration = durationOptions.find(d => d.value === duration.value)!
+    const selectedAspectRatio = aspectRatioOptions.find(r => r.value === aspectRatio.value)!
+
+    currentStageStartTime.value = Date.now()
+    startElapsedTimer('正在提交图生视频任务')
+
+    const response = await fetch('/api/agnes-video', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey.value.trim()}`
+      },
+      body: JSON.stringify({
+        model: 'agnes-video-v2.0',
+        prompt: videoPrompt.value.trim(),
+        num_frames: selectedDuration.frames,
+        frame_rate: 24,
+        width: selectedAspectRatio.width,
+        height: selectedAspectRatio.height,
+        extra_body: {
+          image: uploadedImages.value
+        }
+      })
+    })
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}))
+      throw new Error(error.error?.message || '视频生成失败')
+    }
+
+    const data = await response.json()
+    const videoId = data.video_id
+
+    // 轮询查询视频状态
+    currentStageStartTime.value = Date.now()
+
+    while (true) {
+      await new Promise(resolve => setTimeout(resolve, 5000))
+      const elapsed = Math.round((Date.now() - currentStageStartTime.value) / 1000)
+
+      const statusResponse = await fetch(`/api/agnes-video-status?video_id=${encodeURIComponent(videoId)}`, {
+        headers: {
+          'Authorization': `Bearer ${apiKey.value.trim()}`
+        }
+      })
+
+      if (!statusResponse.ok) {
+        throw new Error('查询视频状态失败')
+      }
+
+      const statusData = await statusResponse.json()
+
+      if (statusData.status === 'completed') {
+        generatedVideoUrl.value = statusData.remixed_from_video_id
+        break
+      } else if (statusData.status === 'failed' || statusData.error) {
+        throw new Error(statusData.error || '视频生成失败')
+      }
+
+      // 更新进度
+      if (statusData.progress) {
+        currentStep.value = `视频生成中 ${statusData.progress}% (已耗时 ${elapsed}秒)...`
+      } else {
+        currentStep.value = `视频生成中 (已耗时 ${elapsed}秒)...`
+      }
+    }
+
+    stopElapsedTimer()
+    videoGenerateTime.value = Math.round((Date.now() - currentStageStartTime.value) / 1000)
+    currentStage.value = 3
+    currentStep.value = '视频生成完成！'
+    ElMessage.success('视频生成成功')
+  } catch (error: any) {
+    stopElapsedTimer()
+    ElMessage.error(error.message || '生成失败')
+    currentStep.value = `生成失败: ${error.message || '未知错误'}`
+    console.error('图生视频错误:', error)
+  } finally {
+    isGenerating.value = false
+  }
+}
+</script>
+
+<template>
+  <div>
+    <DetailHeader title="AI文生视频" :id="1" />
+
+    <div class="bg-white rounded-2xl p-6 shadow-sm">
+      <!-- Tab切换 -->
+      <div class="flex gap-4 mb-6 border-b">
+        <button
+          @click="switchTab('api-config')"
+          :class="['pb-2 px-4 font-medium transition-colors',
+            activeTab === 'api-config'
+              ? 'text-blue-500 border-b-2 border-blue-500'
+              : 'text-gray-500 hover:text-gray-700']"
+        >
+          API配置
+        </button>
+        <button
+          @click="switchTab('text-to-video')"
+          :class="['pb-2 px-4 font-medium transition-colors',
+            activeTab === 'text-to-video'
+              ? 'text-blue-500 border-b-2 border-blue-500'
+              : 'text-gray-500 hover:text-gray-700']"
+        >
+          文生视频
+        </button>
+        <button
+          @click="switchTab('image-to-video')"
+          :class="['pb-2 px-4 font-medium transition-colors',
+            activeTab === 'image-to-video'
+              ? 'text-blue-500 border-b-2 border-blue-500'
+              : 'text-gray-500 hover:text-gray-700']"
+        >
+          图生视频
+        </button>
+        <button
+          @click="switchTab('text-to-image')"
+          :class="['pb-2 px-4 font-medium transition-colors',
+            activeTab === 'text-to-image'
+              ? 'text-blue-500 border-b-2 border-blue-500'
+              : 'text-gray-500 hover:text-gray-700']"
+        >
+          文生图
+        </button>
+        <button
+          @click="switchTab('ai-chat')"
+          :class="['pb-2 px-4 font-medium transition-colors',
+            activeTab === 'ai-chat'
+              ? 'text-blue-500 border-b-2 border-blue-500'
+              : 'text-gray-500 hover:text-gray-700']"
+        >
+          AI对话
+        </button>
+      </div>
+
+      <div class="lg:flex lg:gap-6">
+        <!-- 左侧：输入区域 -->
+        <div :class="activeTab === 'ai-chat' ? 'w-full' : 'lg:w-1/2'">
+          <!-- API配置Tab -->
+          <div v-if="activeTab === 'api-config'">
+            <div class="mb-6 p-4 bg-blue-50 rounded-lg">
+              <h3 class="text-lg font-semibold mb-3">🔑 API Key配置</h3>
+              <div class="flex gap-2">
+                <input
+                  v-model="apiKey"
+                  type="password"
+                  placeholder="请输入Agnes AI的API Key"
+                  class="flex-1 px-3 py-2 border rounded-lg text-sm"
+                />
+                <button
+                  @click="saveApiKey"
+                  class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm"
+                >
+                  保存
+                </button>
+              </div>
+              <p class="text-xs text-gray-500 mt-2">
+                获取API Key: <a href="https://agnes-ai.com" target="_blank" class="text-blue-500 underline">agnes-ai.com</a>
+              </p>
+              <p class="text-xs text-gray-500 mt-1">
+                {{ userStore.user?.uid ? '✅ 已登录，保存到服务器' : '📱 未登录，保存到本地浏览器' }}
+              </p>
+            </div>
+
+            <div class="p-4 bg-gray-50 rounded-lg mb-4">
+              <h3 class="text-sm font-semibold mb-3">📖 使用说明</h3>
+              <ul class="text-sm text-gray-700 space-y-2">
+                <li class="flex items-start">
+                  <span class="mr-2">🎬</span>
+                  <span><strong>文生视频：</strong>输入文字描述，AI自动生成文案并制作视频</span>
+                </li>
+                <li class="flex items-start">
+                  <span class="mr-2">🖼️</span>
+                  <span><strong>图生视频：</strong>上传1-2张图片，生成动态转场视频</span>
+                </li>
+                <li class="flex items-start">
+                  <span class="mr-2">🎨</span>
+                  <span><strong>文生图：</strong>输入描述文字，生成高质量图片</span>
+                </li>
+                <li class="flex items-start">
+                  <span class="mr-2">💬</span>
+                  <span><strong>AI对话：</strong>多轮智能对话，支持上下文记忆</span>
+                </li>
+              </ul>
+            </div>
+
+            <div class="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+              <h3 class="text-sm font-semibold mb-2 text-yellow-800">⚠️ 温馨提示</h3>
+              <p class="text-xs text-yellow-700">
+                配置API Key后即可使用所有功能。各功能Tab中也保留了API配置入口，方便您随时修改。
+              </p>
+            </div>
+          </div>
+
+          <!-- 文生视频表单 -->
+          <div v-if="activeTab === 'text-to-video'">
+            <!-- 主题输入 -->
+            <div class="mb-4">
+            <label class="block text-sm font-medium mb-2">视频主题</label>
+            <div class="flex gap-2">
+              <textarea
+                v-model="topic"
+                placeholder="例如：一只可爱的猫咪在草地上玩耍"
+                rows="3"
+                class="flex-1 px-3 py-2 border rounded-lg text-sm"
+                :disabled="isGenerating"
+              />
+              <button
+                @click="randomTopic"
+                :disabled="isGenerating"
+                class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm whitespace-nowrap disabled:bg-gray-50 disabled:cursor-not-allowed"
+                title="随机示例"
+              >
+                🎲 随机
+              </button>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">
+              描述主体、动作、场景、镜头运动、光照和视觉风格，生成效果更佳
+            </p>
+          </div>
+
+          <!-- 时长选择 -->
+          <div class="mb-4">
+            <label class="block text-sm font-medium mb-2">视频时长</label>
+            <select
+              v-model="duration"
+              class="px-3 py-2 border rounded-lg text-sm"
+              :disabled="isGenerating"
+            >
+              <option v-for="opt in durationOptions" :key="opt.value" :value="opt.value">
+                {{ opt.label }}
+              </option>
+            </select>
+          </div>
+
+          <!-- 宽高比选择 -->
+          <div class="mb-4">
+            <label class="block text-sm font-medium mb-2">视频比例</label>
+            <select
+              v-model="aspectRatio"
+              class="px-3 py-2 border rounded-lg text-sm"
+              :disabled="isGenerating"
+            >
+              <option v-for="opt in aspectRatioOptions" :key="opt.value" :value="opt.value">
+                {{ opt.label }}
+              </option>
+            </select>
+          </div>
+
+          <!-- 生成按钮 -->
+          <button
+            @click="generateVideo"
+            :disabled="isGenerating"
+            class="w-full py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium"
+          >
+            {{ isGenerating ? '生成中...' : '生成视频' }}
+          </button>
+          </div>
+
+          <!-- 图生视频表单 -->
+          <div v-if="activeTab === 'image-to-video'">
+
+            <!-- 图片模式选择 -->
+            <div class="mb-4">
+              <label class="block text-sm font-medium mb-2">图片模式</label>
+              <div class="flex gap-2">
+                <button
+                  @click="switchImageMode('single')"
+                  :class="['flex-1 py-2 px-4 rounded-lg border transition-colors',
+                    imageMode === 'single'
+                      ? 'bg-blue-500 text-white border-blue-500'
+                      : 'bg-white text-gray-700 border-gray-300 hover:border-blue-500']"
+                  :disabled="isGenerating"
+                >
+                  单图模式
+                </button>
+                <button
+                  @click="switchImageMode('double')"
+                  :class="['flex-1 py-2 px-4 rounded-lg border transition-colors',
+                    imageMode === 'double'
+                      ? 'bg-blue-500 text-white border-blue-500'
+                      : 'bg-white text-gray-700 border-gray-300 hover:border-blue-500']"
+                  :disabled="isGenerating"
+                >
+                  双图模式
+                </button>
+              </div>
+              <p class="text-xs text-gray-500 mt-1">
+                单图：静态图转动态视频 | 双图：两图之间过渡变换
+              </p>
+            </div>
+
+            <!-- 图片上传 -->
+            <div class="mb-4">
+              <label class="block text-sm font-medium mb-2">
+                上传图片 ({{ imageMode === 'single' ? '1张' : '2张' }})
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                :multiple="imageMode === 'double'"
+                @change="handleImageUpload"
+                :disabled="isGenerating || isUploading || (imageMode === 'single' && uploadedImages.length >= 1) || (imageMode === 'double' && uploadedImages.length >= 2)"
+                class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50"
+              />
+
+              <!-- 预设图片 -->
+              <div class="mt-3">
+                <p class="text-xs text-gray-600 mb-2">或选择预设图片：</p>
+                <div class="grid grid-cols-3 gap-2">
+                  <button
+                    v-for="preset in presetImages"
+                    :key="preset.url"
+                    @click="addPresetImage(preset.url)"
+                    :disabled="isGenerating || isUploading"
+                    class="relative group"
+                  >
+                    <img
+                      :src="preset.url"
+                      :alt="preset.name"
+                      class="w-full h-20 object-cover rounded-lg border hover:border-blue-500 transition-colors"
+                    />
+                    <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-opacity rounded-lg flex items-center justify-center">
+                      <span class="text-white text-xs opacity-0 group-hover:opacity-100">{{ preset.name }}</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              <!-- 上传中提示 -->
+              <div v-if="isUploading" class="mt-3 text-sm text-blue-600">
+                正在上传图片...
+              </div>
+
+              <!-- 图片预览 -->
+              <div v-if="uploadedImages.length > 0" class="mt-3">
+                <p class="text-xs text-gray-600 mb-2">已选图片：</p>
+                <div class="flex gap-2">
+                  <div v-for="(img, index) in uploadedImages" :key="index" class="relative">
+                    <img :src="img" class="w-24 h-24 object-cover rounded-lg border" />
+                    <button
+                      @click="removeImage(index)"
+                      :disabled="isGenerating || isUploading"
+                      class="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs hover:bg-red-600 disabled:opacity-50"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 视频描述 -->
+            <div class="mb-4">
+              <label class="block text-sm font-medium mb-2">视频描述</label>
+              <div class="flex gap-2">
+                <textarea
+                  v-model="videoPrompt"
+                  placeholder="例如：慢镜头展示，柔和光照，电影质感"
+                  rows="3"
+                  class="flex-1 px-3 py-2 border rounded-lg text-sm"
+                  :disabled="isGenerating"
+                />
+                <button
+                  @click="randomVideoPrompt"
+                  :disabled="isGenerating"
+                  class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm whitespace-nowrap disabled:bg-gray-50 disabled:cursor-not-allowed"
+                  title="随机示例"
+                >
+                  🎲 随机
+                </button>
+              </div>
+              <p class="text-xs text-gray-500 mt-1">
+                描述希望的运动效果、镜头运动、光照和视觉风格
+              </p>
+            </div>
+
+            <!-- 时长选择 -->
+            <div class="mb-4">
+              <label class="block text-sm font-medium mb-2">视频时长</label>
+              <select
+                v-model="duration"
+                class="px-3 py-2 border rounded-lg text-sm"
+                :disabled="isGenerating"
+              >
+                <option v-for="opt in durationOptions" :key="opt.value" :value="opt.value">
+                  {{ opt.label }}
+                </option>
+              </select>
+            </div>
+
+            <!-- 宽高比选择 -->
+            <div class="mb-4">
+              <label class="block text-sm font-medium mb-2">视频比例</label>
+              <select
+                v-model="aspectRatio"
+                class="px-3 py-2 border rounded-lg text-sm"
+                :disabled="isGenerating"
+              >
+                <option v-for="opt in aspectRatioOptions" :key="opt.value" :value="opt.value">
+                  {{ opt.label }}
+                </option>
+              </select>
+            </div>
+
+            <!-- 生成按钮 -->
+            <button
+              @click="generateImageToVideo"
+              :disabled="isGenerating"
+              class="w-full py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium"
+            >
+              {{ isGenerating ? '生成中...' : '生成视频' }}
+            </button>
+          </div>
+
+          <!-- 文生图表单 -->
+          <div v-if="activeTab === 'text-to-image'">
+            <!-- 模型选择 -->
+            <div class="mb-4">
+              <label class="block text-sm font-medium mb-2">图像模型</label>
+              <select
+                v-model="imageModel"
+                class="px-3 py-2 border rounded-lg text-sm"
+                :disabled="isGenerating"
+              >
+                <option value="agnes-image-2.1-flash">Agnes Image 2.1 Flash (快速)</option>
+                <option value="agnes-image-2.0">Agnes Image 2.0</option>
+              </select>
+            </div>
+
+            <!-- 图片描述 -->
+            <div class="mb-4">
+              <label class="block text-sm font-medium mb-2">图片描述</label>
+              <div class="flex gap-2">
+                <textarea
+                  v-model="imagePrompt"
+                  placeholder="例如：一位穿着白裙的少女站在薰衣草花田中..."
+                  rows="4"
+                  class="flex-1 px-3 py-2 border rounded-lg text-sm"
+                  :disabled="isGenerating"
+                />
+                <button
+                  @click="randomImagePrompt"
+                  :disabled="isGenerating"
+                  class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm whitespace-nowrap disabled:bg-gray-50 disabled:cursor-not-allowed"
+                  title="随机示例"
+                >
+                  🎲 随机
+                </button>
+              </div>
+              <p class="text-xs text-gray-500 mt-1">
+                描述主体、场景、光照、风格等细节，越详细效果越好
+              </p>
+            </div>
+
+            <!-- 图片比例 -->
+            <div class="mb-4">
+              <label class="block text-sm font-medium mb-2">图片比例</label>
+              <select
+                v-model="imageAspectRatio"
+                class="px-3 py-2 border rounded-lg text-sm"
+                :disabled="isGenerating"
+              >
+                <option v-for="opt in aspectRatioOptions" :key="opt.value" :value="opt.value">
+                  {{ opt.label }}
+                </option>
+              </select>
+            </div>
+
+            <!-- 生成数量 -->
+            <div class="mb-4">
+              <label class="block text-sm font-medium mb-2">生成数量</label>
+              <select
+                v-model="imageCount"
+                class="px-3 py-2 border rounded-lg text-sm"
+                :disabled="isGenerating"
+              >
+                <option :value="1">1张</option>
+                <option :value="2">2张</option>
+                <option :value="3">3张</option>
+                <option :value="4">4张</option>
+              </select>
+            </div>
+
+            <!-- 生成按钮 -->
+            <button
+              @click="generateTextToImage"
+              :disabled="isGenerating"
+              class="w-full py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium"
+            >
+              {{ isGenerating ? '生成中...' : '生成图片' }}
+            </button>
+          </div>
+
+          <!-- AI对话表单 -->
+          <div v-if="activeTab === 'ai-chat'" class="flex gap-4 h-[600px]">
+            <!-- 左侧：会话列表 -->
+            <div class="w-1/2 flex flex-col border rounded-lg bg-gray-50">
+              <!-- 顶部工具栏 -->
+              <div class="p-3 border-b bg-white">
+                <button
+                  @click="createNewSession"
+                  class="w-full py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm font-medium"
+                >
+                  ➕ 新建对话
+                </button>
+              </div>
+
+              <!-- 会话列表 -->
+              <div class="flex-1 overflow-y-auto p-2">
+                <div
+                  v-for="session in chatSessions"
+                  :key="session.id"
+                  @click="selectSession(session.id)"
+                  :class="[
+                    'p-3 mb-2 rounded-lg cursor-pointer transition-colors group relative',
+                    currentSessionId === session.id
+                      ? 'bg-blue-100 border border-blue-300'
+                      : 'bg-white hover:bg-gray-100'
+                  ]"
+                >
+                  <div class="text-sm font-medium truncate pr-6">{{ session.title }}</div>
+                  <div class="text-xs text-gray-500 mt-1">{{ session.messages.length }} 条消息</div>
+                  <button
+                    @click.stop="deleteSession(session.id)"
+                    class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700"
+                  >
+                    🗑️
+                  </button>
+                </div>
+
+                <div v-if="chatSessions.length === 0" class="text-center text-gray-400 py-8 text-sm">
+                  暂无对话<br>点击上方新建
+                </div>
+              </div>
+
+              <!-- 底部模型选择 -->
+              <div class="p-3 border-t bg-white">
+                <label class="text-xs text-gray-600 mb-1 block">模型</label>
+                <select
+                  v-model="chatModel"
+                  class="w-full px-2 py-1.5 border rounded text-sm"
+                  :disabled="isChatting"
+                >
+                  <option value="agnes-2.0-flash">Flash (快)</option>
+                  <option value="agnes-2.0">Standard</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- 右侧：对话区域 -->
+            <div class="w-1/2 flex flex-col border rounded-lg">
+              <div v-if="!currentSessionId" class="flex-1 flex items-center justify-center text-gray-400">
+                <div class="text-center">
+                  <div class="text-4xl mb-4">💬</div>
+                  <div>选择或新建一个对话开始聊天</div>
+                </div>
+              </div>
+
+              <template v-else>
+                <!-- 对话区域 -->
+                <div ref="chatContainerRef" class="flex-1 overflow-y-auto p-4 bg-gray-50">
+                  <div v-if="currentSession?.messages.length === 0" class="text-center text-gray-400 py-8">
+                    开始您的对话...
+                  </div>
+
+                  <div v-for="(msg, index) in currentSession?.messages" :key="index" class="mb-4">
+                    <!-- 用户消息 -->
+                    <div v-if="msg.role === 'user'" class="flex justify-end">
+                      <div class="max-w-[80%] bg-blue-500 text-white rounded-lg px-4 py-2">
+                        <div class="text-sm whitespace-pre-wrap">{{ msg.content }}</div>
+                      </div>
+                    </div>
+
+                    <!-- AI回复 -->
+                    <div v-else class="flex justify-start">
+                      <div class="max-w-[80%] bg-white rounded-lg px-4 py-2 shadow">
+                        <div class="text-sm text-gray-800 markdown-body" v-html="renderMarkdown(msg.content)"></div>
+                        <button
+                          @click="copyMessage(msg.content)"
+                          class="mt-2 text-xs text-gray-500 hover:text-blue-500"
+                        >
+                          📋 复制
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 发送中提示 -->
+                  <div v-if="isChatting" class="flex justify-start">
+                    <div class="bg-white rounded-lg px-4 py-2 shadow">
+                      <div class="text-sm text-gray-500">正在思考...</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 底部输入框 -->
+                <div class="p-3 border-t bg-white flex gap-2">
+                  <textarea
+                    v-model="chatInput"
+                    placeholder="输入您的问题... (Enter 发送, Ctrl+Enter 换行)"
+                    rows="3"
+                    class="flex-1 px-3 py-2 border rounded-lg text-sm resize-none"
+                    @keydown.enter.exact.prevent="sendChatMessage"
+                    @keydown.ctrl.enter="chatInput += '\n'"
+                    @keydown.meta.enter="chatInput += '\n'"
+                  />
+                  <button
+                    @click="sendChatMessage"
+                    :disabled="isChatting || !chatInput.trim()"
+                    class="px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm"
+                  >
+                    {{ isChatting ? '发送中' : '发送' }}
+                  </button>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右侧：结果显示区域 -->
+        <div v-if="activeTab !== 'ai-chat'" class="lg:w-1/2 mt-6 lg:mt-0">
+          <!-- 阶段进度 -->
+          <div v-if="currentStage > 0" class="mb-4 p-4 bg-gray-50 rounded-lg">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <div :class="['w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold',
+                  currentStage >= 1 ? (currentStage > 1 ? 'bg-green-500 text-white' : 'bg-blue-500 text-white') : 'bg-gray-300 text-gray-500']">
+                  {{ currentStage > 1 ? '✓' : '1' }}
+                </div>
+                <span class="text-sm font-medium">生成文案</span>
+              </div>
+              <div v-if="scriptGenerateTime > 0" class="text-xs text-gray-600">
+                {{ formatTime(scriptGenerateTime) }}
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <div :class="['w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold',
+                  currentStage >= 2 ? (currentStage > 2 ? 'bg-green-500 text-white' : 'bg-blue-500 text-white') : 'bg-gray-300 text-gray-500']">
+                  {{ currentStage > 2 ? '✓' : '2' }}
+                </div>
+                <span class="text-sm font-medium">生成视频</span>
+              </div>
+              <div v-if="videoGenerateTime > 0" class="text-xs text-gray-600">
+                {{ formatTime(videoGenerateTime) }}
+              </div>
+            </div>
+          </div>
+
+          <!-- 进度提示 -->
+          <div v-if="currentStep" class="mb-4 p-3 bg-yellow-50 rounded-lg text-sm text-gray-700">
+            {{ currentStep }}
+          </div>
+
+          <!-- 生成的文案 -->
+          <div v-if="generatedScript && activeTab === 'text-to-video'" class="mb-6 p-4 bg-gray-50 rounded-lg">
+            <h3 class="text-sm font-semibold mb-2">生成的文案</h3>
+            <p class="text-sm text-gray-700 whitespace-pre-wrap">{{ generatedScript }}</p>
+          </div>
+
+          <!-- 生成的图片 -->
+          <div v-if="generatedImages.length > 0 && activeTab === 'text-to-image'" class="mb-6">
+            <h3 class="text-sm font-semibold mb-2">生成的图片 ({{ generatedImages.length }}张)</h3>
+            <div class="grid grid-cols-2 gap-3">
+              <div v-for="(img, index) in generatedImages" :key="index" class="relative group">
+                <a :href="img" target="_blank" rel="noopener noreferrer">
+                  <img :src="img" class="w-full rounded-lg shadow cursor-pointer hover:opacity-90 transition-opacity" />
+                </a>
+                <button
+                  @click="downloadImage(img, index)"
+                  class="absolute bottom-2 right-2 px-3 py-1 bg-green-500 text-white rounded-lg hover:bg-green-600 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  下载
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 生成的视频 -->
+          <div v-if="generatedVideoUrl && (activeTab === 'text-to-video' || activeTab === 'image-to-video')">
+            <h3 class="text-sm font-semibold mb-2">生成的视频</h3>
+            <div class="flex items-start gap-3">
+              <div class="relative">
+                <video
+                  ref="videoRef"
+                  :src="generatedVideoUrl"
+                  class="w-[200px] rounded-lg shadow cursor-pointer hover:opacity-80 transition-opacity"
+                  muted
+                  loop
+                  @click="showVideoModal = true"
+                  @loadedmetadata="handleVideoLoaded"
+                  @timeupdate="handleVideoTimeUpdate"
+                  @mouseenter="handleVideoMouseEnter"
+                  @mouseleave="handleVideoMouseLeave"
+                />
+                <!-- 时长标签 -->
+                <div v-if="videoDuration > 0" class="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+                  {{ videoDuration }}秒
+                </div>
+                <!-- 播放进度条 -->
+                <div v-if="isVideoPlaying" class="absolute bottom-0 left-0 right-0 h-1 bg-gray-300 bg-opacity-50">
+                  <div
+                    class="h-full bg-blue-500 transition-all duration-100"
+                    :style="{ width: videoProgress + '%' }"
+                  ></div>
+                </div>
+              </div>
+              <div class="flex-1">
+                <button
+                  @click="downloadVideo"
+                  class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 text-sm"
+                >
+                  下载视频
+                </button>
+                <p class="text-xs text-gray-500 mt-2">悬停自动播放 | 点击放大查看</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 视频放大模态框 -->
+    <div
+      v-if="showVideoModal"
+      class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
+      @click="showVideoModal = false"
+    >
+      <div class="relative max-w-4xl max-h-[90vh] w-full" @click.stop>
+        <button
+          @click="showVideoModal = false"
+          class="absolute -top-10 right-0 text-white text-2xl hover:text-gray-300"
+        >
+          ✕
+        </button>
+        <video
+          :src="generatedVideoUrl"
+          controls
+          autoplay
+          class="w-full max-h-[85vh] rounded-lg shadow-2xl"
+        />
+      </div>
+    </div>
+
+    <ToolDetail>
+      <div class="space-y-4 text-sm text-gray-700">
+        <section>
+          <h3 class="font-semibold mb-2">功能介绍</h3>
+          <p>基于 Agnes AI 的文生视频工具，输入主题自动生成专业视频 Prompt 并创作短视频。支持 5-15 秒时长，多种宽高比选择，24帧流畅播放。</p>
+        </section>
+
+        <section>
+          <h3 class="font-semibold mb-2">使用说明</h3>
+          <ol class="list-decimal list-inside space-y-1">
+            <li>在 <a href="https://agnes-ai.com" target="_blank" class="text-blue-500">agnes-ai.com</a> 注册并获取 API Key</li>
+            <li>填写 API Key 并保存（已登录保存到服务器，未登录保存到本地）</li>
+            <li>输入视频主题，建议描述主体、动作、场景、镜头运动、光照和视觉风格</li>
+            <li>选择视频时长（5秒/10秒/15秒）和宽高比（9:16竖屏/16:9横屏/1:1方形等）</li>
+            <li>点击生成，系统会先生成英文 Prompt，再提交视频任务并轮询查询进度</li>
+            <li>生成完成后可在线预览或下载视频</li>
+          </ol>
+        </section>
+
+        <section>
+          <h3 class="font-semibold mb-2">Prompt 最佳实践</h3>
+          <p class="mb-2">建议使用结构：<strong>[主体] + [动作] + [场景] + [镜头运动] + [光照] + [风格]</strong></p>
+          <p class="text-gray-600 italic">示例：A young astronaut walking across a red desert planet, dust blowing in the wind, slow cinematic tracking shot, dramatic sunset lighting, realistic sci-fi style</p>
+        </section>
+
+        <section>
+          <h3 class="font-semibold mb-2">技术参数</h3>
+          <ul class="list-disc list-inside space-y-1">
+            <li>模型：agnes-video-v2.0</li>
+            <li>帧率：固定 24fps</li>
+            <li>时长：5秒(121帧) / 10秒(241帧) / 15秒(361帧)</li>
+            <li>宽高比：9:16 (720x1280) / 16:9 (1280x720) / 1:1 (1024x1024) / 4:3 (1024x768) / 3:4 (768x1024)</li>
+          </ul>
+        </section>
+      </div>
+    </ToolDetail>
+  </div>
+</template>
+
+<style scoped>
+.markdown-body {
+  line-height: 1.6;
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4,
+.markdown-body h5,
+.markdown-body h6 {
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+}
+
+.markdown-body h1 {
+  font-size: 1.5em;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 0.3em;
+}
+
+.markdown-body h2 {
+  font-size: 1.3em;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 0.3em;
+}
+
+.markdown-body h3 {
+  font-size: 1.1em;
+}
+
+.markdown-body p {
+  margin-bottom: 0.5em;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  margin-left: 1.5em;
+  margin-bottom: 0.5em;
+}
+
+.markdown-body li {
+  margin-bottom: 0.25em;
+}
+
+.markdown-body code {
+  background-color: #f3f4f6;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-size: 0.9em;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+}
+
+.markdown-body pre {
+  background-color: #1f2937;
+  color: #f3f4f6;
+  padding: 1em;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin-bottom: 0.5em;
+}
+
+.markdown-body pre code {
+  background-color: transparent;
+  padding: 0;
+  color: inherit;
+}
+
+.markdown-body blockquote {
+  border-left: 4px solid #e5e7eb;
+  padding-left: 1em;
+  margin-left: 0;
+  color: #6b7280;
+  margin-bottom: 0.5em;
+}
+
+.markdown-body table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 0.5em;
+}
+
+.markdown-body table th,
+.markdown-body table td {
+  border: 1px solid #e5e7eb;
+  padding: 0.5em;
+}
+
+.markdown-body table th {
+  background-color: #f3f4f6;
+  font-weight: 600;
+}
+
+.markdown-body a {
+  color: #3b82f6;
+  text-decoration: none;
+}
+
+.markdown-body a:hover {
+  text-decoration: underline;
+}
+
+.markdown-body img {
+  max-width: 100%;
+  height: auto;
+}
+
+.markdown-body hr {
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 1em 0;
+}
+</style>
