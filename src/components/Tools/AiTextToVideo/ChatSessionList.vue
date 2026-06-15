@@ -1,5 +1,5 @@
 <template>
-  <div class="w-1/3 flex flex-col border rounded-lg bg-gray-50">
+  <div class="w-full md:w-1/3 flex flex-col border rounded-lg bg-gray-50 h-[300px] md:h-auto">
     <!-- 顶部工具栏 -->
     <div class="p-3 border-b bg-white">
       <button

@@ -17,7 +17,6 @@ export async function chat(
       content: msg.content
     })),
     temperature: options?.temperature || 0.7,
-    max_tokens: options?.maxTokens || 2000,
     stream: options?.stream || false
   }
 
