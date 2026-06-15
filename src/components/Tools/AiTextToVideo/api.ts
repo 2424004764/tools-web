@@ -272,3 +272,183 @@ export async function chatStream(
 
   return fullContent
 }
+
+// 简化的图生图接口（用于宠物头像）
+export async function generateImageToImage(
+  apiKey: string,
+  sourceImage: string,
+  prompt: string,
+  _strength: number = 0.7
+): Promise<{ images: string[] }> {
+  const response = await fetch('https://apihub.agnes-ai.com/v1/images/generations', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: 'agnes-image-2.1-flash',
+      prompt: prompt,
+      size: '1024x1024',
+      extra_body: {
+        image: [sourceImage],
+        response_format: 'url'
+      }
+    })
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}))
+    throw new Error(error.error?.message || '图片生成失败')
+  }
+
+  const data = await response.json()
+  return {
+    images: data.data.map((item: any) => item.url)
+  }
+}
+
+// 简化的对话接口（流式，用于应用）
+export async function sendChatMessageStream(
+  apiKey: string,
+  message: string,
+  model: string = 'agnes-2.0-flash',
+  onChunk: (content: string) => void
+): Promise<string> {
+  const response = await fetch('https://apihub.agnes-ai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: model,
+      messages: [
+        { role: 'user', content: message }
+      ],
+      temperature: 0.7,
+      stream: true
+    })
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}))
+    throw new Error(error.error?.message || '对话请求失败')
+  }
+
+  const reader = response.body?.getReader()
+  if (!reader) {
+    throw new Error('无法获取响应流')
+  }
+
+  const decoder = new TextDecoder()
+  let fullContent = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+
+    const chunk = decoder.decode(value, { stream: true })
+    const lines = chunk.split('\n').filter(line => line.trim())
+
+    for (const line of lines) {
+      if (line.startsWith('data: ')) {
+        const data = line.slice(6)
+        if (data === '[DONE]') continue
+
+        try {
+          const json = JSON.parse(data)
+          const content = json.choices?.[0]?.delta?.content
+          if (content) {
+            fullContent += content
+            onChunk(fullContent)
+          }
+        } catch (e) {
+          // 忽略解析错误
+        }
+      }
+    }
+  }
+
+  return fullContent
+}
+
+// 支持图片的对话接口（流式）
+export async function sendChatMessageWithImageStream(
+  apiKey: string,
+  textMessage: string,
+  imageBase64: string,
+  model: string = 'agnes-2.0-flash',
+  onChunk: (content: string) => void
+): Promise<string> {
+  const response = await fetch('https://apihub.agnes-ai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: model,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'image_url',
+              image_url: {
+                url: imageBase64
+              }
+            },
+            {
+              type: 'text',
+              text: textMessage
+            }
+          ]
+        }
+      ],
+      temperature: 0.7,
+      stream: true
+    })
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}))
+    throw new Error(error.error?.message || '对话请求失败')
+  }
+
+  const reader = response.body?.getReader()
+  if (!reader) {
+    throw new Error('无法获取响应流')
+  }
+
+  const decoder = new TextDecoder()
+  let fullContent = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+
+    const chunk = decoder.decode(value, { stream: true })
+    const lines = chunk.split('\n').filter(line => line.trim())
+
+    for (const line of lines) {
+      if (line.startsWith('data: ')) {
+        const data = line.slice(6)
+        if (data === '[DONE]') continue
+
+        try {
+          const json = JSON.parse(data)
+          const content = json.choices?.[0]?.delta?.content
+          if (content) {
+            fullContent += content
+            onChunk(fullContent)
+          }
+        } catch (e) {
+          // 忽略解析错误
+        }
+      }
+    }
+  }
+
+  return fullContent
+}

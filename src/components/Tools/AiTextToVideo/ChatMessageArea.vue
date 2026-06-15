@@ -1,5 +1,5 @@
 <template>
-  <div class="w-2/3 flex flex-col border rounded-lg">
+  <div class="w-full md:w-2/3 flex flex-col border rounded-lg min-h-[400px] md:min-h-0">
     <div v-if="!currentSession" class="flex-1 flex items-center justify-center text-gray-400">
       <div class="text-center">
         <div class="text-4xl mb-4">💬</div>

@@ -1,5 +1,5 @@
 <template>
-  <div class="flex gap-4 h-[600px]">
+  <div class="flex flex-col md:flex-row gap-4 h-auto md:h-[600px]">
     <!-- 左侧：会话列表 -->
     <ChatSessionList
       :sessions="sessions"
