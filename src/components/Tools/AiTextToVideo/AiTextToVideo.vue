@@ -13,6 +13,7 @@ import TextToImageTab from './TextToImageTab.vue'
 import ImageToImageTab from './ImageToImageTab.vue'
 import AiChatTab from './AiChatTab.vue'
 import AppsTab from './AppsTab.vue'
+import CustomAppChat from './CustomAppChat.vue'
 import DreamAnalysisApp from './DreamAnalysisApp.vue'
 import CityGuideApp from './CityGuideApp.vue'
 import PetAvatarApp from './PetAvatarApp.vue'
@@ -43,6 +44,7 @@ const tabContainerRef = ref<HTMLDivElement | null>(null)
 
 // 应用Tab状态
 const currentApp = ref<string | null>(null)
+const customAppData = ref<any>(null) // 存储自建应用的完整数据
 const dreamInput = ref('')
 const dreamResult = ref('')
 const dreamStreamingContent = ref('')
@@ -398,12 +400,14 @@ const switchImageMode = (mode: 'single' | 'double') => {
 }
 
 // 应用Tab处理函数
-const selectApp = (app: string) => {
+const selectApp = (app: string, appData?: any) => {
   currentApp.value = app
+  customAppData.value = appData || null
 }
 
 const backToAppList = () => {
   currentApp.value = null
+  customAppData.value = null
 }
 
 const analyzeDream = async () => {
@@ -2960,6 +2964,13 @@ const generateImageToVideo = async () => {
                 @query="queryFoodCalorie"
                 @clear-history="clearFoodHistory"
                 @new-topic="newFoodTopic"
+              />
+
+              <!-- 自建应用 -->
+              <CustomAppChat
+                v-if="customAppData"
+                :app="customAppData"
+                :apiKey="apiKey"
               />
             </template>
           </AppsTab>

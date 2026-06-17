@@ -11,6 +11,10 @@ echo 2. 插入初始应用数据...
 wrangler d1 execute yifang-tool --file=./functions/db/006_insert_ai_apps_data.sql
 
 echo.
+echo 3. 更新系统应用提示词...
+wrangler d1 execute yifang-tool --file=./functions/db/007_update_system_apps_prompts.sql
+
+echo.
 echo 迁移完成！
 echo.
 echo 现在可以启动开发服务器：
