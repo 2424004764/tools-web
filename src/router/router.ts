@@ -1348,5 +1348,15 @@ export const constantRoute = [
       keywords: 'Mock数据,假数据生成,测试数据,接口mock,faker,字段定义,Schema,JSON生成',
       description: '在线 Mock 数据生成器：可视化定义字段 Schema，支持 16 种类型（字符串、整数、邮箱、中文姓名、手机号、UUID、地址等），一键生成测试用 JSON 数据；预置用户/文章/商品示例；登录后自动同步配方至云端（Cloudflare D1），多端通用。',
     }
+  },
+  {
+    path: '/season-scenery',
+    component: () => import('@/components/Tools/SeasonScenery/SeasonScenery.vue'),
+    name: 'season-scenery',
+    meta: {
+      title: "四季景色",
+      keywords: '四季景色,季节变化,景点对比,风景图片,春天,夏天,秋天,冬天',
+      description: '展示不同地方一年四季的变化，通过选择季节和地点，欣赏祖国大好河山的美丽景色，支持多个著名景点的四季照片对比',
+    }
   }
 ]

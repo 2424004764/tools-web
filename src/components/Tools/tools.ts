@@ -1341,6 +1341,15 @@ export function getToolsCate() {
           cateId: 13,
           cate: '内容管理',
         },
+        {
+          id: 1,
+          title: '四季景色',
+          logo: '/images/logo/season-scenery.svg',
+          desc: '展示不同地方一年四季的变化，欣赏祖国大好河山的美丽景色',
+          url: '/season-scenery/',
+          cateId: 13,
+          cate: '内容管理',
+        },
       ]
     }
   ]
