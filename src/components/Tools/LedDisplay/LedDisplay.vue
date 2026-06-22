@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
+import { ElMessage } from 'element-plus'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 
@@ -67,6 +68,39 @@ const parseParams = (): LedParams => {
 
 const params = ref(parseParams())
 
+const syncUrl = () => {
+  const sp = new URLSearchParams()
+  sp.set('text', params.value.text)
+  sp.set('color', params.value.color)
+  sp.set('bg', params.value.bg)
+  sp.set('size', String(params.value.size))
+  sp.set('speed', String(params.value.speed))
+  if (params.value.bold) sp.set('bold', '1')
+  if (params.value.border) sp.set('border', '1')
+  if (params.value.glow) sp.set('glow', '1')
+  if (params.value.dot) sp.set('dot', '1')
+  const newUrl = `${window.location.pathname}?${sp.toString()}`
+  window.history.replaceState({}, '', newUrl)
+}
+
+watch(params, syncUrl, { deep: true })
+
+const copyUrl = async () => {
+  try {
+    await navigator.clipboard.writeText(window.location.href)
+    ElMessage.success('URL 已复制')
+  } catch {
+    // 兜底：老浏览器或非安全上下文
+    const ta = document.createElement('textarea')
+    ta.value = window.location.href
+    document.body.appendChild(ta)
+    ta.select()
+    document.execCommand('copy')
+    document.body.removeChild(ta)
+    ElMessage.success('URL 已复制')
+  }
+}
+
 const cssVars = computed(() => ({
   '--color': params.value.color,
   '--bg': params.value.bg,
@@ -126,6 +160,10 @@ const cssVars = computed(() => ({
             <el-checkbox v-model="params.border">边框</el-checkbox>
             <el-checkbox v-model="params.glow">发光</el-checkbox>
             <el-checkbox v-model="params.dot">点阵背景</el-checkbox>
+          </el-form-item>
+
+          <el-form-item>
+            <el-button type="primary" @click="copyUrl">复制分享 URL</el-button>
           </el-form-item>
         </el-form>
       </div>
