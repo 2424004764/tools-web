@@ -1,10 +1,79 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 
 const title = 'LED 显示屏'
 const showPanel = ref(true)
+
+interface LedParams {
+  text: string
+  color: string
+  bg: string
+  size: number
+  bold: boolean
+  speed: number
+  border: boolean
+  glow: boolean
+  dot: boolean
+}
+
+const HEX_RE = /^#[0-9a-fA-F]{6}$/
+const DEFAULT_PARAMS: LedParams = {
+  text: '欢迎使用 LED 显示屏',
+  color: '#ff0000',
+  bg: '#000000',
+  size: 120,
+  bold: true,
+  speed: 20,
+  border: true,
+  glow: true,
+  dot: false,
+}
+
+const clamp = (n: number, min: number, max: number) =>
+  Math.max(min, Math.min(max, n))
+
+const parseParams = (): LedParams => {
+  const sp = new URLSearchParams(window.location.search)
+  const get = (k: string) => sp.get(k) ?? ''
+  const num = (k: string, def: number) => {
+    const v = parseInt(get(k), 10)
+    return Number.isFinite(v) ? v : def
+  }
+  // 布尔：参数缺失 → 默认值；参数为空串 → true；其他按 '1' 判断
+  const parseBool = (k: string, defaultVal: boolean): boolean => {
+    const v = sp.get(k)
+    if (v === null) return defaultVal
+    if (v === '') return true
+    return v === '1'
+  }
+
+  const color = HEX_RE.test(get('color')) ? get('color') : DEFAULT_PARAMS.color
+  const bg = HEX_RE.test(get('bg')) ? get('bg') : DEFAULT_PARAMS.bg
+
+  return {
+    text: get('text') || DEFAULT_PARAMS.text,
+    color,
+    bg,
+    size: clamp(num('size', DEFAULT_PARAMS.size), 20, 300),
+    bold: parseBool('bold', DEFAULT_PARAMS.bold),
+    speed: clamp(num('speed', DEFAULT_PARAMS.speed), 5, 60),
+    border: parseBool('border', DEFAULT_PARAMS.border),
+    glow: parseBool('glow', DEFAULT_PARAMS.glow),
+    dot: parseBool('dot', DEFAULT_PARAMS.dot),
+  }
+}
+
+const params = ref(parseParams())
+
+const cssVars = computed(() => ({
+  '--color': params.value.color,
+  '--bg': params.value.bg,
+  '--size': params.value.size + 'px',
+  '--speed': params.value.speed + 's',
+  '--font-weight': params.value.bold ? 'bold' : 'normal',
+}))
 </script>
 
 <template>
@@ -12,8 +81,13 @@ const showPanel = ref(true)
     <DetailHeader :title="title" />
 
     <div class="p-4 rounded-2xl bg-white">
-      <div class="led-screen">
-        <div class="led-text">Hello LED</div>
+      <div class="led-screen mb-4" :style="cssVars" :class="{
+        'no-border': !params.border,
+        'dot': params.dot,
+      }">
+        <div class="led-text" :class="{ 'no-glow': !params.glow }">
+          {{ params.text }}
+        </div>
       </div>
     </div>
 
@@ -31,17 +105,56 @@ const showPanel = ref(true)
 </template>
 
 <style scoped>
+@keyframes led-scroll {
+  0%   { transform: translateX(100vw); }
+  100% { transform: translateX(-100%); }
+}
+
 .led-screen {
-  background: #000;
-  height: 200px;
+  position: relative;
+  height: 35vh;
+  min-height: 200px;
   display: flex;
   align-items: center;
   overflow: hidden;
+  background-color: var(--bg);
+  border: 4px solid #333;
+  border-radius: 8px;
+  box-shadow:
+    0 0 30px var(--color),
+    inset 0 0 30px rgba(0, 0, 0, 0.5);
 }
+
 .led-text {
-  color: #ff0000;
-  font-size: 120px;
-  font-weight: bold;
+  color: var(--color);
+  font-size: var(--size);
+  font-weight: var(--font-weight);
   white-space: nowrap;
+  display: inline-block;
+  animation: led-scroll var(--speed) linear infinite;
+  will-change: transform;
+}
+
+.led-screen.no-border {
+  border: none;
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.5);
+}
+
+.led-text.no-glow {
+  text-shadow: none;
+}
+
+.led-text:not(.no-glow) {
+  text-shadow: 0 0 10px var(--color), 0 0 20px var(--color);
+}
+
+.led-screen.dot::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 8px 8px;
+  pointer-events: none;
+  border-radius: 6px;
 }
 </style>
