@@ -684,6 +684,16 @@ export const constantRoute = [
       description: '精美翻页时钟，经典机械翻页动画效果，纯CSS实现流畅翻转动画，实时显示时间日期，支持移动端和PC端',
     }
   },
+  {
+    path: '/led-display/',
+    component: () => import('@/components/Tools/LedDisplay/LedDisplay.vue'),
+    name: 'ledDisplay',
+    meta: {
+      title: 'LED 显示屏 - 在线 LED 走马灯文字工具',
+      keywords: 'LED显示屏,LED走马灯,滚动文字,在线LED,文字滚动',
+      description: '在线 LED 显示屏工具，支持自定义文字内容、颜色、字号、滚动速度、发光效果和点阵背景，一键生成可分享的 LED 走马灯 URL。',
+    }
+  },
   //其他路由
   {
     path: '/404',
