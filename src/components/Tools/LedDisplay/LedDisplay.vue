@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
@@ -108,6 +108,30 @@ const cssVars = computed(() => ({
   '--speed': params.value.speed + 's',
   '--font-weight': params.value.bold ? 'bold' : 'normal',
 }))
+
+const isFullscreen = ref(false)
+const ledScreenRef = ref<HTMLElement | null>(null)
+
+const toggleFullscreen = async () => {
+  const el = ledScreenRef.value
+  if (!el) return
+  try {
+    if (!document.fullscreenElement) {
+      await el.requestFullscreen()
+    } else {
+      await document.exitFullscreen()
+    }
+  } catch (e) {
+    ElMessage.warning('当前浏览器不支持全屏')
+  }
+}
+
+const onFsChange = () => {
+  isFullscreen.value = !!document.fullscreenElement
+}
+
+onMounted(() => document.addEventListener('fullscreenchange', onFsChange))
+onBeforeUnmount(() => document.removeEventListener('fullscreenchange', onFsChange))
 </script>
 
 <template>
@@ -115,20 +139,40 @@ const cssVars = computed(() => ({
     <DetailHeader :title="title" />
 
     <div class="p-4 rounded-2xl bg-white">
-      <div class="led-screen mb-4" :style="cssVars" :class="{
-        'no-border': !params.border,
-        'dot': params.dot,
-      }">
+      <div
+        ref="ledScreenRef"
+        class="led-screen mb-4 relative"
+        :style="cssVars"
+        :class="{
+          'no-border': !params.border,
+          'dot': params.dot,
+        }"
+      >
         <div class="led-text" :class="{ 'no-glow': !params.glow }">
           {{ params.text }}
         </div>
+        <el-button
+          class="absolute top-2 right-2"
+          size="small"
+          type="primary"
+          @click="toggleFullscreen"
+        >
+          {{ isFullscreen ? '退出全屏' : '全屏播放' }}
+        </el-button>
       </div>
     </div>
 
     <div class="p-4 mt-3 rounded-2xl bg-white">
-      <el-button @click="showPanel = !showPanel">
-        {{ showPanel ? '隐藏' : '显示' }}配置面板
-      </el-button>
+      <div class="hidden md:block mb-3">
+        <el-button @click="showPanel = !showPanel">
+          {{ showPanel ? '隐藏' : '显示' }}配置面板
+        </el-button>
+      </div>
+      <div class="md:hidden mb-3">
+        <el-button @click="showPanel = !showPanel" type="primary" plain>
+          {{ showPanel ? '收起配置' : '展开配置' }}
+        </el-button>
+      </div>
       <div v-if="showPanel" class="space-y-4 mt-3">
         <el-form label-position="top" :inline="false">
           <el-form-item label="显示文字">
@@ -227,5 +271,13 @@ const cssVars = computed(() => ({
   background-size: 8px 8px;
   pointer-events: none;
   border-radius: 6px;
+}
+
+.led-screen:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  border: none;
+  border-radius: 0;
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.5);
 }
 </style>
