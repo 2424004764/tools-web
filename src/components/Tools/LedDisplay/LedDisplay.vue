@@ -95,7 +95,40 @@ const cssVars = computed(() => ({
       <el-button @click="showPanel = !showPanel">
         {{ showPanel ? '隐藏' : '显示' }}配置面板
       </el-button>
-      <div v-if="showPanel">配置面板占位</div>
+      <div v-if="showPanel" class="space-y-4 mt-3">
+        <el-form label-position="top" :inline="false">
+          <el-form-item label="显示文字">
+            <el-input v-model="params.text" placeholder="输入要播放的文字" clearable />
+          </el-form-item>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <el-form-item label="文字颜色">
+              <el-color-picker v-model="params.color" />
+              <el-input v-model="params.color" class="ml-2" style="width: 140px" />
+            </el-form-item>
+
+            <el-form-item label="背景颜色">
+              <el-color-picker v-model="params.bg" />
+              <el-input v-model="params.bg" class="ml-2" style="width: 140px" />
+            </el-form-item>
+
+            <el-form-item label="字号 ({{ params.size }}px)">
+              <el-slider v-model="params.size" :min="20" :max="300" :step="1" show-input />
+            </el-form-item>
+
+            <el-form-item label="滚动速度 ({{ params.speed }}s/周期)">
+              <el-slider v-model="params.speed" :min="5" :max="60" :step="1" show-input />
+            </el-form-item>
+          </div>
+
+          <el-form-item label="样式选项">
+            <el-checkbox v-model="params.bold">粗体</el-checkbox>
+            <el-checkbox v-model="params.border">边框</el-checkbox>
+            <el-checkbox v-model="params.glow">发光</el-checkbox>
+            <el-checkbox v-model="params.dot">点阵背景</el-checkbox>
+          </el-form-item>
+        </el-form>
+      </div>
     </div>
 
     <ToolDetail title="使用说明">
