@@ -195,11 +195,11 @@ onBeforeUnmount(() => document.removeEventListener('fullscreenchange', onFsChang
               <el-input v-model="params.bg" class="ml-2" style="width: 140px" />
             </el-form-item>
 
-            <el-form-item label="字号 ({{ params.size }}px)">
+            <el-form-item :label="`字号 (${params.size}px)`">
               <el-slider v-model="params.size" :min="20" :max="300" :step="1" show-input />
             </el-form-item>
 
-            <el-form-item label="滚动速度 ({{ params.speed }}s/周期)">
+            <el-form-item :label="`滚动速度 (${params.speed}s/周期)`">
               <el-slider v-model="params.speed" :min="5" :max="60" :step="1" show-input />
             </el-form-item>
           </div>
