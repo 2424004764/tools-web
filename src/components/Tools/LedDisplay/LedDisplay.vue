@@ -57,7 +57,7 @@ const parseParams = (): LedParams => {
     text: get('text') || DEFAULT_PARAMS.text,
     color,
     bg,
-    size: clamp(num('size', DEFAULT_PARAMS.size), 20, 300),
+    size: clamp(num('size', DEFAULT_PARAMS.size), 20, 500),
     bold: parseBool('bold', DEFAULT_PARAMS.bold),
     speed: clamp(num('speed', DEFAULT_PARAMS.speed), 5, 60),
     border: parseBool('border', DEFAULT_PARAMS.border),
@@ -196,7 +196,7 @@ onBeforeUnmount(() => document.removeEventListener('fullscreenchange', onFsChang
             </el-form-item>
 
             <el-form-item :label="`字号 (${params.size}px)`">
-              <el-slider v-model="params.size" :min="20" :max="300" :step="1" show-input />
+              <el-slider v-model="params.size" :min="20" :max="500" :step="1" show-input />
             </el-form-item>
 
             <el-form-item :label="`滚动速度 (${params.speed}s/周期)`">
@@ -226,7 +226,7 @@ onBeforeUnmount(() => document.removeEventListener('fullscreenchange', onFsChang
           <li><code>text</code>：显示文字（默认：欢迎使用 LED 显示屏）</li>
           <li><code>color</code>：文字颜色 hex（默认：#ff0000）</li>
           <li><code>bg</code>：背景颜色 hex（默认：#000000）</li>
-          <li><code>size</code>：字号 px，范围 20-300（默认：120）</li>
+          <li><code>size</code>：字号 px，范围 20-500（默认：120）</li>
           <li><code>speed</code>：滚动周期秒，范围 5-60（默认：20）</li>
           <li><code>bold</code>=<code>1</code>：粗体（默认开）</li>
           <li><code>border</code>=<code>1</code>：显示边框（默认开）</li>
@@ -259,7 +259,7 @@ onBeforeUnmount(() => document.removeEventListener('fullscreenchange', onFsChang
 .led-screen {
   position: relative;
   height: 35vh;
-  min-height: 200px;
+  min-height: 360px;
   display: flex;
   align-items: center;
   overflow: hidden;
