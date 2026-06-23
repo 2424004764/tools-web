@@ -5,7 +5,7 @@ import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 
 const title = 'LED 显示屏'
-const showPanel = ref(true)
+const showPanel = ref(window.innerWidth >= 768)
 
 interface LedParams {
   text: string
@@ -84,6 +84,11 @@ const syncUrl = () => {
 }
 
 watch(params, syncUrl, { deep: true })
+
+watch(params, (val) => {
+  if (!/^#[0-9a-fA-F]{6}$/.test(val.color)) val.color = DEFAULT_PARAMS.color
+  if (!/^#[0-9a-fA-F]{6}$/.test(val.bg)) val.bg = DEFAULT_PARAMS.bg
+}, { deep: true })
 
 const copyUrl = async () => {
   try {
