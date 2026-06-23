@@ -214,7 +214,33 @@ onBeforeUnmount(() => document.removeEventListener('fullscreenchange', onFsChang
     </div>
 
     <ToolDetail title="使用说明">
-      <el-text>LED 显示屏工具，支持自定义文字、颜色、滚动效果。</el-text>
+      <el-text>
+        <p>LED 显示屏工具，在线模拟 LED 走马灯文字效果，支持自定义文字内容、颜色、字号、滚动速度和 LED 风格。</p>
+        <h4 class="mt-3 font-bold">URL 参数</h4>
+        <ul class="list-disc pl-6 space-y-1">
+          <li><code>text</code>：显示文字（默认：欢迎使用 LED 显示屏）</li>
+          <li><code>color</code>：文字颜色 hex（默认：#ff0000）</li>
+          <li><code>bg</code>：背景颜色 hex（默认：#000000）</li>
+          <li><code>size</code>：字号 px，范围 20-300（默认：120）</li>
+          <li><code>speed</code>：滚动周期秒，范围 5-60（默认：20）</li>
+          <li><code>bold</code>=<code>1</code>：粗体（默认开）</li>
+          <li><code>border</code>=<code>1</code>：显示边框（默认开）</li>
+          <li><code>glow</code>=<code>1</code>：文字发光（默认开）</li>
+          <li><code>dot</code>=<code>1</code>：点阵背景（默认关）</li>
+        </ul>
+        <h4 class="mt-3 font-bold">使用场景</h4>
+        <ul class="list-disc pl-6 space-y-1">
+          <li>活动现场 LED 走马灯模拟演示</li>
+          <li>店铺招牌效果预览</li>
+          <li>社交媒体 GIF 录制</li>
+          <li>礼物特效文字</li>
+        </ul>
+        <h4 class="mt-3 font-bold">示例 URL</h4>
+        <p class="text-xs break-all bg-gray-100 p-2 rounded">
+          /led-display/?text=欢迎光临&color=%23ff0000&bg=%23000000&size=120&speed=15&glow=1
+        </p>
+        <p class="text-gray-500 text-xs mt-2">提示：URL 中的 # 字符需编码为 %23</p>
+      </el-text>
     </ToolDetail>
   </div>
 </template>
