@@ -978,7 +978,7 @@ export function getToolsCate() {
         {
           id: 1,
           title: 'LED 显示屏',
-          logo: '/images/logo/keywords.png',
+          logo: '/images/logo/led.png',
           desc: 'LED 走马灯文字工具，支持自定义文字、颜色、字号、滚动速度、发光和点阵效果',
           url: '/led-display/',
           cateId: 11,
