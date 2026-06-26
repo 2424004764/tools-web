@@ -7,6 +7,7 @@ import { useComponentStore } from '@/store/modules/component'
 // import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from "vue-router"
 import { Top } from '@element-plus/icons-vue'
+import { useSpriteLogo } from '@/components/Tools/useSpriteLogo'
 //store
 const toolsStore = useToolsStore()
 const componentStore = useComponentStore()
@@ -235,7 +236,20 @@ watch(() => toolsStore.cates.length, () => {
       <div class="flex justify-start flex-wrap gap-[1.25%] c-xs:ml-0">
           <router-link v-for="(item, index) in cate.list" :key="index" :to="item.url" class="flex flex-col mt-5 border-solid rounded-2xl border-warm-400 p-2 bg-white shadow-lg hover:bg-warm-50 hover:shadow-xl hover:border-warm-500 w-full sm:w-[49%] md:w-[32%] lg:w-[24%] xl:w-[19%] p-5 hover:-translate-y-3 duration-300 transition-all">
             <div class="flex items-center border-b border-warm-300 pb-2">
-              <img :src="item.logo" loading="lazy" class="w-10 h-10 min-h-[2.5rem] min-w-[2.5rem] object-contain" alt="">
+              <img
+                v-if="!useSpriteLogo(item).style"
+                :src="item.logo"
+                loading="lazy"
+                class="w-10 h-10 min-h-[2.5rem] min-w-[2.5rem] object-contain"
+                :alt="item.title"
+              >
+              <div
+                v-else
+                class="w-10 h-10 min-h-[2.5rem] min-w-[2.5rem]"
+                :style="useSpriteLogo(item).style"
+                role="img"
+                :aria-label="item.title"
+              ></div>
               <div class="flex flex-col ml-2 w-full">
                 <div class="flex">
                   <div class="font-semibold text-lg line-clamp-1 text-warm-900">{{ item.title }}</div>
