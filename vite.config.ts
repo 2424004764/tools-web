@@ -1,12 +1,54 @@
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig, loadEnv, type Plugin } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { createSvgIconsPlugin } from 'vite-plugin-svg-icons'
 import path from 'path'
+import { execSync } from 'node:child_process'
 import Components from 'unplugin-vue-components/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import ElementPlus from 'unplugin-element-plus/vite'
 import AutoImport from 'unplugin-auto-import/vite'
 import viteCompression from 'vite-plugin-compression'
+
+/**
+ * dev 模式下监听 logo 文件和 tools.ts，变化时自动重跑精灵图构建脚本，
+ * 并触发浏览器 full-reload 让首页重新拉取 sprite 和坐标 JSON。
+ */
+function spriteWatcher(): Plugin {
+  return {
+    name: 'tools-sprite-watcher',
+    apply: 'serve',
+    configureServer(server) {
+      let timer: NodeJS.Timeout | null = null
+      let isRebuilding = false
+
+      const trigger = (file: string) => {
+        const isLogo = /[\\/]images[\\/]logo[\\/][^\\/]+\.(png|jpe?g|svg)$/i.test(file)
+        const isToolsTs = /[\\/]src[\\/]components[\\/]Tools[\\/]tools\.ts$/.test(file)
+        if (!isLogo && !isToolsTs) return
+
+        if (timer) clearTimeout(timer)
+        timer = setTimeout(async () => {
+          if (isRebuilding) return
+          isRebuilding = true
+          try {
+            console.log(`[sprite-watcher] ${path.basename(file)} 变更，重建精灵图…`)
+            execSync('node scripts/build-sprite.mjs', { stdio: 'pipe', cwd: process.cwd() })
+            console.log('[sprite-watcher] ✓ 完成，刷新浏览器')
+            server.ws.send({ type: 'full-reload' })
+          } catch (err: any) {
+            console.error('[sprite-watcher] ✗ 重建失败：', err?.message || err)
+          } finally {
+            isRebuilding = false
+          }
+        }, 200)  // 200ms 防抖，连续改动只触发一次
+      }
+
+      server.watcher.on('add', trigger)
+      server.watcher.on('change', trigger)
+      server.watcher.on('unlink', trigger)
+    },
+  }
+}
 
 // https://vitejs.dev/config/
 export default defineConfig(({command, mode}) => {
@@ -26,6 +68,7 @@ export default defineConfig(({command, mode}) => {
     cacheDir: 'node_modules/.vite',
 
     plugins: [
+      spriteWatcher(),
       vue({
         template: {
           compilerOptions: {
