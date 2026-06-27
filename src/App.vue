@@ -1,12 +1,31 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue'
-import Header from "@/components/Layout/Header/Header.vue";
-import Left from "@/components/Layout/Left/Left.vue";
-import Floor from "@/components/Layout/Floor/Floor.vue";
+import { computed, ref, onMounted, onUnmounted, defineAsyncComponent, defineComponent, h } from 'vue'
+import LayoutSkeleton from "@/components/Layout/LayoutSkeleton.vue";
 // import Right from '@/components/Layout/Right/Right.vue'
 import { useComponentStore } from "@/store/modules/component";
-import SimilarRecommend from "@/components/Layout/SimilarRecommend/SimilarRecommend.vue";
-import Comments from "@/components/Layout/Comments/Comments.vue";
+// 异步加载：SimilarRecommend + Comments 合并到同一 chunk，省一次 HTTP 请求
+const Discuss = defineAsyncComponent({
+  loader: () => import('@/components/Layout/Discuss.vue'),
+  delay: 100,
+})
+
+// 布局组件异步化：减少首屏主 bundle 体积；用骨架占位避免布局抖动
+const Header = defineAsyncComponent({
+  loader: () => import('@/components/Layout/Header/Header.vue'),
+  loadingComponent: defineComponent({ render: () => h(LayoutSkeleton, { variant: 'header' }) }),
+  delay: 100, // 100ms 内加载完不闪骨架（local cache 命中）
+})
+const Left = defineAsyncComponent({
+  loader: () => import('@/components/Layout/Left/Left.vue'),
+  loadingComponent: defineComponent({ render: () => h(LayoutSkeleton, { variant: 'left' }) }),
+  delay: 100,
+})
+const Floor = defineAsyncComponent({
+  loader: () => import('@/components/Layout/Floor/Floor.vue'),
+  loadingComponent: defineComponent({ render: () => h(LayoutSkeleton, { variant: 'floor' }) }),
+  delay: 100,
+})
+
 import { useRoute } from 'vue-router';
 import { Top } from '@element-plus/icons-vue';
 import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
@@ -91,8 +110,7 @@ const isHomePage = computed(() => {
             <component :is="Component" :key="route.path"></component>
           </transition>
         </router-view>
-        <SimilarRecommend v-if="!isSpecialPage && !componentStore.hideAllUI" />
-        <Comments v-if="!isSpecialPage && !isHomePage && !componentStore.hideAllUI" />
+        <Discuss v-if="!isSpecialPage && !isHomePage && !componentStore.hideAllUI" />
       </el-main>
       <el-footer v-if="!isSpecialPage" class="md:mb-6 mt-12 c-xs:mb-12">
         <Floor />

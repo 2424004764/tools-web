@@ -10,6 +10,44 @@ import AutoImport from 'unplugin-auto-import/vite'
 import viteCompression from 'vite-plugin-compression'
 
 /**
+ * 把 Vite 自动注入的同步 <link rel="stylesheet"> 改成非阻塞的 preload 模式，
+ * 让主 CSS 与首屏 HTML 并行下载，不阻塞渲染。
+ * noscript 用户仍走原始 stylesheet。
+ *
+ * 工作机制：
+ *   1. Vite 生成 index.html，自动注入 <link rel="stylesheet" href="/css/index-*.css">
+ *   2. 我们把这条 link 直接换成 <link rel="preload" as="style" onload="...">，
+ *      onload 内把 rel 改为 stylesheet 让 CSS 生效
+ *   3. 附一条 noscript fallback 给无 JS 用户
+ */
+function cssPreloadInject(): Plugin {
+  return {
+    name: 'tools-css-preload',
+    apply: 'build',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html, ctx) {
+        if (!ctx.bundle) return html
+        const cssAsset = Object.values(ctx.bundle).find(
+          (a: any) => a.type === 'asset' && a.fileName.startsWith('css/index-') && a.fileName.endsWith('.css')
+        ) as any
+        if (!cssAsset) return html
+        const cssPath = '/' + cssAsset.fileName.replace(/^public\//, '')
+        // 找到 Vite 注入的同步 stylesheet，替换为非阻塞 preload
+        const syncLinkRe = new RegExp(
+          `<link\\s+rel="stylesheet"\\s+href="${cssPath.replace(/[/]/g, '\\/')}">`
+        )
+        const replacement = `<link rel="preload" href="${cssPath}" as="style" onload="this.onload=null;this.rel='stylesheet'"><noscript><link rel="stylesheet" href="${cssPath}"></noscript>`
+        if (syncLinkRe.test(html)) {
+          return html.replace(syncLinkRe, replacement)
+        }
+        return html
+      },
+    },
+  }
+}
+
+/**
  * dev 模式下监听 logo 文件和 tools.ts，变化时自动重跑精灵图构建脚本，
  * 并触发浏览器 full-reload 让首页重新拉取 sprite 和坐标 JSON。
  */
@@ -68,6 +106,7 @@ export default defineConfig(({command, mode}) => {
     cacheDir: 'node_modules/.vite',
 
     plugins: [
+      cssPreloadInject(),
       spriteWatcher(),
       vue({
         template: {

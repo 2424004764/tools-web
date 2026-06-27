@@ -13,25 +13,6 @@ const router = createRouter({
   },
 })
 
-// 预加载常用路由（简化版）
-const preloadedRoutes = new Set<string>()
-const commonRoutes = ['/', '/json', '/md5', '/timetran', '/qrcode']
-
-function preloadRoute(path: string) {
-  if (preloadedRoutes.has(path)) return
-  const route = constantRoute.find(r => r.path === path)
-  if (route && typeof route.component === 'function') {
-    route.component().then(() => preloadedRoutes.add(path)).catch(() => {})
-  }
-}
-
-// 空闲时预加载常用路由
-if ('requestIdleCallback' in window) {
-  requestIdleCallback(() => commonRoutes.forEach(preloadRoute), { timeout: 2000 })
-} else {
-  setTimeout(() => commonRoutes.forEach(preloadRoute), 2000)
-}
-
 router.beforeEach((to, _from, next) => {
   if (to.meta.title) {
     document.title = <string>to.meta.title + '-' + import.meta.env.VITE_APP_TITLE
