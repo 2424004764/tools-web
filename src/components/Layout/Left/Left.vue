@@ -18,6 +18,8 @@ const defaultOpeneds = ["cate"];
 const toolsStore = useToolsStore();
 const componentStore = useComponentStore();
 const menuReady = ref(false);
+// el-menu 实例引用，用于路由切换后强制展开分类
+const menuRef = ref<InstanceType<any> | null>(null);
 // 标记是否已经初始化过默认分类
 const hasInitializedDefaultCategory = ref(false);
 
@@ -143,8 +145,11 @@ const updateActive = async () => {
 
 watch(
   () => route.path,
-  () => {
+  async () => {
     updateActive();
+    // 路由切换后确保「分类」子菜单保持展开
+    await nextTick();
+    menuRef.value?.open?.('cate');
   }
 );
 watch(
@@ -194,8 +199,8 @@ onMounted(async () => {
     <div class="flex justify-center pl-8 pr-8">
       <el-menu
         v-if="menuReady"
+        ref="menuRef"
         class="w-[200px]"
-        :key="`menu-${computedActiveCategory}-${route.path}`"
         :default-active="computedActiveCategory"
         :default-openeds="defaultOpeneds"
         background-color="transparent"
