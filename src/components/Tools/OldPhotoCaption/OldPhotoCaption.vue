@@ -18,7 +18,7 @@ const year = ref('2026')
 const season = ref('春')
 const person = ref('同志')
 const place = ref('北京')
-const useUppercaseYear = ref(false)
+const useUppercaseYear = ref(true)
 
 const uppercaseDigits = ['〇', '一', '二', '三', '四', '五', '六', '七', '八', '九']
 const toUppercaseDigits = (s: string): string =>
