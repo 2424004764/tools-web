@@ -58,13 +58,14 @@ watch(position, (newPos, oldPos) => {
 })
 
 // === 样式预设 ===
-type PresetKey = 'blackGold' | 'redGold' | 'yellowBlack' | 'custom'
+type PresetKey = 'blackGold' | 'redGold' | 'yellowBlack' | 'maroonWhite' | 'custom'
 const presetKey = ref<PresetKey>('blackGold')
 
 const presets: Record<Exclude<PresetKey, 'custom'>, { bg: string; fg: string; label: string }> = {
   blackGold: { bg: '#000000', fg: '#FFD700', label: '经典黑金' },
   redGold: { bg: '#8B0000', fg: '#FFD700', label: '红底金字' },
   yellowBlack: { bg: '#FFC107', fg: '#000000', label: '黄底黑字' },
+  maroonWhite: { bg: '#3D161B', fg: '#FFFFFF', label: '暗红白字' },
 }
 
 const bgColor = ref('#000000')
