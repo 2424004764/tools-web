@@ -1,1 +1,0 @@
-import{_ as s}from"./index-4e6af0dc.js";/* empty css              */import{a as e,c as r,k as a,aY as o}from"./vue-vendor-ffc2b9b7.js";const t=s({},[["render",function(s,t){const n=o;return e(),r("div",null,[a(n,{"image-size":200})])}]]);export{t as default};
