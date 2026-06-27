@@ -20,7 +20,7 @@ const person = ref('同志')
 const place = ref('北京')
 const useUppercaseYear = ref(false)
 
-const uppercaseDigits = ['零', '壹', '贰', '叁', '肆', '伍', '陆', '柒', '捌', '玖']
+const uppercaseDigits = ['〇', '一', '二', '三', '四', '五', '六', '七', '八', '九']
 const toUppercaseDigits = (s: string): string =>
   /^\d+$/.test(s) ? s.split('').map((c) => uppercaseDigits[+c]).join('') : s
 
