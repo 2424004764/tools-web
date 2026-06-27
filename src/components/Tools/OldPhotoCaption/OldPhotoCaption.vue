@@ -20,18 +20,42 @@ const person = ref('同志')
 const place = ref('北京')
 const useUppercaseYear = ref(true)
 
+const yearBottom = ref('2026')
+const seasonBottom = ref('春')
+const personBottom = ref('同志')
+const placeBottom = ref('北京')
+const useUppercaseYearBottom = ref(true)
+
 const uppercaseDigits = ['〇', '一', '二', '三', '四', '五', '六', '七', '八', '九']
 const toUppercaseDigits = (s: string): string =>
   /^\d+$/.test(s) ? s.split('').map((c) => uppercaseDigits[+c]).join('') : s
 
-const caption = computed(() => {
-  const y = useUppercaseYear.value ? toUppercaseDigits(year.value) : year.value
-  return `${y}年${season.value}，${person.value}同志在${place.value}留影`
-})
+const buildCaption = (y: string, s: string, p: string, pl: string, upper: boolean) => {
+  const yr = upper ? toUppercaseDigits(y) : y
+  return `${yr}年${s}，${p}同志在${pl}留影`
+}
+
+const captionTop = computed(() =>
+  buildCaption(year.value, season.value, person.value, place.value, useUppercaseYear.value)
+)
+const captionBottom = computed(() =>
+  buildCaption(yearBottom.value, seasonBottom.value, personBottom.value, placeBottom.value, useUppercaseYearBottom.value)
+)
 
 // === 位置 ===
 type Position = 'top' | 'bottom' | 'both'
-const position = ref<Position>('both')
+const position = ref<Position>('top')
+
+// 进入"上下都加"时，把上方文字复制一份给下方作为起点（用户可继续编辑）
+watch(position, (newPos, oldPos) => {
+  if (newPos === 'both' && oldPos !== 'both') {
+    yearBottom.value = year.value
+    seasonBottom.value = season.value
+    personBottom.value = person.value
+    placeBottom.value = place.value
+    useUppercaseYearBottom.value = useUppercaseYear.value
+  }
+})
 
 // === 样式预设 ===
 type PresetKey = 'blackGold' | 'redGold' | 'yellowBlack' | 'custom'
@@ -128,7 +152,7 @@ const renderCanvas = () => {
   if (topH) {
     ctx.fillStyle = bgColor.value
     ctx.fillRect(0, 0, totalW, topH)
-    drawCaption(ctx, caption.value, 0, 0, totalW, topH, img, bandH)
+    drawCaption(ctx, captionTop.value, 0, 0, totalW, topH, img, bandH)
     y = topH
   }
   ctx.drawImage(img, 0, y)
@@ -136,7 +160,7 @@ const renderCanvas = () => {
   if (botH) {
     ctx.fillStyle = bgColor.value
     ctx.fillRect(0, y, totalW, botH)
-    drawCaption(ctx, caption.value, 0, y, totalW, botH, img, bandH)
+    drawCaption(ctx, captionBottom.value, 0, y, totalW, botH, img, bandH)
   }
 
   previewSrc.value = canvas.toDataURL('image/png')
@@ -170,6 +194,11 @@ watch(
     person,
     place,
     useUppercaseYear,
+    yearBottom,
+    seasonBottom,
+    personBottom,
+    placeBottom,
+    useUppercaseYearBottom,
     position,
     bgColor,
     textColor,
@@ -228,9 +257,11 @@ const downloadImage = () => {
       <div v-if="originalImageSrc" class="mt-4 flex flex-col lg:flex-row gap-4">
         <!-- 控制面板 -->
         <div class="w-full lg:w-80 shrink-0 space-y-3">
-          <!-- 文字内容 -->
-          <div class="p-3 bg-gray-50 rounded-lg space-y-2">
-            <div class="text-sm font-medium text-gray-700">文字内容</div>
+          <!-- 上方文字（仅当 position 是 top 或 both 时显示） -->
+          <div v-if="position === 'top' || position === 'both'" class="p-3 bg-gray-50 rounded-lg space-y-2">
+            <div class="text-sm font-medium text-gray-700">
+              {{ position === 'both' ? '上方文字' : '文字内容' }}
+            </div>
             <div class="flex items-center gap-2">
               <el-input v-model="year" placeholder="年份" size="small" class="!w-20" />
               <span class="text-sm text-gray-500">年</span>
@@ -247,7 +278,32 @@ const downloadImage = () => {
               <span class="text-sm text-gray-500">留影</span>
             </div>
             <div class="text-xs text-gray-500 pt-1 border-t border-gray-200 mt-2">
-              预览：<span class="text-gray-800">{{ caption }}</span>
+              预览：<span class="text-gray-800">{{ captionTop }}</span>
+            </div>
+          </div>
+
+          <!-- 下方文字（仅当 position 是 bottom 或 both 时显示） -->
+          <div v-if="position === 'bottom' || position === 'both'" class="p-3 bg-gray-50 rounded-lg space-y-2">
+            <div class="text-sm font-medium text-gray-700">
+              {{ position === 'both' ? '下方文字' : '文字内容' }}
+            </div>
+            <div class="flex items-center gap-2">
+              <el-input v-model="yearBottom" placeholder="年份" size="small" class="!w-20" />
+              <span class="text-sm text-gray-500">年</span>
+              <el-input v-model="seasonBottom" placeholder="季节" size="small" class="!w-16" />
+              <el-checkbox v-model="useUppercaseYearBottom" size="small" class="!text-xs">转大写</el-checkbox>
+            </div>
+            <div class="flex items-center gap-2">
+              <el-input v-model="personBottom" placeholder="人物" size="small" class="flex-1" />
+              <span class="text-sm text-gray-500">同志</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-sm text-gray-500">在</span>
+              <el-input v-model="placeBottom" placeholder="地点" size="small" class="flex-1" />
+              <span class="text-sm text-gray-500">留影</span>
+            </div>
+            <div class="text-xs text-gray-500 pt-1 border-t border-gray-200 mt-2">
+              预览：<span class="text-gray-800">{{ captionBottom }}</span>
             </div>
           </div>
 
@@ -352,8 +408,8 @@ const downloadImage = () => {
         <el-text tag="div"><strong>使用步骤：</strong></el-text>
         <ol class="list-decimal pl-5 space-y-1">
           <li>点击或拖拽上传一张图片</li>
-          <li>在「文字内容」里自定义年份、人物、地点</li>
-          <li>选择条带位置（仅上 / 仅下 / 上下都加）</li>
+          <li>在「文字内容」里自定义年份、人物、地点（默认仅在图片上方添加条带）</li>
+          <li>选择条带位置（仅上 / 仅下 / 上下都加），选「上下都加」可分别为上下方设置不同文字</li>
           <li>选择一个预设样式（黑金 / 红金 / 黄黑），或在「高级」里自定义颜色、字体、字号、条带高度</li>
           <li>右侧实时预览，满意后点击「下载图片」保存为 PNG</li>
         </ol>
