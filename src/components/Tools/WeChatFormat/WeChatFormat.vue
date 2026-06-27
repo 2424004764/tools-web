@@ -235,10 +235,21 @@ const IMAGE_HOSTS = [
 // hover 触发图床子菜单的开关
 const imageHostsHover = ref(false)
 let imageHostsHideTimer: number | null = null
+
+// 触发器 DOM ref + 子菜单位置（Teleport 到 body 后用 fixed 定位）
+const imageHostsTriggerRef = ref<HTMLElement | null>(null)
+const imageHostsPos = reactive({ top: 0, right: 0 })
+
 const showImageHosts = () => {
   if (imageHostsHideTimer) {
     clearTimeout(imageHostsHideTimer)
     imageHostsHideTimer = null
+  }
+  if (imageHostsTriggerRef.value) {
+    const rect = imageHostsTriggerRef.value.getBoundingClientRect()
+    imageHostsPos.top = rect.top
+    // 子菜单向右贴 trigger 左缘 - 4px 间距
+    imageHostsPos.right = window.innerWidth - rect.left + 4
   }
   imageHostsHover.value = true
 }
@@ -248,6 +259,13 @@ const scheduleHideImageHosts = () => {
     imageHostsHover.value = false
     imageHostsHideTimer = null
   }, 120)  // 120ms 桥接，避免鼠标从触发器移到子菜单时闪烁关闭
+}
+// 外层下拉关闭时也强制隐藏子菜单
+const onMoreDropdownVisibleChange = (visible: boolean) => {
+  if (!visible) {
+    if (imageHostsHideTimer) clearTimeout(imageHostsHideTimer)
+    imageHostsHover.value = false
+  }
 }
 
 // 显示保存提示
@@ -1718,7 +1736,7 @@ const quickSyntaxButtons = [
             {{ fullscreen.isFullscreen.value ? '⛶' : '⛶' }}
           </el-button>
 
-          <el-dropdown>
+          <el-dropdown @visible-change="onMoreDropdownVisibleChange">
             <el-button class="w-full sm:w-auto">
               更多
             </el-button>
@@ -1726,31 +1744,13 @@ const quickSyntaxButtons = [
               <el-dropdown-menu>
                 <el-dropdown-item @click.stop>
                   <div
+                    ref="imageHostsTriggerRef"
                     class="relative flex items-center justify-between"
                     @mouseenter="showImageHosts"
                     @mouseleave="scheduleHideImageHosts"
                   >
                     <span>🖼️ 图床</span>
                     <span class="ml-6 text-gray-400">‹</span>
-                    <!-- 二级菜单：hover 向左弹出（避免被右边界裁切） -->
-                    <div
-                      v-show="imageHostsHover"
-                      class="absolute right-full top-0 -mr-1 min-w-[180px] bg-white rounded-md shadow-lg border border-gray-200 py-1 z-50"
-                      @mouseenter="showImageHosts"
-                      @mouseleave="scheduleHideImageHosts"
-                    >
-                      <a
-                        v-for="host in IMAGE_HOSTS"
-                        :key="host.url"
-                        :href="host.url"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-blue-600"
-                      >
-                        <span class="mr-2">{{ host.emoji }}</span>
-                        <span>{{ host.name }}</span>
-                      </a>
-                    </div>
                   </div>
                 </el-dropdown-item>
                 <el-dropdown-item @click="triggerImport">
@@ -1762,6 +1762,33 @@ const quickSyntaxButtons = [
               </el-dropdown-menu>
             </template>
           </el-dropdown>
+
+          <!-- 图床二级菜单：Teleport 到 body 避免 popper overflow:hidden 裁切 -->
+          <Teleport to="body">
+            <div
+              v-show="imageHostsHover"
+              class="fixed min-w-[180px] bg-white rounded-md shadow-lg border border-gray-200 py-1"
+              :style="{
+                top: imageHostsPos.top + 'px',
+                right: imageHostsPos.right + 'px',
+                zIndex: 9999,
+              }"
+              @mouseenter="showImageHosts"
+              @mouseleave="scheduleHideImageHosts"
+            >
+              <a
+                v-for="host in IMAGE_HOSTS"
+                :key="host.url"
+                :href="host.url"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-blue-600"
+              >
+                <span class="mr-2">{{ host.emoji }}</span>
+                <span>{{ host.name }}</span>
+              </a>
+            </div>
+          </Teleport>
         </div>
       </div>
 
