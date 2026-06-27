@@ -791,6 +791,15 @@ export function getToolsCate() {
           cateId: 5,
           cate: '图片处理'
         },
+        {
+          id: 130,
+          title: '老照片加字',
+          logo: '/images/logo/old_photo_caption.png',
+          desc: '在图片上下方添加「2026年春，xx同志在xx地方留影」风格的题字条带，支持多种预设样式和自由配色，实时预览，一键下载',
+          url: '/old-photo-caption/',
+          cateId: 5,
+          cate: '图片处理',
+        },
       ]
     },
     {
