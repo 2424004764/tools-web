@@ -230,6 +230,7 @@ let saveTipTimer: number | null = null
 const IMAGE_HOSTS = [
   { name: 'PICUI 图床', url: 'https://picui.cn/upload', emoji: '🖼️' },
   { name: 'MJJ图床', url: 'https://mjj.today/', emoji: '📦' },
+  { name: 'scdn.io 图床', url: 'https://img.scdn.io/', emoji: '☁️' },
 ]
 
 // hover 触发图床子菜单的开关
