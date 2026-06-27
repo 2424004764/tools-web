@@ -58,6 +58,16 @@ onMounted(async () => {
          <p class="mt-2">
           <el-text>公众号：<el-text type="primary" class="font-medium">《全栈缝合车间》</el-text></el-text>
         </p>
+        <div class="mt-3 flex items-center gap-4">
+          <img
+            src="https://tool-r2.fologde.com/qrcode_for_gh_ab396f4a9554_344.jpg"
+            alt="公众号《全栈缝合车间》二维码"
+            class="w-36 h-36 rounded-md border border-gray-200 shadow-sm bg-white"
+            referrerpolicy="no-referrer"
+            loading="lazy"
+          />
+          <el-text class="text-sm text-gray-500 leading-6">扫码关注<br />获取更多工具更新与开发动态</el-text>
+        </div>
       </template>
 
       <h1 class="text-2xl font-bold mt-6 mb-6">友情链接</h1>
