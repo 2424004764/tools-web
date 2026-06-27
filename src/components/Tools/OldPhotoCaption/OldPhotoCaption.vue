@@ -18,10 +18,16 @@ const year = ref('2026')
 const season = ref('春')
 const person = ref('同志')
 const place = ref('北京')
+const useUppercaseYear = ref(false)
 
-const caption = computed(
-  () => `${year.value}年${season.value}，${person.value}同志在${place.value}留影`
-)
+const uppercaseDigits = ['零', '壹', '贰', '叁', '肆', '伍', '陆', '柒', '捌', '玖']
+const toUppercaseDigits = (s: string): string =>
+  /^\d+$/.test(s) ? s.split('').map((c) => uppercaseDigits[+c]).join('') : s
+
+const caption = computed(() => {
+  const y = useUppercaseYear.value ? toUppercaseDigits(year.value) : year.value
+  return `${y}年${season.value}，${person.value}同志在${place.value}留影`
+})
 
 // === 位置 ===
 type Position = 'top' | 'bottom' | 'both'
@@ -163,6 +169,7 @@ watch(
     season,
     person,
     place,
+    useUppercaseYear,
     position,
     bgColor,
     textColor,
@@ -228,6 +235,7 @@ const downloadImage = () => {
               <el-input v-model="year" placeholder="年份" size="small" class="!w-20" />
               <span class="text-sm text-gray-500">年</span>
               <el-input v-model="season" placeholder="季节" size="small" class="!w-16" />
+              <el-checkbox v-model="useUppercaseYear" size="small" class="!text-xs">转大写</el-checkbox>
             </div>
             <div class="flex items-center gap-2">
               <el-input v-model="person" placeholder="人物" size="small" class="flex-1" />
