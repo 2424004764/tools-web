@@ -1731,11 +1731,11 @@ const quickSyntaxButtons = [
                     @mouseleave="scheduleHideImageHosts"
                   >
                     <span>🖼️ 图床</span>
-                    <span class="ml-6 text-gray-400">›</span>
-                    <!-- 二级菜单：hover 向右弹出 -->
+                    <span class="ml-6 text-gray-400">‹</span>
+                    <!-- 二级菜单：hover 向左弹出（避免被右边界裁切） -->
                     <div
                       v-show="imageHostsHover"
-                      class="absolute left-full top-0 -ml-1 min-w-[180px] bg-white rounded-md shadow-lg border border-gray-200 py-1 z-50"
+                      class="absolute right-full top-0 -mr-1 min-w-[180px] bg-white rounded-md shadow-lg border border-gray-200 py-1 z-50"
                       @mouseenter="showImageHosts"
                       @mouseleave="scheduleHideImageHosts"
                     >
