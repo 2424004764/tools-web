@@ -443,332 +443,338 @@
     "w": 80,
     "h": 80
   },
-  "/images/logo/bar.png": {
+  "/images/logo/old_photo_caption.png": {
     "x": 168,
+    "y": 756,
+    "w": 80,
+    "h": 80
+  },
+  "/images/logo/bar.png": {
+    "x": 252,
     "y": 756,
     "w": 80,
     "h": 80
   },
   "/images/logo/line.png": {
-    "x": 252,
+    "x": 336,
     "y": 756,
     "w": 80,
     "h": 80
   },
   "/images/logo/pie.png": {
-    "x": 336,
+    "x": 420,
     "y": 756,
     "w": 80,
     "h": 80
   },
   "/images/logo/scatter.png": {
-    "x": 420,
+    "x": 504,
     "y": 756,
     "w": 80,
     "h": 80
   },
   "/images/logo/snake.png": {
-    "x": 504,
+    "x": 588,
     "y": 756,
     "w": 80,
     "h": 80
   },
   "/images/logo/memory.png": {
-    "x": 588,
-    "y": 756,
+    "x": 0,
+    "y": 840,
     "w": 80,
     "h": 80
   },
   "/images/logo/tetris.png": {
-    "x": 0,
+    "x": 84,
     "y": 840,
     "w": 80,
     "h": 80
   },
   "/images/logo/whackamole.png": {
-    "x": 84,
+    "x": 168,
     "y": 840,
     "w": 80,
     "h": 80
   },
   "/images/logo/2048.png": {
-    "x": 168,
+    "x": 252,
     "y": 840,
     "w": 80,
     "h": 80
   },
   "/images/logo/minesweeper.png": {
-    "x": 252,
+    "x": 336,
     "y": 840,
     "w": 80,
     "h": 80
   },
   "/images/logo/puzzle.png": {
-    "x": 336,
+    "x": 420,
     "y": 840,
     "w": 80,
     "h": 80
   },
   "/images/logo/sudoku.png": {
-    "x": 420,
+    "x": 504,
     "y": 840,
     "w": 80,
     "h": 80
   },
   "/images/logo/ai_gomoku.png": {
-    "x": 504,
+    "x": 588,
     "y": 840,
     "w": 80,
     "h": 80
   },
   "/images/logo/gomoku_online.png": {
-    "x": 588,
-    "y": 840,
+    "x": 0,
+    "y": 924,
     "w": 80,
     "h": 80
   },
   "/images/logo/guess_number.png": {
-    "x": 0,
+    "x": 84,
     "y": 924,
     "w": 80,
     "h": 80
   },
   "/images/logo/number_memory.png": {
-    "x": 84,
+    "x": 168,
     "y": 924,
     "w": 80,
     "h": 80
   },
   "/images/logo/hundred_billion.png": {
-    "x": 168,
+    "x": 252,
     "y": 924,
     "w": 80,
     "h": 80
   },
   "/images/logo/chat.png": {
-    "x": 252,
+    "x": 336,
     "y": 924,
     "w": 80,
     "h": 80
   },
   "/images/logo/flip_clock.svg": {
-    "x": 336,
+    "x": 420,
     "y": 924,
     "w": 80,
     "h": 80
   },
   "/images/logo/led.png": {
-    "x": 420,
+    "x": 504,
     "y": 924,
     "w": 80,
     "h": 80
   },
   "/images/logo/random.png": {
-    "x": 504,
+    "x": 588,
     "y": 924,
     "w": 80,
     "h": 80
   },
   "/images/logo/choose.png": {
-    "x": 588,
-    "y": 924,
+    "x": 0,
+    "y": 1008,
     "w": 80,
     "h": 80
   },
   "/images/logo/coin.png": {
-    "x": 0,
+    "x": 84,
     "y": 1008,
     "w": 80,
     "h": 80
   },
   "/images/logo/dice.png": {
-    "x": 84,
+    "x": 168,
     "y": 1008,
     "w": 80,
     "h": 80
   },
   "/images/logo/chinese_name.png": {
-    "x": 168,
+    "x": 252,
     "y": 1008,
     "w": 80,
     "h": 80
   },
   "/images/logo/IP.png": {
-    "x": 252,
+    "x": 336,
     "y": 1008,
     "w": 80,
     "h": 80
   },
   "/images/logo/numberToChinese.png": {
-    "x": 336,
+    "x": 420,
     "y": 1008,
     "w": 80,
     "h": 80
   },
   "/images/logo/dm.png": {
-    "x": 420,
+    "x": 504,
     "y": 1008,
     "w": 80,
     "h": 80
   },
   "/images/logo/palettes.png": {
-    "x": 504,
+    "x": 588,
     "y": 1008,
     "w": 80,
     "h": 80
   },
   "/images/logo/color_picker.png": {
-    "x": 588,
-    "y": 1008,
+    "x": 0,
+    "y": 1092,
     "w": 80,
     "h": 80
   },
   "/images/logo/company_compare.png": {
-    "x": 0,
+    "x": 84,
     "y": 1092,
     "w": 80,
     "h": 80
   },
   "/images/logo/minimum_wage.png": {
-    "x": 84,
+    "x": 168,
     "y": 1092,
     "w": 80,
     "h": 80
   },
   "/images/logo/phone_directory.png": {
-    "x": 168,
+    "x": 252,
     "y": 1092,
     "w": 80,
     "h": 80
   },
   "/images/logo/video-parser.png": {
-    "x": 252,
+    "x": 336,
     "y": 1092,
     "w": 80,
     "h": 80
   },
   "/images/logo/ai_test_to_image.png": {
-    "x": 336,
+    "x": 420,
     "y": 1092,
     "w": 80,
     "h": 80
   },
   "/images/logo/ai_tools.png": {
-    "x": 420,
+    "x": 504,
     "y": 1092,
     "w": 80,
     "h": 80
   },
   "/images/logo/ai_variable_name.png": {
-    "x": 504,
+    "x": 588,
     "y": 1092,
     "w": 80,
     "h": 80
   },
   "/images/logo/ai_get_name.png": {
-    "x": 588,
-    "y": 1092,
+    "x": 0,
+    "y": 1176,
     "w": 80,
     "h": 80
   },
   "/images/logo/ai_translate.png": {
-    "x": 0,
+    "x": 84,
     "y": 1176,
     "w": 80,
     "h": 80
   },
   "/images/logo/ai_elementary_essay.png": {
-    "x": 84,
+    "x": 168,
     "y": 1176,
     "w": 80,
     "h": 80
   },
   "/images/logo/ai_daily_motivation.png": {
-    "x": 168,
+    "x": 252,
     "y": 1176,
     "w": 80,
     "h": 80
   },
   "/images/logo/ai_chat.png": {
-    "x": 252,
+    "x": 336,
     "y": 1176,
     "w": 80,
     "h": 80
   },
   "/images/logo/ai_interview.png": {
-    "x": 336,
+    "x": 420,
     "y": 1176,
     "w": 80,
     "h": 80
   },
   "/images/logo/ai_prompt.png": {
-    "x": 420,
+    "x": 504,
     "y": 1176,
     "w": 80,
     "h": 80
   },
   "/images/logo/ai_text_to_speech.png": {
-    "x": 504,
+    "x": 588,
     "y": 1176,
     "w": 80,
     "h": 80
   },
   "/images/logo/good_sites.png": {
-    "x": 588,
-    "y": 1176,
-    "w": 80,
-    "h": 80
-  },
-  "/images/logo/password_book.png": {
     "x": 0,
     "y": 1260,
     "w": 80,
     "h": 80
   },
-  "/images/logo/todos.png": {
+  "/images/logo/password_book.png": {
     "x": 84,
     "y": 1260,
     "w": 80,
     "h": 80
   },
-  "/images/logo/resume.png": {
+  "/images/logo/todos.png": {
     "x": 168,
     "y": 1260,
     "w": 80,
     "h": 80
   },
-  "/images/logo/notes.png": {
+  "/images/logo/resume.png": {
     "x": 252,
     "y": 1260,
     "w": 80,
     "h": 80
   },
-  "/images/logo/qa.png": {
+  "/images/logo/notes.png": {
     "x": 336,
     "y": 1260,
     "w": 80,
     "h": 80
   },
-  "/images/logo/weight_tracker.png": {
+  "/images/logo/qa.png": {
     "x": 420,
     "y": 1260,
     "w": 80,
     "h": 80
   },
-  "/images/logo/bookmarks.png": {
+  "/images/logo/weight_tracker.png": {
     "x": 504,
     "y": 1260,
     "w": 80,
     "h": 80
   },
-  "/images/logo/letter.png": {
+  "/images/logo/bookmarks.png": {
     "x": 588,
     "y": 1260,
     "w": 80,
     "h": 80
   },
-  "/images/logo/season-scenery.svg": {
+  "/images/logo/letter.png": {
     "x": 0,
+    "y": 1344,
+    "w": 80,
+    "h": 80
+  },
+  "/images/logo/season-scenery.svg": {
+    "x": 84,
     "y": 1344,
     "w": 80,
     "h": 80
