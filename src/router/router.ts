@@ -1280,6 +1280,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/old-photo-caption/',
+    component: () => import('@/components/Tools/OldPhotoCaption/OldPhotoCaption.vue'),
+    name: 'oldPhotoCaption',
+    meta: {
+      title: '老照片加字',
+      keywords: '老照片加字,伟人题词,老照片,留影题字,经典老照片,图片加字,题字条带',
+      description: '上传图片，在图片上下方添加「2026年春，xx同志在xx地方留影」风格的题字条带，提供经典黑金/红底金字/黄底黑字等多种预设样式，实时预览，一键下载。',
+    }
+  },
+  {
     path: '/img-convert',
     component: () => import('@/components/Tools/ImgConverter/ImgConverter.vue'),
     name: 'img-convert',
