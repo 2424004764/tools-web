@@ -226,6 +226,30 @@ const CURRENT_DRAFT_ID_KEY = 'wechat_format_current_draft_id'
 const saveTipVisible = ref(false)
 let saveTipTimer: number | null = null
 
+// 图床列表（"更多"下拉里的二级菜单）
+const IMAGE_HOSTS = [
+  { name: 'PICUI 图床', url: 'https://picui.cn/upload', emoji: '🖼️' },
+  { name: 'MJJ图床', url: 'https://mjj.today/', emoji: '📦' },
+]
+
+// hover 触发图床子菜单的开关
+const imageHostsHover = ref(false)
+let imageHostsHideTimer: number | null = null
+const showImageHosts = () => {
+  if (imageHostsHideTimer) {
+    clearTimeout(imageHostsHideTimer)
+    imageHostsHideTimer = null
+  }
+  imageHostsHover.value = true
+}
+const scheduleHideImageHosts = () => {
+  if (imageHostsHideTimer) clearTimeout(imageHostsHideTimer)
+  imageHostsHideTimer = window.setTimeout(() => {
+    imageHostsHover.value = false
+    imageHostsHideTimer = null
+  }, 120)  // 120ms 桥接，避免鼠标从触发器移到子菜单时闪烁关闭
+}
+
 // 显示保存提示
 const showSaveTip = () => {
   saveTipVisible.value = true
@@ -1700,10 +1724,34 @@ const quickSyntaxButtons = [
             </el-button>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item>
-                  <a href="https://mjj.today/" target="_blank" rel="noopener noreferrer" class="block w-full h-full">
-                    🖼️ 图床
-                  </a>
+                <el-dropdown-item @click.stop>
+                  <div
+                    class="relative flex items-center justify-between"
+                    @mouseenter="showImageHosts"
+                    @mouseleave="scheduleHideImageHosts"
+                  >
+                    <span>🖼️ 图床</span>
+                    <span class="ml-6 text-gray-400">›</span>
+                    <!-- 二级菜单：hover 向右弹出 -->
+                    <div
+                      v-show="imageHostsHover"
+                      class="absolute left-full top-0 -ml-1 min-w-[180px] bg-white rounded-md shadow-lg border border-gray-200 py-1 z-50"
+                      @mouseenter="showImageHosts"
+                      @mouseleave="scheduleHideImageHosts"
+                    >
+                      <a
+                        v-for="host in IMAGE_HOSTS"
+                        :key="host.url"
+                        :href="host.url"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-blue-600"
+                      >
+                        <span class="mr-2">{{ host.emoji }}</span>
+                        <span>{{ host.name }}</span>
+                      </a>
+                    </div>
+                  </div>
                 </el-dropdown-item>
                 <el-dropdown-item @click="triggerImport">
                   📥 导入 MD
