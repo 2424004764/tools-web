@@ -45,6 +45,14 @@ const tabContainerRef = ref<HTMLDivElement | null>(null)
 // 应用Tab状态
 const currentApp = ref<string | null>(null)
 const customAppData = ref<any>(null) // 存储自建应用的完整数据
+
+// 有独立 Vue 组件的命名系统应用（无需 customAppData）
+const NAMED_SYSTEM_APPS = [
+  'dream-analysis', 'city-guide', 'pet-avatar', 'blessings-generator',
+  'copywriting-assistant', 'id-photo', 'additive-hazard', 'medicine-guide',
+  'contract-risk', 'food-calorie'
+]
+const isNamedSystemApp = (appId: string) => NAMED_SYSTEM_APPS.includes(appId)
 const dreamInput = ref('')
 const dreamResult = ref('')
 const dreamStreamingContent = ref('')
@@ -403,11 +411,24 @@ const switchImageMode = (mode: 'single' | 'double') => {
 const selectApp = (app: string, appData?: any) => {
   currentApp.value = app
   customAppData.value = appData || null
+
+  // 同步URL：保留其他query参数，只更新/添加 app
+  router.replace({
+    query: {
+      ...route.query,
+      app
+    }
+  })
 }
 
 const backToAppList = () => {
   currentApp.value = null
   customAppData.value = null
+
+  // 同步URL：删除 app 参数
+  const newQuery = { ...route.query }
+  delete newQuery.app
+  router.replace({ query: newQuery })
 }
 
 const analyzeDream = async () => {
@@ -2317,6 +2338,12 @@ onMounted(() => {
     activeTab.value = tabFromUrl as any
   }
 
+  // 从URL恢复应用状态：?app=xxx
+  const appFromUrl = route.query.app as string
+  if (appFromUrl) {
+    currentApp.value = appFromUrl
+  }
+
   // AI对话默认创建一个会话
   if (chatSessions.value.length === 0) {
     createNewSession()
@@ -2814,10 +2841,16 @@ const generateImageToVideo = async () => {
           <AppsTab
             v-if="activeTab === 'apps'"
             :currentApp="currentApp"
+            :initialAppId="currentApp"
             @select-app="selectApp"
             @back-to-list="backToAppList"
           >
             <template #default="{ app }">
+              <!-- 应用加载中：仅对非命名应用生效（命名应用直接用专属组件渲染） -->
+              <div v-if="app && !customAppData && !isNamedSystemApp(app)" class="flex justify-center items-center py-12 text-gray-500">
+                加载应用中...
+              </div>
+
               <!-- 解梦应用 -->
               <DreamAnalysisApp
                 v-if="app === 'dream-analysis'"

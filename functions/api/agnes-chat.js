@@ -32,13 +32,14 @@ export async function onRequest(context) {
       body: body
     })
 
-    const result = await response.text()
-
-    return new Response(result, {
+    // 流式透传：直接将上游 ReadableStream 转发给客户端，不缓存
+    return new Response(response.body, {
       status: response.status,
       headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
+        'Content-Type': response.headers.get('Content-Type') || 'text/event-stream',
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive'
       }
     })
   } catch (error) {

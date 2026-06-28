@@ -91,7 +91,7 @@ export async function onRequest(context) {
       // 获取应用列表
       let query = `
         SELECT id, name, icon, title, description, category,
-               gradient_from, gradient_to, border_color, sort_order, app_type
+               gradient_from, gradient_to, border_color, sort_order, app_type, system_prompt
         FROM ai_apps
         WHERE status = 1 AND (app_type = 'system'
       `
