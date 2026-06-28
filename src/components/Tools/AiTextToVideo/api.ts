@@ -217,7 +217,8 @@ export async function editImage(options: ImageToImageOptions): Promise<string[]>
 // AI对话（流式）
 export async function chatStream(
   options: ChatOptions,
-  onChunk: (content: string) => void
+  onChunk: (content: string) => void,
+  signal?: AbortSignal
 ): Promise<string> {
   const response = await fetch('/api/agnes-chat', {
     method: 'POST',
@@ -229,7 +230,8 @@ export async function chatStream(
       model: options.model,
       messages: options.messages,
       stream: true
-    })
+    }),
+    signal
   })
 
   if (!response.ok) {
@@ -245,6 +247,11 @@ export async function chatStream(
   let fullContent = ''
 
   while (true) {
+    // 中断检测
+    if (signal?.aborted) {
+      try { reader.cancel() } catch {}
+      throw new DOMException('用户中止了请求', 'AbortError')
+    }
     const { done, value } = await reader.read()
     if (done) break
 

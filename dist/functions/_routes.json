@@ -33,7 +33,9 @@
     "/api/mock/*",
     "/api/letters",
     "/api/letters/*",
-    "/api/letter/*"
+    "/api/letter/*",
+    "/api/favorite-apps",
+    "/api/favorite-apps/*"
   ],
   "exclude": []
 }
