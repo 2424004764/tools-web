@@ -48,14 +48,23 @@
 
       <div class="flex gap-3">
         <button
+          v-if="!isQuerying"
           @click="handleSubmit"
-          :disabled="!userInput.trim() || isQuerying"
+          :disabled="!userInput.trim()"
           class="flex-1 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
         >
-          {{ isQuerying ? '思考中...' : '发送 (Ctrl+Enter)' }}
+          发送 (Ctrl+Enter)
         </button>
         <button
-          v-if="chatMessages.length > 0"
+          v-else
+          @click="handleStop"
+          class="flex-1 px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center justify-center gap-2"
+        >
+          <span class="inline-block w-3 h-3 bg-white rounded-sm"></span>
+          停止生成
+        </button>
+        <button
+          v-if="chatMessages.length > 0 && !isQuerying"
           @click="clearHistory"
           class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
         >
@@ -71,7 +80,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as agnesApi from './api'
 import MarkdownIt from 'markdown-it'
@@ -93,6 +102,7 @@ const userInput = ref('')
 const chatMessages = ref<Array<{ role: 'user' | 'assistant'; content: string }>>([])
 const streamingContent = ref('')
 const isQuerying = ref(false)
+const abortController = ref<AbortController | null>(null)
 
 const md = new MarkdownIt()
 
@@ -123,6 +133,10 @@ const handleSubmit = async () => {
   isQuerying.value = true
   streamingContent.value = ''
 
+  // 创建中止控制器
+  const controller = new AbortController()
+  abortController.value = controller
+
   try {
     let result: string
     const isFollowUp = chatMessages.value.length > 1
@@ -142,7 +156,8 @@ const handleSubmit = async () => {
         },
         (content) => {
           streamingContent.value = content
-        }
+        },
+        controller.signal
       )
     } else {
       // 首次查询：系统提示词作为system消息，用户输入作为user消息
@@ -165,7 +180,8 @@ const handleSubmit = async () => {
         },
         (content) => {
           streamingContent.value = content
-        }
+        },
+        controller.signal
       )
     }
 
@@ -177,12 +193,33 @@ const handleSubmit = async () => {
 
     ElMessage.success('回答完成')
   } catch (error: any) {
-    // 移除失败的用户消息
-    chatMessages.value.pop()
-    ElMessage.error('查询失败: ' + (error.message || '未知错误'))
+    if (error?.name === 'AbortError') {
+      // 用户主动中止：保留已生成的内容（如果有）
+      if (streamingContent.value.trim()) {
+        chatMessages.value.push({
+          role: 'assistant',
+          content: streamingContent.value + '\n\n[已停止生成]'
+        })
+      } else {
+        // 中止时还没内容，移除刚加入的用户消息
+        chatMessages.value.pop()
+      }
+      ElMessage.info('已停止生成')
+    } else {
+      // 移除失败的用户消息
+      chatMessages.value.pop()
+      ElMessage.error('查询失败: ' + (error.message || '未知错误'))
+    }
   } finally {
     isQuerying.value = false
     streamingContent.value = ''
+    abortController.value = null
+  }
+}
+
+const handleStop = () => {
+  if (abortController.value) {
+    abortController.value.abort()
   }
 }
 
@@ -192,6 +229,13 @@ const clearHistory = () => {
   userInput.value = ''
   ElMessage.success('历史已清空')
 }
+
+// 组件卸载时若正在请求则中止
+onBeforeUnmount(() => {
+  if (abortController.value) {
+    abortController.value.abort()
+  }
+})
 </script>
 
 <style scoped>

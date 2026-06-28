@@ -13,7 +13,7 @@
         </button>
       </div>
 
-      <!-- 分类菜单：系统应用 / 我的应用 -->
+      <!-- 分类菜单：系统应用 / 我的应用 / 收藏 -->
       <div class="flex items-center gap-1 mb-4 border-b border-gray-200">
         <button
           @click="activeCategory = 'system'"
@@ -39,6 +39,18 @@
           我的应用
           <span class="ml-1 text-xs text-gray-400">({{ customApps.length }})</span>
         </button>
+        <button
+          @click="activeCategory = 'favorites'"
+          :class="[
+            'px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px',
+            activeCategory === 'favorites'
+              ? 'text-blue-600 border-blue-500'
+              : 'text-gray-600 border-transparent hover:text-gray-800'
+          ]"
+        >
+          <span class="mr-1">♥</span>收藏
+          <span class="ml-1 text-xs text-gray-400">({{ favoriteApps.length }})</span>
+        </button>
       </div>
 
       <!-- 加载状态 -->
@@ -61,13 +73,48 @@
               :key="app.id"
               @click="selectApp(app)"
               :class="[
-                'p-4 rounded-xl border-2 border-transparent cursor-pointer transition-all hover:shadow-lg',
+                'relative p-4 rounded-xl border-2 border-transparent cursor-pointer transition-all hover:shadow-lg',
                 `bg-gradient-to-br from-${app.gradient_from} to-${app.gradient_to}`,
                 `hover:border-${app.border_color}`
               ]"
             >
-              <div class="flex items-center gap-2 mb-2">
-                <div class="text-2xl">{{ app.icon }}</div>
+              <!-- 收藏按钮 -->
+              <button
+                @click.stop="toggleFavorite(app)"
+                :disabled="favoriteLoading[app.id]"
+                :class="[
+                  'absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center leading-none text-base transition-all',
+                  isFavorited(app.id)
+                    ? 'bg-red-500 text-white hover:bg-red-600'
+                    : 'bg-white/70 text-gray-500 hover:bg-white hover:text-red-500'
+                ]"
+                :title="isFavorited(app.id) ? '取消收藏' : '收藏'"
+              >
+                <span v-if="favoriteLoading[app.id]" class="block w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
+                <svg
+                  v-else
+                  class="w-4 h-4"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    v-if="isFavorited(app.id)"
+                    d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+                  />
+                  <path
+                    v-else
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3z"
+                  />
+                </svg>
+              </button>
+              <div class="flex items-center gap-2 mb-2 pr-8">
+                <div class="text-2xl leading-none">{{ app.icon }}</div>
                 <h3 class="text-base font-bold text-gray-800">{{ app.title }}</h3>
               </div>
               <p class="text-xs text-gray-600">{{ app.description }}</p>
@@ -92,13 +139,49 @@
             >
               <div @click="selectApp(app)">
                 <div class="flex items-center gap-2 mb-2">
-                  <div class="text-2xl">{{ app.icon }}</div>
+                  <div class="text-2xl leading-none">{{ app.icon }}</div>
                   <h3 class="text-base font-bold text-gray-800">{{ app.title }}</h3>
                 </div>
                 <p class="text-xs text-gray-600">{{ app.description }}</p>
               </div>
+              <!-- 收藏按钮（始终可见） -->
+              <button
+                @click.stop="toggleFavorite(app)"
+                :disabled="favoriteLoading[app.id]"
+                :class="[
+                  'absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center leading-none text-base transition-all',
+                  isFavorited(app.id)
+                    ? 'bg-red-500 text-white hover:bg-red-600'
+                    : 'bg-white/70 text-gray-500 hover:bg-white hover:text-red-500',
+                  'opacity-0 group-hover:opacity-100'
+                ]"
+                :title="isFavorited(app.id) ? '取消收藏' : '收藏'"
+              >
+                <span v-if="favoriteLoading[app.id]" class="block w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
+                <svg
+                  v-else
+                  class="w-4 h-4"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    v-if="isFavorited(app.id)"
+                    d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+                  />
+                  <path
+                    v-else
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3z"
+                  />
+                </svg>
+              </button>
               <!-- 操作按钮 -->
-              <div class="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div class="absolute top-9 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
                   @click.stop="editApp(app)"
                   class="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-blue-600"
@@ -119,6 +202,52 @@
           <div v-else class="py-12 text-center text-gray-500 text-sm">
             <template v-if="!isLoggedIn">登录后可以创建自己的AI应用</template>
             <template v-else>还没有创建过应用，点击右上角「➕ 创建应用」开始吧</template>
+          </div>
+        </div>
+
+        <!-- 收藏应用 -->
+        <div v-else-if="activeCategory === 'favorites'">
+          <div v-if="!isLoggedIn" class="py-12 text-center text-gray-500 text-sm">
+            登录后查看你的收藏应用
+          </div>
+          <div v-else-if="favoriteApps.length > 0" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+            <div
+              v-for="app in favoriteApps"
+              :key="app.id"
+              :class="[
+                'relative p-4 rounded-xl border-2 border-transparent cursor-pointer transition-all hover:shadow-lg group',
+                `bg-gradient-to-br from-${app.gradient_from} to-${app.gradient_to}`,
+                `hover:border-${app.border_color}`
+              ]"
+            >
+              <div @click="selectApp(app)">
+                <div class="flex items-center gap-2 mb-2 pr-8">
+                  <div class="text-2xl leading-none">{{ app.icon }}</div>
+                  <h3 class="text-base font-bold text-gray-800">{{ app.title }}</h3>
+                </div>
+                <p class="text-xs text-gray-600">{{ app.description }}</p>
+              </div>
+              <button
+                @click.stop="toggleFavorite(app)"
+                :disabled="favoriteLoading[app.id]"
+                class="absolute top-2 right-2 w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center leading-none text-base hover:bg-red-600 transition-all"
+                title="取消收藏"
+              >
+                <span v-if="favoriteLoading[app.id]" class="block w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
+                <svg
+                  v-else
+                  class="w-4 h-4"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div v-else class="py-12 text-center text-gray-500 text-sm">
+            还没有收藏任何应用，点击系统应用或我的应用右上角的 ♡ 进行收藏
           </div>
         </div>
       </div>
@@ -310,14 +439,104 @@ const isCreating = ref(false)
 const showIconPicker = ref(false)
 const isEditMode = ref(false)
 const editingAppId = ref('')
-const activeCategory = ref<'system' | 'custom'>('system')
+const activeCategory = ref<'system' | 'custom' | 'favorites'>('system')
+
+// 收藏相关
+const favoriteIds = ref<Set<string>>(new Set())
+const favoriteLoading = ref<Record<string, boolean>>({})
 
 // 是否已登录
 const isLoggedIn = computed(() => !!userStore.user?.uid)
 
+// 判断应用是否已收藏
+const isFavorited = (appId: string) => favoriteIds.value.has(appId)
+
+// 加载当前用户的收藏ID列表
+const loadFavoriteIds = async () => {
+  const token = getLocalToken()
+  if (!token) {
+    favoriteIds.value = new Set()
+    return
+  }
+
+  try {
+    const response = await fetch('/api/favorite-apps?ids=1', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    const result = await response.json()
+    if (result.success && Array.isArray(result.data)) {
+      favoriteIds.value = new Set(result.data)
+    }
+  } catch (err) {
+    console.error('加载收藏列表失败:', err)
+  }
+}
+
+// 切换收藏状态
+const toggleFavorite = async (app: AiApp) => {
+  if (!isLoggedIn.value) {
+    ElMessage.warning('请先登录后再收藏')
+    return
+  }
+
+  const token = getLocalToken()
+  if (!token) return
+
+  const wasFavorited = isFavorited(app.id)
+  favoriteLoading.value[app.id] = true
+
+  // 乐观更新
+  const next = new Set(favoriteIds.value)
+  if (wasFavorited) {
+    next.delete(app.id)
+  } else {
+    next.add(app.id)
+  }
+  favoriteIds.value = next
+
+  try {
+    if (wasFavorited) {
+      // 取消收藏
+      const response = await fetch(`/api/favorite-apps?app_id=${encodeURIComponent(app.id)}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      const result = await response.json()
+      if (!result.success) throw new Error(result.error || '取消收藏失败')
+    } else {
+      // 添加收藏
+      const response = await fetch('/api/favorite-apps', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ app_id: app.id })
+      })
+      const result = await response.json()
+      if (!result.success) throw new Error(result.error || '收藏失败')
+    }
+  } catch (err: any) {
+    // 回滚乐观更新
+    const rollback = new Set(favoriteIds.value)
+    if (wasFavorited) {
+      rollback.add(app.id)
+    } else {
+      rollback.delete(app.id)
+    }
+    favoriteIds.value = rollback
+    ElMessage.error(err.message || '操作失败')
+  } finally {
+    favoriteLoading.value[app.id] = false
+  }
+}
+
 // 系统应用和自建应用
 const systemApps = computed(() => apps.value.filter(app => app.app_type === 'system'))
 const customApps = computed(() => apps.value.filter(app => app.app_type === 'custom'))
+const favoriteApps = computed(() =>
+  apps.value.filter(app => favoriteIds.value.has(app.id))
+)
 
 // 图标预设
 const iconPresets = [
@@ -481,6 +700,9 @@ const loadApps = async () => {
     if (result.success) {
       apps.value = result.data
 
+      // 加载当前用户的收藏ID列表
+      loadFavoriteIds()
+
       // 刷新后恢复：URL 里指定的 app，加载完后自动选中
       if (props.initialAppId) {
         const found = apps.value.find((a: AiApp) => a.name === props.initialAppId)
@@ -573,6 +795,10 @@ const deleteApp = async (appId: string) => {
 
     if (result.success) {
       ElMessage.success('应用已删除')
+      // 本地收藏集合中同步移除（无需调DELETE，后端已级联或该app_id已失效）
+      const next = new Set(favoriteIds.value)
+      next.delete(appId)
+      favoriteIds.value = next
       await loadApps()
     } else {
       ElMessage.error(result.error || '删除失败')

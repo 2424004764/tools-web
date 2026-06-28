@@ -269,6 +269,10 @@ export default defineConfig(({command, mode}) => {
           target: 'http://127.0.0.1:8788',
           changeOrigin: true,
         },
+        '/api/favorite-apps': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
         '/s/': {
           target: 'http://127.0.0.1:8788',
           changeOrigin: true,
