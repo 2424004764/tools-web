@@ -5,11 +5,39 @@
       <div class="flex items-center justify-between mb-4">
         <h2 class="text-xl font-bold text-gray-800">AI应用中心</h2>
         <button
-          v-if="isLoggedIn"
+          v-if="isLoggedIn && activeCategory === 'custom'"
           @click="showCreateDialog = true"
           class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
         >
           ➕ 创建应用
+        </button>
+      </div>
+
+      <!-- 分类菜单：系统应用 / 我的应用 -->
+      <div class="flex items-center gap-1 mb-4 border-b border-gray-200">
+        <button
+          @click="activeCategory = 'system'"
+          :class="[
+            'px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px',
+            activeCategory === 'system'
+              ? 'text-blue-600 border-blue-500'
+              : 'text-gray-600 border-transparent hover:text-gray-800'
+          ]"
+        >
+          系统应用
+          <span class="ml-1 text-xs text-gray-400">({{ systemApps.length }})</span>
+        </button>
+        <button
+          @click="activeCategory = 'custom'"
+          :class="[
+            'px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px',
+            activeCategory === 'custom'
+              ? 'text-blue-600 border-blue-500'
+              : 'text-gray-600 border-transparent hover:text-gray-800'
+          ]"
+        >
+          我的应用
+          <span class="ml-1 text-xs text-gray-400">({{ customApps.length }})</span>
         </button>
       </div>
 
@@ -26,9 +54,8 @@
       <!-- 应用网格 -->
       <div v-else>
         <!-- 系统应用 -->
-        <div v-if="systemApps.length > 0">
-          <h3 class="text-sm font-semibold text-gray-600 mb-3">系统应用</h3>
-          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+        <div v-if="activeCategory === 'system'">
+          <div v-if="systemApps.length > 0" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
             <div
               v-for="app in systemApps"
               :key="app.id"
@@ -46,12 +73,14 @@
               <p class="text-xs text-gray-600">{{ app.description }}</p>
             </div>
           </div>
+          <div v-else class="py-12 text-center text-gray-500 text-sm">
+            暂无系统应用
+          </div>
         </div>
 
         <!-- 我的应用 -->
-        <div v-if="customApps.length > 0" class="mt-6">
-          <h3 class="text-sm font-semibold text-gray-600 mb-3">我的应用</h3>
-          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+        <div v-else-if="activeCategory === 'custom'">
+          <div v-if="customApps.length > 0" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
             <div
               v-for="app in customApps"
               :key="app.id"
@@ -87,11 +116,10 @@
               </div>
             </div>
           </div>
-        </div>
-
-        <!-- 未登录提示 -->
-        <div v-if="!isLoggedIn && customApps.length === 0" class="mt-6 p-4 bg-gray-50 rounded-lg text-center text-gray-600 text-sm">
-          登录后可以创建自己的AI应用
+          <div v-else class="py-12 text-center text-gray-500 text-sm">
+            <template v-if="!isLoggedIn">登录后可以创建自己的AI应用</template>
+            <template v-else>还没有创建过应用，点击右上角「➕ 创建应用」开始吧</template>
+          </div>
         </div>
       </div>
     </div>
@@ -248,6 +276,7 @@ import { getLocalToken } from '@/utils/user'
 
 interface Props {
   currentApp: string | null
+  initialAppId?: string | null
 }
 
 interface AiApp {
@@ -265,7 +294,7 @@ interface AiApp {
   system_prompt?: string
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 
 const emit = defineEmits<{
   'select-app': [app: string, appData?: AiApp]
@@ -281,6 +310,7 @@ const isCreating = ref(false)
 const showIconPicker = ref(false)
 const isEditMode = ref(false)
 const editingAppId = ref('')
+const activeCategory = ref<'system' | 'custom'>('system')
 
 // 是否已登录
 const isLoggedIn = computed(() => !!userStore.user?.uid)
@@ -450,6 +480,18 @@ const loadApps = async () => {
 
     if (result.success) {
       apps.value = result.data
+
+      // 刷新后恢复：URL 里指定的 app，加载完后自动选中
+      if (props.initialAppId) {
+        const found = apps.value.find((a: AiApp) => a.name === props.initialAppId)
+        if (found) {
+          // 异步执行 selectApp，不阻塞 loadApps 返回
+          selectApp(found)
+        } else {
+          // URL 里的 app 不存在，回到列表
+          emit('back-to-list')
+        }
+      }
     } else {
       error.value = result.error || '加载应用列表失败'
     }
@@ -570,8 +612,8 @@ const selectApp = async (app: AiApp) => {
       ElMessage.error('网络错误')
     }
   } else {
-    // 系统应用直接发送
-    emit('select-app', app.name)
+    // 系统应用：列表接口已返回 system_prompt，直接传递
+    emit('select-app', app.name, app)
   }
 }
 
