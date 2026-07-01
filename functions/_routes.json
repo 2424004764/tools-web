@@ -35,7 +35,13 @@
     "/api/letters/*",
     "/api/letter/*",
     "/api/favorite-apps",
-    "/api/favorite-apps/*"
+    "/api/favorite-apps/*",
+    "/api/ai-providers",
+    "/api/ai-providers/*",
+    "/api/ai-models",
+    "/api/ai-models/*",
+    "/api/ai-proxy",
+    "/api/open-providers"
   ],
   "exclude": []
 }

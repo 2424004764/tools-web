@@ -23,7 +23,7 @@
         </label>
       </div>
       <div v-else class="relative">
-        <img :src="sourceImage" class="w-full rounded-lg shadow" />
+        <img :src="sourceImage" class="w-full max-h-48 object-contain rounded-lg shadow" />
         <button
           @click="$emit('remove')"
           :disabled="disabled"
@@ -52,6 +52,7 @@
     <div class="mb-4">
       <label class="block text-sm font-medium mb-2">修改描述</label>
       <textarea
+        id="image-to-image-prompt-input"
         :value="prompt"
         @input="$emit('update:prompt', ($event.target as HTMLTextAreaElement).value)"
         placeholder="例如：将天空改成日落，添加彩虹..."
@@ -89,6 +90,7 @@
     <div class="mb-4">
       <label class="block text-sm font-medium mb-2">图片比例</label>
       <select
+        id="image-to-image-aspect-ratio-select"
         :value="aspectRatio"
         @input="$emit('update:aspectRatio', ($event.target as HTMLSelectElement).value)"
         class="px-3 py-2 border rounded-lg text-sm"

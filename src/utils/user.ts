@@ -3,6 +3,7 @@ export interface UserInfo {
     email: string;
     avatar: string;
     username: string;
+    is_admin: number; // 0 = 普通用户，1 = 管理员；老 token 解析不到时为 undefined
     iat: number;
     exp: number;
 }

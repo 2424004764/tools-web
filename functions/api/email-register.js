@@ -75,7 +75,7 @@ export async function onRequest(context) {
     ).bind(userId, email, username, hashedPassword, salt, '', now, now).run()
 
     // 生成JWT
-    const token = await generateJWT({ uid: userId, email, username, avatar: '' }, env.JWT_SECRET)
+    const token = await generateJWT({ uid: userId, email, username, avatar: '', is_admin: 0 }, env.JWT_SECRET)
 
     return ApiResponse.success({ token, username }, request.headers.get('Origin'))
   } catch (error) {

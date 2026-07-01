@@ -46,7 +46,7 @@ export async function onRequest(context) {
       return ApiResponse.error('邮箱和密码不能为空', request.headers.get('Origin'))
     }
 
-    const user = await env.DB.prepare('SELECT id, email, username, avatar, password, salt FROM user WHERE email = ?')
+    const user = await env.DB.prepare('SELECT id, email, username, avatar, password, salt, is_admin FROM user WHERE email = ?')
       .bind(email).first()
 
     if (!user) {
@@ -72,6 +72,7 @@ export async function onRequest(context) {
         email: user.email,
         username: user.username,
         avatar: user.avatar,
+        is_admin: user.is_admin ? 1 : 0,
         iat: Math.floor(Date.now() / 1000),
         exp: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60
       },
@@ -84,7 +85,8 @@ export async function onRequest(context) {
         id: user.id,
         email: user.email,
         username: user.username,
-        avatar: user.avatar
+        avatar: user.avatar,
+        is_admin: user.is_admin ? 1 : 0
       },
       message: '登录成功'
     }, request.headers.get('Origin'))

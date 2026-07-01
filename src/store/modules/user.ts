@@ -12,7 +12,9 @@ export const useUserStore = defineStore('user', {
     // 获取用户信息
     getUserInfo: (state) => state.user,
     // 检查是否已登录
-    getLoginStatus: (state) => state.isLoggedIn
+    getLoginStatus: (state) => state.isLoggedIn,
+    // 检查是否为管理员（老 token 没有 is_admin 字段时按非管理员处理）
+    getIsAdmin: (state) => Boolean(state.user?.is_admin)
   },
   
   actions: {
