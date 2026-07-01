@@ -149,15 +149,12 @@ const handleSubmit = async () => {
       }))
 
       result = await agnesApi.chatStream(
-        {
-          apiKey: props.apiKey.trim(),
-          model: 'agnes-2.0-flash',
-          messages
-        },
+        'agnes/agnes-2.0-flash',
+        messages,
+        controller.signal,
         (content) => {
           streamingContent.value = content
-        },
-        controller.signal
+        }
       )
     } else {
       // 首次查询：系统提示词作为system消息，用户输入作为user消息
@@ -173,15 +170,12 @@ const handleSubmit = async () => {
       ]
 
       result = await agnesApi.chatStream(
-        {
-          apiKey: props.apiKey.trim(),
-          model: 'agnes-2.0-flash',
-          messages
-        },
+        'agnes/agnes-2.0-flash',
+        messages,
+        controller.signal,
         (content) => {
           streamingContent.value = content
-        },
-        controller.signal
+        }
       )
     }
 

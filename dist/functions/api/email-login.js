@@ -44,13 +44,13 @@ export async function onRequest(context) {
     }
 
     // 查询用户
-    const user = await env.DB.prepare('SELECT id, email, username, avatar FROM user WHERE email = ?').bind(email).first()
+    const user = await env.DB.prepare('SELECT id, email, username, avatar, is_admin FROM user WHERE email = ?').bind(email).first()
     if (!user) {
       return ApiResponse.error('用户不存在', request.headers.get('Origin'))
     }
 
     // 生成JWT
-    const token = await generateJWT({ uid: user.id, email: user.email, username: user.username, avatar: user.avatar || '' }, env.JWT_SECRET)
+    const token = await generateJWT({ uid: user.id, email: user.email, username: user.username, avatar: user.avatar || '', is_admin: user.is_admin ? 1 : 0 }, env.JWT_SECRET)
 
     return ApiResponse.success({ token, username: user.username }, request.headers.get('Origin'))
   } catch (error) {

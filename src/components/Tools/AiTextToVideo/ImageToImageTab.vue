@@ -41,7 +41,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed } from 'vue'
 import ImageToImageForm from './ImageToImageForm.vue'
 import ResultDisplay from './ResultDisplay.vue'
 
@@ -74,21 +74,25 @@ const emit = defineEmits<{
   'show-image-modal': [url: string, index: number]
 }>()
 
-const localModel = ref(props.model)
-const localPrompt = ref(props.prompt)
-const localStrength = ref(props.strength)
-const localAspectRatio = ref(props.aspectRatio)
-const localCount = ref(props.count)
-
-watch(() => props.model, (val) => localModel.value = val)
-watch(() => props.prompt, (val) => localPrompt.value = val)
-watch(() => props.strength, (val) => localStrength.value = val)
-watch(() => props.aspectRatio, (val) => localAspectRatio.value = val)
-watch(() => props.count, (val) => localCount.value = val)
-
-watch(localModel, (val) => emit('update:model', val))
-watch(localPrompt, (val) => emit('update:prompt', val))
-watch(localStrength, (val) => emit('update:strength', val))
-watch(localAspectRatio, (val) => emit('update:aspectRatio', val))
-watch(localCount, (val) => emit('update:count', val))
+// 直接透传 v-model，避免 ref + watch 双向同步可能丢值
+const localModel = computed({
+  get: () => props.model,
+  set: (val) => emit('update:model', val)
+})
+const localPrompt = computed({
+  get: () => props.prompt,
+  set: (val) => emit('update:prompt', val)
+})
+const localStrength = computed({
+  get: () => props.strength,
+  set: (val) => emit('update:strength', val)
+})
+const localAspectRatio = computed({
+  get: () => props.aspectRatio,
+  set: (val) => emit('update:aspectRatio', val)
+})
+const localCount = computed({
+  get: () => props.count,
+  set: (val) => emit('update:count', val)
+})
 </script>
