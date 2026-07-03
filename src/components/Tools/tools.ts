@@ -329,6 +329,15 @@ export function getToolsCate() {
           cateId: 2,
           cate: '开发运维',
         },
+        {
+          id: 27,
+          title: '阿里云 OSS 管理',
+          logo: '/images/logo/oss.png',
+          desc: '在线管理阿里云 OSS，AccessKey 加密存入 D1，STS 临时凭证直连 Bucket，支持在线编辑与 HTML 预览',
+          url: '/oss-manager/',
+          cateId: 2,
+          cate: '开发运维',
+        },
       ]
     },
     {

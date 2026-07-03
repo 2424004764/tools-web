@@ -289,6 +289,14 @@ export default defineConfig(({command, mode}) => {
           target: 'http://127.0.0.1:8788',
           changeOrigin: true,
         },
+        '/api/oss-configs': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
+        '/api/oss-sts': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
         '/s/': {
           target: 'http://127.0.0.1:8788',
           changeOrigin: true,

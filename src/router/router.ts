@@ -1378,5 +1378,15 @@ export const constantRoute = [
       keywords: '四季景色,季节变化,景点对比,风景图片,春天,夏天,秋天,冬天',
       description: '展示不同地方一年四季的变化，通过选择季节和地点，欣赏祖国大好河山的美丽景色，支持多个著名景点的四季照片对比',
     }
+  },
+  {
+    path: '/oss-manager/',
+    component: () => import('@/components/Tools/AliyunOssManager/AliyunOssManager.vue'),
+    name: 'ossManager',
+    meta: {
+      title: "阿里云 OSS 在线管理器 - STS 临时凭证 + 在线编辑 + HTML 预览",
+      keywords: '阿里云OSS,OSS管理,OSS在线编辑,STS临时凭证,AccessKey,RAM角色,Bucket,对象存储,在线编辑器,HTML预览,多Tab编辑器',
+      description: '在线管理阿里云 OSS 对象存储，支持多 Bucket 配置、AccessKey AES-GCM 加密存储、阿里云 STS 临时凭证签发、文件浏览/上传/下载/删除、多 Tab 在线编辑器（HTML/Markdown/JSON/CSS/JS 实时预览）。登录后才能保存 AccessKey 等敏感凭证。'
+    }
   }
 ]

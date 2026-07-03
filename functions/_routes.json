@@ -41,7 +41,10 @@
     "/api/ai-models",
     "/api/ai-models/*",
     "/api/ai-proxy",
-    "/api/open-providers"
+    "/api/open-providers",
+    "/api/oss-configs",
+    "/api/oss-configs/*",
+    "/api/oss-sts"
   ],
   "exclude": []
 }
