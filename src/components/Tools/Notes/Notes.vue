@@ -4,7 +4,7 @@ import functionsRequest from '@/utils/functionsRequest'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Refresh, Plus, Edit, Delete, View, Document } from '@element-plus/icons-vue'
+import { Refresh, Plus, Edit, Delete, View, Document, CopyDocument } from '@element-plus/icons-vue'
 
 interface Note {
   id: string
@@ -215,6 +215,42 @@ const resetForm = () => {
   formData.content = ''
 }
 
+// 通用复制方法：复制任意文本到剪贴板（含降级方案）
+const copyText = async (text: string, successMsg = '已复制到剪贴板') => {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text)
+    } else {
+      // 降级方案：使用 textarea + execCommand
+      const textarea = document.createElement('textarea')
+      textarea.value = text
+      textarea.style.position = 'fixed'
+      textarea.style.top = '-9999px'
+      textarea.style.left = '-9999px'
+      document.body.appendChild(textarea)
+      textarea.focus()
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
+    }
+    ElMessage.success(successMsg)
+  } catch (error) {
+    console.error('复制失败:', error)
+    ElMessage.error('复制失败，请手动复制')
+  }
+}
+
+// 复制笔记（标题 + 内容）
+const copyNote = async (note: Note) => {
+  const text = `${note.title}\n\n${note.content}`
+  await copyText(text, '已复制标题与内容')
+}
+
+// 仅复制笔记内容（不含标题）
+const copyNoteContent = async (note: Note) => {
+  await copyText(note.content, '已复制内容')
+}
+
 // 格式化时间
 const formatTime = (timeStr: string) => {
   return new Date(timeStr).toLocaleString('zh-CN')
@@ -287,7 +323,16 @@ onMounted(() => {
           <div class="note-header">
             <h4 class="note-title">{{ note.title }}</h4>
             <div class="note-actions">
-              <el-button 
+              <el-button
+                class="action-icon copy-icon"
+                size="small"
+                type="success"
+                :icon="CopyDocument"
+                @click.stop="copyNote(note)"
+                circle
+                plain
+              />
+              <el-button
                 class="action-icon"
                 size="small"
                 :icon="View"
@@ -414,7 +459,30 @@ onMounted(() => {
       >
         <div v-if="currentNote" class="detail-container">
           <div class="detail-header">
-            <h2 class="detail-title">{{ currentNote.title }}</h2>
+            <div class="detail-title-row">
+              <h2 class="detail-title">{{ currentNote.title }}</h2>
+              <div class="detail-copy-actions">
+                <el-button
+                  class="detail-copy-btn"
+                  size="default"
+                  type="success"
+                  :icon="CopyDocument"
+                  plain
+                  @click="currentNote && copyNoteContent(currentNote)"
+                >
+                  复制内容
+                </el-button>
+                <el-button
+                  class="detail-copy-btn"
+                  size="default"
+                  type="primary"
+                  :icon="CopyDocument"
+                  @click="currentNote && copyNote(currentNote)"
+                >
+                  复制全部
+                </el-button>
+              </div>
+            </div>
             <div class="detail-meta">
               <span class="meta-item">
                 <el-icon><Document /></el-icon>
@@ -694,6 +762,10 @@ onMounted(() => {
   background: rgba(245, 101, 101, 0.1);
 }
 
+.copy-icon:hover {
+  background: rgba(72, 187, 120, 0.1);
+}
+
 .note-content {
   margin-bottom: 16px;
 }
@@ -850,6 +922,36 @@ onMounted(() => {
   word-break: break-word;
   overflow-wrap: break-word;
   hyphens: auto;
+}
+
+.detail-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.detail-title-row .detail-title {
+  margin: 0;
+  flex: 1;
+}
+
+.detail-copy-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.detail-copy-btn {
+  font-weight: 500;
+  transition: transform 0.3s ease;
+}
+
+.detail-copy-btn:hover {
+  transform: translateY(-2px);
 }
 
 .detail-meta {
@@ -1010,11 +1112,27 @@ onMounted(() => {
     line-height: 1.4;
     margin-bottom: 12px;
   }
-  
+
+  .detail-title-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .detail-copy-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .detail-copy-btn {
+    flex: 1;
+    min-width: 0;
+  }
+
   .detail-meta {
     gap: 16px;
   }
-  
+
   .meta-item {
     font-size: 13px;
   }
