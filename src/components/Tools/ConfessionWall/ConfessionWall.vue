@@ -111,10 +111,28 @@ const loadGroups = async () => {
   try {
     const list = await confessionDb.getGroups()
     groups.value = list
-    // 默认选中 is_default 分组
+
+    // 优先级：URL ?group=<slug> > is_default 默认分组 > 第一个
     if (!currentGroupId.value) {
-      const def = list.find((g) => g.is_default) || list[0]
-      if (def) currentGroupId.value = def.id
+      const url = new URL(window.location.href)
+      const urlGroupSlug = url.searchParams.get('group')
+      let target: ConfessionGroup | undefined
+      if (urlGroupSlug) {
+        target = list.find((g) => g.slug === urlGroupSlug)
+        // URL slug 无效（用户输错 / 分组已删）：清理掉避免分享无效链接
+        if (!target) url.searchParams.delete('group')
+      }
+      if (!target) {
+        target = list.find((g) => g.is_default) || list[0]
+      }
+      if (target) {
+        currentGroupId.value = target.id
+        // 同步 URL：让"分享 URL"始终有效
+        if (url.searchParams.get('group') !== target.slug) {
+          url.searchParams.set('group', target.slug)
+        }
+        window.history.replaceState({}, '', url.toString())
+      }
     }
   } catch (err) {
     console.error('加载分组失败:', err)
@@ -175,6 +193,13 @@ const loadMore = async () => {
 const switchGroup = async (groupId: string) => {
   if (currentGroupId.value === groupId) return
   currentGroupId.value = groupId
+  // 同步 URL（用 slug 而非 UUID，分享链接更友好）
+  const group = groups.value.find((g) => g.id === groupId)
+  if (group) {
+    const url = new URL(window.location.href)
+    url.searchParams.set('group', group.slug)
+    window.history.replaceState({}, '', url.toString())
+  }
   // 切换分组时重订阅 message channel
   if (newMessageChannel) {
     supabase.removeChannel(newMessageChannel)
@@ -295,6 +320,14 @@ const confirmDeleteGroup = async (group: ConfessionGroup) => {
       // 当前分组被删：切到第一个剩余分组
       const fallback = groups.value.find((g) => g.id !== group.id)
       currentGroupId.value = fallback?.id || null
+      // 同步更新 URL（避免分享链接 404）
+      const url = new URL(window.location.href)
+      if (fallback) {
+        url.searchParams.set('group', fallback.slug)
+      } else {
+        url.searchParams.delete('group')
+      }
+      window.history.replaceState({}, '', url.toString())
       if (currentGroupId.value) {
         // 重新订阅 message channel
         if (newMessageChannel) {

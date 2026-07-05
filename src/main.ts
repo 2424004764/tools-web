@@ -11,6 +11,7 @@ import './styles/loading.css'
 import pinia from './store'
 import { useUserStore } from './store/modules/user'
 import { initializeAIProviders } from './spi/init'
+import { injectCloudflareAnalytics } from './utils/analytics'
 
 const app = createApp(App)
 app.use(pinia)
@@ -24,3 +25,8 @@ app.mount('#app')
 setTimeout(() => {
   initializeAIProviders()
 }, 1000)
+
+// 仅生产环境注入 Cloudflare Web Analytics（避免 HMR 把开发流量打进去）
+if (import.meta.env.PROD) {
+  injectCloudflareAnalytics()
+}
