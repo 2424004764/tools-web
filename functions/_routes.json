@@ -44,7 +44,10 @@
     "/api/open-providers",
     "/api/oss-configs",
     "/api/oss-configs/*",
-    "/api/oss-sts"
+    "/api/oss-sts",
+    "/api/confession/groups/create",
+    "/api/confession/groups/delete",
+    "/api/confession/groups/delete/*"
   ],
   "exclude": []
 }

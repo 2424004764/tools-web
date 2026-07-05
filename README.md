@@ -130,7 +130,36 @@ wrangler pages dev .
 ```
 然后会启动一个服务，之后就可以像请求functions一样的方式调用的，只是把请求地址改成本地的
 
+## Supabase 依赖的工具
+
+部分工具依赖 Supabase 实时数据库（[匿名告白墙](/confession-wall/)、[临时聊天室](/temp-chat/)、[AI五子棋](/gomoku-online/) 等）。自行部署时需要：
+
+1. 在 [supabase.com](https://supabase.com) 创建免费项目
+2. 在项目根目录 `supabase/` 下找到对应的 `.sql` 文件（如 `confession-wall.sql`），复制内容到 Supabase SQL Editor 执行
+3. 在 `.env.production` 中填入 `VITE_SUPABASE_URL` 和 `VITE_SUPABASE_ANON_KEY`
+4. 重新构建部署
+
+> 注：未配置 Supabase 的工具会正常显示，但涉及实时功能的工具会显示配置引导页。
+
+### 告白墙管理员配置
+
+**普通用户无需任何操作**——发告白、点赞、送抱抱都是完全匿名的，不需要登录。
+
+只有当你想**创建或删除分组**时才需要成为管理员。执行完 `confession-wall.sql` 后，**在 Cloudflare D1 把你的账号设为管理员**：
+
+```bash
+wrangler d1 execute tools-web-db --command \
+  "UPDATE user SET is_admin = 1 WHERE email = 'your-email@example.com'"
+```
+
+然后用项目自身的登录系统（`/login`）登录后访问 `/confession-wall/`，右上角显示 🔑 标识即代表管理员，可创建/删除分组。
+
+> ⚠️ 管理员判断依据项目自身的 D1 `user.is_admin` 字段，**不在 Supabase 维护名单**。详见 [.claude/project/confession-wall-auth.md](.claude/project/confession-wall-auth.md)。
+>
+> 普通用户**仍可**匿名发布告白、点赞、送抱抱；管理员权限仅用于管理分组。
+
 ## 功能开发日志
+- 2026-07-05 新增匿名告白墙
 - 2025年8月2日 新增文生图
 - 2025年8月5日 新增cron表达式生成器
 - 2025年8月6日 新增二维码识别、文件大小转换、贪吃蛇小游戏、记忆力翻牌、俄罗斯方块小游戏、打地鼠小游戏功能
@@ -275,6 +304,7 @@ wrangler pages dev .
 - 假如你有100亿
 - 数字序号记忆
 - LED 显示屏
+- 匿名告白墙
 
 ### 好物网站
 - 好物网站导航

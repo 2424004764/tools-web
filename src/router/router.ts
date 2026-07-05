@@ -503,6 +503,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/confession-wall/',
+    component: () => import('@/components/Tools/ConfessionWall/ConfessionWall.vue'),
+    name: 'ConfessionWall',
+    meta: {
+      title: '匿名告白墙',
+      keywords: '匿名,告白墙,留言墙,树洞,心情,实时互动',
+      description: '在线匿名告白墙，无需登录即可发布短消息，对他人的告白点赞或送抱抱，实时飘字互动',
+    }
+  },
+  {
     path: '/htmlentity',
     component: () => import('@/components/Tools/HtmlEntity/HtmlEntity.vue'),
     name: 'HtmlEntity',

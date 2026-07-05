@@ -131,6 +131,12 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://tool.fologde.com/confession-wall/</loc>
+    <lastmod>2026-07-05</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://tool.fologde.com/algorithm-visualization/</loc>
     <lastmod>2024-01-20</lastmod>
     <changefreq>monthly</changefreq>

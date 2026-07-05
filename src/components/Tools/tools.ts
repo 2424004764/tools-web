@@ -1001,6 +1001,15 @@ export function getToolsCate() {
           url: '/led-display/',
           cateId: 11,
           cate: '趣味互动',
+        },
+        {
+          id: 131,
+          title: '匿名告白墙',
+          logo: '/images/logo/chat.png',
+          desc: '无需登录的匿名留言墙，发布短消息并对他人的告白点赞或送抱抱，实时飘字互动',
+          url: '/confession-wall/',
+          cateId: 11,
+          cate: '趣味互动',
         }
       ]
     },

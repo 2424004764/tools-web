@@ -13,6 +13,7 @@ dist-ssr
 *.local
 .env.development
 .env.production
+.dev.vars
 .vscode
 .wrangler
 .dist/.wrangler
