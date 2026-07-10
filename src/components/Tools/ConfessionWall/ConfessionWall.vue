@@ -85,6 +85,7 @@ const configSteps = [
 
 // 实时订阅句柄
 let newMessageChannel: any = null
+let messageDeleteChannel: any = null
 let reactionChannel: any = null
 let presenceChannel: any = null
 let groupsChannel: any = null
@@ -200,13 +201,18 @@ const switchGroup = async (groupId: string) => {
     url.searchParams.set('group', group.slug)
     window.history.replaceState({}, '', url.toString())
   }
-  // 切换分组时重订阅 message channel
+  // 切换分组时重订阅 message channel + delete channel
   if (newMessageChannel) {
     supabase.removeChannel(newMessageChannel)
     newMessageChannel = null
   }
+  if (messageDeleteChannel) {
+    supabase.removeChannel(messageDeleteChannel)
+    messageDeleteChannel = null
+  }
   await loadMessages()
   setupNewMessageChannel()
+  setupMessageDeleteChannel()
 }
 
 const openCompose = () => {
@@ -329,13 +335,18 @@ const confirmDeleteGroup = async (group: ConfessionGroup) => {
       }
       window.history.replaceState({}, '', url.toString())
       if (currentGroupId.value) {
-        // 重新订阅 message channel
+        // 重新订阅 message channel + delete channel
         if (newMessageChannel) {
           supabase.removeChannel(newMessageChannel)
           newMessageChannel = null
         }
+        if (messageDeleteChannel) {
+          supabase.removeChannel(messageDeleteChannel)
+          messageDeleteChannel = null
+        }
         await loadMessages()
         setupNewMessageChannel()
+        setupMessageDeleteChannel()
       }
     }
     // 从本地数组移除被删分组（避免 UI 闪烁）
@@ -348,6 +359,47 @@ const confirmDeleteGroup = async (group: ConfessionGroup) => {
       console.error('删除分组失败:', err)
       ElMessage.error('删除失败：' + (err.message || '未知错误'))
     }
+  }
+}
+
+const confirmDeleteMessage = async (msg: ConfessionMessage) => {
+  if (!isAdmin.value) {
+    ElMessage.warning('仅管理员可删除告白')
+    return
+  }
+  const preview = (msg.content || '').slice(0, 30)
+  try {
+    await ElMessageBox.confirm(
+      `确定永久删除这条告白吗？\n\n「${msg.mood || '😊'} ${preview}${
+        (msg.content || '').length > 30 ? '...' : ''
+      }」\n\n删除后将连同所有点赞/抱抱一并清除（无法恢复）！`,
+      '删除告白',
+      {
+        confirmButtonText: '永久删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    )
+    // 乐观更新：立即从本地移除，等 Realtime DELETE 事件做最终一致性
+    messages.value = messages.value.filter((m) => m.id !== msg.id)
+    totalCount.value = Math.max(0, totalCount.value - 1)
+
+    await confessionDb.deleteMessage(msg.id)
+    ElMessage.success('告白已删除')
+    // 注：无需再手动 loadMessages() —— Supabase Realtime DELETE 事件
+    //     会推到所有客户端（messageDeleteChannel），最终一致性
+  } catch (err: any) {
+    // 用户取消 → 回滚乐观更新
+    if (err === 'cancel' || /cancel/i.test(err?.message || '')) {
+      // 这里不重置：用户取消的乐观更新已"误删"显示。最稳的做法是 reload 当前分组。
+      // 但考虑到只有管理员能看到删除按钮，且操作低频，简单 reload 也可接受。
+      await loadMessages()
+      return
+    }
+    // 真实失败：回滚 + 提示
+    await loadMessages()
+    console.error('删除告白失败:', err)
+    ElMessage.error('删除失败：' + (err?.message || '未知错误'))
   }
 }
 
@@ -441,8 +493,22 @@ const setupNewMessageChannel = () => {
   )
 }
 
+const setupMessageDeleteChannel = () => {
+  messageDeleteChannel = confessionDb.subscribeMessageDeletes(
+    (deletedId) => {
+      const idx = messages.value.findIndex((m) => m.id === deletedId)
+      if (idx !== -1) {
+        messages.value.splice(idx, 1)
+        totalCount.value = Math.max(0, totalCount.value - 1)
+      }
+    },
+    currentGroupId.value
+  )
+}
+
 const setupRealtime = () => {
   setupNewMessageChannel()
+  setupMessageDeleteChannel()
 
   reactionChannel = confessionDb.subscribeReactions((msgId, type, delta) => {
     const msg = messages.value.find((m) => m.id === msgId)
@@ -459,10 +525,12 @@ const setupRealtime = () => {
 
 const teardown = () => {
   if (newMessageChannel) supabase.removeChannel(newMessageChannel)
+  if (messageDeleteChannel) supabase.removeChannel(messageDeleteChannel)
   if (reactionChannel) supabase.removeChannel(reactionChannel)
   if (presenceChannel) supabase.removeChannel(presenceChannel)
   if (groupsChannel) supabase.removeChannel(groupsChannel)
   newMessageChannel = null
+  messageDeleteChannel = null
   reactionChannel = null
   presenceChannel = null
   groupsChannel = null
@@ -602,7 +670,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
           <span
             v-if="isAdmin"
             class="px-3 py-1 bg-amber-50 text-amber-700 rounded-full font-medium"
-            title="你是管理员，可以创建/删除分组"
+            title="你是管理员，可以创建/删除分组，也可以删除任意告白"
           >
             🔑 管理员
           </span>
@@ -646,6 +714,27 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
           class="confession-card float-in"
           :style="{ background: msg.color || '#FFE4E1' }"
         >
+          <!-- 管理员删除按钮（悬停显示） -->
+          <span
+            v-if="isAdmin"
+            class="card-delete-btn"
+            title="删除告白（管理员）"
+            @click.stop="confirmDeleteMessage(msg)"
+          >
+            <svg
+              width="10"
+              height="10"
+              viewBox="0 0 10 10"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              aria-hidden="true"
+            >
+              <line x1="2" y1="2" x2="8" y2="8" />
+              <line x1="8" y1="2" x2="2" y2="8" />
+            </svg>
+          </span>
           <div class="card-mood">{{ msg.mood || '😊' }}</div>
           <p class="card-content">{{ msg.content }}</p>
           <div class="card-footer">
@@ -863,6 +952,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
         <br>• <strong>仅分组管理需登录</strong>：复用项目自身登录系统（不是 Supabase Auth）
         <br>• <strong>管理员判断</strong>：依据项目 D1 `user.is_admin` 字段（与其他工具统一）
         <br>• <strong>创建/删除分组</strong>：经 Cloudflare Function 校验 JWT + is_admin，写入 Supabase
+        <br>• <strong>删除任意告白</strong>：管理员可删除墙上任意告白（含点赞/抱抱），其他客户端自动实时消失
         <br>• 完整鉴权架构见 <code class="bg-gray-200 px-1 rounded">.claude/project/confession-wall-auth.md</code>
         <br><br>
         <strong>实现原理：</strong>
@@ -1176,6 +1266,40 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
 }
 
 .group-delete-btn:hover {
+  background: #c53030;
+  transform: scale(1.15);
+}
+
+/* 告白卡片删除按钮：右上角，悬停卡片时显示 */
+.card-delete-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #f56565;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid white;
+  box-sizing: border-box;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.15s ease;
+  z-index: 2;
+}
+
+.card-delete-btn svg {
+  display: block;  /* 消除 svg 自身行框造成的几何偏移 */
+}
+
+.confession-card:hover .card-delete-btn {
+  opacity: 1;
+}
+
+.card-delete-btn:hover {
   background: #c53030;
   transform: scale(1.15);
 }

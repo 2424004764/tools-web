@@ -107,6 +107,19 @@ export const confessionDb = {
   },
 
   /**
+   * 删除任意告白（经 Cloudflare Function，需登录 + is_admin=1；
+   * 会级联删除该告白的所有 reactions）
+   */
+  async deleteMessage(messageId: string): Promise<void> {
+    const resp = await functionsRequest.delete(
+      `/api/confession/messages/delete?id=${encodeURIComponent(messageId)}`
+    )
+    if (!resp.data?.ok) {
+      throw new Error(resp.data?.error || '删除告白失败')
+    }
+  },
+
+  /**
    * 订阅分组列表变化（实时同步新增/删除的分组）
    */
   subscribeGroups(callback: () => void) {
@@ -306,6 +319,32 @@ export const confessionDb = {
         },
         (payload) => {
           callback(payload.new as ConfessionMessage)
+        }
+      )
+      .subscribe()
+  },
+
+  /**
+   * 订阅告白删除事件（管理员删除时其他客户端自动更新）
+   * groupId 过滤：仅当前分组内的删除事件回调，前端无需额外判断
+   */
+  subscribeMessageDeletes(
+    callback: (messageId: string) => void,
+    groupId?: string | null
+  ) {
+    const filter = groupId ? { filter: `group_id=eq.${groupId}` } : {}
+    return supabase
+      .channel('confession-message-deletes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'confession_messages',
+          ...filter,
+        },
+        (payload) => {
+          callback((payload.old as ConfessionMessage).id)
         }
       )
       .subscribe()
