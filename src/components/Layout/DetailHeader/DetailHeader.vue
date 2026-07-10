@@ -103,7 +103,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="flex flex-col sm:flex-row sm:items-center rounded-2xl bg-white p-4 mt-5 mb-5 gap-3">
+  <div class="flex flex-col sm:flex-row sm:items-center rounded-2xl bg-white border border-border-subtle p-4 mt-5 mb-5 gap-3">
     <!-- 返回按钮 -->
     <button
       @click="goBack"

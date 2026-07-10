@@ -79,7 +79,7 @@ watch(() => route.path, () => {
 
 <template>
   <div class="giscus-wrapper mt-8">
-    <div class="bg-white rounded-2xl p-6 shadow-sm">
+    <div class="bg-white rounded-2xl border border-border-subtle p-6 shadow-sm">
       <h3 class="text-body-lg font-bold text-ink-900 mb-4 flex items-center gap-2">
         <svg class="w-5 h-5" viewBox="0 0 16 16" fill="currentColor">
           <path d="M1.5 2.5A1.5 1.5 0 0 1 3 1h10a1.5 1.5 0 0 1 1.5 1.5v11A1.5 1.5 0 0 1 13 15H3a1.5 1.5 0 0 1-1.5-1.5v-11zM3 2a.5.5 0 0 0-.5.5v11a.5.5 0 0 0 .5.5h10a.5.5 0 0 0 .5-.5v-11A.5.5 0 0 0 13 2H3z"/>

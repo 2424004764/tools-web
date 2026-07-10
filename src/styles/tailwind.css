@@ -124,13 +124,13 @@
   --info-950:  20  22  28;
 }
 
-/* 中性底（Phase 1：去奶油渐变） */
+/* 中性底（Phase 1 之后调整：body 改 surface-1 给 chrome 卡片留视觉层次，body=#fafafa, card=#ffffff） */
 html, body {
   margin: 0;
   padding: 0;
 }
 body {
-  background: rgb(var(--surface-0));
+  background: rgb(var(--surface-1));
   color: rgb(var(--ink-900));
   font-family: theme('fontFamily.body');
 }

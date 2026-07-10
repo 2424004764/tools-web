@@ -13,7 +13,7 @@ onMounted(() => {
 
 <template>
   <!-- desc -->
-  <div class="mt-3 rounded-2xl bg-white p-4">
+  <div class="mt-3 rounded-2xl bg-white border border-border-subtle p-4">
     <el-divider content-position="left">{{ props.title }}</el-divider>
     <div class="m-4">
       <slot></slot>
