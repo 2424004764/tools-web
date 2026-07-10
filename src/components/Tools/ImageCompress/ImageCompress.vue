@@ -278,7 +278,7 @@ onUnmounted(() => {
     <div class="p-4 rounded-2xl bg-white">
       <!-- 压缩配置 -->
       <div class="mb-6">
-        <h3 class="text-lg font-semibold mb-4">压缩设置</h3>
+        <h3 class="text-body-lg font-semibold mb-4">压缩设置</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <!-- 智能压缩开关 -->
           <div class="flex items-center col-span-full">
@@ -288,13 +288,13 @@ onUnmounted(() => {
               id="smartCompression"
               class="mr-2"
             />
-            <label for="smartCompression" class="text-sm font-medium text-gray-700">
+            <label for="smartCompression" class="text-body-sm font-medium text-gray-700">
               智能压缩（根据文件大小自动优化质量参数）
             </label>
           </div>
           
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">压缩质量</label>
+            <label class="block text-body-sm font-medium text-gray-700 mb-2">压缩质量</label>
             <div class="flex items-center space-x-2">
               <input
                 v-model="compressionConfig.quality"
@@ -304,9 +304,9 @@ onUnmounted(() => {
                 step="0.1"
                 class="flex-1"
               />
-              <span class="text-sm text-gray-600 w-12">{{ Math.round(compressionConfig.quality * 100) }}%</span>
+              <span class="text-body-sm text-gray-600 w-12">{{ Math.round(compressionConfig.quality * 100) }}%</span>
             </div>
-            <p class="text-xs text-gray-600 mt-1">
+            <p class="text-caption text-gray-600 mt-1">
               图片将保持原始尺寸，仅调整压缩质量
             </p>
           </div>
@@ -314,9 +314,9 @@ onUnmounted(() => {
           <!-- 移除最大宽度和最大高度配置 -->
           
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
+            <label class="block text-body-sm font-medium text-gray-700 mb-2">
               转换阈值
-              <span class="text-xs text-gray-500 ml-1">(超过此大小的图片自动转换为WebP格式)</span>
+              <span class="text-caption text-gray-500 ml-1">(超过此大小的图片自动转换为WebP格式)</span>
             </label>
             <div class="space-y-2">
               <input
@@ -327,12 +327,12 @@ onUnmounted(() => {
                 step="100000"
                 class="w-full"
               />
-              <div class="flex justify-between text-xs text-gray-500">
+              <div class="flex justify-between text-caption text-gray-500">
                 <span>100KB</span>
                 <span>{{ formatFileSize(compressionConfig.convertSize) }}</span>
                 <span>10MB</span>
               </div>
-              <p class="text-xs text-gray-600">
+              <p class="text-caption text-gray-600">
                 当前设置：当图片超过 {{ formatFileSize(compressionConfig.convertSize) }} 时，自动转换为WebP格式以获得更好的压缩效果
               </p>
             </div>
@@ -345,7 +345,7 @@ onUnmounted(() => {
               id="convertToWebP"
               class="mr-2"
             />
-            <label for="convertToWebP" class="text-sm font-medium text-gray-700">转换为WebP格式</label>
+            <label for="convertToWebP" class="text-body-sm font-medium text-gray-700">转换为WebP格式</label>
           </div>
           
           <div class="flex items-center">
@@ -355,7 +355,7 @@ onUnmounted(() => {
               id="retainExif"
               class="mr-2"
             />
-            <label for="retainExif" class="text-sm font-medium text-gray-700">保留EXIF信息</label>
+            <label for="retainExif" class="text-body-sm font-medium text-gray-700">保留EXIF信息</label>
           </div>
         </div>
       </div>
@@ -363,7 +363,7 @@ onUnmounted(() => {
       <!-- 调试信息 -->
       <div v-if="debugInfo.length > 0" class="mb-6 p-4 bg-gray-100 rounded-lg">
         <h4 class="font-medium mb-2">调试信息:</h4>
-        <div class="text-xs text-gray-600 max-h-32 overflow-y-auto">
+        <div class="text-caption text-gray-600 max-h-32 overflow-y-auto">
           <div v-for="(info, index) in debugInfo" :key="index" class="mb-1">
             {{ info }}
           </div>
@@ -382,8 +382,8 @@ onUnmounted(() => {
           ]"
         >
           <div class="text-4xl mb-4">️</div>
-          <p class="text-lg font-medium text-gray-700 mb-2">拖拽图片到此处或点击选择</p>
-          <p class="text-sm text-gray-500 mb-4">支持 JPG、PNG、WebP、GIF 等格式</p>
+          <p class="text-body-lg font-medium text-gray-700 mb-2">拖拽图片到此处或点击选择</p>
+          <p class="text-body-sm text-gray-500 mb-4">支持 JPG、PNG、WebP、GIF 等格式</p>
           <input
             type="file"
             multiple
@@ -404,7 +404,7 @@ onUnmounted(() => {
       <!-- 原始图片列表 -->
       <div v-if="originalImages.length > 0" class="mb-6">
         <div class="flex justify-between items-center mb-4">
-          <h3 class="text-lg font-semibold">待压缩图片 ({{ originalImages.length }})</h3>
+          <h3 class="text-body-lg font-semibold">待压缩图片 ({{ originalImages.length }})</h3>
           <button
             @click="compressImages"
             :disabled="isCompressing || !Compressor"
@@ -425,18 +425,18 @@ onUnmounted(() => {
             class="border rounded-lg p-4 relative"
           >
             <div class="flex items-center justify-between mb-2">
-              <span class="text-sm font-medium text-gray-700 truncate">{{ file.name }}</span>
+              <span class="text-body-sm font-medium text-gray-700 truncate">{{ file.name }}</span>
               <button
                 @click="removeImage(index)"
-                class="text-red-500 hover:text-red-700 text-lg"
+                class="text-red-500 hover:text-red-700 text-body-lg"
               >
                 ×
               </button>
             </div>
-            <div class="text-xs text-gray-500 mb-2">{{ formatFileSize(file.size) }}</div>
-            <div class="text-xs text-gray-500 mb-2">{{ file.type }}</div>
+            <div class="text-caption text-gray-500 mb-2">{{ formatFileSize(file.size) }}</div>
+            <div class="text-caption text-gray-500 mb-2">{{ file.type }}</div>
             <!-- 压缩建议 -->
-            <div class="text-xs text-blue-600 bg-blue-50 p-2 rounded">
+            <div class="text-caption text-blue-600 bg-blue-50 p-2 rounded">
               {{ getCompressionSuggestion(file) }}
             </div>
           </div>
@@ -446,7 +446,7 @@ onUnmounted(() => {
       <!-- 压缩结果 -->
       <div v-if="compressedImages.length > 0" class="mb-6">
         <div class="flex justify-between items-center mb-4">
-          <h3 class="text-lg font-semibold">压缩结果 ({{ compressedImages.length }})</h3>
+          <h3 class="text-body-lg font-semibold">压缩结果 ({{ compressedImages.length }})</h3>
           <button
             @click="downloadAll"
             class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
@@ -469,7 +469,7 @@ onUnmounted(() => {
               />
             </div>
             
-            <div class="space-y-2 text-sm">
+            <div class="space-y-2 text-body-sm">
               <div class="flex justify-between">
                 <span class="text-gray-600">原始大小:</span>
                 <span class="font-medium">{{ formatFileSize(image.originalSize) }}</span>
@@ -485,7 +485,7 @@ onUnmounted(() => {
             </div>
             
             <!-- 显示实际使用的压缩参数 -->
-            <div v-if="image.actualQuality" class="text-xs text-gray-500 border-t pt-2 mt-2">
+            <div v-if="image.actualQuality" class="text-caption text-gray-500 border-t pt-2 mt-2">
               <div>实际质量: {{ Math.round(image.actualQuality * 100) }}%</div>
               <div>图片尺寸: {{ image.actualMaxWidth }}×{{ image.actualMaxHeight }}</div>
             </div>
@@ -545,40 +545,40 @@ onUnmounted(() => {
 
     <ToolDetail title="为什么有的图片越压缩越大？">
       <div class="space-y-3 text-gray-700">
-        <p class="text-sm leading-relaxed">
+        <p class="text-body-sm leading-relaxed">
           图片压缩后文件变大是一个常见现象，主要原因如下：
         </p>
         
         <div class="space-y-2">
           <h4 class="font-medium text-gray-800">1. 压缩质量设置过高</h4>
-          <p class="text-sm text-gray-600 pl-4">
+          <p class="text-body-sm text-gray-600 pl-4">
             如果压缩质量设置为1.0（100%），实际上没有进行任何压缩，反而可能因为格式转换导致文件变大。
           </p>
           
           <h4 class="font-medium text-gray-800">2. 尺寸限制设置不当</h4>
-          <p class="text-sm text-gray-600 pl-4">
+          <p class="text-body-sm text-gray-600 pl-4">
             如果设置的最大宽度/高度比原图尺寸还大，图片不会被缩小，反而可能因为重新编码而增大。
           </p>
           
           <h4 class="font-medium text-gray-800">3. 格式转换问题</h4>
-          <p class="text-sm text-gray-600 pl-4">
+          <p class="text-body-sm text-gray-600 pl-4">
             某些格式转换（如PNG转JPG）可能会增加文件大小，特别是当原图包含大量透明区域或简单图形时。
           </p>
           
           <h4 class="font-medium text-gray-800">4. EXIF信息保留</h4>
-          <p class="text-sm text-gray-600 pl-4">
+          <p class="text-body-sm text-gray-600 pl-4">
             保留EXIF信息（相机参数、GPS位置等）会增加文件大小，建议关闭此选项以获得更好的压缩效果。
           </p>
           
           <h4 class="font-medium text-gray-800">5. 原图已经高度压缩</h4>
-          <p class="text-sm text-gray-600 pl-4">
+          <p class="text-body-sm text-gray-600 pl-4">
             如果原图已经是高度压缩的格式（如低质量JPG），再次压缩可能无法获得更好的效果。
           </p>
         </div>
         
         <div class="bg-blue-50 p-3 rounded-lg">
           <h4 class="font-medium text-blue-800 mb-2">💡 压缩建议</h4>
-          <ul class="text-sm text-blue-700 space-y-1">
+          <ul class="text-body-sm text-blue-700 space-y-1">
             <li>• 大文件（>5MB）：质量0.5以下，最大尺寸1200×800</li>
             <li>• 中等文件（2-5MB）：质量0.6以下，最大尺寸1200×800</li>
             <li>• 小文件（<2MB）：质量0.7以下，关闭EXIF保留</li>
@@ -589,7 +589,7 @@ onUnmounted(() => {
         
         <div class="bg-yellow-50 p-3 rounded-lg">
           <h4 class="font-medium text-yellow-800 mb-2">⚠️ 注意事项</h4>
-          <ul class="text-sm text-yellow-700 space-y-1">
+          <ul class="text-body-sm text-yellow-700 space-y-1">
             <li>• 压缩质量越低，文件越小，但图片质量也越差</li>
             <li>• 尺寸压缩会改变图片分辨率，影响显示效果</li>
             <li>• 某些特殊格式的图片可能不适合压缩</li>

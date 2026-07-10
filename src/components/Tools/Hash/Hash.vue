@@ -157,7 +157,7 @@ watch(
 
       <!-- 文本摘要/HMAC -->
       <div class="mt-4">
-        <div class="mb-2 text-sm text-gray-600">
+        <div class="mb-2 text-body-sm text-gray-600">
           文本摘要/HMAC
           <el-link class="ml-2" type="primary" @click="fillExample">填充示例</el-link>
         </div>
@@ -172,16 +172,16 @@ watch(
           <el-button type="danger" @click="clearText">清空</el-button>
         </div>
         <div class="mt-3">
-          <div class="text-sm text-gray-600 mb-1">结果：</div>
+          <div class="text-body-sm text-gray-600 mb-1">结果：</div>
           <el-input v-model="state.textResult" readonly />
         </div>
       </div>
 
       <!-- 文件摘要/HMAC -->
       <div class="mt-6">
-        <div class="mb-2 text-sm text-gray-600">文件摘要/HMAC</div>
+        <div class="mb-2 text-body-sm text-gray-600">文件摘要/HMAC</div>
         <input type="file" @change="onFileChange" />
-        <div v-if="state.fileName" class="mt-2 text-xs text-gray-500">
+        <div v-if="state.fileName" class="mt-2 text-caption text-gray-500">
           文件：{{ state.fileName }}（{{ state.fileSize }} 字节 ≈ {{ (state.fileSize/1024).toFixed(2) }} KB / {{ (state.fileSize/1024/1024).toFixed(2) }} MB / {{ (state.fileSize/1024/1024/1024).toFixed(2) }} GB）
         </div>
         <div class="mt-2 flex flex-wrap gap-2 button-container">
@@ -190,7 +190,7 @@ watch(
           <el-button v-if="state.loadingFile" :loading="true" disabled>计算中</el-button>
         </div>
         <div class="mt-3">
-          <div class="text-sm text-gray-600 mb-1">结果：</div>
+          <div class="text-body-sm text-gray-600 mb-1">结果：</div>
           <el-input v-model="state.fileResult" readonly />
         </div>
       </div>

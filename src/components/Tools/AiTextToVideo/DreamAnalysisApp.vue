@@ -3,8 +3,8 @@
     <div class="flex items-center gap-3 mb-6">
       <div class="text-4xl">🌙</div>
       <div>
-        <h2 class="text-2xl font-bold text-gray-800">AI解梦</h2>
-        <p class="text-sm text-gray-600">弗洛伊德精神分析 + 周公解梦双重解析</p>
+        <h2 class="text-h2 font-bold text-gray-800">AI解梦</h2>
+        <p class="text-body-sm text-gray-600">弗洛伊德精神分析 + 周公解梦双重解析</p>
       </div>
     </div>
 
@@ -20,7 +20,7 @@
 
     <!-- 输入区 -->
     <div class="bg-white rounded-lg p-4 mb-4">
-      <label class="block text-sm font-medium text-gray-700 mb-2">
+      <label class="block text-body-sm font-medium text-gray-700 mb-2">
         {{ chatMessages.length > 0 ? '💬 继续追问' : '描述你的梦境' }}
       </label>
       <textarea
@@ -44,13 +44,13 @@
 
     <!-- 示例（仅在首次显示） -->
     <div v-if="chatMessages.length === 0 && !isAnalyzing" class="bg-white rounded-lg p-4 mb-4">
-      <p class="text-sm font-medium text-gray-700 mb-2">💡 示例梦境：</p>
+      <p class="text-body-sm font-medium text-gray-700 mb-2">💡 示例梦境：</p>
       <div class="flex flex-wrap gap-2">
         <button
           v-for="example in examples"
           :key="example"
           @click="$emit('update:modelValue', example)"
-          class="px-3 py-1 text-sm bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 transition-colors"
+          class="px-3 py-1 text-body-sm bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 transition-colors"
         >
           {{ example }}
         </button>

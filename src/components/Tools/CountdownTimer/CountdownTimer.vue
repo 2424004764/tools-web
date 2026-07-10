@@ -92,8 +92,8 @@ onBeforeUnmount(() => {
       <div class="grid gap-6 sm:grid-cols-1 lg:grid-cols-[1.2fr_1fr]">
         <div class="space-y-4">
           <div>
-            <div class="text-2xl font-semibold">倒计时设置</div>
-            <div class="mt-1 text-sm text-slate-500">输入倒计时时长，点击开始即可实时倒数，支持暂停和重置。</div>
+            <div class="text-h2 font-semibold">倒计时设置</div>
+            <div class="mt-1 text-body-sm text-slate-500">输入倒计时时长，点击开始即可实时倒数，支持暂停和重置。</div>
           </div>
 
           <el-row :gutter="16">
@@ -110,7 +110,7 @@ onBeforeUnmount(() => {
           </el-row>
 
           <div class="space-y-3">
-            <div class="text-sm font-medium text-slate-700">常用时长</div>
+            <div class="text-body-sm font-medium text-slate-700">常用时长</div>
             <div class="flex flex-wrap gap-2">
               <el-button v-for="item in [60, 180, 300, 600, 900, 1800]" :key="item" type="info" size="small" @click="applyPreset(item)">
                 {{ item >= 60 ? item / 60 + '分钟' : item + '秒' }}
@@ -120,28 +120,28 @@ onBeforeUnmount(() => {
 
           <div class="grid gap-3 sm:grid-cols-3">
             <div class="p-3 rounded-lg bg-slate-50 border border-slate-200">
-              <div class="text-xs text-slate-500">当前时长</div>
-              <div class="text-xl font-semibold text-slate-800">{{ selectedSeconds > 0 ? displayTime : '00:00' }}</div>
+              <div class="text-caption text-slate-500">当前时长</div>
+              <div class="text-h3 font-semibold text-slate-800">{{ selectedSeconds > 0 ? displayTime : '00:00' }}</div>
             </div>
             <div class="p-3 rounded-lg bg-slate-50 border border-slate-200">
-              <div class="text-xs text-slate-500">剩余时间</div>
-              <div class="text-xl font-semibold text-slate-800">{{ displayTime }}</div>
+              <div class="text-caption text-slate-500">剩余时间</div>
+              <div class="text-h3 font-semibold text-slate-800">{{ displayTime }}</div>
             </div>
             <div class="p-3 rounded-lg bg-slate-50 border border-slate-200">
-              <div class="text-xs text-slate-500">状态</div>
-              <div class="text-xl font-semibold text-slate-800">{{ isRunning ? '运行中' : isComplete ? '已结束' : '就绪' }}</div>
+              <div class="text-caption text-slate-500">状态</div>
+              <div class="text-h3 font-semibold text-slate-800">{{ isRunning ? '运行中' : isComplete ? '已结束' : '就绪' }}</div>
             </div>
           </div>
         </div>
 
         <div class="space-y-4">
           <div class="p-6 rounded-3xl bg-gradient-to-br from-blue-500 via-cyan-500 to-sky-600 text-white shadow-lg">
-            <div class="text-sm opacity-90">倒计时显示</div>
+            <div class="text-body-sm opacity-90">倒计时显示</div>
             <div class="mt-4 text-5xl font-semibold tracking-widest">{{ displayTime }}</div>
             <div class="mt-6 h-3 rounded-full bg-white/20 overflow-hidden">
               <div class="h-full bg-white transition-all" :style="{ width: progress + '%' }" />
             </div>
-            <div class="mt-3 text-xs text-white/80">已完成 {{ progress.toFixed(0) }}%</div>
+            <div class="mt-3 text-caption text-white/80">已完成 {{ progress.toFixed(0) }}%</div>
           </div>
 
           <div class="flex flex-wrap gap-3">

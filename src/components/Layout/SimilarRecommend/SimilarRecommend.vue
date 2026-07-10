@@ -30,7 +30,7 @@ const recommends = computed(() => {
 
 <template>
   <div v-if="recommends.length" class="mt-3 rounded-2xl bg-white p-4">
-    <div class="text-base font-semibold mb-2">类似功能推荐</div>
+    <div class="text-body font-semibold mb-2">类似功能推荐</div>
     <div class="flex flex-wrap gap-3">
       <a
         v-for="item in recommends"
@@ -38,7 +38,7 @@ const recommends = computed(() => {
         :href="item.url"
         target="_blank"
         rel="noopener noreferrer"
-        class="text-blue-600 hover:underline"
+        class="text-accent-600 hover:underline"
       >
         {{ item.title }}
       </a>

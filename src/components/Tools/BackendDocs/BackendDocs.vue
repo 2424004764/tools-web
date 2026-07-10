@@ -123,7 +123,7 @@ const getStatusColor = (status: string) => {
     <div class="bg-white rounded-2xl p-6">
       <!-- 介绍 -->
       <div class="mb-8 text-center">
-        <h2 class="text-2xl font-bold text-gray-800 mb-3">后端开发技术栈文档</h2>
+        <h2 class="text-h2 font-bold text-gray-800 mb-3">后端开发技术栈文档</h2>
         <p class="text-gray-600">精选后端开发必备技术，从基础到实战，系统化学习路径</p>
       </div>
 
@@ -147,14 +147,14 @@ const getStatusColor = (status: string) => {
           <div class="relative p-6">
             <!-- 图标/首字母 -->
             <div :class="['w-16 h-16 rounded-xl bg-gradient-to-br ' + tech.color + ' flex items-center justify-center mb-4 shadow-lg']">
-              <span class="text-2xl font-bold text-white">{{ tech.name.charAt(0) }}</span>
+              <span class="text-h2 font-bold text-white">{{ tech.name.charAt(0) }}</span>
             </div>
 
             <!-- 名称 -->
-            <h3 class="text-xl font-bold text-gray-800 mb-2">{{ tech.name }}</h3>
+            <h3 class="text-h3 font-bold text-gray-800 mb-2">{{ tech.name }}</h3>
 
             <!-- 描述 -->
-            <p class="text-gray-600 text-sm mb-4">{{ tech.desc }}</p>
+            <p class="text-gray-600 text-body-sm mb-4">{{ tech.desc }}</p>
 
             <!-- 状态标签 -->
             <div class="flex items-center justify-between">

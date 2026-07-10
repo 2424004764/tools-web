@@ -3,8 +3,8 @@
     <div class="flex items-center gap-3 mb-6">
       <div class="text-4xl">💊</div>
       <div>
-        <h2 class="text-2xl font-bold text-gray-800">药品说明书解读</h2>
-        <p class="text-sm text-gray-600">拍照上传或输入药品名称，获取通俗易懂的用药指导</p>
+        <h2 class="text-h2 font-bold text-gray-800">药品说明书解读</h2>
+        <p class="text-body-sm text-gray-600">拍照上传或输入药品名称，获取通俗易懂的用药指导</p>
       </div>
     </div>
 
@@ -20,12 +20,12 @@
 
     <!-- 上传说明书照片 -->
     <div class="bg-white rounded-lg p-4 mb-4">
-      <label class="block text-sm font-medium text-gray-700 mb-3">📸 拍照上传说明书（推荐）</label>
+      <label class="block text-body-sm font-medium text-gray-700 mb-3">📸 拍照上传说明书（推荐）</label>
 
       <div v-if="!uploadedImage" class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-green-400 transition-colors cursor-pointer" @click="triggerUpload">
         <div class="text-4xl mb-2">📷</div>
-        <p class="text-sm text-gray-600 mb-2">点击拍照或上传药品说明书</p>
-        <p class="text-xs text-gray-400">支持 JPG、PNG 格式，拍摄清晰可见的说明书文字</p>
+        <p class="text-body-sm text-gray-600 mb-2">点击拍照或上传药品说明书</p>
+        <p class="text-caption text-gray-400">支持 JPG、PNG 格式，拍摄清晰可见的说明书文字</p>
         <input
           ref="fileInputRef"
           type="file"
@@ -49,7 +49,7 @@
 
     <!-- 输入区 -->
     <div class="bg-white rounded-lg p-4 mb-4">
-      <label class="block text-sm font-medium text-gray-700 mb-2">
+      <label class="block text-body-sm font-medium text-gray-700 mb-2">
         {{ chatMessages.length > 0 ? '💬 继续追问' : '📝 或直接输入药品名称' }}
       </label>
       <div class="flex gap-2">
@@ -73,13 +73,13 @@
 
     <!-- 常见药品快捷查询（仅在首次显示） -->
     <div v-if="chatMessages.length === 0 && !isQuerying" class="bg-white rounded-lg p-4 mb-4">
-      <p class="text-sm font-medium text-gray-700 mb-2">💊 常见药品：</p>
+      <p class="text-body-sm font-medium text-gray-700 mb-2">💊 常见药品：</p>
       <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
         <button
           v-for="medicine in commonMedicines"
           :key="medicine"
           @click="$emit('update:modelValue', medicine)"
-          class="px-3 py-2 text-sm bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors text-left"
+          class="px-3 py-2 text-body-sm bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors text-left"
         >
           {{ medicine }}
         </button>
@@ -88,8 +88,8 @@
 
     <!-- 安全提示 -->
     <div v-if="chatMessages.length > 0 && !isQuerying" class="bg-red-50 border border-red-200 rounded-lg p-3">
-      <div class="flex items-start gap-2 text-sm text-red-800">
-        <span class="text-lg flex-shrink-0">⚠️</span>
+      <div class="flex items-start gap-2 text-body-sm text-red-800">
+        <span class="text-body-lg flex-shrink-0">⚠️</span>
         <div>
           <p class="font-medium mb-1">重要提示：</p>
           <p>本信息仅供参考，不能替代医生诊断。用药前请咨询医生或药师，严格按照医嘱和说明书用药。</p>

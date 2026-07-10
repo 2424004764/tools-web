@@ -1,10 +1,10 @@
 <template>
   <div class="space-y-4">
     <div class="flex items-center justify-between mb-4">
-      <h2 class="text-xl font-bold text-gray-800">⚙️ 模型配置</h2>
+      <h2 class="text-h3 font-bold text-gray-800">⚙️ 模型配置</h2>
       <button
         @click="showCreateProvider = true"
-        class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm"
+        class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-body-sm"
       >
         ➕ 新建厂商
       </button>
@@ -13,11 +13,11 @@
     <div class="flex gap-4">
       <!-- 左侧厂商列表 -->
       <div class="w-56 flex-shrink-0">
-        <div class="text-xs font-semibold text-gray-500 mb-2 px-2">
+        <div class="text-caption font-semibold text-gray-500 mb-2 px-2">
           厂商列表 ({{ providers.length }})
         </div>
-        <div v-if="loadingProviders" class="text-center py-4 text-gray-400 text-sm">加载中...</div>
-        <div v-else-if="providers.length === 0" class="text-center py-4 text-gray-400 text-sm">
+        <div v-if="loadingProviders" class="text-center py-4 text-gray-400 text-body-sm">加载中...</div>
+        <div v-else-if="providers.length === 0" class="text-center py-4 text-gray-400 text-body-sm">
           暂无厂商
         </div>
         <div v-else class="space-y-1">
@@ -26,7 +26,7 @@
             :key="p.id"
             @click="selectProvider(p)"
             :class="[
-              'w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2',
+              'w-full text-left px-3 py-2 rounded-lg text-body-sm transition-colors flex items-center gap-2',
               selectedProvider?.id === p.id
                 ? 'bg-blue-500 text-white'
                 : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
@@ -37,7 +37,7 @@
             <span
               v-if="!p.is_public"
               :class="[
-                'text-xs px-1.5 py-0.5 rounded',
+                'text-caption px-1.5 py-0.5 rounded',
                 selectedProvider?.id === p.id
                   ? 'bg-white/20 text-white'
                   : 'bg-orange-100 text-orange-600'
@@ -49,7 +49,7 @@
 
       <!-- 右侧详情 -->
       <div class="flex-1 min-w-0">
-        <div v-if="!selectedProvider" class="text-center py-12 text-gray-400 text-sm">
+        <div v-if="!selectedProvider" class="text-center py-12 text-gray-400 text-body-sm">
           ← 从左侧选择一个厂商进行配置
         </div>
 
@@ -59,56 +59,56 @@
             <div class="flex items-center justify-between mb-3">
               <h3 class="font-bold text-gray-800">
                 厂商设置
-                <span v-if="isReadOnlyProvider" class="ml-2 text-xs px-2 py-0.5 bg-orange-100 text-orange-600 rounded">系统公开（只读）</span>
-                <span v-else-if="selectedProvider.is_public && isAdminUser" class="ml-2 text-xs px-2 py-0.5 bg-blue-100 text-blue-600 rounded">系统公开</span>
+                <span v-if="isReadOnlyProvider" class="ml-2 text-caption px-2 py-0.5 bg-orange-100 text-orange-600 rounded">系统公开（只读）</span>
+                <span v-else-if="selectedProvider.is_public && isAdminUser" class="ml-2 text-caption px-2 py-0.5 bg-blue-100 text-blue-600 rounded">系统公开</span>
               </h3>
               <div class="flex gap-2">
                 <button
                   v-if="canEditSelectedProvider"
                   @click="saveProvider"
-                  class="px-3 py-1.5 bg-blue-500 text-white rounded text-xs hover:bg-blue-600"
+                  class="px-3 py-1.5 bg-blue-500 text-white rounded text-caption hover:bg-blue-600"
                 >💾 保存</button>
                 <button
                   v-if="canEditSelectedProvider && !selectedProvider.is_public"
                   @click="deleteProvider"
-                  class="px-3 py-1.5 bg-red-500 text-white rounded text-xs hover:bg-red-600"
+                  class="px-3 py-1.5 bg-red-500 text-white rounded text-caption hover:bg-red-600"
                 >🗑 删除</button>
               </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label class="text-xs text-gray-600">名称 *</label>
-                <input v-model="providerForm.name" :disabled="isReadOnlyProvider" class="w-full px-3 py-1.5 border rounded text-sm disabled:bg-gray-100" />
+                <label class="text-caption text-gray-600">名称 *</label>
+                <input v-model="providerForm.name" :disabled="isReadOnlyProvider" class="w-full px-3 py-1.5 border rounded text-body-sm disabled:bg-gray-100" />
               </div>
               <div>
-                <label class="text-xs text-gray-600">slug *</label>
-                <input v-model="providerForm.slug" disabled class="w-full px-3 py-1.5 border rounded text-sm bg-gray-100" />
+                <label class="text-caption text-gray-600">slug *</label>
+                <input v-model="providerForm.slug" disabled class="w-full px-3 py-1.5 border rounded text-body-sm bg-gray-100" />
               </div>
               <div class="md:col-span-2">
-                <label class="text-xs text-gray-600">base_url *</label>
-                <input v-model="providerForm.base_url" :disabled="isReadOnlyProvider" :placeholder="isReadOnlyProvider ? '系统公开厂商，base_url 已隐藏' : ''" class="w-full px-3 py-1.5 border rounded text-sm font-mono disabled:bg-gray-100" />
+                <label class="text-caption text-gray-600">base_url *</label>
+                <input v-model="providerForm.base_url" :disabled="isReadOnlyProvider" :placeholder="isReadOnlyProvider ? '系统公开厂商，base_url 已隐藏' : ''" class="w-full px-3 py-1.5 border rounded text-body-sm font-mono disabled:bg-gray-100" />
               </div>
               <div class="md:col-span-2">
-                <label class="text-xs text-gray-600">api_key</label>
-                <input v-model="providerForm.api_key" type="password" :disabled="isReadOnlyProvider" :placeholder="isReadOnlyProvider ? '系统公开厂商，api_key 已隐藏' : '公开厂商可由管理员填入，私有厂商必填'" class="w-full px-3 py-1.5 border rounded text-sm font-mono disabled:bg-gray-100" />
+                <label class="text-caption text-gray-600">api_key</label>
+                <input v-model="providerForm.api_key" type="password" :disabled="isReadOnlyProvider" :placeholder="isReadOnlyProvider ? '系统公开厂商，api_key 已隐藏' : '公开厂商可由管理员填入，私有厂商必填'" class="w-full px-3 py-1.5 border rounded text-body-sm font-mono disabled:bg-gray-100" />
               </div>
               <div>
-                <label class="text-xs text-gray-600">icon</label>
-                <input v-model="providerForm.icon" :disabled="isReadOnlyProvider" placeholder="🤖" class="w-full px-3 py-1.5 border rounded text-sm disabled:bg-gray-100" />
+                <label class="text-caption text-gray-600">icon</label>
+                <input v-model="providerForm.icon" :disabled="isReadOnlyProvider" placeholder="🤖" class="w-full px-3 py-1.5 border rounded text-body-sm disabled:bg-gray-100" />
               </div>
               <div v-if="isAdminUser" class="flex items-end flex-col gap-2">
-                <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                <label class="flex items-center gap-2 text-body-sm text-gray-700 cursor-pointer">
                   <input v-model="providerForm.is_public" type="checkbox" class="rounded" />
                   <span>公开给所有登录用户（可见可用）</span>
                 </label>
-                <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                <label class="flex items-center gap-2 text-body-sm text-gray-700 cursor-pointer">
                   <input v-model="providerForm.is_open" type="checkbox" class="rounded" />
                   <span>接受游客/普通用户自带 API Key</span>
                 </label>
               </div>
               <div class="md:col-span-2">
-                <label class="text-xs text-gray-600">描述</label>
-                <input v-model="providerForm.description" class="w-full px-3 py-1.5 border rounded text-sm" />
+                <label class="text-caption text-gray-600">描述</label>
+                <input v-model="providerForm.description" class="w-full px-3 py-1.5 border rounded text-body-sm" />
               </div>
             </div>
           </div>
@@ -121,10 +121,10 @@
               </h3>
               <button
                 @click="showCreateModel = true"
-                class="px-3 py-1.5 bg-green-500 text-white rounded text-xs hover:bg-green-600"
+                class="px-3 py-1.5 bg-green-500 text-white rounded text-caption hover:bg-green-600"
               >➕ 新建模型</button>
             </div>
-            <div v-if="models.length === 0" class="text-center py-4 text-gray-400 text-sm">
+            <div v-if="models.length === 0" class="text-center py-4 text-gray-400 text-body-sm">
               该厂商暂无模型
             </div>
             <div v-else class="space-y-2">
@@ -142,23 +142,23 @@
                 <div class="flex items-center justify-between">
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2">
-                      <span class="font-semibold text-sm">{{ m.name }}</span>
-                      <span class="text-xs text-gray-400 font-mono">{{ m.model_id }}</span>
-                      <span v-if="m.uid === '' && m.is_public" class="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-600 rounded">系统公开</span>
-                      <span v-else-if="m.uid === myUid" class="text-xs px-1.5 py-0.5 bg-green-100 text-green-600 rounded">我的</span>
+                      <span class="font-semibold text-body-sm">{{ m.name }}</span>
+                      <span class="text-caption text-gray-400 font-mono">{{ m.model_id }}</span>
+                      <span v-if="m.uid === '' && m.is_public" class="text-caption px-1.5 py-0.5 bg-blue-100 text-blue-600 rounded">系统公开</span>
+                      <span v-else-if="m.uid === myUid" class="text-caption px-1.5 py-0.5 bg-green-100 text-green-600 rounded">我的</span>
                     </div>
                     <div class="flex gap-1 mt-1">
                       <span
                         v-for="cap in parseArr(m.capabilities)"
                         :key="cap"
-                        class="text-xs px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded"
+                        class="text-caption px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded"
                       >{{ cap }}</span>
                     </div>
                   </div>
                   <button
                     v-if="isAdminUser || (m.uid === myUid)"
                     @click.stop="deleteModel(m)"
-                    class="ml-2 w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                    class="ml-2 w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center text-caption hover:bg-red-600"
                     title="删除"
                   >×</button>
                 </div>
@@ -171,36 +171,36 @@
             <div class="flex items-center justify-between mb-3">
               <h3 class="font-bold text-gray-800">
                 模型详情：{{ selectedModel.name }}
-                <span v-if="isReadOnlyModel" class="ml-2 text-xs px-2 py-0.5 bg-orange-100 text-orange-600 rounded">系统公开模型（只读）</span>
+                <span v-if="isReadOnlyModel" class="ml-2 text-caption px-2 py-0.5 bg-orange-100 text-orange-600 rounded">系统公开模型（只读）</span>
               </h3>
               <div class="flex gap-2">
                 <button
                   v-if="canEditSelectedModel"
                   @click="saveModel"
-                  class="px-3 py-1.5 bg-blue-500 text-white rounded text-xs hover:bg-blue-600"
+                  class="px-3 py-1.5 bg-blue-500 text-white rounded text-caption hover:bg-blue-600"
                 >💾 保存</button>
                 <button
                   @click="showTestDialog = true"
-                  class="px-3 py-1.5 bg-purple-500 text-white rounded text-xs hover:bg-purple-600"
+                  class="px-3 py-1.5 bg-purple-500 text-white rounded text-caption hover:bg-purple-600"
                 >🧪 测试调用</button>
               </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label class="text-xs text-gray-600">名称 *</label>
-                <input v-model="modelForm.name" :disabled="isReadOnlyModel" class="w-full px-3 py-1.5 border rounded text-sm disabled:bg-gray-100" />
+                <label class="text-caption text-gray-600">名称 *</label>
+                <input v-model="modelForm.name" :disabled="isReadOnlyModel" class="w-full px-3 py-1.5 border rounded text-body-sm disabled:bg-gray-100" />
               </div>
               <div>
-                <label class="text-xs text-gray-600">model_id *</label>
-                <input v-model="modelForm.model_id" :disabled="isReadOnlyModel" class="w-full px-3 py-1.5 border rounded text-sm font-mono disabled:bg-gray-100" />
+                <label class="text-caption text-gray-600">model_id *</label>
+                <input v-model="modelForm.model_id" :disabled="isReadOnlyModel" class="w-full px-3 py-1.5 border rounded text-body-sm font-mono disabled:bg-gray-100" />
               </div>
               <div class="md:col-span-2">
-                <label class="text-xs text-gray-600">model_key（不可修改）</label>
-                <input :value="selectedModel.model_key" disabled class="w-full px-3 py-1.5 border rounded text-sm bg-gray-100 font-mono" />
+                <label class="text-caption text-gray-600">model_key（不可修改）</label>
+                <input :value="selectedModel.model_key" disabled class="w-full px-3 py-1.5 border rounded text-body-sm bg-gray-100 font-mono" />
               </div>
               <div v-if="isAdminUser" class="md:col-span-2">
-                <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                <label class="flex items-center gap-2 text-body-sm text-gray-700 cursor-pointer">
                   <input
                     type="checkbox"
                     :checked="!!selectedModel.is_public"
@@ -211,12 +211,12 @@
                 </label>
               </div>
               <div class="md:col-span-2">
-                <label class="text-xs text-gray-600">能力（多选）</label>
+                <label class="text-caption text-gray-600">能力（多选）</label>
                 <div class="flex flex-wrap gap-2 mt-1">
                   <label
                     v-for="cap in ALL_CAPABILITIES"
                     :key="cap"
-                    class="flex items-center gap-1 text-xs px-2 py-1 border rounded cursor-pointer hover:bg-gray-50"
+                    class="flex items-center gap-1 text-caption px-2 py-1 border rounded cursor-pointer hover:bg-gray-50"
                     :class="[
                       modelForm.capabilities.includes(cap) ? 'bg-blue-50 border-blue-300' : '',
                       isReadOnlyModel ? 'pointer-events-none opacity-60' : ''
@@ -234,41 +234,41 @@
                 </div>
               </div>
               <div class="md:col-span-2">
-                <label class="text-xs text-gray-600">描述</label>
-                <input v-model="modelForm.description" :disabled="isReadOnlyModel" class="w-full px-3 py-1.5 border rounded text-sm disabled:bg-gray-100" />
+                <label class="text-caption text-gray-600">描述</label>
+                <input v-model="modelForm.description" :disabled="isReadOnlyModel" class="w-full px-3 py-1.5 border rounded text-body-sm disabled:bg-gray-100" />
               </div>
               <div class="md:col-span-2">
-                <label class="text-xs text-gray-600">endpoints (JSON)</label>
+                <label class="text-caption text-gray-600">endpoints (JSON)</label>
                 <textarea
                   v-model="modelForm.endpointsText"
                   rows="4"
                   :disabled="isReadOnlyModel"
-                  class="w-full px-3 py-1.5 border rounded text-xs font-mono disabled:bg-gray-100"
+                  class="w-full px-3 py-1.5 border rounded text-caption font-mono disabled:bg-gray-100"
                   :class="jsonErrors.endpoints ? 'border-red-500' : ''"
                 ></textarea>
-                <p v-if="jsonErrors.endpoints" class="text-xs text-red-500 mt-1">{{ jsonErrors.endpoints }}</p>
+                <p v-if="jsonErrors.endpoints" class="text-caption text-red-500 mt-1">{{ jsonErrors.endpoints }}</p>
               </div>
               <div class="md:col-span-2">
-                <label class="text-xs text-gray-600">input_template (JSON)</label>
+                <label class="text-caption text-gray-600">input_template (JSON)</label>
                 <textarea
                   v-model="modelForm.inputTemplateText"
                   rows="6"
                   :disabled="isReadOnlyModel"
-                  class="w-full px-3 py-1.5 border rounded text-xs font-mono disabled:bg-gray-100"
+                  class="w-full px-3 py-1.5 border rounded text-caption font-mono disabled:bg-gray-100"
                   :class="jsonErrors.input_template ? 'border-red-500' : ''"
                 ></textarea>
-                <p v-if="jsonErrors.input_template" class="text-xs text-red-500 mt-1">{{ jsonErrors.input_template }}</p>
+                <p v-if="jsonErrors.input_template" class="text-caption text-red-500 mt-1">{{ jsonErrors.input_template }}</p>
               </div>
               <div class="md:col-span-2">
-                <label class="text-xs text-gray-600">output_paths (JSON)</label>
+                <label class="text-caption text-gray-600">output_paths (JSON)</label>
                 <textarea
                   v-model="modelForm.outputPathsText"
                   rows="4"
                   :disabled="isReadOnlyModel"
-                  class="w-full px-3 py-1.5 border rounded text-xs font-mono disabled:bg-gray-100"
+                  class="w-full px-3 py-1.5 border rounded text-caption font-mono disabled:bg-gray-100"
                   :class="jsonErrors.output_paths ? 'border-red-500' : ''"
                 ></textarea>
-                <p v-if="jsonErrors.output_paths" class="text-xs text-red-500 mt-1">{{ jsonErrors.output_paths }}</p>
+                <p v-if="jsonErrors.output_paths" class="text-caption text-red-500 mt-1">{{ jsonErrors.output_paths }}</p>
               </div>
             </div>
           </div>
@@ -279,36 +279,36 @@
     <!-- 新建厂商弹窗 -->
     <div v-if="showCreateProvider" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" @click.self="showCreateProvider = false">
       <div class="bg-white rounded-2xl p-6 max-w-md w-full" @click.stop>
-        <h3 class="font-bold text-lg mb-4">新建厂商</h3>
+        <h3 class="font-bold text-body-lg mb-4">新建厂商</h3>
         <div class="space-y-3">
           <div>
-            <label class="text-xs text-gray-600">名称 *</label>
-            <input v-model="newProvider.name" placeholder="如 OpenAI" class="w-full px-3 py-1.5 border rounded text-sm" />
+            <label class="text-caption text-gray-600">名称 *</label>
+            <input v-model="newProvider.name" placeholder="如 OpenAI" class="w-full px-3 py-1.5 border rounded text-body-sm" />
           </div>
           <div>
-            <label class="text-xs text-gray-600">slug * （唯一标识）</label>
-            <input v-model="newProvider.slug" placeholder="如 openai" class="w-full px-3 py-1.5 border rounded text-sm font-mono" />
+            <label class="text-caption text-gray-600">slug * （唯一标识）</label>
+            <input v-model="newProvider.slug" placeholder="如 openai" class="w-full px-3 py-1.5 border rounded text-body-sm font-mono" />
           </div>
           <div>
-            <label class="text-xs text-gray-600">base_url *</label>
-            <input v-model="newProvider.base_url" placeholder="https://api.openai.com/v1" class="w-full px-3 py-1.5 border rounded text-sm font-mono" />
+            <label class="text-caption text-gray-600">base_url *</label>
+            <input v-model="newProvider.base_url" placeholder="https://api.openai.com/v1" class="w-full px-3 py-1.5 border rounded text-body-sm font-mono" />
           </div>
           <div>
-            <label class="text-xs text-gray-600">api_key</label>
-            <input v-model="newProvider.api_key" type="password" placeholder="可不填，后续编辑时填入" class="w-full px-3 py-1.5 border rounded text-sm font-mono" />
+            <label class="text-caption text-gray-600">api_key</label>
+            <input v-model="newProvider.api_key" type="password" placeholder="可不填，后续编辑时填入" class="w-full px-3 py-1.5 border rounded text-body-sm font-mono" />
           </div>
-          <label v-if="isAdminUser" class="flex items-center gap-2 text-sm">
+          <label v-if="isAdminUser" class="flex items-center gap-2 text-body-sm">
             <input v-model="newProvider.is_public" type="checkbox" />
             <span>公开给所有登录用户</span>
           </label>
-          <label v-if="isAdminUser" class="flex items-center gap-2 text-sm">
+          <label v-if="isAdminUser" class="flex items-center gap-2 text-body-sm">
             <input v-model="newProvider.is_open" type="checkbox" />
             <span>接受游客/普通用户自带 API Key</span>
           </label>
         </div>
         <div class="flex gap-2 mt-4">
-          <button @click="showCreateProvider = false" class="flex-1 px-3 py-2 bg-gray-200 rounded text-sm">取消</button>
-          <button @click="createProvider" class="flex-1 px-3 py-2 bg-blue-500 text-white rounded text-sm hover:bg-blue-600">创建</button>
+          <button @click="showCreateProvider = false" class="flex-1 px-3 py-2 bg-gray-200 rounded text-body-sm">取消</button>
+          <button @click="createProvider" class="flex-1 px-3 py-2 bg-blue-500 text-white rounded text-body-sm hover:bg-blue-600">创建</button>
         </div>
       </div>
     </div>
@@ -316,27 +316,27 @@
     <!-- 新建模型弹窗 -->
     <div v-if="showCreateModel" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" @click.self="showCreateModel = false">
       <div class="bg-white rounded-2xl p-6 max-w-md w-full" @click.stop>
-        <h3 class="font-bold text-lg mb-4">新建模型</h3>
+        <h3 class="font-bold text-body-lg mb-4">新建模型</h3>
         <div class="space-y-3">
           <div>
-            <label class="text-xs text-gray-600">名称 *</label>
-            <input v-model="newModel.name" placeholder="如 GPT-4o" class="w-full px-3 py-1.5 border rounded text-sm" />
+            <label class="text-caption text-gray-600">名称 *</label>
+            <input v-model="newModel.name" placeholder="如 GPT-4o" class="w-full px-3 py-1.5 border rounded text-body-sm" />
           </div>
           <div>
-            <label class="text-xs text-gray-600">model_key *（全局唯一，建议格式：provider_slug/model_id）</label>
-            <input v-model="newModel.model_key" placeholder="如 openai/gpt-4o" class="w-full px-3 py-1.5 border rounded text-sm font-mono" />
+            <label class="text-caption text-gray-600">model_key *（全局唯一，建议格式：provider_slug/model_id）</label>
+            <input v-model="newModel.model_key" placeholder="如 openai/gpt-4o" class="w-full px-3 py-1.5 border rounded text-body-sm font-mono" />
           </div>
           <div>
-            <label class="text-xs text-gray-600">model_id *</label>
-            <input v-model="newModel.model_id" placeholder="如 gpt-4o" class="w-full px-3 py-1.5 border rounded text-sm font-mono" />
+            <label class="text-caption text-gray-600">model_id *</label>
+            <input v-model="newModel.model_id" placeholder="如 gpt-4o" class="w-full px-3 py-1.5 border rounded text-body-sm font-mono" />
           </div>
           <div>
-            <label class="text-xs text-gray-600">能力（多选）</label>
+            <label class="text-caption text-gray-600">能力（多选）</label>
             <div class="flex flex-wrap gap-1 mt-1">
               <label
                 v-for="cap in ALL_CAPABILITIES"
                 :key="cap"
-                class="text-xs px-2 py-1 border rounded cursor-pointer"
+                class="text-caption px-2 py-1 border rounded cursor-pointer"
                 :class="newModel.capabilities.includes(cap) ? 'bg-blue-50 border-blue-300' : ''"
               >
                 <input type="checkbox" :checked="newModel.capabilities.includes(cap)" @change="toggleNewCapability(cap)" class="hidden" />
@@ -344,11 +344,11 @@
               </label>
             </div>
           </div>
-          <p class="text-xs text-gray-500">💡 创建后可在右侧编辑 endpoints/input_template/output_paths</p>
+          <p class="text-caption text-gray-500">💡 创建后可在右侧编辑 endpoints/input_template/output_paths</p>
         </div>
         <div class="flex gap-2 mt-4">
-          <button @click="showCreateModel = false" class="flex-1 px-3 py-2 bg-gray-200 rounded text-sm">取消</button>
-          <button @click="createModel" class="flex-1 px-3 py-2 bg-green-500 text-white rounded text-sm hover:bg-green-600">创建</button>
+          <button @click="showCreateModel = false" class="flex-1 px-3 py-2 bg-gray-200 rounded text-body-sm">取消</button>
+          <button @click="createModel" class="flex-1 px-3 py-2 bg-green-500 text-white rounded text-body-sm hover:bg-green-600">创建</button>
         </div>
       </div>
     </div>
@@ -356,38 +356,38 @@
     <!-- 测试调用弹窗 -->
     <div v-if="showTestDialog" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" @click.self="showTestDialog = false">
       <div class="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto" @click.stop>
-        <h3 class="font-bold text-lg mb-4">测试调用 - {{ selectedModel?.name }}</h3>
+        <h3 class="font-bold text-body-lg mb-4">测试调用 - {{ selectedModel?.name }}</h3>
         <div class="space-y-3">
           <div>
-            <label class="text-xs text-gray-600">选择 capability</label>
-            <select v-model="testCapability" class="w-full px-3 py-1.5 border rounded text-sm">
+            <label class="text-caption text-gray-600">选择 capability</label>
+            <select v-model="testCapability" class="w-full px-3 py-1.5 border rounded text-body-sm">
               <option v-for="cap in (parseArr(selectedModel.capabilities))" :key="cap" :value="cap">{{ cap }}</option>
             </select>
           </div>
           <div>
-            <label class="text-xs text-gray-600">请求参数 (JSON)</label>
+            <label class="text-caption text-gray-600">请求参数 (JSON)</label>
             <textarea
               v-model="testParamsText"
               rows="8"
-              class="w-full px-3 py-1.5 border rounded text-xs font-mono"
+              class="w-full px-3 py-1.5 border rounded text-caption font-mono"
             ></textarea>
           </div>
           <button
             @click="runTest"
             :disabled="testing"
-            class="w-full px-4 py-2 bg-purple-500 text-white rounded text-sm hover:bg-purple-600 disabled:bg-gray-300"
+            class="w-full px-4 py-2 bg-purple-500 text-white rounded text-body-sm hover:bg-purple-600 disabled:bg-gray-300"
           >{{ testing ? '测试中...' : '🚀 发起测试调用' }}</button>
-          <div v-if="testResult" class="bg-gray-50 rounded p-3 text-xs">
+          <div v-if="testResult" class="bg-gray-50 rounded p-3 text-caption">
             <div class="font-semibold mb-1">响应：</div>
             <pre class="whitespace-pre-wrap break-all">{{ testResult }}</pre>
           </div>
-          <div v-if="testError" class="bg-red-50 text-red-700 rounded p-3 text-xs">
+          <div v-if="testError" class="bg-red-50 text-red-700 rounded p-3 text-caption">
             <div class="font-semibold mb-1">错误：</div>
             {{ testError }}
           </div>
         </div>
         <div class="flex justify-end mt-4">
-          <button @click="showTestDialog = false" class="px-4 py-2 bg-gray-200 rounded text-sm">关闭</button>
+          <button @click="showTestDialog = false" class="px-4 py-2 bg-gray-200 rounded text-body-sm">关闭</button>
         </div>
       </div>
     </div>

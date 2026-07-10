@@ -309,7 +309,7 @@ const randomPage = () => {
     <!-- 控制按钮 -->
     <div class="flex justify-center gap-3 mb-4 flex-wrap">
       <button
-        class="px-5 py-2 rounded-full text-sm font-medium transition-all duration-300
+        class="px-5 py-2 rounded-full text-body-sm font-medium transition-all duration-300
                bg-gradient-to-r from-red-600 to-amber-600 text-white
                hover:from-red-700 hover:to-amber-700 hover:shadow-lg hover:scale-105
                active:scale-95"
@@ -318,7 +318,7 @@ const randomPage = () => {
         随机一句
       </button>
       <button
-        class="px-5 py-2 rounded-full text-sm font-medium transition-all duration-300
+        class="px-5 py-2 rounded-full text-body-sm font-medium transition-all duration-300
                border border-red-400 text-red-600 bg-white/60 backdrop-blur-sm
                hover:bg-red-50 hover:shadow-md hover:scale-105
                active:scale-95"
@@ -364,7 +364,7 @@ const randomPage = () => {
         <!-- 引用正文 -->
         <div class="relative z-10 flex-1 flex items-center justify-center py-6">
           <p
-            class="text-lg md:text-xl leading-relaxed tracking-wider text-center
+            class="text-body-lg md:text-h3 leading-relaxed tracking-wider text-center
                    text-gray-800 font-medium"
             style="font-family: 'Noto Serif SC', 'Source Han Serif SC', 'STSong', 'SimSun', 'Songti SC', serif;"
           >
@@ -373,7 +373,7 @@ const randomPage = () => {
         </div>
 
         <!-- 底部来源信息 -->
-        <div class="relative z-10 flex items-center justify-between text-xs text-gray-400 mt-2 pt-3 border-t border-red-100/50">
+        <div class="relative z-10 flex items-center justify-between text-caption text-gray-400 mt-2 pt-3 border-t border-red-100/50">
           <span class="font-serif italic tracking-wide">{{ item.source }}</span>
           <span class="text-red-300/70 font-medium">{{ item.year }}</span>
         </div>
@@ -393,7 +393,7 @@ const randomPage = () => {
       ></div>
     </div>
 
-    <div class="text-center text-xs text-gray-400 mt-3">
+    <div class="text-center text-caption text-gray-400 mt-3">
       共收录 {{ quotes.length }} 条毛选名句，涵盖《毛泽东选集》五卷本全部重要篇目及毛泽东诗词
     </div>
 
@@ -410,7 +410,7 @@ const randomPage = () => {
 
 <style scoped>
 @media (max-width: 640px) {
-  .text-lg {
+  .text-body-lg {
     font-size: 1rem;
   }
 }

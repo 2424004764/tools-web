@@ -131,12 +131,12 @@ const getRadiationLevel = (radiation: string) => {
 
     <div class="p-3 md:p-4 rounded-2xl bg-white mb-4">
       <div class="mb-4">
-        <h3 class="text-base md:text-lg font-semibold mb-2">辐射量单位说明</h3>
+        <h3 class="text-body md:text-body-lg font-semibold mb-2">辐射量单位说明</h3>
         <div class="bg-blue-50 p-2 md:p-3 rounded-lg">
-          <p class="text-xs md:text-sm text-blue-800 mb-2">
+          <p class="text-caption md:text-body-sm text-blue-800 mb-2">
             <strong>mSv (毫希沃特)</strong>：衡量辐射对人体影响的单位，考虑了不同类型辐射的生物效应
           </p>
-          <p class="text-xs md:text-sm text-blue-800">
+          <p class="text-caption md:text-body-sm text-blue-800">
             <strong>参考标准</strong>：国际原子能机构建议公众年辐射限值为1mSv，职业人员为20mSv
           </p>
         </div>
@@ -150,7 +150,7 @@ const getRadiationLevel = (radiation: string) => {
             :key="category"
             @click="selectedCategory = category"
             :class="[
-              'px-2 md:px-3 py-1 text-xs md:text-sm rounded-full transition-all',
+              'px-2 md:px-3 py-1 text-caption md:text-body-sm rounded-full transition-all',
               selectedCategory === category 
                 ? 'bg-blue-500 text-white' 
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -176,7 +176,7 @@ const getRadiationLevel = (radiation: string) => {
           <tbody>
             <tr v-for="(item, index) in filteredData" :key="index" class="hover:bg-gray-50">
               <td class="border border-gray-300 px-4 py-2">
-                <span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
+                <span class="px-2 py-1 text-caption rounded-full bg-blue-100 text-blue-800">
                   {{ item.category }}
                 </span>
               </td>
@@ -189,7 +189,7 @@ const getRadiationLevel = (radiation: string) => {
               <td class="border border-gray-300 px-4 py-2">
                 <span 
                   :class="[
-                    'px-2 py-1 text-xs rounded-full',
+                    'px-2 py-1 text-caption rounded-full',
                     getRadiationLevel(item.radiation) === '极低' ? 'bg-green-100 text-green-800' :
                     getRadiationLevel(item.radiation) === '很低' ? 'bg-blue-100 text-blue-800' :
                     getRadiationLevel(item.radiation) === '低' ? 'bg-yellow-100 text-yellow-800' :
@@ -200,7 +200,7 @@ const getRadiationLevel = (radiation: string) => {
                   {{ getRadiationLevel(item.radiation) }}
                 </span>
               </td>
-              <td class="border border-gray-300 px-4 py-2 text-sm text-gray-600">{{ item.desc }}</td>
+              <td class="border border-gray-300 px-4 py-2 text-body-sm text-gray-600">{{ item.desc }}</td>
             </tr>
           </tbody>
         </table>
@@ -214,20 +214,20 @@ const getRadiationLevel = (radiation: string) => {
           class="bg-gray-50 rounded-lg p-3 border border-gray-200"
         >
           <div class="flex items-start justify-between mb-2">
-            <h4 class="font-medium text-sm text-gray-900 flex-1 pr-2">{{ item.item }}</h4>
-            <span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800 flex-shrink-0">
+            <h4 class="font-medium text-body-sm text-gray-900 flex-1 pr-2">{{ item.item }}</h4>
+            <span class="px-2 py-1 text-caption rounded-full bg-blue-100 text-blue-800 flex-shrink-0">
               {{ item.category }}
             </span>
           </div>
           
           <div class="flex items-center justify-between mb-2">
             <div class="flex items-center space-x-2">
-              <span :class="getRadiationColor(item.radiation)" class="font-semibold text-sm">
+              <span :class="getRadiationColor(item.radiation)" class="font-semibold text-body-sm">
                 {{ item.radiation }} {{ item.unit }}
               </span>
               <span 
                 :class="[
-                  'px-2 py-1 text-xs rounded-full',
+                  'px-2 py-1 text-caption rounded-full',
                   getRadiationLevel(item.radiation) === '极低' ? 'bg-green-100 text-green-800' :
                   getRadiationLevel(item.radiation) === '很低' ? 'bg-blue-100 text-blue-800' :
                   getRadiationLevel(item.radiation) === '低' ? 'bg-yellow-100 text-yellow-800' :
@@ -240,14 +240,14 @@ const getRadiationLevel = (radiation: string) => {
             </div>
           </div>
           
-          <p class="text-xs text-gray-600">{{ item.desc }}</p>
+          <p class="text-caption text-gray-600">{{ item.desc }}</p>
         </div>
       </div>
 
       <!-- 安全提示 -->
       <div class="mt-4 md:mt-6 p-3 md:p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-        <h4 class="text-base md:text-lg font-semibold text-yellow-800 mb-2">安全提示</h4>
-        <ul class="text-xs md:text-sm text-yellow-700 space-y-1">
+        <h4 class="text-body md:text-body-lg font-semibold text-yellow-800 mb-2">安全提示</h4>
+        <ul class="text-caption md:text-body-sm text-yellow-700 space-y-1">
           <li>• 以上数据仅供参考，实际辐射量可能因设备、环境等因素而有所差异</li>
           <li>• 短期少量辐射暴露一般不会对健康造成显著影响</li>
           <li>• 孕妇和儿童对辐射更敏感，应避免不必要的医疗辐射检查</li>

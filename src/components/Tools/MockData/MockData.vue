@@ -615,7 +615,7 @@ onMounted(() => {
             <div class="font-medium text-gray-800">{{ s.name }}</div>
             <el-tag size="small" type="info">{{ s.schema.length }} 字段</el-tag>
           </div>
-          <div class="text-xs text-gray-500 mt-1 line-clamp-2">{{ s.description }}</div>
+          <div class="text-caption text-gray-500 mt-1 line-clamp-2">{{ s.description }}</div>
           <el-button class="mt-2" size="small" type="primary" plain :icon="Promotion" @click.stop="handleImportSample(s)">
             导入此示例
           </el-button>
@@ -640,7 +640,7 @@ onMounted(() => {
 
         <!-- 分享链接（保存后才有） -->
         <div v-if="currentShareUrl" class="mb-3 p-2.5 rounded-lg bg-blue-50 border border-blue-200">
-          <div class="flex items-center gap-2 text-xs text-blue-700">
+          <div class="flex items-center gap-2 text-caption text-blue-700">
             <el-icon><Link /></el-icon>
             <span class="font-medium">Mock 接口地址</span>
           </div>
@@ -657,7 +657,7 @@ onMounted(() => {
             </el-input>
             <el-button size="small" tag="a" :href="currentShareUrl" target="_blank" :icon="Promotion">打开</el-button>
           </div>
-          <div class="mt-1 text-xs text-gray-500">
+          <div class="mt-1 text-caption text-gray-500">
             每次请求都会按 Schema 重新生成数据，客户端可直接 fetch 该地址使用
           </div>
         </div>
@@ -667,7 +667,7 @@ onMounted(() => {
           <el-button size="small" type="primary" :icon="Plus" @click="addField">添加字段</el-button>
         </div>
 
-        <div v-if="fields.length === 0" class="text-center text-gray-400 py-6 text-sm">
+        <div v-if="fields.length === 0" class="text-center text-gray-400 py-6 text-body-sm">
           暂无字段，点击下方"添加字段"开始
         </div>
 
@@ -695,7 +695,7 @@ onMounted(() => {
         <div class="flex items-center justify-between mb-2">
           <div class="font-medium text-gray-700">
             生成结果
-            <span v-if="generated && Object.keys(generated).length > 0" class="text-xs text-gray-400 ml-2">
+            <span v-if="generated && Object.keys(generated).length > 0" class="text-caption text-gray-400 ml-2">
               单个对象
             </span>
           </div>
@@ -705,7 +705,7 @@ onMounted(() => {
           </div>
         </div>
         <pre
-          class="flex-1 bg-gray-900 text-green-300 p-3 rounded-lg text-xs overflow-auto max-h-[600px] font-mono whitespace-pre-wrap break-all"
+          class="flex-1 bg-gray-900 text-green-300 p-3 rounded-lg text-caption overflow-auto max-h-[600px] font-mono whitespace-pre-wrap break-all"
         ><code>{{ generated && Object.keys(generated).length > 0 ? generatedText : '// 左侧定义字段后，结果将自动显示在右侧\n// 或点击上方"加载示例"导入预置 Schema' }}</code></pre>
       </div>
     </div>
@@ -715,7 +715,7 @@ onMounted(() => {
       <div class="flex items-center justify-between mb-3">
         <div class="font-medium text-gray-700">我的配方 ({{ recipes.length }})</div>
       </div>
-      <div v-if="recipes.length === 0" class="text-center text-gray-400 py-8 text-sm">
+      <div v-if="recipes.length === 0" class="text-center text-gray-400 py-8 text-body-sm">
         暂无配方，保存或加载示例后将在此显示
       </div>
       <el-table
@@ -736,7 +736,7 @@ onMounted(() => {
         <el-table-column prop="description" label="描述" min-width="180" show-overflow-tooltip />
         <el-table-column label="更新时间" width="180">
           <template #default="{ row }">
-            <span class="text-xs text-gray-500">{{ new Date(row.updateTime).toLocaleString() }}</span>
+            <span class="text-caption text-gray-500">{{ new Date(row.updateTime).toLocaleString() }}</span>
           </template>
         </el-table-column>
         <el-table-column label="状态" width="100" align="center">
@@ -778,14 +778,14 @@ onMounted(() => {
       <el-text>
         <p>本工具用于快速生成测试用的假数据（Mock Data），适合接口联调、页面原型、压测等场景。</p>
         <p class="mt-2"><strong>使用方法：</strong></p>
-        <ol class="list-decimal list-inside mt-1 space-y-1 text-sm">
+        <ol class="list-decimal list-inside mt-1 space-y-1 text-body-sm">
           <li>点击"加载示例"可一键导入预置的用户/文章/商品 Schema；</li>
           <li>在左侧编辑字段名、类型、范围（前缀/枚举/最小最大值）；</li>
           <li>右侧实时预览生成的 JSON 数据，无需手动点击，支持复制与下载；</li>
           <li>点击"保存配方"将当前 Schema 持久化（未登录存本地，登录后自动同步至云端）；</li>
           <li>登录后切换设备登录同一账号，可自动拉取云端配方。</li>
         </ol>
-        <p class="mt-2 text-gray-500 text-xs">
+        <p class="mt-2 text-gray-500 text-caption">
           支持 16 种字段类型：字符串、整数、小数、布尔、邮箱、中文姓名、手机号、网址、日期、日期时间、颜色、头像、地址、公司名、随机文本、UUID。
         </p>
       </el-text>

@@ -3,11 +3,11 @@
     <!-- 应用列表 -->
     <div v-if="!currentApp">
       <div class="flex items-center justify-between mb-4">
-        <h2 class="text-xl font-bold text-gray-800">AI应用中心</h2>
+        <h2 class="text-h3 font-bold text-gray-800">AI应用中心</h2>
         <button
           v-if="isLoggedIn && activeCategory === 'custom'"
           @click="showCreateDialog = true"
-          class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
+          class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-body-sm"
         >
           ➕ 创建应用
         </button>
@@ -18,38 +18,38 @@
         <button
           @click="activeCategory = 'system'"
           :class="[
-            'px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px',
+            'px-4 py-2 text-body-sm font-medium transition-colors border-b-2 -mb-px',
             activeCategory === 'system'
               ? 'text-blue-600 border-blue-500'
               : 'text-gray-600 border-transparent hover:text-gray-800'
           ]"
         >
           系统应用
-          <span class="ml-1 text-xs text-gray-400">({{ systemApps.length }})</span>
+          <span class="ml-1 text-caption text-gray-400">({{ systemApps.length }})</span>
         </button>
         <button
           @click="activeCategory = 'custom'"
           :class="[
-            'px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px',
+            'px-4 py-2 text-body-sm font-medium transition-colors border-b-2 -mb-px',
             activeCategory === 'custom'
               ? 'text-blue-600 border-blue-500'
               : 'text-gray-600 border-transparent hover:text-gray-800'
           ]"
         >
           我的应用
-          <span class="ml-1 text-xs text-gray-400">({{ customApps.length }})</span>
+          <span class="ml-1 text-caption text-gray-400">({{ customApps.length }})</span>
         </button>
         <button
           @click="activeCategory = 'favorites'"
           :class="[
-            'px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px',
+            'px-4 py-2 text-body-sm font-medium transition-colors border-b-2 -mb-px',
             activeCategory === 'favorites'
               ? 'text-blue-600 border-blue-500'
               : 'text-gray-600 border-transparent hover:text-gray-800'
           ]"
         >
           <span class="mr-1">♥</span>收藏
-          <span class="ml-1 text-xs text-gray-400">({{ favoriteApps.length }})</span>
+          <span class="ml-1 text-caption text-gray-400">({{ favoriteApps.length }})</span>
         </button>
       </div>
 
@@ -83,7 +83,7 @@
                 @click.stop="toggleFavorite(app)"
                 :disabled="favoriteLoading[app.id]"
                 :class="[
-                  'absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center leading-none text-base transition-all',
+                  'absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center leading-none text-body transition-all',
                   isFavorited(app.id)
                     ? 'bg-red-500 text-white hover:bg-red-600'
                     : 'bg-white/70 text-gray-500 hover:bg-white hover:text-red-500'
@@ -114,13 +114,13 @@
                 </svg>
               </button>
               <div class="flex items-center gap-2 mb-2 pr-8">
-                <div class="text-2xl leading-none">{{ app.icon }}</div>
-                <h3 class="text-base font-bold text-gray-800">{{ app.title }}</h3>
+                <div class="text-h2 leading-none">{{ app.icon }}</div>
+                <h3 class="text-body font-bold text-gray-800">{{ app.title }}</h3>
               </div>
-              <p class="text-xs text-gray-600">{{ app.description }}</p>
+              <p class="text-caption text-gray-600">{{ app.description }}</p>
             </div>
           </div>
-          <div v-else class="py-12 text-center text-gray-500 text-sm">
+          <div v-else class="py-12 text-center text-gray-500 text-body-sm">
             暂无系统应用
           </div>
         </div>
@@ -139,17 +139,17 @@
             >
               <div @click="selectApp(app)">
                 <div class="flex items-center gap-2 mb-2">
-                  <div class="text-2xl leading-none">{{ app.icon }}</div>
-                  <h3 class="text-base font-bold text-gray-800">{{ app.title }}</h3>
+                  <div class="text-h2 leading-none">{{ app.icon }}</div>
+                  <h3 class="text-body font-bold text-gray-800">{{ app.title }}</h3>
                 </div>
-                <p class="text-xs text-gray-600">{{ app.description }}</p>
+                <p class="text-caption text-gray-600">{{ app.description }}</p>
               </div>
               <!-- 收藏按钮（始终可见） -->
               <button
                 @click.stop="toggleFavorite(app)"
                 :disabled="favoriteLoading[app.id]"
                 :class="[
-                  'absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center leading-none text-base transition-all',
+                  'absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center leading-none text-body transition-all',
                   isFavorited(app.id)
                     ? 'bg-red-500 text-white hover:bg-red-600'
                     : 'bg-white/70 text-gray-500 hover:bg-white hover:text-red-500',
@@ -184,14 +184,14 @@
               <div class="absolute top-9 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
                   @click.stop="editApp(app)"
-                  class="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-blue-600"
+                  class="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-caption hover:bg-blue-600"
                   title="编辑"
                 >
                   ✎
                 </button>
                 <button
                   @click.stop="deleteApp(app.id)"
-                  class="w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                  class="w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-caption hover:bg-red-600"
                   title="删除"
                 >
                   ×
@@ -199,7 +199,7 @@
               </div>
             </div>
           </div>
-          <div v-else class="py-12 text-center text-gray-500 text-sm">
+          <div v-else class="py-12 text-center text-gray-500 text-body-sm">
             <template v-if="!isLoggedIn">登录后可以创建自己的AI应用</template>
             <template v-else>还没有创建过应用，点击右上角「➕ 创建应用」开始吧</template>
           </div>
@@ -207,7 +207,7 @@
 
         <!-- 收藏应用 -->
         <div v-else-if="activeCategory === 'favorites'">
-          <div v-if="!isLoggedIn" class="py-12 text-center text-gray-500 text-sm">
+          <div v-if="!isLoggedIn" class="py-12 text-center text-gray-500 text-body-sm">
             登录后查看你的收藏应用
           </div>
           <div v-else-if="favoriteApps.length > 0" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
@@ -222,15 +222,15 @@
             >
               <div @click="selectApp(app)">
                 <div class="flex items-center gap-2 mb-2 pr-8">
-                  <div class="text-2xl leading-none">{{ app.icon }}</div>
-                  <h3 class="text-base font-bold text-gray-800">{{ app.title }}</h3>
+                  <div class="text-h2 leading-none">{{ app.icon }}</div>
+                  <h3 class="text-body font-bold text-gray-800">{{ app.title }}</h3>
                 </div>
-                <p class="text-xs text-gray-600">{{ app.description }}</p>
+                <p class="text-caption text-gray-600">{{ app.description }}</p>
               </div>
               <button
                 @click.stop="toggleFavorite(app)"
                 :disabled="favoriteLoading[app.id]"
-                class="absolute top-2 right-2 w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center leading-none text-base hover:bg-red-600 transition-all"
+                class="absolute top-2 right-2 w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center leading-none text-body hover:bg-red-600 transition-all"
                 title="取消收藏"
               >
                 <span v-if="favoriteLoading[app.id]" class="block w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
@@ -246,7 +246,7 @@
               </button>
             </div>
           </div>
-          <div v-else class="py-12 text-center text-gray-500 text-sm">
+          <div v-else class="py-12 text-center text-gray-500 text-body-sm">
             还没有收藏任何应用，点击系统应用或我的应用右上角的 ♡ 进行收藏
           </div>
         </div>
@@ -257,7 +257,7 @@
     <div v-else>
       <button
         @click="$emit('back-to-list')"
-        class="mb-4 px-4 py-2 text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg flex items-center gap-2 transition-colors"
+        class="mb-4 px-4 py-2 text-body-sm bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg flex items-center gap-2 transition-colors"
       >
         <span>←</span>
         <span>返回应用列表</span>
@@ -269,14 +269,14 @@
     <!-- 创建/编辑应用对话框 -->
     <div v-if="showCreateDialog" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" @click="closeDialog">
       <div class="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto" @click.stop>
-        <h3 class="text-xl font-bold text-gray-800 mb-4">
+        <h3 class="text-h3 font-bold text-gray-800 mb-4">
           {{ isEditMode ? '编辑AI应用' : '创建自定义AI应用' }}
         </h3>
 
         <div class="space-y-4">
           <!-- 应用标题 -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">应用标题 *</label>
+            <label class="block text-body-sm font-medium text-gray-700 mb-2">应用标题 *</label>
             <input
               v-model="newApp.title"
               type="text"
@@ -288,7 +288,7 @@
           <!-- 图标和分类 -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">图标 (Emoji) *</label>
+              <label class="block text-body-sm font-medium text-gray-700 mb-2">图标 (Emoji) *</label>
               <div class="relative">
                 <input
                   v-model="newApp.icon"
@@ -306,7 +306,7 @@
                       :key="icon"
                       @click="selectIcon(icon)"
                       :class="[
-                        'text-2xl p-2 rounded hover:bg-gray-100 transition-colors',
+                        'text-h2 p-2 rounded hover:bg-gray-100 transition-colors',
                         newApp.icon === icon ? 'bg-blue-100' : ''
                       ]"
                       type="button"
@@ -318,7 +318,7 @@
               </div>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">分类 *</label>
+              <label class="block text-body-sm font-medium text-gray-700 mb-2">分类 *</label>
               <select
                 v-model="newApp.category"
                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -336,7 +336,7 @@
 
           <!-- 应用描述 -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">应用描述 *</label>
+            <label class="block text-body-sm font-medium text-gray-700 mb-2">应用描述 *</label>
             <textarea
               v-model="newApp.description"
               placeholder="简单描述这个应用的功能"
@@ -347,7 +347,7 @@
 
           <!-- AI系统提示词 -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">AI系统提示词 *</label>
+            <label class="block text-body-sm font-medium text-gray-700 mb-2">AI系统提示词 *</label>
             <textarea
               v-model="newApp.system_prompt"
               placeholder="告诉AI它的角色和任务，例如：你是一位专业的写作助手，擅长创作各类文章..."
@@ -358,7 +358,7 @@
 
           <!-- 配色方案 -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">配色方案</label>
+            <label class="block text-body-sm font-medium text-gray-700 mb-2">配色方案</label>
             <div class="grid grid-cols-3 gap-2">
               <div
                 v-for="color in colorPresets"
@@ -370,7 +370,7 @@
                   newApp.gradient_from === color.gradient_from ? 'border-blue-500' : 'border-transparent'
                 ]"
               >
-                <div class="text-xs text-center text-gray-700 font-medium">{{ color.name }}</div>
+                <div class="text-caption text-center text-gray-700 font-medium">{{ color.name }}</div>
               </div>
             </div>
           </div>

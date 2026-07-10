@@ -3,19 +3,19 @@
     <div class="flex items-center gap-3 mb-6">
       <div class="text-4xl">👤</div>
       <div>
-        <h2 class="text-2xl font-bold text-gray-800">AI证件照</h2>
-        <p class="text-sm text-gray-600">上传照片，AI生成标准证件照</p>
+        <h2 class="text-h2 font-bold text-gray-800">AI证件照</h2>
+        <p class="text-body-sm text-gray-600">上传照片，AI生成标准证件照</p>
       </div>
     </div>
 
     <!-- 上传区 -->
     <div class="bg-white rounded-lg p-6 mb-4">
-      <label class="block text-sm font-medium text-gray-700 mb-3">上传照片</label>
+      <label class="block text-body-sm font-medium text-gray-700 mb-3">上传照片</label>
 
       <div v-if="!photoImage" class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-sky-400 transition-colors cursor-pointer" @click="triggerUpload">
         <div class="text-4xl mb-2">📸</div>
-        <p class="text-sm text-gray-600 mb-2">点击上传或拖拽照片到这里</p>
-        <p class="text-xs text-gray-400">支持 JPG、PNG 格式，建议正面照</p>
+        <p class="text-body-sm text-gray-600 mb-2">点击上传或拖拽照片到这里</p>
+        <p class="text-caption text-gray-400">支持 JPG、PNG 格式，建议正面照</p>
         <input
           ref="fileInputRef"
           type="file"
@@ -40,7 +40,7 @@
     <div v-if="photoImage" class="bg-white rounded-lg p-4 mb-4 space-y-4">
       <!-- 背景颜色 -->
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">背景颜色</label>
+        <label class="block text-body-sm font-medium text-gray-700 mb-2">背景颜色</label>
         <div class="grid grid-cols-4 gap-3">
           <button
             v-for="color in backgroundColors"
@@ -54,21 +54,21 @@
             ]"
           >
             <div :class="['w-full h-12 rounded mb-2', color.bgClass]"></div>
-            <div class="text-xs font-medium text-gray-700">{{ color.label }}</div>
+            <div class="text-caption font-medium text-gray-700">{{ color.label }}</div>
           </button>
         </div>
       </div>
 
       <!-- 尺寸规格 -->
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">尺寸规格</label>
+        <label class="block text-body-sm font-medium text-gray-700 mb-2">尺寸规格</label>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
           <button
             v-for="size in sizeOptions"
             :key="size.value"
             @click="$emit('update:selectedSize', size.value)"
             :class="[
-              'px-3 py-2 rounded-lg text-sm font-medium transition-all',
+              'px-3 py-2 rounded-lg text-body-sm font-medium transition-all',
               selectedSize === size.value
                 ? 'bg-sky-500 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -91,21 +91,21 @@
     <!-- 生成结果 -->
     <div v-if="generatedPhoto" class="bg-white rounded-lg p-4">
       <div class="flex items-center justify-between mb-3">
-        <h3 class="text-lg font-bold text-gray-800">生成结果</h3>
+        <h3 class="text-body-lg font-bold text-gray-800">生成结果</h3>
         <button
           @click="$emit('download')"
-          class="px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition-colors text-sm"
+          class="px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition-colors text-body-sm"
         >
           💾 下载照片
         </button>
       </div>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <p class="text-sm text-gray-600 mb-2">原图</p>
+          <p class="text-body-sm text-gray-600 mb-2">原图</p>
           <img :src="photoImage" class="w-full rounded-lg border" />
         </div>
         <div>
-          <p class="text-sm text-gray-600 mb-2">证件照</p>
+          <p class="text-body-sm text-gray-600 mb-2">证件照</p>
           <img :src="generatedPhoto" class="w-full rounded-lg border" />
         </div>
       </div>
@@ -113,7 +113,7 @@
 
     <!-- 示例 -->
     <div v-if="!photoImage" class="bg-white rounded-lg p-4">
-      <p class="text-sm font-medium text-gray-700 mb-3">📋 使用预设示例：</p>
+      <p class="text-body-sm font-medium text-gray-700 mb-3">📋 使用预设示例：</p>
       <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
         <button
           v-for="(preset, index) in presets"

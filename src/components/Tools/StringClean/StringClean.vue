@@ -127,10 +127,10 @@ const modeOptions = [
 
         <div class="relative">
           <div class="flex items-center mb-2">
-            <span class="text-2xl mr-2">{{ mode.icon }}</span>
+            <span class="text-h2 mr-2">{{ mode.icon }}</span>
             <span
               :class="[
-                'font-semibold text-sm',
+                'font-semibold text-body-sm',
                 selectedMode === mode.value ? 'text-white' : 'text-gray-800'
               ]"
             >
@@ -139,7 +139,7 @@ const modeOptions = [
           </div>
           <p
             :class="[
-              'text-xs leading-relaxed',
+              'text-caption leading-relaxed',
               selectedMode === mode.value ? 'text-white/90' : 'text-gray-600'
             ]"
           >
@@ -168,7 +168,7 @@ const modeOptions = [
       <!-- 输入区域 -->
       <div class="bg-white rounded-2xl p-5 shadow-lg hover:shadow-xl transition-shadow duration-300">
         <div class="flex items-center justify-between mb-3">
-          <h3 class="text-lg font-bold text-gray-800 flex items-center">
+          <h3 class="text-body-lg font-bold text-gray-800 flex items-center">
             <span class="w-2 h-2 bg-blue-500 rounded-full mr-2 animate-pulse"></span>
             原始文本
           </h3>
@@ -185,16 +185,16 @@ const modeOptions = [
         <!-- 统计信息 -->
         <div class="mt-3 grid grid-cols-3 gap-2">
           <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-3 text-center">
-            <div class="text-2xl font-bold text-blue-600">{{ originalStats.chars }}</div>
-            <div class="text-xs text-gray-600 mt-1">总字符数</div>
+            <div class="text-h2 font-bold text-blue-600">{{ originalStats.chars }}</div>
+            <div class="text-caption text-gray-600 mt-1">总字符数</div>
           </div>
           <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-3 text-center">
-            <div class="text-2xl font-bold text-green-600">{{ originalStats.lines }}</div>
-            <div class="text-xs text-gray-600 mt-1">行数</div>
+            <div class="text-h2 font-bold text-green-600">{{ originalStats.lines }}</div>
+            <div class="text-caption text-gray-600 mt-1">行数</div>
           </div>
           <div class="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg p-3 text-center">
-            <div class="text-2xl font-bold text-orange-600">{{ originalStats.spaces }}</div>
-            <div class="text-xs text-gray-600 mt-1">空格数</div>
+            <div class="text-h2 font-bold text-orange-600">{{ originalStats.spaces }}</div>
+            <div class="text-caption text-gray-600 mt-1">空格数</div>
           </div>
         </div>
       </div>
@@ -202,7 +202,7 @@ const modeOptions = [
       <!-- 输出区域 -->
       <div class="bg-white rounded-2xl p-5 shadow-lg hover:shadow-xl transition-shadow duration-300">
         <div class="flex items-center justify-between mb-3">
-          <h3 class="text-lg font-bold text-gray-800 flex items-center">
+          <h3 class="text-body-lg font-bold text-gray-800 flex items-center">
             <span class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
             处理结果
           </h3>
@@ -246,16 +246,16 @@ const modeOptions = [
         <!-- 统计信息 -->
         <div class="mt-3 grid grid-cols-3 gap-2">
           <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-3 text-center">
-            <div class="text-2xl font-bold text-purple-600">{{ cleanedStats.chars }}</div>
-            <div class="text-xs text-gray-600 mt-1">总字符数</div>
+            <div class="text-h2 font-bold text-purple-600">{{ cleanedStats.chars }}</div>
+            <div class="text-caption text-gray-600 mt-1">总字符数</div>
           </div>
           <div class="bg-gradient-to-br from-pink-50 to-pink-100 rounded-lg p-3 text-center">
-            <div class="text-2xl font-bold text-pink-600">{{ cleanedStats.lines }}</div>
-            <div class="text-xs text-gray-600 mt-1">行数</div>
+            <div class="text-h2 font-bold text-pink-600">{{ cleanedStats.lines }}</div>
+            <div class="text-caption text-gray-600 mt-1">行数</div>
           </div>
           <div class="bg-gradient-to-br from-cyan-50 to-cyan-100 rounded-lg p-3 text-center">
-            <div class="text-2xl font-bold text-cyan-600">{{ cleanedStats.spaces }}</div>
-            <div class="text-xs text-gray-600 mt-1">剩余空格</div>
+            <div class="text-h2 font-bold text-cyan-600">{{ cleanedStats.spaces }}</div>
+            <div class="text-caption text-gray-600 mt-1">剩余空格</div>
           </div>
         </div>
       </div>
@@ -271,15 +271,15 @@ const modeOptions = [
           <div class="flex items-center">
             <div class="text-4xl mr-4">✨</div>
             <div>
-              <div class="text-2xl font-bold">优化完成！</div>
+              <div class="text-h2 font-bold">优化完成！</div>
               <div class="text-white/90 mt-1">
-                成功减少了 <span class="text-3xl font-bold mx-1">{{ savedChars }}</span> 个字符
+                成功减少了 <span class="text-h1 font-bold mx-1">{{ savedChars }}</span> 个字符
               </div>
             </div>
           </div>
           <div class="text-right">
             <div class="text-5xl font-bold">{{ ((savedChars / originalStats.chars) * 100).toFixed(1) }}%</div>
-            <div class="text-white/90 text-sm">压缩率</div>
+            <div class="text-white/90 text-body-sm">压缩率</div>
           </div>
         </div>
       </div>
@@ -335,10 +335,10 @@ const modeOptions = [
           <h4 class="font-bold text-gray-800 mb-2 flex items-center">
             <span class="mr-2">🗑️</span> 去除所有空格
           </h4>
-          <p class="text-gray-700 text-sm leading-relaxed">
+          <p class="text-gray-700 text-body-sm leading-relaxed">
             删除文本中的所有空白字符，包括空格、制表符（Tab）、换行符等。适用于需要紧凑文本的场景。
           </p>
-          <div class="mt-2 bg-white rounded-lg p-3 text-xs font-mono">
+          <div class="mt-2 bg-white rounded-lg p-3 text-caption font-mono">
             <div class="text-gray-500 mb-1">示例：</div>
             <div>"Hello  World!" → "HelloWorld!"</div>
           </div>
@@ -348,10 +348,10 @@ const modeOptions = [
           <h4 class="font-bold text-gray-800 mb-2 flex items-center">
             <span class="mr-2">✂️</span> 去除首尾空格
           </h4>
-          <p class="text-gray-700 text-sm leading-relaxed">
+          <p class="text-gray-700 text-body-sm leading-relaxed">
             仅删除文本开头和结尾的空白字符，保留文本内部的空格。适用于清理用户输入或格式化文本。
           </p>
-          <div class="mt-2 bg-white rounded-lg p-3 text-xs font-mono">
+          <div class="mt-2 bg-white rounded-lg p-3 text-caption font-mono">
             <div class="text-gray-500 mb-1">示例：</div>
             <div>"  Hello World!  " → "Hello World!"</div>
           </div>
@@ -361,10 +361,10 @@ const modeOptions = [
           <h4 class="font-bold text-gray-800 mb-2 flex items-center">
             <span class="mr-2">🔧</span> 去除多余空格
           </h4>
-          <p class="text-gray-700 text-sm leading-relaxed">
+          <p class="text-gray-700 text-body-sm leading-relaxed">
             将多个连续的空格合并为一个空格，并删除首尾空格。适用于规范化文本格式，保持可读性。
           </p>
-          <div class="mt-2 bg-white rounded-lg p-3 text-xs font-mono">
+          <div class="mt-2 bg-white rounded-lg p-3 text-caption font-mono">
             <div class="text-gray-500 mb-1">示例：</div>
             <div>"Hello    World!  " → "Hello World!"</div>
           </div>
@@ -374,10 +374,10 @@ const modeOptions = [
           <h4 class="font-bold text-gray-800 mb-2 flex items-center">
             <span class="mr-2">📝</span> 去除空行
           </h4>
-          <p class="text-gray-700 text-sm leading-relaxed">
+          <p class="text-gray-700 text-body-sm leading-relaxed">
             删除文本中的所有空行，只保留包含内容的行。适用于清理段落之间的多余空行。
           </p>
-          <div class="mt-2 bg-white rounded-lg p-3 text-xs font-mono">
+          <div class="mt-2 bg-white rounded-lg p-3 text-caption font-mono">
             <div class="text-gray-500 mb-1">示例：</div>
             <div>"Line 1\n\n\nLine 2" → "Line 1\nLine 2"</div>
           </div>
@@ -387,7 +387,7 @@ const modeOptions = [
           <h4 class="font-bold text-gray-800 mb-2 flex items-center">
             <span class="mr-2">💡</span> 使用场景
           </h4>
-          <ul class="text-gray-700 text-sm space-y-2 leading-relaxed">
+          <ul class="text-gray-700 text-body-sm space-y-2 leading-relaxed">
             <li class="flex items-start">
               <span class="text-yellow-500 mr-2">•</span>
               <span><strong>数据清洗：</strong>清理Excel、CSV等数据源中的不规则空格</span>

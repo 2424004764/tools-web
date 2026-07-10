@@ -3,8 +3,8 @@
     <div class="flex items-center gap-3 mb-6">
       <div class="text-4xl">🏛️</div>
       <div>
-        <h2 class="text-2xl font-bold text-gray-800">城市指南</h2>
-        <p class="text-sm text-gray-600">探索城市历史文化，发现必去景点</p>
+        <h2 class="text-h2 font-bold text-gray-800">城市指南</h2>
+        <p class="text-body-sm text-gray-600">探索城市历史文化，发现必去景点</p>
       </div>
     </div>
 
@@ -20,7 +20,7 @@
 
     <!-- 输入区 -->
     <div class="bg-white rounded-lg p-4 mb-4">
-      <label class="block text-sm font-medium text-gray-700 mb-2">
+      <label class="block text-body-sm font-medium text-gray-700 mb-2">
         {{ chatMessages.length > 0 ? '💬 继续追问' : '输入城市名称' }}
       </label>
       <div class="flex gap-2">
@@ -44,13 +44,13 @@
 
     <!-- 热门城市（仅在首次显示） -->
     <div v-if="chatMessages.length === 0 && !isGenerating" class="bg-white rounded-lg p-4 mb-4">
-      <p class="text-sm font-medium text-gray-700 mb-2">🔥 热门城市：</p>
+      <p class="text-body-sm font-medium text-gray-700 mb-2">🔥 热门城市：</p>
       <div class="flex flex-wrap gap-2">
         <button
           v-for="city in popularCities"
           :key="city"
           @click="$emit('update:modelValue', city)"
-          class="px-3 py-1 text-sm bg-green-100 text-green-700 rounded-full hover:bg-green-200 transition-colors"
+          class="px-3 py-1 text-body-sm bg-green-100 text-green-700 rounded-full hover:bg-green-200 transition-colors"
         >
           {{ city }}
         </button>

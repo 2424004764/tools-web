@@ -3,8 +3,8 @@
     <div class="flex items-center gap-3 mb-6">
       <div class="text-4xl">🔍</div>
       <div>
-        <h2 class="text-2xl font-bold text-gray-800">合同风险检测</h2>
-        <p class="text-sm text-gray-600">识别合同中的风险条款和不平等内容</p>
+        <h2 class="text-h2 font-bold text-gray-800">合同风险检测</h2>
+        <p class="text-body-sm text-gray-600">识别合同中的风险条款和不平等内容</p>
       </div>
     </div>
 
@@ -21,14 +21,14 @@
     <!-- 输入区 -->
     <div class="bg-white rounded-lg p-4 mb-4 space-y-3">
       <div v-if="chatMessages.length === 0">
-        <label class="block text-sm font-medium text-gray-700 mb-2">合同类型</label>
+        <label class="block text-body-sm font-medium text-gray-700 mb-2">合同类型</label>
         <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
           <button
             v-for="type in contractTypes"
             :key="type.value"
             @click="$emit('update:selectedType', type.value)"
             :class="[
-              'px-4 py-2 rounded-lg text-sm font-medium transition-all',
+              'px-4 py-2 rounded-lg text-body-sm font-medium transition-all',
               selectedType === type.value
                 ? 'bg-red-500 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -41,7 +41,7 @@
 
       <!-- 照片上传 -->
       <div v-if="chatMessages.length === 0">
-        <label class="block text-sm font-medium text-gray-700 mb-2">上传合同照片（可选）</label>
+        <label class="block text-body-sm font-medium text-gray-700 mb-2">上传合同照片（可选）</label>
         <div class="flex gap-2">
           <input
             type="file"
@@ -73,7 +73,7 @@
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">
+        <label class="block text-body-sm font-medium text-gray-700 mb-2">
           {{ chatMessages.length > 0 ? '💬 继续追问' : (uploadedImage ? '补充说明（可选）' : '粘贴合同内容') }}
         </label>
         <textarea

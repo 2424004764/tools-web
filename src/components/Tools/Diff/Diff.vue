@@ -118,7 +118,7 @@ watch([() => info.leftTxt, () => info.rightTxt], () => {
     <div class="p-4 rounded-2xl bg-white">
       <div class="flex justify-between">
         <div class="flex-1">
-          <div class="mb-1 text-sm text-gray-600">旧文本</div>
+          <div class="mb-1 text-body-sm text-gray-600">旧文本</div>
           <Codemirror
             ref="leftRef"
             v-model:value="info.leftTxt"
@@ -131,7 +131,7 @@ watch([() => info.leftTxt, () => info.rightTxt], () => {
           />
         </div>
         <div class="flex-1 ml-3">
-          <div class="mb-1 text-sm text-gray-600">新文本</div>
+          <div class="mb-1 text-body-sm text-gray-600">新文本</div>
           <Codemirror
             ref="rightRef"
             v-model:value="info.rightTxt"

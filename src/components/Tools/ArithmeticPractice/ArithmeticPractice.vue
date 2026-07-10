@@ -83,8 +83,8 @@ const correctCount = computed(() => info.questions.filter(item => item.correct).
 
     <div class="p-4 rounded-2xl bg-white shadow-sm border border-slate-200">
       <div class="mb-4 text-slate-800">
-        <div class="text-2xl font-semibold">小学加减法练习</div>
-        <div class="mt-1 text-sm text-slate-500">为小学阶段提供清晰舒适的题目展示与在线批改体验。</div>
+        <div class="text-h2 font-semibold">小学加减法练习</div>
+        <div class="mt-1 text-body-sm text-slate-500">为小学阶段提供清晰舒适的题目展示与在线批改体验。</div>
       </div>
 
       <el-form label-position="top" label-width="120px" class="space-y-4">
@@ -114,7 +114,7 @@ const correctCount = computed(() => info.questions.filter(item => item.correct).
           <el-button type="primary" @click="generateQuestions">生成练习题</el-button>
           <el-button type="success" @click="checkAnswers">批改答案</el-button>
           <el-button @click="info.questions = []; info.checked = false">清空</el-button>
-          <span class="text-sm text-slate-500">可一次生成最多 50 题，适合课堂练习与家庭作业。</span>
+          <span class="text-body-sm text-slate-500">可一次生成最多 50 题，适合课堂练习与家庭作业。</span>
         </div>
       </el-form>
 
@@ -134,7 +134,7 @@ const correctCount = computed(() => info.questions.filter(item => item.correct).
             :class="['overflow-hidden w-full border border-slate-200 shadow-sm', question.invalid ? 'question-invalid-card' : '']"
           >
             <div class="flex flex-row flex-wrap justify-between items-center gap-3">
-              <div class="text-lg font-semibold text-slate-800 break-words">
+              <div class="text-body-lg font-semibold text-slate-800 break-words">
                 {{ index + 1 }}. {{ question.left }} {{ question.op }} {{ question.right }} =
               </div>
               <el-input
@@ -145,7 +145,7 @@ const correctCount = computed(() => info.questions.filter(item => item.correct).
                 style="width: 120px"
               />
             </div>
-            <div v-if="info.checked" class="mt-2 text-sm text-slate-600">
+            <div v-if="info.checked" class="mt-2 text-body-sm text-slate-600">
               <span v-if="question.correct" class="text-green-600">正确：答案 {{ question.answer }}</span>
               <span v-else class="text-red-600">错误：正确答案 {{ question.answer }}</span>
             </div>

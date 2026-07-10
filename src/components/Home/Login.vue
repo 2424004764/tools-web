@@ -501,7 +501,7 @@ const handleSignOut = () => {
   <div class="flex flex-col mt-8 flex-1 items-center bg-white rounded-md p-4 sm:p-10">
     <div class="w-full max-w-sm sm:max-w-md">
       <div class="text-center mb-8">
-        <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">用户登录</h1>
+        <h1 class="text-h2 sm:text-h1 font-bold text-gray-800 mb-2">用户登录</h1>
         <p class="text-gray-600">欢迎使用{{ appTitle }}</p>
       </div>
 
@@ -510,17 +510,17 @@ const handleSignOut = () => {
         <div class="border border-gray-200 rounded-lg p-4">
           <!-- Tab 切换 -->
           <div class="flex border-b border-gray-200 mb-4">
-            <button @click="activeTab = 'email-login'" :class="['flex-1 pb-2 text-sm font-medium', activeTab === 'email-login' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500']">邮箱登录</button>
-            <button @click="activeTab = 'email-register'" :class="['flex-1 pb-2 text-sm font-medium', activeTab === 'email-register' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500']">注册</button>
-            <button @click="activeTab = 'email-reset'" :class="['flex-1 pb-2 text-sm font-medium', activeTab === 'email-reset' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500']">找回密码</button>
+            <button @click="activeTab = 'email-login'" :class="['flex-1 pb-2 text-body-sm font-medium', activeTab === 'email-login' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500']">邮箱登录</button>
+            <button @click="activeTab = 'email-register'" :class="['flex-1 pb-2 text-body-sm font-medium', activeTab === 'email-register' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500']">注册</button>
+            <button @click="activeTab = 'email-reset'" :class="['flex-1 pb-2 text-body-sm font-medium', activeTab === 'email-reset' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500']">找回密码</button>
           </div>
 
           <!-- 邮箱登录 -->
           <div v-if="activeTab === 'email-login'">
             <!-- 登录方式子Tab -->
             <div class="flex gap-2 mb-3">
-              <button @click="loginMethod = 'password'" :class="['flex-1 py-1.5 text-sm rounded', loginMethod === 'password' ? 'bg-blue-50 text-blue-600 font-medium' : 'bg-gray-100 text-gray-600']">密码登录</button>
-              <button @click="loginMethod = 'code'" :class="['flex-1 py-1.5 text-sm rounded', loginMethod === 'code' ? 'bg-blue-50 text-blue-600 font-medium' : 'bg-gray-100 text-gray-600']">验证码登录</button>
+              <button @click="loginMethod = 'password'" :class="['flex-1 py-1.5 text-body-sm rounded', loginMethod === 'password' ? 'bg-blue-50 text-blue-600 font-medium' : 'bg-gray-100 text-gray-600']">密码登录</button>
+              <button @click="loginMethod = 'code'" :class="['flex-1 py-1.5 text-body-sm rounded', loginMethod === 'code' ? 'bg-blue-50 text-blue-600 font-medium' : 'bg-gray-100 text-gray-600']">验证码登录</button>
             </div>
 
             <!-- 密码登录 -->
@@ -574,7 +574,7 @@ const handleSignOut = () => {
         <!-- 分割线 -->
         <div class="flex items-center">
           <div class="flex-1 border-t border-gray-300"></div>
-          <span class="px-3 text-sm text-gray-500">或</span>
+          <span class="px-3 text-body-sm text-gray-500">或</span>
           <div class="flex-1 border-t border-gray-300"></div>
         </div>
 
@@ -592,13 +592,13 @@ const handleSignOut = () => {
             />
             <span
               v-if="!loading"
-              class="text-sm font-medium text-gray-600 truncate"
+              class="text-body-sm font-medium text-gray-600 truncate"
             >
               使用 Google 登录
             </span>
             <div v-else class="flex items-center">
               <el-icon class="is-loading mr-2"><Loading /></el-icon>
-              <span class="text-sm text-gray-600">登录中...</span>
+              <span class="text-body-sm text-gray-600">登录中...</span>
             </div>
           </button>
         </div>
@@ -615,7 +615,7 @@ const handleSignOut = () => {
         </div>
 
         <!-- 登录说明 -->
-        <div class="text-center text-gray-500 text-xs sm:text-sm px-2">
+        <div class="text-center text-gray-500 text-caption sm:text-body-sm px-2">
           <p>支持邮箱验证码登录 / 谷歌账号登录</p>
           <p class="mt-2">登录后可以享受更多个性化功能</p>
         </div>

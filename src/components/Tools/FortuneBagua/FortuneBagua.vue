@@ -136,8 +136,8 @@ const queryFortune = () => {
 
     <div class="p-4 rounded-2xl bg-white shadow-sm border border-slate-200">
       <div class="mb-4">
-        <div class="text-2xl font-semibold">命理八卦工具</div>
-        <div class="mt-1 text-sm text-slate-500">输入出生日期，系统会根据生肖与八卦生成命理结果，给出性格、五行与运势建议。</div>
+        <div class="text-h2 font-semibold">命理八卦工具</div>
+        <div class="mt-1 text-body-sm text-slate-500">输入出生日期，系统会根据生肖与八卦生成命理结果，给出性格、五行与运势建议。</div>
       </div>
 
       <div class="space-y-4">
@@ -159,7 +159,7 @@ const queryFortune = () => {
 
         <div class="flex flex-wrap gap-3 items-center">
           <el-button type="primary" @click="queryFortune">生成命理结果</el-button>
-          <span class="text-sm text-slate-500">根据出生年月日生成生肖命理和八卦卦象，提供吉祥色与吉位方向参考。</span>
+          <span class="text-body-sm text-slate-500">根据出生年月日生成生肖命理和八卦卦象，提供吉祥色与吉位方向参考。</span>
         </div>
 
         <el-alert v-if="errorMessage" :title="errorMessage" type="warning" show-icon />
@@ -168,31 +168,31 @@ const queryFortune = () => {
           <el-card class="border border-slate-200">
             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <div>
-                <div class="text-sm text-slate-500">生肖命理</div>
-                <div class="text-xl font-semibold">{{ fortuneResult.zodiac }}</div>
+                <div class="text-body-sm text-slate-500">生肖命理</div>
+                <div class="text-h3 font-semibold">{{ fortuneResult.zodiac }}</div>
               </div>
               <div>
-                <div class="text-sm text-slate-500">八卦卦象</div>
-                <div class="text-xl font-semibold">{{ fortuneResult.bagua }}</div>
+                <div class="text-body-sm text-slate-500">八卦卦象</div>
+                <div class="text-h3 font-semibold">{{ fortuneResult.bagua }}</div>
               </div>
               <div>
-                <div class="text-sm text-slate-500">五行属性</div>
-                <div class="text-xl font-semibold">{{ fortuneResult.element }}</div>
+                <div class="text-body-sm text-slate-500">五行属性</div>
+                <div class="text-h3 font-semibold">{{ fortuneResult.element }}</div>
               </div>
               <div>
-                <div class="text-sm text-slate-500">吉祥颜色</div>
-                <div class="text-xl font-semibold">{{ fortuneResult.luckyColor }}</div>
+                <div class="text-body-sm text-slate-500">吉祥颜色</div>
+                <div class="text-h3 font-semibold">{{ fortuneResult.luckyColor }}</div>
               </div>
               <div>
-                <div class="text-sm text-slate-500">吉位方向</div>
-                <div class="text-xl font-semibold">{{ fortuneResult.luckyDirection }}</div>
+                <div class="text-body-sm text-slate-500">吉位方向</div>
+                <div class="text-h3 font-semibold">{{ fortuneResult.luckyDirection }}</div>
               </div>
             </div>
           </el-card>
 
           <el-card class="border border-slate-200">
-            <div class="text-sm text-slate-500">命理解析</div>
-            <div class="mt-3 space-y-4 text-base text-slate-700">
+            <div class="text-body-sm text-slate-500">命理解析</div>
+            <div class="mt-3 space-y-4 text-body text-slate-700">
               <div>{{ fortuneResult.zodiacDesc }}</div>
               <div>{{ fortuneResult.baguaDesc }}</div>
               <div>{{ fortuneResult.advice }}</div>

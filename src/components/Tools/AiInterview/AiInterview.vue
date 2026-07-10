@@ -239,7 +239,7 @@ checkUrlParams();
     <div v-if="!showChat" class="space-y-6">
       <!-- 选择面试类型 -->
       <div v-if="!selectedPrompt" class="p-4 rounded-2xl bg-white">
-        <h3 class="text-lg font-medium mb-4 text-gray-800">选择面试类型</h3>
+        <h3 class="text-body-lg font-medium mb-4 text-gray-800">选择面试类型</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <div
             v-for="prompt in interviewPrompts"
@@ -248,9 +248,9 @@ checkUrlParams();
             class="p-4 border-2 border-gray-200 rounded-xl hover:border-blue-500 cursor-pointer transition-all duration-200 hover:shadow-md"
           >
             <div class="text-center">
-              <div class="text-3xl mb-2">{{ prompt.icon }}</div>
+              <div class="text-h1 mb-2">{{ prompt.icon }}</div>
               <h4 class="font-medium text-gray-800 mb-2">{{ prompt.title }}</h4>
-              <p class="text-sm text-gray-600">{{ prompt.description }}</p>
+              <p class="text-body-sm text-gray-600">{{ prompt.description }}</p>
             </div>
           </div>
         </div>
@@ -260,12 +260,12 @@ checkUrlParams();
       <div v-else class="p-4 rounded-2xl bg-white">
         <div class="flex items-center justify-between mb-4">
           <div class="flex items-center">
-            <span class="text-2xl mr-3">{{ selectedPrompt.icon }}</span>
-            <h3 class="text-lg font-medium text-gray-800">{{ selectedPrompt.title }}</h3>
+            <span class="text-h2 mr-3">{{ selectedPrompt.icon }}</span>
+            <h3 class="text-body-lg font-medium text-gray-800">{{ selectedPrompt.title }}</h3>
           </div>
           <button
             @click="selectAgain"
-            class="text-gray-500 hover:text-gray-700 text-sm"
+            class="text-gray-500 hover:text-gray-700 text-body-sm"
           >
             重新选择
           </button>
@@ -277,7 +277,7 @@ checkUrlParams();
             :key="input.key"
             class="flex flex-col"
           >
-            <label class="text-sm font-medium text-gray-700 mb-2">
+            <label class="text-body-sm font-medium text-gray-700 mb-2">
               {{ input.label }}
               <span v-if="input.required" class="text-red-500">*</span>
             </label>
@@ -316,12 +316,12 @@ checkUrlParams();
       <div class="mb-4 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-500">
         <div class="flex items-center justify-between">
           <div class="flex items-center">
-            <span class="text-lg mr-2">{{ selectedPrompt?.icon }}</span>
+            <span class="text-body-lg mr-2">{{ selectedPrompt?.icon }}</span>
             <span class="font-medium text-blue-800">{{ selectedPrompt?.title }}进行中</span>
           </div>
           <button
             @click="selectAgain"
-            class="text-blue-600 hover:text-blue-800 text-sm"
+            class="text-blue-600 hover:text-blue-800 text-body-sm"
           >
             结束面试
           </button>
@@ -356,7 +356,7 @@ checkUrlParams();
                 @click="copyMessage(msg.content)"
                 @mousedown="handleButtonPress"
                 @touchstart="handleButtonPress"
-                class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 px-2 py-1 rounded"
+                class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity text-caption bg-gray-200 hover:bg-gray-300 text-gray-700 px-2 py-1 rounded"
               >
                 复制
               </button>

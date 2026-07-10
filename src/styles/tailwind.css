@@ -2,8 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
-:root{
-  /* 暖色主题变量 */
+/**
+ * tools-web 全局 CSS 变量（Phase 1 引入新 token 系统）
+ *
+ * 新 token（RGB 空格分隔，让 Tailwind utility 通过 alpha-value 支持透明度）：
+ *   --ink-{50..950}    文本 / 强对比 neutral 阶梯
+ *   --surface-{0..3}   卡片 / 容器底色
+ *   --border-{subtle,default,strong}
+ *   --accent-{50..950} 品牌主色 = 暖橙
+ *   --danger-{50..950} 语义红色
+ *   --success-{50..950} --warning-{50..950} --info-{50..950}  EP 原生语义色
+ *
+ * 旧 --warm-* / --base-* 标记 @deprecated 保留至 Phase 4 收尾，避免外部缓存断裂。
+ */
+
+:root {
+  /* ─── @deprecated 旧 token（保留至 Phase 4 收尾，v2 删除） ──── */
+  /* @deprecated — use --accent-* instead. */
   --base-warm: #fef7ed;
   --base-orange: #fdead5;
   --base-black: #7c2d12;
@@ -16,25 +31,153 @@
   --warm-bg-card: #fffbeb;
   --warm-text: #92400e;
   --warm-text-muted: #b45309;
+
+  /* ─── 新 token 系统 ─────────────────────────────────────────── */
+
+  /* ink — 文本 / 强对比 neutral */
+  --ink-50:  250 250 250;
+  --ink-100: 244 244 245;
+  --ink-200: 228 228 231;
+  --ink-300: 212 212 216;
+  --ink-400: 161 161 170;
+  --ink-500: 113 113 122;
+  --ink-600:  82  82  91;
+  --ink-700:  63  63  70;
+  --ink-800:  39  39  42;
+  --ink-900:  24  24  27;
+  --ink-950:  10  10  10;
+
+  /* surface — 卡片 / 容器底色 */
+  --surface-0: 255 255 255;  /* canvas */
+  --surface-1: 250 250 250;  /* subtle card */
+  --surface-2: 244 244 245;  /* raised / hover */
+  --surface-3: 228 228 231;  /* selected */
+
+  /* border — 描边 / 分隔线 */
+  --border-subtle:  244 244 245;
+  --border-default: 228 228 231;
+  --border-strong:  212 212 216;
+
+  /* accent — 品牌主色 = 暖橙（对齐原 orange 阶梯） */
+  --accent-50:  255 247 237;
+  --accent-100: 255 237 213;
+  --accent-200: 254 215 170;
+  --accent-300: 253 186 116;
+  --accent-400: 251 146  60;
+  --accent-500: 249 115  22;
+  --accent-600: 234  88  12;
+  --accent-700: 194  65  12;
+  --accent-800: 154  52  18;
+  --accent-900: 124  45  18;
+  --accent-950:  67  20   7;
+
+  /* danger — 语义红色阶梯 */
+  --danger-50:  254 242 242;
+  --danger-100: 254 226 226;
+  --danger-200: 254 202 202;
+  --danger-300: 252 165 165;
+  --danger-400: 248 113 113;
+  --danger-500: 239  68  68;
+  --danger-600: 220  38  38;
+  --danger-700: 185  28  28;
+  --danger-800: 153  27  27;
+  --danger-900: 127  29  29;
+  --danger-950:  69  10  10;
+
+  /* success — Element Plus 原生语义色（绿色阶梯） */
+  --success-50:  240 249 235;
+  --success-100: 230 244 220;
+  --success-200: 204 235 197;
+  --success-300: 168 218 159;
+  --success-400: 132 201 122;
+  --success-500: 103 194  58;
+  --success-600:  87 174  48;
+  --success-700:  71 144  39;
+  --success-800:  55 113  30;
+  --success-900:  39  82  21;
+  --success-950:  22  49  10;
+
+  /* warning — Element Plus 原生语义色（黄色阶梯） */
+  --warning-50:  253 246 235;
+  --warning-100: 251 237 209;
+  --warning-200: 247 220 167;
+  --warning-300: 243 203 125;
+  --warning-400: 239 183  84;
+  --warning-500: 230 162  60;
+  --warning-600: 203 138  40;
+  --warning-700: 168 110  26;
+  --warning-800: 133  83  18;
+  --warning-900:  98  59  12;
+  --warning-950:  62  37   5;
+
+  /* info — Element Plus 原生语义色（中性灰阶梯） */
+  --info-50:  248 248 249;
+  --info-100: 241 241 243;
+  --info-200: 226 226 229;
+  --info-300: 207 207 211;
+  --info-400: 175 175 182;
+  --info-500: 144 147 153;
+  --info-600: 116 119 127;
+  --info-700:  88  91 100;
+  --info-800:  60  63  72;
+  --info-900:  38  41  49;
+  --info-950:  20  22  28;
 }
 
-/* 暖色背景渐变 */
+/* 中性底（Phase 1：去奶油渐变） */
+html, body {
+  margin: 0;
+  padding: 0;
+}
 body {
-  background: linear-gradient(135deg, #fef7ed 0%, #fdead5 100%);
-  color: var(--base-black);
+  background: rgb(var(--surface-0));
+  color: rgb(var(--ink-900));
+  font-family: theme('fontFamily.body');
 }
 
-/* Element Plus 主题色覆盖 */
+/* ─── Element Plus 主题覆盖 ─────────────────────────────────────── */
+
+/* primary: 跟随品牌 accent（原 --warm-primary=#f97316，保持不变） */
 :root {
-  --el-color-primary: #f97316;
-  --el-color-primary-light-3: #fb923c;
-  --el-color-primary-light-5: #fdba74;
-  --el-color-primary-light-7: #fed7aa;
-  --el-color-primary-light-8: #ffedd5;
-  --el-color-primary-light-9: #fff7ed;
-  --el-color-primary-dark-2: #ea580c;
-  --el-color-success: #f59e0b;
-  --el-color-warning: #fbbf24;
-  --el-color-danger: #dc2626;
-  --el-color-info: #6b7280;
+  --el-color-primary: rgb(var(--accent-500));
+  --el-color-primary-light-3: rgb(var(--accent-400));
+  --el-color-primary-light-5: rgb(var(--accent-300));
+  --el-color-primary-light-7: rgb(var(--accent-200));
+  --el-color-primary-light-8: rgb(var(--accent-100));
+  --el-color-primary-light-9: rgb(var(--accent-50));
+  --el-color-primary-dark-2: rgb(var(--accent-600));
+
+  /* success / warning / danger / info — 恢复 EP 原生语义色 */
+  /* 此前 success/warning 被覆盖为 amber/橙色，语义错位（绿色才是「成功」的通用认知） */
+  --el-color-success: rgb(var(--success-500));
+  --el-color-success-light-3: rgb(var(--success-400));
+  --el-color-success-light-5: rgb(var(--success-300));
+  --el-color-success-light-7: rgb(var(--success-200));
+  --el-color-success-light-8: rgb(var(--success-100));
+  --el-color-success-light-9: rgb(var(--success-50));
+  --el-color-success-dark-2: rgb(var(--success-600));
+
+  --el-color-warning: rgb(var(--warning-500));
+  --el-color-warning-light-3: rgb(var(--warning-400));
+  --el-color-warning-light-5: rgb(var(--warning-300));
+  --el-color-warning-light-7: rgb(var(--warning-200));
+  --el-color-warning-light-8: rgb(var(--warning-100));
+  --el-color-warning-light-9: rgb(var(--warning-50));
+  --el-color-warning-dark-2: rgb(var(--warning-600));
+
+  --el-color-danger: rgb(var(--danger-500));
+  --el-color-danger-light-3: rgb(var(--danger-400));
+  --el-color-danger-light-5: rgb(var(--danger-300));
+  --el-color-danger-light-7: rgb(var(--danger-200));
+  --el-color-danger-light-8: rgb(var(--danger-100));
+  --el-color-danger-light-9: rgb(var(--danger-50));
+  --el-color-danger-dark-2: rgb(var(--danger-600));
+
+  --el-color-info: rgb(var(--info-500));
+  --el-color-info-light-3: rgb(var(--info-400));
+  --el-color-info-light-5: rgb(var(--info-300));
+  --el-color-info-light-7: rgb(var(--info-200));
+  --el-color-info-light-8: rgb(var(--info-100));
+  --el-color-info-light-9: rgb(var(--info-50));
+  --el-color-info-dark-2: rgb(var(--info-600));
 }

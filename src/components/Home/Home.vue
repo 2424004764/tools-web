@@ -226,7 +226,7 @@ watch(() => toolsStore.cates.length, () => {
     <div v-for="(cate, index) in toolsStore.cates" :key="index">
       <!-- cate title -->
       <div 
-        class="mt-8 mb-3 text-xl font-bold text-warm-800 cursor-pointer hover:text-warm-600 transition-colors duration-200" 
+        class="mt-8 mb-3 text-h3 font-bold text-ink-900 cursor-pointer hover:text-accent-600 transition-colors duration-200" 
         :id="'cate_' + cate.id"
         @click="gotoAnchor('cate_' + cate.id)"
       >
@@ -234,8 +234,8 @@ watch(() => toolsStore.cates.length, () => {
       </div>
       <!-- card -->
       <div class="flex justify-start flex-wrap gap-[1.25%] c-xs:ml-0">
-          <router-link v-for="(item, index) in cate.list" :key="index" :to="item.url" class="flex flex-col mt-5 border-solid rounded-2xl border-warm-400 p-2 bg-white shadow-lg hover:bg-warm-50 hover:shadow-xl hover:border-warm-500 w-full sm:w-[49%] md:w-[32%] lg:w-[24%] xl:w-[19%] p-5 hover:-translate-y-3 duration-300 transition-all">
-            <div class="flex items-center border-b border-warm-300 pb-2">
+          <router-link v-for="(item, index) in cate.list" :key="index" :to="item.url" class="flex flex-col mt-5 border-solid rounded-2xl border-border-default p-2 bg-white shadow-lg hover:bg-accent-50 hover:shadow-xl hover:border-border-default w-full sm:w-[49%] md:w-[32%] lg:w-[24%] xl:w-[19%] p-5 hover:-translate-y-3 duration-300 transition-all">
+            <div class="flex items-center border-b border-border-subtle pb-2">
               <img
                 v-if="!useSpriteLogo(item).style"
                 :src="item.logo"
@@ -252,15 +252,15 @@ watch(() => toolsStore.cates.length, () => {
               ></div>
               <div class="flex flex-col ml-2 w-full">
                 <div class="flex">
-                  <div class="font-semibold text-lg line-clamp-1 text-warm-900">{{ item.title }}</div>
+                  <div class="font-semibold text-body-lg line-clamp-1 text-ink-900">{{ item.title }}</div>
                 </div>
                 <div class="flex justify-between">
-                  <el-text size="small" class="text-warm-700">{{ item.cate }}</el-text>
+                  <el-text size="small" class="text-ink-700">{{ item.cate }}</el-text>
                 </div>
               </div>
             </div>
             <div class="flex items-center justify-between mt-2">
-              <el-text line-clamp="2" class="text-warm-800">{{ item.desc }}</el-text>
+              <el-text line-clamp="2" class="text-ink-900">{{ item.desc }}</el-text>
             </div>
           </router-link>
       </div>

@@ -13,11 +13,12 @@
     <link rel="preconnect" href="https://static.cloudflareinsights.com" crossorigin>
     <link rel="dns-prefetch" href="//accounts.google.com">
 
-    <!-- 首屏关键 CSS 内联（避免主 CSS 加载期间出现白底闪烁） -->
+    <!-- 首屏关键 CSS 内联（避免主 CSS 加载期间出现白底闪烁）
+         Phase 1: body 背景从奶油渐变改为中性纯白 (--surface-0)，
+         文本色从 #7c2d12 改为 ink-900 (#18181b)。 -->
     <style>
-      :root{--warm-50:#fefcf9;--warm-100:#fef7ed;--base-black:#7c2d12}
       html,body{margin:0;padding:0}
-      body{background:#fef7ed;background:linear-gradient(135deg,#fef7ed 0%,#fdead5 100%);color:#7c2d12}
+      body{background:#ffffff;color:#18181b;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",sans-serif}
     </style>
 
     <!-- SEO Meta 标签 -->
@@ -63,7 +64,7 @@
 
     <title>开发者工具箱 - 一个开源免费的工具站 | MD5加密 JSON格式化 二维码 AI绘画 正则测试 时间戳转换 Base64 80+工具</title>
   </head>
-  <body class="bg-gradient-to-br from-warm-50 to-warm-100">
+  <body>
     <!--[if lt IE 9]>
     <div class="notice chromeframe">您的浏览器版本<strong>很旧很旧</strong>，为了正常地访问网站，请升级您的浏览器</div>
     <![endif]-->

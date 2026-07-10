@@ -317,7 +317,7 @@ const copyPrompt = async (text: string) => {
           <!-- 左侧：选项和输入 -->
           <div class="space-y-6">
             <div class="input-section">
-              <label class="block text-sm font-medium text-gray-700 mb-2"
+              <label class="block text-body-sm font-medium text-gray-700 mb-2"
                 >提示词</label
               >
               <textarea
@@ -330,7 +330,7 @@ const copyPrompt = async (text: string) => {
               <div class="mt-2 flex justify-end">
                 <button
                   @click="randomPresetPrompt"
-                  class="text-sm text-blue-600 hover:text-blue-800 flex items-center"
+                  class="text-body-sm text-blue-600 hover:text-blue-800 flex items-center"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -350,12 +350,12 @@ const copyPrompt = async (text: string) => {
 
               <!-- 提示词网站链接 -->
               <div class="mt-3 flex flex-wrap gap-2">
-                <span class="text-xs text-gray-500 mr-2">提示词灵感：</span>
+                <span class="text-caption text-gray-500 mr-2">提示词灵感：</span>
                 <a
                   href="https://prompthero.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  class="inline-flex items-center px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 transition-colors"
+                  class="inline-flex items-center px-2 py-1 text-caption bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 transition-colors"
                 >
                   <svg
                     class="w-3 h-3 mr-1"
@@ -375,7 +375,7 @@ const copyPrompt = async (text: string) => {
                   href="https://lexica.art"
                   target="_blank"
                   rel="noopener noreferrer"
-                  class="inline-flex items-center px-2 py-1 text-xs bg-purple-50 text-purple-700 rounded-md hover:bg-purple-100 transition-colors"
+                  class="inline-flex items-center px-2 py-1 text-caption bg-purple-50 text-purple-700 rounded-md hover:bg-purple-100 transition-colors"
                 >
                   <svg
                     class="w-3 h-3 mr-1"
@@ -396,7 +396,7 @@ const copyPrompt = async (text: string) => {
 
             <!-- 模型选择器 -->
             <div class="model-selector">
-              <label class="block text-sm font-medium text-gray-700 mb-2"
+              <label class="block text-body-sm font-medium text-gray-700 mb-2"
                 >选择模型</label
               >
               
@@ -407,7 +407,7 @@ const copyPrompt = async (text: string) => {
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span class="text-sm text-gray-600">正在加载模型列表...</span>
+                  <span class="text-body-sm text-gray-600">正在加载模型列表...</span>
                 </div>
               </div>
 
@@ -418,12 +418,12 @@ const copyPrompt = async (text: string) => {
                     <svg class="h-5 w-5 text-red-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
                       <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
                     </svg>
-                    <span class="text-sm font-medium text-red-800">模型列表加载失败</span>
+                    <span class="text-body-sm font-medium text-red-800">模型列表加载失败</span>
                   </div>
-                  <p class="text-sm text-red-700 mb-3">无法获取可用的模型列表，请检查网络连接后重试。</p>
+                  <p class="text-body-sm text-red-700 mb-3">无法获取可用的模型列表，请检查网络连接后重试。</p>
                   <button 
                     @click="fetchModels"
-                    class="flex items-center px-3 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 transition-colors"
+                    class="flex items-center px-3 py-2 bg-red-600 text-white text-body-sm rounded-md hover:bg-red-700 transition-colors"
                   >
                     <svg class="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                       <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
@@ -453,7 +453,7 @@ const copyPrompt = async (text: string) => {
             <!-- 参数区域 -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2"
+                <label class="block text-body-sm font-medium text-gray-700 mb-2"
                   >宽度 (px)</label
                 >
                 <input
@@ -466,7 +466,7 @@ const copyPrompt = async (text: string) => {
               </div>
 
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2"
+                <label class="block text-body-sm font-medium text-gray-700 mb-2"
                   >高度 (px)</label
                 >
                 <input
@@ -480,7 +480,7 @@ const copyPrompt = async (text: string) => {
 
               <!-- 随机种子区域 -->
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2"
+                <label class="block text-body-sm font-medium text-gray-700 mb-2"
                   >随机种子</label
                 >
                 <div class="flex">
@@ -511,10 +511,10 @@ const copyPrompt = async (text: string) => {
                   </button>
                 </div>
                 <div class="flex justify-between mt-1">
-                  <p class="text-xs text-gray-500">-1 = 随机</p>
+                  <p class="text-caption text-gray-500">-1 = 随机</p>
                   <button
                     @click="seed = -1"
-                    class="text-xs text-blue-600 hover:text-blue-800"
+                    class="text-caption text-blue-600 hover:text-blue-800"
                   >
                     设为随机
                   </button>
@@ -529,7 +529,7 @@ const copyPrompt = async (text: string) => {
                     id="noLogo"
                     class="mr-2"
                   />
-                  <label for="noLogo" class="text-sm font-medium text-gray-700"
+                  <label for="noLogo" class="text-body-sm font-medium text-gray-700"
                     >不显示水印</label
                   >
                 </div>
@@ -578,13 +578,13 @@ const copyPrompt = async (text: string) => {
               class="loading flex flex-col items-center justify-center h-full"
             >
               <div class="spinner"></div>
-              <p class="mt-4 text-lg">生成中...</p>
+              <p class="mt-4 text-body-lg">生成中...</p>
             </div>
 
             <div v-else-if="imageUrl" class="result h-full flex flex-col">
               <div class="mb-4">
-                <h3 class="text-lg font-medium text-gray-700">生成结果</h3>
-                <p class="text-sm text-gray-500">点击图像可查看大图</p>
+                <h3 class="text-body-lg font-medium text-gray-700">生成结果</h3>
+                <p class="text-body-sm text-gray-500">点击图像可查看大图</p>
               </div>
               <div class="flex-1 flex items-center justify-center">
                 <img
@@ -603,7 +603,7 @@ const copyPrompt = async (text: string) => {
               <div
                 class="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mb-4"
               ></div>
-              <h3 class="text-lg font-medium text-gray-700 mb-2">
+              <h3 class="text-body-lg font-medium text-gray-700 mb-2">
                 等待生成图像
               </h3>
               <p class="text-gray-500">输入提示词并点击"生成图像"按钮</p>
@@ -696,7 +696,7 @@ const copyPrompt = async (text: string) => {
     >
       <div class="modal-content">
         <div class="modal-header">
-          <h3 class="text-lg font-semibold text-gray-800">生成结果</h3>
+          <h3 class="text-body-lg font-semibold text-gray-800">生成结果</h3>
           <button
             @click="closeGeneratedImageModal"
             class="close-btn"

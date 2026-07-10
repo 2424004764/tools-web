@@ -709,7 +709,7 @@ onMounted(async () => {
     <!-- 未登录提示 -->
     <div v-if="notLoggedIn" class="mx-3 sm:mx-0 p-8 rounded-3xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 mb-6 text-center shadow-xl">
       <div class="text-6xl mb-4">🔒</div>
-      <h3 class="text-xl font-bold text-white mb-3">请先登录</h3>
+      <h3 class="text-h3 font-bold text-white mb-3">请先登录</h3>
       <p class="text-white/90 mb-6 max-w-md mx-auto">体重记录需要登录后使用，数据将同步到您的账户</p>
       <el-button size="large" class="!bg-white !text-purple-600 !border-none hover:!bg-gray-100" @click="goToLogin">
         <el-icon class="mr-1"><Promotion /></el-icon> 前往登录
@@ -719,7 +719,7 @@ onMounted(async () => {
     <!-- 首次使用引导 -->
     <div v-else-if="isFirstTime" class="mx-3 sm:mx-0 p-8 rounded-3xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 mb-6 text-center shadow-xl">
       <div class="text-6xl mb-4 animate-bounce">⚖️</div>
-      <h3 class="text-xl font-bold text-white mb-3">欢迎使用体重记录</h3>
+      <h3 class="text-h3 font-bold text-white mb-3">欢迎使用体重记录</h3>
       <p class="text-white/90 mb-6 max-w-md mx-auto">添加您的第一个成员，开启健康体重管理之旅</p>
       <el-button size="large" class="!bg-white !text-purple-600 !border-none hover:!bg-gray-100" @click="showMemberDialog = true">
         <el-icon class="mr-1"><Plus /></el-icon> 添加成员
@@ -732,11 +732,11 @@ onMounted(async () => {
         <!-- 成员选择栏 -->
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-gray-100">
           <div class="flex items-center gap-2 flex-wrap">
-            <span class="text-sm font-medium text-gray-500">成员</span>
+            <span class="text-body-sm font-medium text-gray-500">成员</span>
             <el-select v-model="currentMemberId" placeholder="选择成员" class="!w-32">
               <el-option v-for="member in members" :key="member.id" :label="member.name" :value="member.id" />
             </el-select>
-            <div v-if="currentMember" class="avatar-circle flex items-center justify-center w-9 h-9 rounded-full text-lg" :style="{ backgroundColor: currentMember.avatarColor }">
+            <div v-if="currentMember" class="avatar-circle flex items-center justify-center w-9 h-9 rounded-full text-body-lg" :style="{ backgroundColor: currentMember.avatarColor }">
               {{ currentMember.avatarEmoji || currentMember.name.charAt(0) }}
             </div>
             <!-- 成员操作按钮组 -->
@@ -764,16 +764,16 @@ onMounted(async () => {
           <div class="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2"></div>
           <div class="relative">
             <div class="flex items-center justify-between mb-2">
-              <span class="text-white/80 text-sm">当前体重</span>
+              <span class="text-white/80 text-body-sm">当前体重</span>
               <span class="tag-capsule bg-white/20 text-white">
                 {{ currentMember?.name || '我' }}
               </span>
             </div>
             <div class="flex items-end gap-3 mb-3">
               <span class="text-5xl font-bold">{{ displayWeight }}</span>
-              <span class="text-xl text-white/80 pb-2">{{ weightUnitText }}</span>
+              <span class="text-h3 text-white/80 pb-2">{{ weightUnitText }}</span>
             </div>
-            <div class="flex items-center gap-4 text-sm">
+            <div class="flex items-center gap-4 text-body-sm">
               <span v-if="goalProgress" class="flex items-center gap-1">
                 <el-icon><TrendCharts /></el-icon>
                 距目标 {{ Math.abs(goalProgress.diff).toFixed(1) }} 斤
@@ -794,12 +794,12 @@ onMounted(async () => {
               <div class="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center">
                 <span class="text-emerald-600">📊</span>
               </div>
-              <span class="text-xs text-gray-500 font-medium">较昨日</span>
+              <span class="text-caption text-gray-500 font-medium">较昨日</span>
             </div>
-            <div class="text-xl font-bold" :class="statistics.changeFromYesterday >= 0 ? 'text-rose-500' : 'text-emerald-500'">
+            <div class="text-h3 font-bold" :class="statistics.changeFromYesterday >= 0 ? 'text-rose-500' : 'text-emerald-500'">
               {{ statistics.changeFromYesterday >= 0 ? '+' : '' }}{{ statistics.changeFromYesterday.toFixed(1) }}
             </div>
-            <div class="text-xs text-gray-400 mt-1">斤</div>
+            <div class="text-caption text-gray-400 mt-1">斤</div>
           </div>
 
           <!-- BMI -->
@@ -808,9 +808,9 @@ onMounted(async () => {
               <div class="w-8 h-8 rounded-xl bg-violet-100 flex items-center justify-center">
                 <span class="text-violet-600">🎯</span>
               </div>
-              <span class="text-xs text-gray-500 font-medium">BMI</span>
+              <span class="text-caption text-gray-500 font-medium">BMI</span>
             </div>
-            <div class="text-xl font-bold" :style="{ color: bmiStatus.color }">
+            <div class="text-h3 font-bold" :style="{ color: bmiStatus.color }">
               {{ bmi }}
             </div>
             <div class="tag-capsule mt-1" :style="{ backgroundColor: bmiStatus.color + '20', color: bmiStatus.color }">
@@ -824,9 +824,9 @@ onMounted(async () => {
               <div class="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center">
                 <span class="text-amber-600">⚡</span>
               </div>
-              <span class="text-xs text-gray-500 font-medium">周变化</span>
+              <span class="text-caption text-gray-500 font-medium">周变化</span>
             </div>
-            <div class="text-lg font-bold" :class="statistics.weeklyChangeRate >= 0 ? 'text-rose-500' : 'text-emerald-500'">
+            <div class="text-body-lg font-bold" :class="statistics.weeklyChangeRate >= 0 ? 'text-rose-500' : 'text-emerald-500'">
               {{ statistics.weeklyChangeRate >= 0 ? '+' : '' }}{{ statistics.weeklyChangeRate.toFixed(2) }}
             </div>
             <div class="tag-capsule mt-1" :style="{ backgroundColor: changeSpeedRating.color + '20', color: changeSpeedRating.color }">
@@ -840,12 +840,12 @@ onMounted(async () => {
               <div class="w-8 h-8 rounded-xl bg-rose-100 flex items-center justify-center">
                 <span class="text-rose-600">🔥</span>
               </div>
-              <span class="text-xs text-gray-500 font-medium">基础代谢</span>
+              <span class="text-caption text-gray-500 font-medium">基础代谢</span>
             </div>
-            <div class="text-lg font-bold text-rose-600">
+            <div class="text-body-lg font-bold text-rose-600">
               {{ statistics.bmr }}
             </div>
-            <div class="text-xs text-gray-400 mt-1">kcal/天</div>
+            <div class="text-caption text-gray-400 mt-1">kcal/天</div>
           </div>
 
           <!-- 健康区间 -->
@@ -854,12 +854,12 @@ onMounted(async () => {
               <div class="w-8 h-8 rounded-xl bg-cyan-100 flex items-center justify-center">
                 <span class="text-cyan-600">💪</span>
               </div>
-              <span class="text-xs text-gray-500 font-medium">健康区间</span>
+              <span class="text-caption text-gray-500 font-medium">健康区间</span>
             </div>
-            <div class="text-base font-bold text-cyan-600">
+            <div class="text-body font-bold text-cyan-600">
               {{ healthyRange.minWeight }}-{{ healthyRange.maxWeight }}
             </div>
-            <div class="text-xs text-gray-400 mt-1">斤</div>
+            <div class="text-caption text-gray-400 mt-1">斤</div>
           </div>
 
           <!-- 记录统计 -->
@@ -868,17 +868,17 @@ onMounted(async () => {
               <div class="w-8 h-8 rounded-xl bg-indigo-100 flex items-center justify-center">
                 <span class="text-indigo-600">📝</span>
               </div>
-              <span class="text-xs text-gray-500 font-medium">记录天数</span>
+              <span class="text-caption text-gray-500 font-medium">记录天数</span>
             </div>
             <div class="flex gap-3">
               <div>
-                <div class="text-lg font-bold text-indigo-600">{{ statistics.consecutiveDays }}</div>
-                <div class="text-xs text-gray-400">连续</div>
+                <div class="text-body-lg font-bold text-indigo-600">{{ statistics.consecutiveDays }}</div>
+                <div class="text-caption text-gray-400">连续</div>
               </div>
               <div class="text-gray-300">|</div>
               <div>
-                <div class="text-lg font-bold text-indigo-700">{{ statistics.totalDays }}</div>
-                <div class="text-xs text-gray-400">累计</div>
+                <div class="text-body-lg font-bold text-indigo-700">{{ statistics.totalDays }}</div>
+                <div class="text-caption text-gray-400">累计</div>
               </div>
             </div>
           </div>
@@ -889,12 +889,12 @@ onMounted(async () => {
               <div class="w-8 h-8 rounded-xl bg-yellow-200 flex items-center justify-center">
                 <span class="text-yellow-600">🏆</span>
               </div>
-              <span class="text-xs text-gray-500 font-medium">我的成就</span>
+              <span class="text-caption text-gray-500 font-medium">我的成就</span>
             </div>
-            <div class="text-lg font-bold text-yellow-600">
+            <div class="text-body-lg font-bold text-yellow-600">
               {{ achievements.filter(a => a.unlocked).length }}/{{ achievements.length }}
             </div>
-            <div class="text-xs text-gray-400 mt-1">已解锁</div>
+            <div class="text-caption text-gray-400 mt-1">已解锁</div>
           </div>
 
           <!-- 总记录数 -->
@@ -903,12 +903,12 @@ onMounted(async () => {
               <div class="w-8 h-8 rounded-xl bg-slate-200 flex items-center justify-center">
                 <span class="text-slate-600">📋</span>
               </div>
-              <span class="text-xs text-gray-500 font-medium">总记录</span>
+              <span class="text-caption text-gray-500 font-medium">总记录</span>
             </div>
-            <div class="text-xl font-bold text-slate-600">
+            <div class="text-h3 font-bold text-slate-600">
               {{ statistics.totalRecords }}
             </div>
-            <div class="text-xs text-gray-400 mt-1">条记录</div>
+            <div class="text-caption text-gray-400 mt-1">条记录</div>
           </div>
         </div>
 
@@ -917,10 +917,10 @@ onMounted(async () => {
         <div v-if="goalProgress && currentMember?.goalWeight" class="mb-6 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl border border-indigo-100">
           <div class="flex items-center justify-between mb-3">
             <div class="flex items-center gap-2">
-              <span class="text-lg">🎯</span>
-              <span class="text-sm font-medium text-gray-700">目标进度</span>
+              <span class="text-body-lg">🎯</span>
+              <span class="text-body-sm font-medium text-gray-700">目标进度</span>
             </div>
-            <span class="text-lg font-bold" :class="goalProgress.isLosing ? 'text-emerald-500' : 'text-orange-500'">
+            <span class="text-body-lg font-bold" :class="goalProgress.isLosing ? 'text-emerald-500' : 'text-orange-500'">
               {{ currentMember.goalWeight }} 斤
             </span>
           </div>
@@ -930,7 +930,7 @@ onMounted(async () => {
             :stroke-width="10"
             :show-text="true"
           />
-          <div class="text-xs text-gray-500 mt-2 text-center">
+          <div class="text-caption text-gray-500 mt-2 text-center">
             {{ goalProgress.progress >= 100 ? '🎉 已达成目标！' : `还差 ${Math.abs(goalProgress.diff).toFixed(1)} 斤` }}
           </div>
         </div>
@@ -943,7 +943,7 @@ onMounted(async () => {
               <span>记录体重</span>
             </button>
             <div class="flex gap-2">
-              <el-button link @click="showReportDialog = true" class="!text-sm">
+              <el-button link @click="showReportDialog = true" class="!text-body-sm">
                 <el-icon><DataAnalysis /></el-icon> 数据报告
               </el-button>
             </div>
@@ -955,7 +955,7 @@ onMounted(async () => {
       <div class="glass-card-dark rounded-3xl p-4 sm:p-6 mb-6">
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
           <div class="flex items-center gap-2">
-            <span class="text-xl">📈</span>
+            <span class="text-h3">📈</span>
             <span class="font-semibold text-gray-700">体重趋势</span>
           </div>
           <div class="flex items-center gap-2">
@@ -977,9 +977,9 @@ onMounted(async () => {
       <div class="glass-card-dark rounded-3xl p-4 sm:p-6">
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
           <div class="flex items-center gap-2">
-            <span class="text-xl">📋</span>
+            <span class="text-h3">📋</span>
             <span class="font-semibold text-gray-700">历史记录</span>
-            <span class="text-xs text-gray-400">共 {{ formattedRecords.length }} 条</span>
+            <span class="text-caption text-gray-400">共 {{ formattedRecords.length }} 条</span>
           </div>
           <el-date-picker
             v-model="dateFilter"
@@ -995,7 +995,7 @@ onMounted(async () => {
         </div>
         <div v-if="loading" class="text-center py-12">
           <el-icon class="is-loading text-4xl text-indigo-500"><Loading /></el-icon>
-          <p class="text-gray-400 text-sm mt-2">加载中...</p>
+          <p class="text-gray-400 text-body-sm mt-2">加载中...</p>
         </div>
         <div v-else-if="formattedRecords.length === 0" class="text-center py-12">
           <div class="text-6xl mb-4">📝</div>
@@ -1009,19 +1009,19 @@ onMounted(async () => {
           >
             <div class="flex items-center gap-3 min-w-0 flex-1">
               <div class="flex-shrink-0 w-14 text-center">
-                <div class="text-xs text-gray-400">{{ record.recordDate.slice(5) }}</div>
-                <div class="text-xs text-gray-300">{{ record.recordTime }}</div>
+                <div class="text-caption text-gray-400">{{ record.recordDate.slice(5) }}</div>
+                <div class="text-caption text-gray-300">{{ record.recordTime }}</div>
               </div>
               <div class="flex items-center gap-2">
-                <span class="text-lg font-bold text-gray-800">{{ record.weight.toFixed(1) }}</span>
-                <span class="text-xs text-gray-400">斤</span>
+                <span class="text-body-lg font-bold text-gray-800">{{ record.weight.toFixed(1) }}</span>
+                <span class="text-caption text-gray-400">斤</span>
               </div>
-              <div v-if="record.change !== 0" class="flex-shrink-0 px-2 py-0.5 rounded-lg text-xs font-medium"
+              <div v-if="record.change !== 0" class="flex-shrink-0 px-2 py-0.5 rounded-lg text-caption font-medium"
                 :class="record.change > 0 ? 'bg-rose-50 text-rose-500' : 'bg-emerald-50 text-emerald-500'">
                 {{ record.change > 0 ? '↑' : '↓' }} {{ Math.abs(record.change).toFixed(1) }}
               </div>
               <div v-if="record.note" class="flex-1 min-w-0">
-                <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-xs bg-gray-100 text-gray-500 truncate max-w-full">
+                <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-caption bg-gray-100 text-gray-500 truncate max-w-full">
                   {{ record.note }}
                 </span>
               </div>
@@ -1061,7 +1061,7 @@ onMounted(async () => {
             <el-select v-model="memberForm.avatarEmoji" placeholder="选Emoji" style="width: 140px" clearable filterable>
               <el-option v-for="emoji in AVATAR_EMOJIS" :key="emoji" :label="emoji" :value="emoji" />
             </el-select>
-            <div v-if="memberForm.avatarEmoji" class="avatar-circle flex items-center justify-center w-10 h-10 rounded-full text-2xl" :style="{ backgroundColor: memberForm.avatarColor }">
+            <div v-if="memberForm.avatarEmoji" class="avatar-circle flex items-center justify-center w-10 h-10 rounded-full text-h2" :style="{ backgroundColor: memberForm.avatarColor }">
               {{ memberForm.avatarEmoji }}
             </div>
           </div>
@@ -1095,7 +1095,7 @@ onMounted(async () => {
             <el-select v-model="memberForm.avatarEmoji" placeholder="选Emoji" style="width: 140px" clearable filterable>
               <el-option v-for="emoji in AVATAR_EMOJIS" :key="emoji" :label="emoji" :value="emoji" />
             </el-select>
-            <div v-if="memberForm.avatarEmoji" class="avatar-circle flex items-center justify-center w-10 h-10 rounded-full text-2xl" :style="{ backgroundColor: memberForm.avatarColor }">
+            <div v-if="memberForm.avatarEmoji" class="avatar-circle flex items-center justify-center w-10 h-10 rounded-full text-h2" :style="{ backgroundColor: memberForm.avatarColor }">
               {{ memberForm.avatarEmoji }}
             </div>
           </div>
@@ -1174,34 +1174,34 @@ onMounted(async () => {
         <!-- 周报 -->
         <div v-if="statistics.weeklyReport" class="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-100">
           <div class="flex items-center gap-2 mb-3">
-            <span class="text-2xl">📊</span>
+            <span class="text-h2">📊</span>
             <h4 class="font-semibold text-blue-700">本周报告</h4>
           </div>
-          <div class="grid grid-cols-2 gap-3 text-sm">
+          <div class="grid grid-cols-2 gap-3 text-body-sm">
             <div class="bg-white/50 rounded-xl p-2">
-              <div class="text-gray-500 text-xs">起始体重</div>
+              <div class="text-gray-500 text-caption">起始体重</div>
               <div class="font-bold text-gray-700">{{ statistics.weeklyReport.startWeight.toFixed(1) }}斤</div>
             </div>
             <div class="bg-white/50 rounded-xl p-2">
-              <div class="text-gray-500 text-xs">结束体重</div>
+              <div class="text-gray-500 text-caption">结束体重</div>
               <div class="font-bold text-gray-700">{{ statistics.weeklyReport.endWeight.toFixed(1) }}斤</div>
             </div>
             <div class="bg-white/50 rounded-xl p-2">
-              <div class="text-gray-500 text-xs">变化</div>
+              <div class="text-gray-500 text-caption">变化</div>
               <div class="font-bold" :class="statistics.weeklyReport.change >= 0 ? 'text-rose-500' : 'text-emerald-500'">
                 {{ statistics.weeklyReport.change >= 0 ? '+' : '' }}{{ statistics.weeklyReport.change.toFixed(1) }}斤
               </div>
             </div>
             <div class="bg-white/50 rounded-xl p-2">
-              <div class="text-gray-500 text-xs">记录天数</div>
+              <div class="text-gray-500 text-caption">记录天数</div>
               <div class="font-bold text-gray-700">{{ statistics.weeklyReport.recordDays }}天</div>
             </div>
             <div class="bg-white/50 rounded-xl p-2">
-              <div class="text-gray-500 text-xs">最高</div>
+              <div class="text-gray-500 text-caption">最高</div>
               <div class="font-bold text-gray-700">{{ statistics.weeklyReport.maxWeight.toFixed(1) }}斤</div>
             </div>
             <div class="bg-white/50 rounded-xl p-2">
-              <div class="text-gray-500 text-xs">最低</div>
+              <div class="text-gray-500 text-caption">最低</div>
               <div class="font-bold text-gray-700">{{ statistics.weeklyReport.minWeight.toFixed(1) }}斤</div>
             </div>
           </div>
@@ -1210,34 +1210,34 @@ onMounted(async () => {
         <!-- 月报 -->
         <div v-if="statistics.monthlyReport" class="p-4 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl border border-emerald-100">
           <div class="flex items-center gap-2 mb-3">
-            <span class="text-2xl">📈</span>
+            <span class="text-h2">📈</span>
             <h4 class="font-semibold text-emerald-700">本月报告</h4>
           </div>
-          <div class="grid grid-cols-2 gap-3 text-sm">
+          <div class="grid grid-cols-2 gap-3 text-body-sm">
             <div class="bg-white/50 rounded-xl p-2">
-              <div class="text-gray-500 text-xs">起始体重</div>
+              <div class="text-gray-500 text-caption">起始体重</div>
               <div class="font-bold text-gray-700">{{ statistics.monthlyReport.startWeight.toFixed(1) }}斤</div>
             </div>
             <div class="bg-white/50 rounded-xl p-2">
-              <div class="text-gray-500 text-xs">结束体重</div>
+              <div class="text-gray-500 text-caption">结束体重</div>
               <div class="font-bold text-gray-700">{{ statistics.monthlyReport.endWeight.toFixed(1) }}斤</div>
             </div>
             <div class="bg-white/50 rounded-xl p-2">
-              <div class="text-gray-500 text-xs">变化</div>
+              <div class="text-gray-500 text-caption">变化</div>
               <div class="font-bold" :class="statistics.monthlyReport.change >= 0 ? 'text-rose-500' : 'text-emerald-500'">
                 {{ statistics.monthlyReport.change >= 0 ? '+' : '' }}{{ statistics.monthlyReport.change.toFixed(1) }}斤
               </div>
             </div>
             <div class="bg-white/50 rounded-xl p-2">
-              <div class="text-gray-500 text-xs">记录天数</div>
+              <div class="text-gray-500 text-caption">记录天数</div>
               <div class="font-bold text-gray-700">{{ statistics.monthlyReport.recordDays }}天</div>
             </div>
             <div class="bg-white/50 rounded-xl p-2">
-              <div class="text-gray-500 text-xs">最高</div>
+              <div class="text-gray-500 text-caption">最高</div>
               <div class="font-bold text-gray-700">{{ statistics.monthlyReport.maxWeight.toFixed(1) }}斤</div>
             </div>
             <div class="bg-white/50 rounded-xl p-2">
-              <div class="text-gray-500 text-xs">最低</div>
+              <div class="text-gray-500 text-caption">最低</div>
               <div class="font-bold text-gray-700">{{ statistics.monthlyReport.minWeight.toFixed(1) }}斤</div>
             </div>
           </div>
@@ -1246,18 +1246,18 @@ onMounted(async () => {
         <!-- 变化速度分析 -->
         <div class="p-4 bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl border border-amber-100">
           <div class="flex items-center gap-2 mb-3">
-            <span class="text-2xl">⚡</span>
+            <span class="text-h2">⚡</span>
             <h4 class="font-semibold text-amber-700">变化速度分析</h4>
           </div>
-          <div class="grid grid-cols-2 gap-3 text-sm">
+          <div class="grid grid-cols-2 gap-3 text-body-sm">
             <div class="bg-white/50 rounded-xl p-2">
-              <div class="text-gray-500 text-xs">周平均变化</div>
+              <div class="text-gray-500 text-caption">周平均变化</div>
               <div class="font-bold" :class="statistics.weeklyChangeRate >= 0 ? 'text-rose-500' : 'text-emerald-500'">
                 {{ statistics.weeklyChangeRate >= 0 ? '+' : '' }}{{ statistics.weeklyChangeRate.toFixed(2) }} 斤/周
               </div>
             </div>
             <div class="bg-white/50 rounded-xl p-2">
-              <div class="text-gray-500 text-xs">速度评价</div>
+              <div class="text-gray-500 text-caption">速度评价</div>
               <div class="tag-capsule mt-0.5" :style="{ backgroundColor: changeSpeedRating.color + '20', color: changeSpeedRating.color }">
                 {{ changeSpeedRating.text }}
               </div>
@@ -1268,13 +1268,13 @@ onMounted(async () => {
         <!-- BMR基础代谢 -->
         <div v-if="statistics.bmr" class="p-4 bg-gradient-to-br from-rose-50 to-pink-50 rounded-2xl border border-rose-100">
           <div class="flex items-center gap-2 mb-3">
-            <span class="text-2xl">🔥</span>
+            <span class="text-h2">🔥</span>
             <h4 class="font-semibold text-rose-700">基础代谢率 (BMR)</h4>
           </div>
-          <p class="text-sm text-gray-600">
+          <p class="text-body-sm text-gray-600">
             您的基础代谢率为 <span class="font-bold text-rose-600">{{ statistics.bmr }} kcal/天</span>
           </p>
-          <p class="text-xs text-gray-500 mt-2">
+          <p class="text-caption text-gray-500 mt-2">
             这是您身体在静息状态下每天消耗的热量，实际消耗会因活动量而增加
           </p>
         </div>
@@ -1282,14 +1282,14 @@ onMounted(async () => {
         <!-- 健康区间 -->
         <div v-if="healthyRange" class="p-4 bg-gradient-to-br from-violet-50 to-purple-50 rounded-2xl border border-violet-100">
           <div class="flex items-center gap-2 mb-3">
-            <span class="text-2xl">💪</span>
+            <span class="text-h2">💪</span>
             <h4 class="font-semibold text-violet-700">健康体重区间（BMI 18.5-24）</h4>
           </div>
-          <p class="text-sm text-gray-600">
+          <p class="text-body-sm text-gray-600">
             根据身高（{{ currentMember?.height }}cm），健康体重范围为：
             <span class="font-semibold text-violet-600">{{ healthyRange.minWeight }} - {{ healthyRange.maxWeight }} 斤</span>
           </p>
-          <p v-if="statistics.currentWeight" class="text-sm mt-2 flex items-center gap-2">
+          <p v-if="statistics.currentWeight" class="text-body-sm mt-2 flex items-center gap-2">
             当前体重 <span class="font-medium">{{ statistics.currentWeight.toFixed(1) }}斤</span>
             <span v-if="statistics.currentWeight < healthyRange.minWeight" class="tag-capsule bg-blue-100 text-blue-600">低于健康区间</span>
             <span v-else-if="statistics.currentWeight > healthyRange.maxWeight" class="tag-capsule bg-orange-100 text-orange-600">高于健康区间</span>
@@ -1311,9 +1311,9 @@ onMounted(async () => {
           class="achievement-card flex flex-col items-center p-3 rounded-2xl"
           :class="achievement.unlocked ? 'bg-gradient-to-br from-yellow-50 to-amber-50 border border-yellow-200 unlocked' : 'bg-gray-50 border border-gray-200'"
         >
-          <div class="text-3xl mb-2">{{ achievement.icon }}</div>
-          <div class="text-xs font-medium text-center text-gray-700">{{ achievement.title }}</div>
-          <div class="text-xs text-gray-400 text-center mt-0.5">{{ achievement.description }}</div>
+          <div class="text-h1 mb-2">{{ achievement.icon }}</div>
+          <div class="text-caption font-medium text-center text-gray-700">{{ achievement.title }}</div>
+          <div class="text-caption text-gray-400 text-center mt-0.5">{{ achievement.description }}</div>
         </div>
       </div>
       <div v-else class="text-center py-8">
@@ -1332,7 +1332,7 @@ onMounted(async () => {
 
         <div>
           <h4 class="font-semibold text-gray-800 mb-2 flex items-center gap-2">
-            <span class="text-lg">✨</span> 主要功能
+            <span class="text-body-lg">✨</span> 主要功能
           </h4>
           <div class="grid sm:grid-cols-2 gap-2 ml-6">
             <div class="flex items-start gap-2">
@@ -1368,9 +1368,9 @@ onMounted(async () => {
 
         <div class="p-3 bg-indigo-50 rounded-xl">
           <h4 class="font-semibold text-gray-800 mb-1 flex items-center gap-2">
-            <span class="text-lg">💡</span> 健康提示
+            <span class="text-body-lg">💡</span> 健康提示
           </h4>
-          <p class="text-sm">建议每天在固定时间（如晨起空腹时）测量体重，数据更具参考价值。保持规律的运动和健康的饮食习惯，配合体重追踪，更好地管理身体健康。</p>
+          <p class="text-body-sm">建议每天在固定时间（如晨起空腹时）测量体重，数据更具参考价值。保持规律的运动和健康的饮食习惯，配合体重追踪，更好地管理身体健康。</p>
         </div>
       </div>
     </ToolDetail>

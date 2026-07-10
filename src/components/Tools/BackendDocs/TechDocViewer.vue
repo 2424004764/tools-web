@@ -235,9 +235,9 @@ const backToTop = () => {
             <!-- 技术栈信息 -->
             <div class="mb-6">
               <div :class="['w-16 h-16 rounded-xl bg-gradient-to-br ' + techDoc.color + ' flex items-center justify-center mb-4 shadow-lg']">
-                <span class="text-2xl font-bold text-white">{{ techDoc.icon || techDoc.name.charAt(0) }}</span>
+                <span class="text-h2 font-bold text-white">{{ techDoc.icon || techDoc.name.charAt(0) }}</span>
               </div>
-              <h2 class="text-xl font-bold text-gray-800">{{ techDoc.name }}</h2>
+              <h2 class="text-h3 font-bold text-gray-800">{{ techDoc.name }}</h2>
             </div>
 
             <!-- 章节目录 -->
@@ -245,7 +245,7 @@ const backToTop = () => {
               <div v-for="chapter in techDoc.chapters" :key="chapter.id" class="space-y-1">
                 <button
                   :class="[
-                    'w-full text-left px-3 py-2 rounded-lg transition-all duration-200 text-sm',
+                    'w-full text-left px-3 py-2 rounded-lg transition-all duration-200 text-body-sm',
                     isChapterActive(chapter)
                       ? 'bg-green-100 text-green-700 font-medium'
                       : 'text-gray-600 hover:bg-gray-100 hover:text-gray-800'
@@ -263,7 +263,7 @@ const backToTop = () => {
                     v-for="child in chapter.children"
                     :key="child.id"
                     :class="[
-                      'w-full text-left px-2 py-1.5 rounded-md transition-all duration-200 text-xs leading-5',
+                      'w-full text-left px-2 py-1.5 rounded-md transition-all duration-200 text-caption leading-5',
                       activeChapter === child.id
                         ? 'bg-white text-green-700 font-medium shadow-sm'
                         : 'text-gray-500 hover:bg-white hover:text-gray-700'
@@ -307,7 +307,7 @@ const backToTop = () => {
                 class="chapter-section scroll-mt-20"
                 tabindex="-1"
               >
-                <h2 class="text-2xl font-bold text-gray-800 mb-6 pb-4 border-b border-gray-100">
+                <h2 class="text-h2 font-bold text-gray-800 mb-6 pb-4 border-b border-gray-100">
                   {{ chapter.title }}
                 </h2>
 
@@ -317,7 +317,7 @@ const backToTop = () => {
                     <h3
                       v-if="item.type === 'heading'"
                       :id="item.id"
-                      class="doc-subsection-heading text-xl font-semibold text-gray-800 mt-6 mb-3 scroll-mt-20"
+                      class="doc-subsection-heading text-h3 font-semibold text-gray-800 mt-6 mb-3 scroll-mt-20"
                       tabindex="-1"
                     >
                       {{ renderContent(item) }}
@@ -344,7 +344,7 @@ const backToTop = () => {
                             <th
                               v-for="(header, i) in item.headers"
                               :key="i"
-                              class="px-4 py-3 text-left text-sm font-semibold text-gray-700"
+                              class="px-4 py-3 text-left text-body-sm font-semibold text-gray-700"
                             >
                               {{ header }}
                             </th>
@@ -355,7 +355,7 @@ const backToTop = () => {
                             <td
                               v-for="(cell, j) in row"
                               :key="j"
-                              class="px-4 py-3 text-sm text-gray-600"
+                              class="px-4 py-3 text-body-sm text-gray-600"
                               v-html="cell"
                             ></td>
                           </tr>
@@ -365,10 +365,10 @@ const backToTop = () => {
 
                     <!-- 代码块 -->
                     <div v-else-if="item.type === 'code'" class="my-4 break-words">
-                      <div class="flex items-center justify-between px-4 py-2 bg-gray-800 text-gray-300 text-sm rounded-t-lg">
+                      <div class="flex items-center justify-between px-4 py-2 bg-gray-800 text-gray-300 text-body-sm rounded-t-lg">
                         <span>{{ item.lang }}</span>
                       </div>
-                      <pre :class="isMobile ? 'bg-gray-900 text-gray-100 p-4 rounded-b-lg text-sm leading-relaxed break-words whitespace-pre-wrap' : 'bg-gray-900 text-gray-100 p-4 overflow-x-auto rounded-b-lg text-sm leading-relaxed break-words whitespace-pre-wrap'"><code>{{ item.code }}</code></pre>
+                      <pre :class="isMobile ? 'bg-gray-900 text-gray-100 p-4 rounded-b-lg text-body-sm leading-relaxed break-words whitespace-pre-wrap' : 'bg-gray-900 text-gray-100 p-4 overflow-x-auto rounded-b-lg text-body-sm leading-relaxed break-words whitespace-pre-wrap'"><code>{{ item.code }}</code></pre>
                     </div>
                   </div>
                 </div>

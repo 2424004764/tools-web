@@ -315,8 +315,8 @@ const copyAll = () => results.value.length && copy(results.value.map(i => `${i.n
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div class="space-y-4">
           <div class="flex items-center justify-between">
-            <label class="block text-sm text-gray-700">父姓 / 母姓</label>
-            <button class="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded" @click="fillExample">示例</button>
+            <label class="block text-body-sm text-gray-700">父姓 / 母姓</label>
+            <button class="px-2 py-1 text-caption bg-gray-100 hover:bg-gray-200 rounded" @click="fillExample">示例</button>
           </div>
           <div class="grid grid-cols-2 gap-3">
             <input v-model="fatherSurname" maxlength="2" placeholder="父姓，如 张" class="w-full p-2 border rounded-lg" />
@@ -325,14 +325,14 @@ const copyAll = () => results.value.length && copy(results.value.map(i => `${i.n
 
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-sm text-gray-700 mb-1">姓氏使用</label>
+              <label class="block text-body-sm text-gray-700 mb-1">姓氏使用</label>
               <select v-model="surnameUsage" class="w-full p-2 border rounded-lg">
                 <option value="父姓">父姓</option>
                 <option value="母姓">母姓</option>
               </select>
             </div>
             <div>
-              <label class="block text-sm text-gray-700 mb-1">性别</label>
+              <label class="block text-body-sm text-gray-700 mb-1">性别</label>
               <select v-model="gender" class="w-full p-2 border rounded-lg">
                 <option value="男">男</option>
                 <option value="女">女</option>
@@ -342,7 +342,7 @@ const copyAll = () => results.value.length && copy(results.value.map(i => `${i.n
 
           <div class="grid grid-cols-3 gap-3">
             <div>
-              <label class="block text-sm text-gray-700 mb-1">名的长度</label>
+              <label class="block text-body-sm text-gray-700 mb-1">名的长度</label>
               <select v-model="givenLen" class="w-full p-2 border rounded-lg">
                 <option value="1">1</option>
                 <option value="1-2">1-2（默认）</option>
@@ -350,7 +350,7 @@ const copyAll = () => results.value.length && copy(results.value.map(i => `${i.n
               </select>
             </div>
             <div>
-              <label class="block text-sm text-gray-700 mb-1">风格</label>
+              <label class="block text-body-sm text-gray-700 mb-1">风格</label>
               <select v-model="style" class="w-full p-2 border rounded-lg">
                 <option value="不限">不限</option>
                 <option value="古典">古典</option>
@@ -362,28 +362,28 @@ const copyAll = () => results.value.length && copy(results.value.map(i => `${i.n
               </select>
             </div>
             <div>
-              <label class="block text-sm text-gray-700 mb-1">数量</label>
+              <label class="block text-body-sm text-gray-700 mb-1">数量</label>
               <input v-model.number="count" type="number" min="1" max="50" class="w-full p-2 border rounded-lg" />
             </div>
             <div class="col-span-3 grid grid-cols-3 gap-3" v-if="showFixedChar">
               <div>
-                <label class="block text-sm text-gray-700 mb-1">固定字（名）</label>
+                <label class="block text-body-sm text-gray-700 mb-1">固定字（名）</label>
                 <input v-model="fixedChar" maxlength="1" placeholder="仅 1 个汉字" class="w-full p-2 border rounded-lg" />
               </div>
               <div>
-                <label class="block text-sm text-gray-700 mb-1">固定字位置</label>
+                <label class="block text-body-sm text-gray-700 mb-1">固定字位置</label>
                 <select v-model="fixedPos" class="w-full p-2 border rounded-lg">
                   <option value="前">前（第1位）</option>
                   <option value="后">后（第2位）</option>
                 </select>
               </div>
               <div class="col-span-3">
-                <label class="block text-sm text-gray-700 mb-1">出生日期时间</label>
+                <label class="block text-body-sm text-gray-700 mb-1">出生日期时间</label>
                 <input v-model="birthDate" type="datetime-local" step="1" class="w-full p-2 border rounded-lg" />
               </div>
             </div>
             <div class="col-span-3" v-else>
-              <label class="block text-sm text-gray-700 mb-1">出生日期时间</label>
+              <label class="block text-body-sm text-gray-700 mb-1">出生日期时间</label>
               <input v-model="birthDate" type="datetime-local" step="1" class="w-full p-2 border rounded-lg min-w-[320px]" />
             </div>
           </div>
@@ -391,8 +391,8 @@ const copyAll = () => results.value.length && copy(results.value.map(i => `${i.n
           <!-- 寓意输入 -->
           <div>
             <div class="flex items-center justify-between mb-2">
-              <label class="block text-sm w-40 text-gray-700">寓意（可选）</label>
-              <div class="flex flex-wrap gap-2 text-xs">
+              <label class="block text-body-sm w-40 text-gray-700">寓意（可选）</label>
+              <div class="flex flex-wrap gap-2 text-caption">
                 <button
                   v-for="m in meaningExamples"
                   :key="m"
@@ -418,8 +418,8 @@ const copyAll = () => results.value.length && copy(results.value.map(i => `${i.n
 
         <div class="space-y-3">
           <div class="flex items-center justify-between">
-            <div class="text-sm text-gray-600">生成结果</div>
-            <button class="px-3 py-1 text-sm bg-emerald-500 text-white rounded" :disabled="!results.length" @click="copyAll">复制全部</button>
+            <div class="text-body-sm text-gray-600">生成结果</div>
+            <button class="px-3 py-1 text-body-sm bg-emerald-500 text-white rounded" :disabled="!results.length" @click="copyAll">复制全部</button>
           </div>
           <div class="min-h-[220px] border rounded-lg p-3 bg-gray-50">
             <div v-if="isLoading" class="text-gray-500">生成中...</div>
@@ -427,11 +427,11 @@ const copyAll = () => results.value.length && copy(results.value.map(i => `${i.n
               <li v-for="(r, i) in results" :key="i" class="flex items-start justify-between bg-white p-3 rounded border">
                 <div class="pr-3">
                   <div class="font-medium">{{ r.name }}</div>
-                  <div class="text-gray-600 text-sm mt-1" v-if="r.reason">{{ r.reason }}</div>
+                  <div class="text-gray-600 text-body-sm mt-1" v-if="r.reason">{{ r.reason }}</div>
                 </div>
-                <button class="px-2 py-1 text-xs bg-blue-500 text-white rounded h-fit" @click="copyOne(r.name)">复制</button>
+                <button class="px-2 py-1 text-caption bg-blue-500 text-white rounded h-fit" @click="copyOne(r.name)">复制</button>
               </li>
-              <div v-if="!results.length" class="text-gray-400 text-sm">暂无结果</div>
+              <div v-if="!results.length" class="text-gray-400 text-body-sm">暂无结果</div>
             </ul>
           </div>
         </div>

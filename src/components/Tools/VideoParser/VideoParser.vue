@@ -63,7 +63,7 @@ const videoSites = [
     <div class="p-4 rounded-2xl bg-white">
       <!-- 常用视频网站快捷入口 -->
       <div class="mb-4">
-        <p class="text-sm text-gray-500 mb-2">快速跳转到视频网站：</p>
+        <p class="text-body-sm text-gray-500 mb-2">快速跳转到视频网站：</p>
         <div class="flex flex-wrap gap-2">
           <a
             v-for="site in videoSites"
@@ -71,7 +71,7 @@ const videoSites = [
             :href="site.url"
             target="_blank"
             rel="noopener noreferrer"
-            class="px-3 py-1.5 text-white text-sm rounded-lg transition-colors duration-200"
+            class="px-3 py-1.5 text-white text-body-sm rounded-lg transition-colors duration-200"
             :class="site.color"
           >
             {{ site.name }}
@@ -94,12 +94,12 @@ const videoSites = [
 
       <!-- 解析线路选择 -->
       <div class="mb-4">
-        <p class="text-sm text-gray-500 mb-2">选择解析线路：</p>
+        <p class="text-body-sm text-gray-500 mb-2">选择解析线路：</p>
         <div class="flex flex-wrap gap-2">
           <button
             v-for="(api, index) in parseApis"
             :key="index"
-            class="px-3 py-1.5 text-sm rounded-lg transition-all duration-200 border"
+            class="px-3 py-1.5 text-body-sm rounded-lg transition-all duration-200 border"
             :class="activeApiIndex === index
               ? 'bg-blue-500 text-white border-blue-500 shadow-sm'
               : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400 hover:text-blue-500'"
@@ -149,7 +149,7 @@ const videoSites = [
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
         </svg>
-        <p class="text-gray-500 text-lg">粘贴视频地址后点击"开始解析"即可观看</p>
+        <p class="text-gray-500 text-body-lg">粘贴视频地址后点击"开始解析"即可观看</p>
       </div>
     </div>
 

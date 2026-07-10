@@ -3,8 +3,8 @@
     <div class="flex items-center gap-3 mb-6">
       <div class="text-4xl">⚠️</div>
       <div>
-        <h2 class="text-2xl font-bold text-gray-800">添加剂危害查询</h2>
-        <p class="text-sm text-gray-600">查询食品添加剂的危害、成分和使用信息</p>
+        <h2 class="text-h2 font-bold text-gray-800">添加剂危害查询</h2>
+        <p class="text-body-sm text-gray-600">查询食品添加剂的危害、成分和使用信息</p>
       </div>
     </div>
 
@@ -20,7 +20,7 @@
 
     <!-- 输入区 -->
     <div class="bg-white rounded-lg p-4 mb-4">
-      <label class="block text-sm font-medium text-gray-700 mb-2">
+      <label class="block text-body-sm font-medium text-gray-700 mb-2">
         {{ chatMessages.length > 0 ? '💬 继续追问' : '输入添加剂名称' }}
       </label>
       <div class="flex gap-2">
@@ -44,13 +44,13 @@
 
     <!-- 常见添加剂快捷查询（仅在首次显示） -->
     <div v-if="chatMessages.length === 0 && !isQuerying" class="bg-white rounded-lg p-4 mb-4">
-      <p class="text-sm font-medium text-gray-700 mb-2">🔥 常见添加剂：</p>
+      <p class="text-body-sm font-medium text-gray-700 mb-2">🔥 常见添加剂：</p>
       <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
         <button
           v-for="additive in commonAdditives"
           :key="additive"
           @click="$emit('update:modelValue', additive)"
-          class="px-3 py-2 text-sm bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-colors text-left"
+          class="px-3 py-2 text-body-sm bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-colors text-left"
         >
           {{ additive }}
         </button>

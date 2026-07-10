@@ -223,7 +223,7 @@ const clearResults = () => {
       <!-- 转换设置 -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">分辨率 (DPI)</label>
+          <label class="block text-body-sm font-medium text-gray-700 mb-2">分辨率 (DPI)</label>
           <el-select v-model="settings.dpi" class="w-full">
             <el-option label="150 DPI (标准)" :value="150" />
             <el-option label="300 DPI (高清)" :value="300" />
@@ -231,14 +231,14 @@ const clearResults = () => {
           </el-select>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">输出格式</label>
+          <label class="block text-body-sm font-medium text-gray-700 mb-2">输出格式</label>
           <el-select v-model="settings.format" class="w-full">
             <el-option label="PNG (推荐)" value="png" />
             <el-option label="JPG" value="jpeg" />
           </el-select>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">图片质量</label>
+          <label class="block text-body-sm font-medium text-gray-700 mb-2">图片质量</label>
           <el-select v-model="settings.quality" class="w-full">
             <el-option label="高质量" :value="1.0" />
             <el-option label="中等质量" :value="0.8" />
@@ -260,8 +260,8 @@ const clearResults = () => {
             <Document />
           </el-icon>
           <div>
-            <p class="text-lg text-gray-600 mb-2">拖拽PDF文件到此处，或点击选择文件</p>
-            <p class="text-sm text-gray-400">支持单个PDF文件，自动转换所有页面</p>
+            <p class="text-body-lg text-gray-600 mb-2">拖拽PDF文件到此处，或点击选择文件</p>
+            <p class="text-body-sm text-gray-400">支持单个PDF文件，自动转换所有页面</p>
           </div>
           <el-upload
             class="upload-demo"
@@ -285,18 +285,18 @@ const clearResults = () => {
           class="mb-4"
         />
         <p class="mt-2 text-gray-600">{{ progressText }}</p>
-        <p class="text-sm text-gray-400 mt-1">首次转换可能需要较长时间加载...</p>
+        <p class="text-body-sm text-gray-400 mt-1">首次转换可能需要较长时间加载...</p>
       </div>
 
       <!-- 当前PDF信息 -->
       <div v-if="currentPdfName && !isLoading" class="p-3 bg-blue-50 rounded-lg">
-        <p class="text-sm text-blue-800">当前文件: {{ currentPdfName }}</p>
+        <p class="text-body-sm text-blue-800">当前文件: {{ currentPdfName }}</p>
       </div>
 
       <!-- 转换结果 -->
       <div v-if="convertedImages.length > 0" class="space-y-4">
         <div class="flex justify-between items-center">
-          <h3 class="text-lg font-semibold">转换结果 ({{ convertedImages.length }}张图片)</h3>
+          <h3 class="text-body-lg font-semibold">转换结果 ({{ convertedImages.length }}张图片)</h3>
           <div class="space-x-2">
             <el-button @click="downloadAllImages" type="primary">
               <el-icon><Download /></el-icon>
@@ -322,14 +322,14 @@ const clearResults = () => {
               />
             </div>
             <div class="p-2 bg-white">
-              <p class="text-xs text-gray-600 mb-2">第 {{ index + 1 }} 页</p>
+              <p class="text-caption text-gray-600 mb-2">第 {{ index + 1 }} 页</p>
               <el-button 
                 @click="downloadImage(imageUrl, index)" 
                 size="small" 
                 type="primary" 
-                class="w-full text-xs"
+                class="w-full text-caption"
               >
-                <el-icon class="text-xs"><Download /></el-icon>
+                <el-icon class="text-caption"><Download /></el-icon>
                 下载
               </el-button>
             </div>
@@ -368,7 +368,7 @@ const clearResults = () => {
 
     <ToolDetail title="注意事项">
       <el-text>
-        <ul class="space-y-1 text-gray-600 text-sm">
+        <ul class="space-y-1 text-gray-600 text-body-sm">
           <li>• 首次使用需要加载PDF.js库，可能需要等待几秒</li>
           <li>• 大文件或高分辨率转换需要较长时间，请耐心等待</li>
           <li>• 暂不支持密码保护的PDF文件</li>

@@ -357,7 +357,7 @@ function onPaste(e: ClipboardEvent) {
         </el-radio-group>
 
         <div class="flex items-center gap-2">
-          <span class="text-sm text-gray-600">表名：</span>
+          <span class="text-body-sm text-gray-600">表名：</span>
           <el-input v-model="tableName" placeholder="data" style="width: 160px" />
         </div>
 
@@ -375,7 +375,7 @@ function onPaste(e: ClipboardEvent) {
       </div>
 
       <!-- Example links -->
-      <div class="mt-3 text-sm text-gray-500">
+      <div class="mt-3 text-body-sm text-gray-500">
         示例：
         <el-link type="primary" @click="loadExample('jsonArray')">JSON 数组</el-link>
         <span class="mx-1">/</span>
@@ -386,7 +386,7 @@ function onPaste(e: ClipboardEvent) {
       <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
         <!-- Left: Input -->
         <div>
-          <div class="mb-2 text-sm text-gray-600">
+          <div class="mb-2 text-body-sm text-gray-600">
             MongoDB JSON 输入
             <span v-if="rowStats.total > 0" class="ml-2 text-green-600">
               ({{ rowStats.total }} 条记录)
@@ -397,7 +397,7 @@ function onPaste(e: ClipboardEvent) {
             :rows="16"
             v-model="inputJSON"
             placeholder='粘贴 MongoDB 导出的 JSON 数据，如：[{"name": "Alice"}, {"name": "Bob"}]'
-            class="font-mono text-sm"
+            class="font-mono text-body-sm"
             @paste="onPaste"
           />
         </div>
@@ -405,7 +405,7 @@ function onPaste(e: ClipboardEvent) {
         <!-- Right: Schema Preview with field selection -->
         <div>
           <div class="mb-2 flex items-center justify-between">
-            <div class="text-sm text-gray-600">
+            <div class="text-body-sm text-gray-600">
               字段选择 & 表结构预览
               <span v-if="schemaPreview.length > 0" class="ml-2 text-green-600">
                 (已选 {{ includedColumns.length }}/{{ schemaPreview.length }})
@@ -418,13 +418,13 @@ function onPaste(e: ClipboardEvent) {
               class="!mr-0"
             >全选</el-checkbox>
           </div>
-          <div class="border rounded-lg p-3 bg-gray-50 font-mono text-sm h-[356px] overflow-auto">
+          <div class="border rounded-lg p-3 bg-gray-50 font-mono text-body-sm h-[356px] overflow-auto">
             <div v-if="schemaPreview.length === 0 && !errorMessage" class="text-gray-400">
               输入 JSON 数据后自动预览表结构，可勾选需要导出的字段...
             </div>
             <div v-if="errorMessage" class="text-red-500">{{ errorMessage }}</div>
             <div v-if="schemaPreview.length > 0">
-              <div class="text-xs text-gray-500 mb-2">
+              <div class="text-caption text-gray-500 mb-2">
                 CREATE TABLE "{{ tableName || 'data' }}" (
               </div>
               <div v-for="(col, i) in schemaPreview" :key="col.originalName" class="ml-2 flex items-center gap-1">
@@ -440,7 +440,7 @@ function onPaste(e: ClipboardEvent) {
                 <span v-if="col.isPrimaryKey" class="text-red-600 ml-1">PRIMARY KEY</span>
                 <span v-if="i < schemaPreview.length - 1" :class="col.included ? '' : 'text-gray-300'">,</span>
               </div>
-              <div class="text-xs text-gray-500 mt-2">);</div>
+              <div class="text-caption text-gray-500 mt-2">);</div>
             </div>
           </div>
         </div>
@@ -449,7 +449,7 @@ function onPaste(e: ClipboardEvent) {
       <!-- SQL Output -->
       <div v-if="outputSQL" class="mt-4">
         <div class="mb-2 flex items-center justify-between">
-          <div class="text-sm text-gray-600">
+          <div class="text-body-sm text-gray-600">
             生成的 SQL 语句
             <span class="ml-2 text-green-600">{{ statusMessage }}</span>
           </div>
@@ -458,7 +458,7 @@ function onPaste(e: ClipboardEvent) {
           type="textarea"
           :rows="12"
           v-model="outputSQL"
-          class="font-mono text-sm"
+          class="font-mono text-body-sm"
           readonly
         />
       </div>
@@ -466,7 +466,7 @@ function onPaste(e: ClipboardEvent) {
 
     <!-- Description -->
     <ToolDetail title="功能说明">
-      <div class="space-y-2 text-sm leading-7">
+      <div class="space-y-2 text-body-sm leading-7">
         <p class="font-bold">功能说明</p>
         <p>将 MongoDB 导出的 JSON 数据转换为 SQLite SQL 语句（CREATE TABLE + INSERT），纯浏览器端处理，数据不上传服务器。生成的 SQL 可直接在 SQLite 中执行。</p>
         <ul class="list-disc ml-5">

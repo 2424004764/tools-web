@@ -357,7 +357,7 @@ const generatePoster = async () => {
       <div class="w-full lg:w-1/2 flex flex-col gap-4">
         <!-- 模板选择 -->
         <div class="bg-white rounded-2xl p-4 shadow-sm">
-          <h3 class="text-lg font-bold mb-3 text-gray-800">选择模板</h3>
+          <h3 class="text-body-lg font-bold mb-3 text-gray-800">选择模板</h3>
           <div class="grid grid-cols-3 sm:grid-cols-5 gap-2">
             <div
               v-for="template in templates"
@@ -365,7 +365,7 @@ const generatePoster = async () => {
               @click="selectTemplate(template, $event)"
               class="template-btn"
               :class="[
-                'h-16 rounded-lg cursor-pointer transition-all duration-200 border flex items-center justify-center text-xs font-medium relative overflow-hidden',
+                'h-16 rounded-lg cursor-pointer transition-all duration-200 border flex items-center justify-center text-caption font-medium relative overflow-hidden',
                 template.style === 'minimal-white'
                   ? 'border-gray-300 hover:border-gray-400 hover:scale-102 hover:shadow-lg'
                   : '',
@@ -393,14 +393,14 @@ const generatePoster = async () => {
 
         <!-- 图片比例 -->
         <div class="bg-white rounded-2xl p-4 shadow-sm">
-          <h3 class="text-lg font-bold mb-3 text-gray-800">图片比例</h3>
+          <h3 class="text-body-lg font-bold mb-3 text-gray-800">图片比例</h3>
           <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
             <div
               v-for="(ratio, index) in aspectRatios"
               :key="index"
               @click="info.selectedAspectRatio = index"
               :class="[
-                'h-12 rounded-lg cursor-pointer transition-all duration-200 border-2 flex items-center justify-center text-xs font-medium',
+                'h-12 rounded-lg cursor-pointer transition-all duration-200 border-2 flex items-center justify-center text-caption font-medium',
                 info.selectedAspectRatio === index
                   ? 'border-blue-500 bg-blue-50'
                   : 'border-gray-300 hover:border-blue-300'
@@ -414,7 +414,7 @@ const generatePoster = async () => {
           <div v-if="info.isCustomSize" class="mt-4 p-4 bg-gray-50 rounded-lg space-y-3">
             <div class="flex items-center gap-4">
               <div class="flex-1">
-                <label class="block text-sm font-medium text-gray-700 mb-1">宽度 (px)</label>
+                <label class="block text-body-sm font-medium text-gray-700 mb-1">宽度 (px)</label>
                 <el-input-number
                   v-model="info.posterWidth"
                   :min="100"
@@ -425,7 +425,7 @@ const generatePoster = async () => {
                 />
               </div>
               <div class="flex-1">
-                <label class="block text-sm font-medium text-gray-700 mb-1">高度 (px)</label>
+                <label class="block text-body-sm font-medium text-gray-700 mb-1">高度 (px)</label>
                 <el-input-number
                   v-model="info.posterHeight"
                   :min="100"
@@ -436,23 +436,23 @@ const generatePoster = async () => {
                 />
               </div>
             </div>
-            <div class="text-xs text-gray-500">
+            <div class="text-caption text-gray-500">
               当前尺寸：{{ info.posterWidth }}×{{ info.posterHeight }}px
             </div>
           </div>
 
-          <div v-else class="mt-2 text-xs text-gray-500">
+          <div v-else class="mt-2 text-caption text-gray-500">
             当前尺寸：{{ info.posterWidth }}×{{ info.posterHeight }}px
           </div>
         </div>
 
         <!-- 文字内容编辑 -->
         <div class="bg-white rounded-2xl p-4 shadow-sm">
-          <h3 class="text-lg font-bold mb-3 text-gray-800">编辑内容</h3>
+          <h3 class="text-body-lg font-bold mb-3 text-gray-800">编辑内容</h3>
 
           <!-- 对齐方式 -->
           <div class="mb-4 p-3 bg-gray-50 rounded-lg">
-            <label class="block text-sm font-medium text-gray-700 mb-2">内容对齐方式</label>
+            <label class="block text-body-sm font-medium text-gray-700 mb-2">内容对齐方式</label>
             <div class="flex gap-2">
               <button
                 v-for="align in ['left', 'center', 'right']"
@@ -481,7 +481,7 @@ const generatePoster = async () => {
           <div class="space-y-4">
             <!-- 主标题 -->
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">
+              <label class="block text-body-sm font-medium text-gray-700 mb-1">
                 主标题 <span class="text-gray-400">（如：Python脚本开发）</span>
               </label>
               <el-input
@@ -491,7 +491,7 @@ const generatePoster = async () => {
                 show-word-limit
               />
               <div class="mt-2">
-                <el-text class="text-xs text-gray-500">字体大小：{{ info.fontSize.mainTitle }}px</el-text>
+                <el-text class="text-caption text-gray-500">字体大小：{{ info.fontSize.mainTitle }}px</el-text>
                 <el-slider v-model="info.fontSize.mainTitle" :min="20" :max="200" show-input size="small" />
               </div>
             </div>
@@ -507,7 +507,7 @@ const generatePoster = async () => {
                   show-word-limit
                 />
                 <div class="mt-2">
-                  <el-text class="text-xs text-gray-500">字体大小：{{ info.fontSize.subTitle }}px</el-text>
+                  <el-text class="text-caption text-gray-500">字体大小：{{ info.fontSize.subTitle }}px</el-text>
                   <el-slider v-model="info.fontSize.subTitle" :min="20" :max="120" show-input size="small" />
                 </div>
               </div>
@@ -526,7 +526,7 @@ const generatePoster = async () => {
                   show-word-limit
                 />
                 <div class="mt-2">
-                  <el-text class="text-xs text-gray-500">字体大小：{{ info.fontSize.description }}px</el-text>
+                  <el-text class="text-caption text-gray-500">字体大小：{{ info.fontSize.description }}px</el-text>
                   <el-slider v-model="info.fontSize.description" :min="1" :max="70" show-input size="small" />
                 </div>
               </div>
@@ -534,7 +534,7 @@ const generatePoster = async () => {
 
             <!-- 标签 -->
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">
+              <label class="block text-body-sm font-medium text-gray-700 mb-1">
                 技能标签 <span class="text-gray-400">（突出你的核心技能）</span>
               </label>
               <div class="flex flex-wrap gap-2 mb-2">
@@ -543,7 +543,7 @@ const generatePoster = async () => {
                   :key="index"
                   closable
                   @close="removeTag(index)"
-                  class="!text-base"
+                  class="!text-body"
                 >
                   {{ tag }}
                 </el-tag>
@@ -582,33 +582,33 @@ const generatePoster = async () => {
                   <svg class="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
                   </svg>
-                  <span class="text-base font-bold text-gray-800">水印设置</span>
+                  <span class="text-body font-bold text-gray-800">水印设置</span>
                 </div>
                 <el-switch v-model="info.watermark.enabled" />
               </div>
 
               <div v-if="info.watermark.enabled" class="space-y-3">
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">水印文字</label>
+                  <label class="block text-body-sm font-medium text-gray-700 mb-1">水印文字</label>
                   <el-input v-model="info.watermark.text" placeholder="请输入水印文字" maxlength="30" />
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">字体大小 ({{ info.watermark.size }}px)</label>
+                    <label class="block text-body-sm font-medium text-gray-700 mb-1">字体大小 ({{ info.watermark.size }}px)</label>
                     <el-slider v-model="info.watermark.size" :min="12" :max="72" show-input size="small" />
                   </div>
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">旋转角度 ({{ info.watermark.angle }}°)</label>
+                    <label class="block text-body-sm font-medium text-gray-700 mb-1">旋转角度 ({{ info.watermark.angle }}°)</label>
                     <el-slider v-model="info.watermark.angle" :min="-90" :max="90" show-input size="small" />
                   </div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">透明度 ({{ info.watermark.opacity }}%)</label>
+                    <label class="block text-body-sm font-medium text-gray-700 mb-1">透明度 ({{ info.watermark.opacity }}%)</label>
                     <el-slider v-model="info.watermark.opacity" :min="5" :max="100" show-input size="small" />
                   </div>
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">疏密度 ({{ info.watermark.density }}x{{ info.watermark.density }})</label>
+                    <label class="block text-body-sm font-medium text-gray-700 mb-1">疏密度 ({{ info.watermark.density }}x{{ info.watermark.density }})</label>
                     <el-slider v-model="info.watermark.density" :min="2" :max="10" show-input size="small" />
                   </div>
                 </div>
@@ -621,7 +621,7 @@ const generatePoster = async () => {
               size="large"
               :loading="isGenerating"
               @click="generatePoster"
-              class="w-full !text-lg"
+              class="w-full !text-body-lg"
             >
               {{ isGenerating ? '生成中...' : '生成并下载海报' }}
             </el-button>
@@ -633,8 +633,8 @@ const generatePoster = async () => {
       <div class="w-full lg:w-1/2 flex flex-col">
         <div class="bg-white rounded-2xl p-4 shadow-sm flex-1">
           <div class="flex items-center justify-between mb-3">
-            <h3 class="text-lg font-bold text-gray-800">实时预览</h3>
-            <el-text class="text-xs text-gray-500">缩放：{{ (info.previewScale * 100).toFixed(0) }}%</el-text>
+            <h3 class="text-body-lg font-bold text-gray-800">实时预览</h3>
+            <el-text class="text-caption text-gray-500">缩放：{{ (info.previewScale * 100).toFixed(0) }}%</el-text>
           </div>
 
           <!-- 缩放控制 -->
@@ -745,7 +745,7 @@ const generatePoster = async () => {
                   <!-- 底部标识 -->
                   <div
                     v-if="info.showFooter && info.footerText"
-                    class="text-center mt-6 opacity-60 text-sm"
+                    class="text-center mt-6 opacity-60 text-body-sm"
                     :style="{
                       color: info.selectedTemplate.textColor
                     }"

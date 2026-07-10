@@ -3,8 +3,8 @@
     <div class="flex items-center gap-3 mb-6">
       <div class="text-4xl">🍽️</div>
       <div>
-        <h2 class="text-2xl font-bold text-gray-800">食物热量识别</h2>
-        <p class="text-sm text-gray-600">查询食物热量、营养成分和健康建议</p>
+        <h2 class="text-h2 font-bold text-gray-800">食物热量识别</h2>
+        <p class="text-body-sm text-gray-600">查询食物热量、营养成分和健康建议</p>
       </div>
     </div>
 
@@ -22,7 +22,7 @@
     <div class="bg-white rounded-lg p-4 mb-4 space-y-3">
       <!-- 照片上传（仅首次显示） -->
       <div v-if="chatMessages.length === 0">
-        <label class="block text-sm font-medium text-gray-700 mb-2">拍照识别食物（可选）</label>
+        <label class="block text-body-sm font-medium text-gray-700 mb-2">拍照识别食物（可选）</label>
         <div class="flex gap-2">
           <input
             type="file"
@@ -54,7 +54,7 @@
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">
+        <label class="block text-body-sm font-medium text-gray-700 mb-2">
           {{ chatMessages.length > 0 ? '💬 继续追问' : (uploadedImage ? '食物名称（可选）' : '食物名称') }}
         </label>
         <input
@@ -68,7 +68,7 @@
       </div>
 
       <div v-if="chatMessages.length === 0 && !uploadedImage">
-        <label class="block text-sm font-medium text-gray-700 mb-2">份量</label>
+        <label class="block text-body-sm font-medium text-gray-700 mb-2">份量</label>
         <div class="flex gap-2">
           <input
             :value="portion"
@@ -108,13 +108,13 @@
 
     <!-- 常见食物快捷查询（仅在首次显示） -->
     <div v-if="chatMessages.length === 0 && !isQuerying && !uploadedImage" class="bg-white rounded-lg p-4 mb-4">
-      <p class="text-sm font-medium text-gray-700 mb-2">🍴 常见食物：</p>
+      <p class="text-body-sm font-medium text-gray-700 mb-2">🍴 常见食物：</p>
       <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
         <button
           v-for="food in commonFoods"
           :key="food"
           @click="$emit('update:modelValue', food); $emit('update:portion', '100克')"
-          class="px-3 py-2 text-sm bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 transition-colors text-left"
+          class="px-3 py-2 text-body-sm bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 transition-colors text-left"
         >
           {{ food }}
         </button>

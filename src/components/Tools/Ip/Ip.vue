@@ -54,7 +54,7 @@ onMounted(() => {
         <el-button type="primary" @click="search('click')">查询</el-button>
       </div>
       <div class="mt-3 min-h-md bg-gray-100 p-3 mb-3 flex flex-col">
-        <div class="bg-white p-2 font-bold text-xl">您的IP信息</div>
+        <div class="bg-white p-2 font-bold text-h3">您的IP信息</div>
         <div class="bg-white p-2 flex">
           <div class="mr-1">运营商: </div>
           <div>{{ toolsStore.ipData.isp }}</div>

@@ -2,17 +2,17 @@
   <transition name="pwa-toast">
     <div
       v-if="show"
-      class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-xl bg-gray-800 px-5 py-3 text-white shadow-2xl"
+      class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-xl bg-ink-900 px-5 py-3 text-white shadow-2xl"
     >
-      <span class="text-sm">应用已更新，点击刷新加载最新版本</span>
+      <span class="text-body-sm">应用已更新，点击刷新加载最新版本</span>
       <button
-        class="rounded-lg bg-blue-500 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-600 transition-colors"
+        class="rounded-lg bg-accent-500 px-4 py-1.5 text-body-sm font-medium text-white hover:bg-accent-600 transition-colors"
         @click="reload"
       >
         刷新
       </button>
       <button
-        class="text-gray-400 hover:text-white transition-colors"
+        class="text-ink-400 hover:text-white transition-colors"
         @click="show = false"
       >
         ✕

@@ -6,7 +6,7 @@ import 'virtual:svg-icons-register'
 import router from './router'
 //styles
 import './styles/tailwind.css'
-import './styles/loading.css'
+// loading.css 已删除（Phase 1 清理：全代码库零引用，原 .route-loading 仅占首屏 CSS 字节）
 //pinia
 import pinia from './store'
 import { useUserStore } from './store/modules/user'

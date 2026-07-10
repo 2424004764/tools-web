@@ -103,7 +103,7 @@ onMounted(() => {
               :key="unit.key"
               :class="`${unit.color} p-4 rounded-lg border-2 transition-all duration-200 hover:shadow-md`"
             >
-              <label class="text-sm font-medium text-gray-700 mb-2 block">
+              <label class="text-body-sm font-medium text-gray-700 mb-2 block">
                 {{ unit.label }}
               </label>
               <el-input
@@ -127,31 +127,31 @@ onMounted(() => {
 
         <!-- 常用转换示例 -->
         <div class="mt-8 border-t pt-6">
-          <h3 class="text-lg font-medium text-gray-900 mb-4">常用转换示例</h3>
+          <h3 class="text-body-lg font-medium text-gray-900 mb-4">常用转换示例</h3>
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
               <h4 class="font-medium text-blue-900 mb-2">1 MB = 1024 KB</h4>
-              <p class="text-sm text-blue-600">在MB输入框输入1，KB会自动显示1024</p>
+              <p class="text-body-sm text-blue-600">在MB输入框输入1，KB会自动显示1024</p>
             </div>
             <div class="bg-green-50 p-4 rounded-lg border border-green-200">
               <h4 class="font-medium text-green-900 mb-2">1 GB = 1024 MB</h4>
-              <p class="text-sm text-green-600">在GB输入框输入1，MB会自动显示1024</p>
+              <p class="text-body-sm text-green-600">在GB输入框输入1，MB会自动显示1024</p>
             </div>
             <div class="bg-purple-50 p-4 rounded-lg border border-purple-200">
               <h4 class="font-medium text-purple-900 mb-2">1 TB = 1024 GB</h4>
-              <p class="text-sm text-purple-600">在TB输入框输入1，GB会自动显示1024</p>
+              <p class="text-body-sm text-purple-600">在TB输入框输入1，GB会自动显示1024</p>
             </div>
             <div class="bg-orange-50 p-4 rounded-lg border border-orange-200">
               <h4 class="font-medium text-orange-900 mb-2">1 PB = 1024 TB</h4>
-              <p class="text-sm text-orange-600">在PB输入框输入1，TB会自动显示1024</p>
+              <p class="text-body-sm text-orange-600">在PB输入框输入1，TB会自动显示1024</p>
             </div>
             <div class="bg-red-50 p-4 rounded-lg border border-red-200">
               <h4 class="font-medium text-red-900 mb-2">1 EB = 1024 PB</h4>
-              <p class="text-sm text-red-600">在EB输入框输入1，PB会自动显示1024</p>
+              <p class="text-body-sm text-red-600">在EB输入框输入1，PB会自动显示1024</p>
             </div>
             <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
               <h4 class="font-medium text-indigo-900 mb-2">1 ZB = 1024 EB</h4>
-              <p class="text-sm text-indigo-600">在ZB输入框输入1，EB会自动显示1024</p>
+              <p class="text-body-sm text-indigo-600">在ZB输入框输入1，EB会自动显示1024</p>
             </div>
           </div>
         </div>

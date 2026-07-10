@@ -5,13 +5,13 @@
       <!-- 优化阶段 -->
       <div v-if="showOptimizeStage" class="flex items-center justify-between mb-3">
         <div class="flex items-center gap-2">
-          <div :class="['w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold',
+          <div :class="['w-8 h-8 rounded-full flex items-center justify-center text-body-sm font-semibold',
             currentStage >= 1 ? (currentStage > 1 ? 'bg-green-500 text-white' : 'bg-blue-500 text-white') : 'bg-gray-300 text-gray-500']">
             {{ currentStage > 1 ? '✓' : '1' }}
           </div>
-          <span class="text-sm font-medium">{{ optimizeStageLabel }}</span>
+          <span class="text-body-sm font-medium">{{ optimizeStageLabel }}</span>
         </div>
-        <div v-if="scriptGenerateTime > 0 && activeTab === 'text-to-video'" class="text-xs text-gray-600">
+        <div v-if="scriptGenerateTime > 0 && activeTab === 'text-to-video'" class="text-caption text-gray-600">
           {{ formatTime(scriptGenerateTime) }}
         </div>
       </div>
@@ -19,32 +19,32 @@
       <!-- 生成阶段 -->
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
-          <div :class="['w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold',
+          <div :class="['w-8 h-8 rounded-full flex items-center justify-center text-body-sm font-semibold',
             currentStage >= 2 ? (currentStage > 2 ? 'bg-green-500 text-white' : 'bg-blue-500 text-white') : 'bg-gray-300 text-gray-500']">
             {{ currentStage > 2 ? '✓' : (showOptimizeStage ? '2' : '1') }}
           </div>
-          <span class="text-sm font-medium">{{ generateStageLabel }}</span>
+          <span class="text-body-sm font-medium">{{ generateStageLabel }}</span>
         </div>
-        <div v-if="generateTime > 0" class="text-xs text-gray-600">
+        <div v-if="generateTime > 0" class="text-caption text-gray-600">
           {{ formatTime(generateTime) }}
         </div>
       </div>
     </div>
 
     <!-- 进度提示 -->
-    <div v-if="currentStep" class="mb-4 p-3 bg-yellow-50 rounded-lg text-sm text-gray-700">
+    <div v-if="currentStep" class="mb-4 p-3 bg-yellow-50 rounded-lg text-body-sm text-gray-700">
       {{ currentStep }}
     </div>
 
     <!-- 生成的文案 -->
     <div v-if="generatedScript && activeTab === 'text-to-video' && showScript" class="mb-6 p-4 bg-gray-50 rounded-lg">
-      <h3 class="text-sm font-semibold mb-2">生成的文案</h3>
-      <p class="text-sm text-gray-700 whitespace-pre-wrap">{{ generatedScript }}</p>
+      <h3 class="text-body-sm font-semibold mb-2">生成的文案</h3>
+      <p class="text-body-sm text-gray-700 whitespace-pre-wrap">{{ generatedScript }}</p>
     </div>
 
     <!-- 生成的图片 -->
     <div v-if="generatedImages.length > 0" class="mb-6">
-      <h3 class="text-sm font-semibold mb-2">生成的图片 ({{ generatedImages.length }}张)</h3>
+      <h3 class="text-body-sm font-semibold mb-2">生成的图片 ({{ generatedImages.length }}张)</h3>
       <div class="grid grid-cols-2 gap-3">
         <div v-for="(img, index) in generatedImages" :key="index" class="relative group">
           <img
@@ -54,7 +54,7 @@
           />
           <button
             @click="$emit('download-image', img, index)"
-            class="absolute bottom-2 right-2 px-3 py-1 bg-green-500 text-white rounded-lg hover:bg-green-600 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+            class="absolute bottom-2 right-2 px-3 py-1 bg-green-500 text-white rounded-lg hover:bg-green-600 text-caption opacity-0 group-hover:opacity-100 transition-opacity"
           >
             下载
           </button>
@@ -64,7 +64,7 @@
 
     <!-- 生成的视频 -->
     <div v-if="generatedVideoUrl">
-      <h3 class="text-sm font-semibold mb-2">生成的视频</h3>
+      <h3 class="text-body-sm font-semibold mb-2">生成的视频</h3>
       <div class="flex items-start gap-3">
         <div class="relative">
           <video
@@ -80,7 +80,7 @@
             @mouseleave="$emit('video-mouseleave')"
           />
           <!-- 时长标签 -->
-          <div v-if="videoDuration > 0" class="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+          <div v-if="videoDuration > 0" class="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white text-caption px-2 py-1 rounded">
             {{ videoDuration }}秒
           </div>
           <!-- 播放进度条 -->
@@ -94,13 +94,13 @@
         <div class="flex-1">
           <button
             @click="$emit('download-video')"
-            class="w-full py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 text-sm mb-2"
+            class="w-full py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 text-body-sm mb-2"
           >
             下载视频
           </button>
           <button
             @click="$emit('show-video-modal')"
-            class="w-full py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm"
+            class="w-full py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-body-sm"
           >
             全屏预览
           </button>

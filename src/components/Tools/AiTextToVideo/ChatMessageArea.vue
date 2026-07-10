@@ -18,17 +18,17 @@
           <!-- 用户消息 -->
           <div v-if="msg.role === 'user'" class="flex justify-end">
             <div class="max-w-[80%] bg-blue-500 text-white rounded-lg px-4 py-2">
-              <div class="text-sm whitespace-pre-wrap">{{ msg.content }}</div>
+              <div class="text-body-sm whitespace-pre-wrap">{{ msg.content }}</div>
             </div>
           </div>
 
           <!-- AI回复 -->
           <div v-else class="flex justify-start">
             <div class="max-w-[80%] bg-white rounded-lg px-4 py-2 shadow">
-              <div class="text-sm text-gray-800 markdown-body" v-html="renderMarkdown(msg.content)"></div>
+              <div class="text-body-sm text-gray-800 markdown-body" v-html="renderMarkdown(msg.content)"></div>
               <button
                 @click="$emit('copy-message', msg.content)"
-                class="mt-2 text-xs text-gray-500 hover:text-blue-500"
+                class="mt-2 text-caption text-gray-500 hover:text-blue-500"
               >
                 📋 复制
               </button>
@@ -39,7 +39,7 @@
         <!-- 发送中提示 -->
         <div v-if="isChatting" class="flex justify-start">
           <div class="bg-white rounded-lg px-4 py-2 shadow">
-            <div class="text-sm text-gray-500">正在思考...</div>
+            <div class="text-body-sm text-gray-500">正在思考...</div>
           </div>
         </div>
       </div>
@@ -51,7 +51,7 @@
           @input="$emit('update:inputValue', ($event.target as HTMLTextAreaElement).value)"
           placeholder="输入您的问题... (Enter 发送, Ctrl+Enter 换行)"
           rows="3"
-          class="flex-1 px-3 py-2 border rounded-lg text-sm resize-none"
+          class="flex-1 px-3 py-2 border rounded-lg text-body-sm resize-none"
           @keydown.enter.exact.prevent="$emit('send')"
           @keydown.ctrl.enter="$emit('update:inputValue', inputValue + '\n')"
           @keydown.meta.enter="$emit('update:inputValue', inputValue + '\n')"
@@ -59,7 +59,7 @@
         <button
           @click="$emit('send')"
           :disabled="isChatting || !inputValue.trim()"
-          class="px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm"
+          class="px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-body-sm"
         >
           {{ isChatting ? '发送中' : '发送' }}
         </button>

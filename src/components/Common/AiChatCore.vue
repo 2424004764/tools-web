@@ -450,16 +450,16 @@ defineExpose({
         <!-- 聊天记录区域 -->
         <div
           ref="chatContainer"
-          class="flex-1 overflow-y-auto p-4 border rounded-lg bg-gray-50 mb-4"
+          class="flex-1 overflow-y-auto p-4 border rounded-lg bg-surface-1 mb-4"
         >
           <!-- 欢迎消息 -->
           <div
             v-if="messages.length === 0"
-            class="text-center text-gray-500 py-8"
+            class="text-center text-ink-500 py-8"
           >
-            <div class="text-2xl mb-2">🤖</div>
-            <div class="text-lg font-medium mb-2">{{ title }}</div>
-            <div class="text-sm">我可以帮助您解决各种问题，请开始对话吧！</div>
+            <div class="text-h2 mb-2">🤖</div>
+            <div class="text-body-lg font-medium mb-2">{{ title }}</div>
+            <div class="text-body-sm">我可以帮助您解决各种问题，请开始对话吧！</div>
           </div>
 
           <!-- 消息列表 -->
@@ -485,7 +485,7 @@ defineExpose({
         <div class="flex justify-end mt-2">
           <button
             @click="clearChat"
-            class="px-3 py-1 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
+            class="px-3 py-1 text-body-sm text-ink-500 hover:text-ink-700 hover:bg-surface-2 rounded"
           >
             清空对话
           </button>
@@ -494,11 +494,11 @@ defineExpose({
     </div>
 
     <!-- 如果没有选择供应商和模型，显示提示 -->
-    <div v-else class="mt-4 p-6 text-center bg-gray-50 rounded-lg">
-      <div class="text-gray-500">
-        <div class="text-lg mb-2">🤖</div>
-        <div class="text-base font-medium mb-2">正在初始化AI供应商选择...</div>
-        <div class="text-sm">请稍候，系统会自动选择默认配置</div>
+    <div v-else class="mt-4 p-6 text-center bg-surface-1 rounded-lg">
+      <div class="text-ink-500">
+        <div class="text-body-lg mb-2">🤖</div>
+        <div class="text-body font-medium mb-2">正在初始化AI供应商选择...</div>
+        <div class="text-body-sm">请稍候，系统会自动选择默认配置</div>
       </div>
     </div>
   </div>
@@ -511,16 +511,16 @@ defineExpose({
 }
 
 .overflow-y-auto::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: rgb(var(--surface-2));
   border-radius: 3px;
 }
 
 .overflow-y-auto::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: rgb(var(--border-default));
   border-radius: 3px;
 }
 
 .overflow-y-auto::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+  background: rgb(var(--ink-300));
 }
 </style>

@@ -469,7 +469,7 @@ const handleCountChange = () => {
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <!-- 风格选择 -->
           <div class="space-y-2">
-            <label class="text-sm font-medium text-gray-700">鸡汤文风格</label>
+            <label class="text-body-sm font-medium text-gray-700">鸡汤文风格</label>
             <select
               v-model="selectedStyle"
               @change="handleStyleChange"
@@ -487,7 +487,7 @@ const handleCountChange = () => {
 
           <!-- 生成条数选择 -->
           <div class="space-y-2">
-            <label class="text-sm font-medium text-gray-700">生成条数</label>
+            <label class="text-body-sm font-medium text-gray-700">生成条数</label>
             <select
               v-model="generateCount"
               @change="handleCountChange"
@@ -505,7 +505,7 @@ const handleCountChange = () => {
 
           <!-- 刷新间隔 -->
           <div class="space-y-2">
-            <label class="text-sm font-medium text-gray-700"
+            <label class="text-body-sm font-medium text-gray-700"
               >自动刷新间隔</label
             >
             <select
@@ -526,7 +526,7 @@ const handleCountChange = () => {
 
           <!-- 自动刷新开关 -->
           <div class="space-y-2">
-            <label class="text-sm font-medium text-gray-700">自动刷新</label>
+            <label class="text-body-sm font-medium text-gray-700">自动刷新</label>
             <div class="flex items-center">
               <button
                 @click="toggleAutoRefresh"
@@ -542,7 +542,7 @@ const handleCountChange = () => {
                   ]"
                 />
               </button>
-              <span class="ml-2 text-sm text-gray-600">
+              <span class="ml-2 text-body-sm text-gray-600">
                 {{ autoRefresh ? "开启" : "关闭" }}
               </span>
             </div>
@@ -550,7 +550,7 @@ const handleCountChange = () => {
 
           <!-- 手动刷新按钮 -->
           <div class="space-y-2">
-            <label class="text-sm font-medium text-gray-700">操作</label>
+            <label class="text-body-sm font-medium text-gray-700">操作</label>
             <button
               @click="refreshMotivations"
               :disabled="refreshing || loading"
@@ -567,7 +567,7 @@ const handleCountChange = () => {
 
         <!-- 状态信息 -->
         <div
-          class="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm text-gray-600 space-y-2 sm:space-y-0"
+          class="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between text-body-sm text-gray-600 space-y-2 sm:space-y-0"
         >
           <div class="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
             <span
@@ -591,10 +591,10 @@ const handleCountChange = () => {
       <!-- 鸡汤文展示区域 -->
       <div class="space-y-4">
         <div class="flex items-center justify-between">
-          <h3 class="text-lg font-semibold text-gray-800">
+          <h3 class="text-body-lg font-semibold text-gray-800">
             {{ selectedStyle }}鸡汤文 ({{ motivationList.length }}条)
           </h3>
-          <div class="text-sm text-gray-500">
+          <div class="text-body-sm text-gray-500">
             {{
               autoRefresh ? `每${refreshInterval}分钟自动刷新` : "手动刷新模式"
             }}
@@ -605,7 +605,7 @@ const handleCountChange = () => {
         <div v-if="loading && motivationList.length === 0" class="text-center py-12">
           <div class="inline-flex items-center space-x-2">
             <div class="loading-spinner-large"></div>
-            <span class="text-lg text-gray-600">
+            <span class="text-body-lg text-gray-600">
               {{
                 retryCount > 0
                   ? `AI生成失败，正在进行第${retryCount + 1}次重试...`
@@ -613,7 +613,7 @@ const handleCountChange = () => {
               }}
             </span>
           </div>
-          <div v-if="retryCount > 0" class="mt-2 text-sm text-orange-600">
+          <div v-if="retryCount > 0" class="mt-2 text-body-sm text-orange-600">
             重试次数: {{ retryCount }}/3
           </div>
         </div>
@@ -636,7 +636,7 @@ const handleCountChange = () => {
             <!-- 风格标签 -->
             <div class="absolute top-3 right-3">
               <span
-                class="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full"
+                class="px-2 py-1 text-caption font-medium bg-yellow-100 text-yellow-800 rounded-full"
               >
                 {{ motivation.style }}
               </span>
@@ -644,13 +644,13 @@ const handleCountChange = () => {
 
             <!-- 鸡汤文内容 -->
             <div class="mb-4 pt-8">
-              <p class="text-lg text-gray-800 leading-relaxed font-medium">
+              <p class="text-body-lg text-gray-800 leading-relaxed font-medium">
                 "{{ motivation.content }}"
               </p>
             </div>
 
             <!-- 底部信息 -->
-            <div class="flex items-center justify-between text-sm text-gray-500">
+            <div class="flex items-center justify-between text-body-sm text-gray-500">
               <button
                 @click="generateCover(motivation.content, motivation.id)"
                 :disabled="generatingCovers[motivation.id]"
@@ -687,8 +687,8 @@ const handleCountChange = () => {
         >
           <div class="text-gray-400">
             <div class="text-6xl mb-4">☕</div>
-            <div class="text-lg">暂无鸡汤文</div>
-            <div class="text-sm">点击刷新按钮生成新的鸡汤文</div>
+            <div class="text-body-lg">暂无鸡汤文</div>
+            <div class="text-body-sm">点击刷新按钮生成新的鸡汤文</div>
           </div>
         </div>
       </div>
@@ -696,7 +696,7 @@ const handleCountChange = () => {
       <!-- 使用说明 -->
       <div class="mt-8 p-4 bg-gray-50 rounded-lg">
         <h4 class="font-medium text-gray-800 mb-2">💡 使用说明</h4>
-        <ul class="text-sm text-gray-600 space-y-1">
+        <ul class="text-body-sm text-gray-600 space-y-1">
           <li>• 选择你喜欢的鸡汤文风格，AI会自动生成5条相关内容</li>
           <li>• 开启自动刷新后，系统会定时生成新的鸡汤文</li>
           <li>• 每条鸡汤文都可以单独复制，方便分享给朋友</li>
@@ -720,7 +720,7 @@ const handleCountChange = () => {
   >
     <div class="bg-white rounded-xl max-w-4xl max-h-[90vh] overflow-hidden">
       <div class="flex items-center justify-between p-6 border-b">
-        <h3 class="text-xl font-semibold text-gray-800">
+        <h3 class="text-h3 font-semibold text-gray-800">
           {{ generatedCoverUrl ? '生成的封面' : '正在生成封面...' }}
         </h3>
         <button
@@ -738,11 +738,11 @@ const handleCountChange = () => {
         <div v-if="!generatedCoverUrl" class="text-center py-12">
           <div class="inline-flex items-center space-x-2">
             <div class="loading-spinner-large"></div>
-            <span class="text-lg text-gray-600">AI正在生成封面，请稍候...</span>
+            <span class="text-body-lg text-gray-600">AI正在生成封面，请稍候...</span>
           </div>
-          <div class="mt-4 text-sm text-gray-500">
+          <div class="mt-4 text-body-sm text-gray-500">
             <p>鸡汤文内容：</p>
-            <p class="mt-2 text-lg font-medium text-gray-800">"{{ currentMotivation }}"</p>
+            <p class="mt-2 text-body-lg font-medium text-gray-800">"{{ currentMotivation }}"</p>
           </div>
         </div>
         
@@ -750,7 +750,7 @@ const handleCountChange = () => {
         <div v-else class="text-center">
           <div class="mb-4">
             <p class="text-gray-600 mb-2">鸡汤文内容：</p>
-            <p class="text-lg font-medium text-gray-800">"{{ currentMotivation }}"</p>
+            <p class="text-body-lg font-medium text-gray-800">"{{ currentMotivation }}"</p>
           </div>
           
           <div class="flex justify-center mb-6">

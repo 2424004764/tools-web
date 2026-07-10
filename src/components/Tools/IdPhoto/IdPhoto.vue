@@ -756,14 +756,14 @@ onMounted(() => {
           <!-- 原图编辑区 -->
           <div class="flex-1 w-full lg:w-auto">
             <div class="flex justify-between items-center mb-2">
-              <el-text class="text-sm">拖动蓝色矩形框选择裁剪区域</el-text>
+              <el-text class="text-body-sm">拖动蓝色矩形框选择裁剪区域</el-text>
               <div class="flex gap-1">
                 <el-button size="small" :icon="ZoomOut" @click="zoomOut">缩小</el-button>
                 <el-button size="small" @click="resetZoom">重置</el-button>
                 <el-button size="small" :icon="ZoomIn" @click="zoomIn">放大</el-button>
               </div>
             </div>
-            <div class="text-sm text-gray-500 mb-2 flex justify-between">
+            <div class="text-body-sm text-gray-500 mb-2 flex justify-between">
               <span>原图: {{ originalImage.naturalWidth }} × {{ originalImage.naturalHeight }} 像素</span>
               <span>缩放: {{ (imageScale * 100).toFixed(0) }}%</span>
             </div>
@@ -848,7 +848,7 @@ onMounted(() => {
             </div>
 
             <!-- 尺寸信息 -->
-            <div v-if="croppedImageSrc" class="mt-2 text-sm text-gray-500 text-center">
+            <div v-if="croppedImageSrc" class="mt-2 text-body-sm text-gray-500 text-center">
               {{ customWidth }} × {{ customHeight }} 像素 | {{ outputFormat.toUpperCase() }}
             </div>
           </div>

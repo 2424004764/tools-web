@@ -289,7 +289,7 @@ const scrollToCategory = (catId: string) => {
       <!-- 公式列表 -->
       <div class="space-y-6">
         <div v-for="cat in filteredCategories" :key="cat.id" :id="cat.id" class="border rounded-lg p-4">
-          <h3 class="text-lg font-bold text-gray-800 mb-3">
+          <h3 class="text-body-lg font-bold text-gray-800 mb-3">
             {{ cat.icon }} {{ cat.title }}
           </h3>
 
@@ -302,8 +302,8 @@ const scrollToCategory = (catId: string) => {
               <div class="flex items-start justify-between">
                 <div class="flex-1">
                   <div class="font-medium text-gray-800">{{ formula.name }}</div>
-                  <div class="font-mono text-primary text-lg my-1">{{ formula.formula }}</div>
-                  <div class="text-sm text-gray-500">{{ formula.desc }}</div>
+                  <div class="font-mono text-primary text-body-lg my-1">{{ formula.formula }}</div>
+                  <div class="text-body-sm text-gray-500">{{ formula.desc }}</div>
                 </div>
                 <el-tag v-if="formula.unit" size="small" type="warning" class="ml-2">
                   {{ formula.unit }}
@@ -322,7 +322,7 @@ const scrollToCategory = (catId: string) => {
 
     <!-- 描述 -->
     <ToolDetail title="描述">
-      <div class="text-sm leading-7 space-y-2">
+      <div class="text-body-sm leading-7 space-y-2">
         <p class="font-bold">功能说明</p>
         <p>常用数学公式速查工具，涵盖中小学至大学水平的主要数学公式。</p>
         <ul class="list-disc ml-5">

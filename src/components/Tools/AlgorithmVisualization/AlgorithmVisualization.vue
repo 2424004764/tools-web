@@ -1419,7 +1419,7 @@ onUnmounted(() => {
       <!-- 控制面板 - 响应式数组大小限制 -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <div>
-          <label class="block text-sm font-medium mb-2">算法类型</label>
+          <label class="block text-body-sm font-medium mb-2">算法类型</label>
           <el-select v-model="state.selectedAlgorithm" :disabled="state.isRunning" class="w-full">
             <el-option
               v-for="algo in algorithmTypes"
@@ -1431,9 +1431,9 @@ onUnmounted(() => {
         </div>
         
         <div>
-          <label class="block text-sm font-medium mb-2">
+          <label class="block text-body-sm font-medium mb-2">
             数组大小: {{ state.arraySize }}
-            <span v-if="isMobile" class="text-xs text-gray-500">(手机端最大15)</span>
+            <span v-if="isMobile" class="text-caption text-gray-500">(手机端最大15)</span>
           </label>
           <el-slider
             v-model="state.arraySize"
@@ -1446,7 +1446,7 @@ onUnmounted(() => {
         </div>
         
         <div>
-          <label class="block text-sm font-medium mb-2">动画速度: {{ state.animationSpeed }}%</label>
+          <label class="block text-body-sm font-medium mb-2">动画速度: {{ state.animationSpeed }}%</label>
           <el-slider
             v-model="state.animationSpeed"
             :min="1"
@@ -1492,33 +1492,33 @@ onUnmounted(() => {
       <!-- 统计信息面板 -->
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
         <div class="text-center">
-          <div class="text-2xl font-bold text-blue-600 font-mono">{{ formatTime(state.elapsedTime) }}</div>
-          <div class="text-sm text-gray-600">执行时间</div>
+          <div class="text-h2 font-bold text-blue-600 font-mono">{{ formatTime(state.elapsedTime) }}</div>
+          <div class="text-body-sm text-gray-600">执行时间</div>
         </div>
         
         <div class="text-center">
-          <div class="text-2xl font-bold text-green-600">{{ state.currentRound }} / {{ state.totalRounds }}</div>
-          <div class="text-sm text-gray-600">当前轮数</div>
+          <div class="text-h2 font-bold text-green-600">{{ state.currentRound }} / {{ state.totalRounds }}</div>
+          <div class="text-body-sm text-gray-600">当前轮数</div>
         </div>
         
         <div class="text-center">
-          <div class="text-2xl font-bold text-purple-600">{{ state.comparisons }}</div>
-          <div class="text-sm text-gray-600">比较次数</div>
+          <div class="text-h2 font-bold text-purple-600">{{ state.comparisons }}</div>
+          <div class="text-body-sm text-gray-600">比较次数</div>
         </div>
         
         <div class="text-center">
-          <div class="text-2xl font-bold text-orange-600">{{ state.swaps }}</div>
-          <div class="text-sm text-gray-600">交换次数</div>
+          <div class="text-h2 font-bold text-orange-600">{{ state.swaps }}</div>
+          <div class="text-body-sm text-gray-600">交换次数</div>
         </div>
       </div>
 
       <!-- 进度信息 -->
       <div v-if="state.totalSteps > 0" class="bg-gray-50 p-4 rounded-lg">
         <div class="flex justify-between items-center mb-2">
-          <span class="text-sm font-medium">步骤进度: {{ state.currentStep }} / {{ state.totalSteps }}</span>
+          <span class="text-body-sm font-medium">步骤进度: {{ state.currentStep }} / {{ state.totalSteps }}</span>
         </div>
         <el-progress :percentage="Math.round((state.currentStep / state.totalSteps) * 100)" />
-        <div v-if="getCurrentStepDescription()" class="mt-2 text-sm text-blue-600">
+        <div v-if="getCurrentStepDescription()" class="mt-2 text-body-sm text-blue-600">
           {{ getCurrentStepDescription() }}
         </div>
       </div>
@@ -1538,7 +1538,7 @@ onUnmounted(() => {
             >
               <!-- 数值显示 - 响应式字体 -->
               <div 
-                class="text-xs mb-1 font-mono"
+                class="text-caption mb-1 font-mono"
                 :class="{ 'text-[10px]': isMobile && state.arraySize > 10 }"
               >
                 {{ value }}
@@ -1557,7 +1557,7 @@ onUnmounted(() => {
               
               <!-- 索引显示 - 响应式字体 -->
               <div 
-                class="text-xs mt-1 text-gray-500"
+                class="text-caption mt-1 text-gray-500"
                 :class="{ 'text-[10px]': isMobile && state.arraySize > 10 }"
               >
                 {{ index }}
@@ -1567,13 +1567,13 @@ onUnmounted(() => {
         </div>
         
         <!-- 手机端提示 -->
-        <div v-if="isMobile && state.arraySize > 10" class="text-xs text-gray-500 text-center mt-2">
+        <div v-if="isMobile && state.arraySize > 10" class="text-caption text-gray-500 text-center mt-2">
           💡 可以左右滑动查看完整图表
         </div>
       </div>
 
       <!-- 颜色说明 - 添加新算法的颜色说明 -->
-      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-10 gap-2 sm:gap-3 text-xs sm:text-sm">
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-10 gap-2 sm:gap-3 text-caption sm:text-body-sm">
         <div class="flex items-center space-x-1 sm:space-x-2">
           <div class="w-3 h-3 sm:w-4 sm:h-4 bg-gray-300 rounded flex-shrink-0"></div>
           <span class="truncate">未处理</span>
@@ -1622,7 +1622,7 @@ onUnmounted(() => {
       <div class="space-y-4">
         <div>
           <h4 class="font-medium mb-2">支持的排序算法：</h4>
-          <ul class="list-disc list-inside space-y-1 text-sm text-gray-600">
+          <ul class="list-disc list-inside space-y-1 text-body-sm text-gray-600">
             <li><strong>冒泡排序：</strong>通过重复遍历数组，比较相邻元素并交换，将最大元素"冒泡"到末尾</li>
             <li><strong>选择排序：</strong>每次选择未排序部分的最小元素，放到已排序部分的末尾</li>
             <li><strong>插入排序：</strong>将元素逐个插入到已排序部分的正确位置</li>
@@ -1637,7 +1637,7 @@ onUnmounted(() => {
         
         <div>
           <h4 class="font-medium mb-2">使用说明：</h4>
-          <ul class="list-disc list-inside space-y-1 text-sm text-gray-600">
+          <ul class="list-disc list-inside space-y-1 text-body-sm text-gray-600">
             <li>选择要演示的排序算法</li>
             <li>调整数组大小和动画速度</li>
             <li>点击"开始演示"观看算法执行过程</li>

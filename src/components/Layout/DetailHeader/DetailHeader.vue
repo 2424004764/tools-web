@@ -107,23 +107,23 @@ onMounted(() => {
     <!-- 返回按钮 -->
     <button
       @click="goBack"
-      class="flex items-center gap-2 text-warm-700 hover:text-warm-600 transition-colors duration-200 px-3 py-2 rounded-lg hover:bg-warm-50"
+      class="flex items-center gap-2 text-ink-700 hover:text-accent-600 transition-colors duration-200 px-3 py-2 rounded-lg hover:bg-accent-50"
     >
       <el-icon :size="20">
         <ArrowLeft />
       </el-icon>
-      <span class="text-sm font-medium">返回</span>
+      <span class="text-body-sm font-medium">返回</span>
     </button>
 
     <!-- 标题 -->
-    <div class="text-xl font-semibold text-warm-900 flex-1 min-w-0">
+    <div class="text-h3 font-semibold text-ink-900 flex-1 min-w-0">
       {{ props.title }}
     </div>
 
     <div class="flex flex-wrap gap-2 justify-start items-center w-full sm:w-auto">
       <!-- 专注模式开关 -->
       <div class="flex items-center gap-2 px-3 py-2">
-        <span class="text-sm font-medium text-warm-700">专注模式</span>
+        <span class="text-body-sm font-medium text-ink-700">专注模式</span>
         <el-switch
           v-model="componentStore.hideAllUI"
           @change="toggleSidebar"
@@ -134,7 +134,7 @@ onMounted(() => {
       <!-- 扫码访问/分享按钮 -->
       <button
         @click="toggleQrcode"
-        class="flex items-center gap-1 text-warm-700 hover:text-warm-600 transition-colors duration-200 px-3 py-2 rounded-lg hover:bg-warm-50"
+        class="flex items-center gap-1 text-ink-700 hover:text-accent-600 transition-colors duration-200 px-3 py-2 rounded-lg hover:bg-accent-50"
         title="扫码访问/分享当前工具"
       >
         <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -144,7 +144,7 @@ onMounted(() => {
           <path d="M15 15h2v2h-2z" />
           <path d="M19 19h2v2h-2z" />
         </svg>
-        <span class="text-sm font-medium">扫码访问/分享</span>
+        <span class="text-body-sm font-medium">扫码访问/分享</span>
       </button>
     </div>
   </div>
@@ -153,16 +153,16 @@ onMounted(() => {
     <div class="bg-white rounded-2xl p-5 max-w-sm w-full mx-4" @click.stop>
       <div class="flex justify-between items-center mb-4">
         <div>
-          <div class="text-lg font-semibold">扫码访问</div>
-          <div class="text-sm text-slate-500">当前工具链接</div>
+          <div class="text-body-lg font-semibold">扫码访问</div>
+          <div class="text-body-sm text-ink-500">当前工具链接</div>
         </div>
         <el-button text size="small" @click="toggleQrcode">关闭</el-button>
       </div>
       <div class="flex flex-col items-center gap-4">
-        <div class="bg-white p-4 rounded-2xl border border-slate-200">
+        <div class="bg-white p-4 rounded-2xl border border-border-default">
           <QrcodeVue3 :value="toolLink" :size="200" :margin="2" :level="'M'" />
         </div>
-        <div class="w-full bg-slate-50 rounded-2xl border border-slate-200 p-4 text-sm text-slate-700 break-words whitespace-pre-wrap">
+        <div class="w-full bg-surface-1 rounded-2xl border border-border-default p-4 text-body-sm text-ink-700 break-words whitespace-pre-wrap">
           推荐一个好用的工具：{{ props.title }}，快来试试吧！
           <br />
           {{ toolLink }}

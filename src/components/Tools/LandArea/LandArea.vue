@@ -76,13 +76,13 @@ const reset = () => {
           <svg class="w-4 h-4 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"></path>
           </svg>
-          <h3 class="text-sm font-bold text-gray-800">测量单位</h3>
+          <h3 class="text-body-sm font-bold text-gray-800">测量单位</h3>
         </div>
         <div class="flex gap-2">
           <button
             @click="info.unit = 'm'"
             :class="[
-              'flex-1 py-2 px-4 rounded-lg font-medium transition-all duration-200 border-2 flex items-center justify-center text-sm',
+              'flex-1 py-2 px-4 rounded-lg font-medium transition-all duration-200 border-2 flex items-center justify-center text-body-sm',
               info.unit === 'm'
                 ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-500/50 scale-105'
                 : 'bg-white border-gray-200 text-gray-600 hover:border-blue-300 hover:bg-blue-50'
@@ -96,7 +96,7 @@ const reset = () => {
           <button
             @click="info.unit = 'km'"
             :class="[
-              'flex-1 py-2 px-4 rounded-lg font-medium transition-all duration-200 border-2 flex items-center justify-center text-sm',
+              'flex-1 py-2 px-4 rounded-lg font-medium transition-all duration-200 border-2 flex items-center justify-center text-body-sm',
               info.unit === 'km'
                 ? 'bg-purple-600 border-purple-600 text-white shadow-md shadow-purple-500/50 scale-105'
                 : 'bg-white border-gray-200 text-gray-600 hover:border-purple-300 hover:bg-purple-50'
@@ -120,8 +120,8 @@ const reset = () => {
               </svg>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-0.5">土地长度</label>
-              <div class="text-xs text-gray-500">请输入土地长度</div>
+              <label class="block text-body-sm font-medium text-gray-700 mb-0.5">土地长度</label>
+              <div class="text-caption text-gray-500">请输入土地长度</div>
             </div>
           </div>
           <div class="flex items-center gap-2">
@@ -133,7 +133,7 @@ const reset = () => {
               class="flex-1"
               placeholder="请输入长度"
             />
-            <div class="text-xs text-gray-500 font-medium min-w-[40px] text-right">{{ info.unit === 'm' ? '米' : '千米' }}</div>
+            <div class="text-caption text-gray-500 font-medium min-w-[40px] text-right">{{ info.unit === 'm' ? '米' : '千米' }}</div>
           </div>
         </div>
 
@@ -145,8 +145,8 @@ const reset = () => {
               </svg>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-0.5">土地宽度</label>
-              <div class="text-xs text-gray-500">请输入土地宽度</div>
+              <label class="block text-body-sm font-medium text-gray-700 mb-0.5">土地宽度</label>
+              <div class="text-caption text-gray-500">请输入土地宽度</div>
             </div>
           </div>
           <div class="flex items-center gap-2">
@@ -158,7 +158,7 @@ const reset = () => {
               class="flex-1"
               placeholder="请输入宽度"
             />
-            <div class="text-xs text-gray-500 font-medium min-w-[40px] text-right">{{ info.unit === 'm' ? '米' : '千米' }}</div>
+            <div class="text-caption text-gray-500 font-medium min-w-[40px] text-right">{{ info.unit === 'm' ? '米' : '千米' }}</div>
           </div>
         </div>
       </div>
@@ -169,7 +169,7 @@ const reset = () => {
           <svg class="w-6 h-6 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
           </svg>
-          <h3 class="text-xl font-bold text-gray-800">计算结果</h3>
+          <h3 class="text-h3 font-bold text-gray-800">计算结果</h3>
         </div>
 
         <!-- 主要结果 - 亩数 -->
@@ -181,10 +181,10 @@ const reset = () => {
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"></path>
                 </svg>
               </div>
-              <div class="text-sm text-gray-500">土地面积（亩数）</div>
+              <div class="text-body-sm text-gray-500">土地面积（亩数）</div>
             </div>
             <div class="text-4xl font-black bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent text-right flex-1">{{ formatNumber(mu, 2) }}</div>
-            <div class="text-xl font-bold text-gray-600">亩</div>
+            <div class="text-h3 font-bold text-gray-600">亩</div>
           </div>
         </div>
 
@@ -198,10 +198,10 @@ const reset = () => {
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"></path>
                   </svg>
                 </div>
-                <div class="text-xs text-gray-500">平方米</div>
+                <div class="text-caption text-gray-500">平方米</div>
               </div>
-              <div class="text-lg font-bold text-green-600 text-right flex-1">{{ formatNumber(squareMeters) }}</div>
-              <div class="text-xs text-gray-500">㎡</div>
+              <div class="text-body-lg font-bold text-green-600 text-right flex-1">{{ formatNumber(squareMeters) }}</div>
+              <div class="text-caption text-gray-500">㎡</div>
             </div>
           </div>
 
@@ -213,10 +213,10 @@ const reset = () => {
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
                   </svg>
                 </div>
-                <div class="text-xs text-gray-500">公顷</div>
+                <div class="text-caption text-gray-500">公顷</div>
               </div>
-              <div class="text-lg font-bold text-purple-600 text-right flex-1">{{ formatNumber(hectares) }}</div>
-              <div class="text-xs text-gray-500">ha</div>
+              <div class="text-body-lg font-bold text-purple-600 text-right flex-1">{{ formatNumber(hectares) }}</div>
+              <div class="text-caption text-gray-500">ha</div>
             </div>
           </div>
 
@@ -228,10 +228,10 @@ const reset = () => {
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
                   </svg>
                 </div>
-                <div class="text-xs text-gray-500">平方千米</div>
+                <div class="text-caption text-gray-500">平方千米</div>
               </div>
-              <div class="text-lg font-bold text-orange-600 text-right flex-1">{{ formatNumber(squareKilometers, 4) }}</div>
-              <div class="text-xs text-gray-500">km²</div>
+              <div class="text-body-lg font-bold text-orange-600 text-right flex-1">{{ formatNumber(squareKilometers, 4) }}</div>
+              <div class="text-caption text-gray-500">km²</div>
             </div>
           </div>
         </div>
@@ -250,7 +250,7 @@ const reset = () => {
       <div class="space-y-4">
         <div>
           <h4 class="font-bold text-gray-800 mb-2">基本操作</h4>
-          <ul class="space-y-1 text-sm text-gray-600">
+          <ul class="space-y-1 text-body-sm text-gray-600">
             <li>1. 选择测量单位：根据实际情况选择"米"或"千米"作为测量单位</li>
             <li>2. 输入土地尺寸：在"土地长度"和"土地宽度"输入框中输入相应的数值</li>
             <li>3. 查看计算结果：系统会自动计算并显示亩数、平方米、公顷、平方千米等多种单位</li>
@@ -260,7 +260,7 @@ const reset = () => {
 
         <div>
           <h4 class="font-bold text-gray-800 mb-2">单位换算关系</h4>
-          <div class="bg-gray-50 rounded-lg p-3 text-sm text-gray-600 space-y-1">
+          <div class="bg-gray-50 rounded-lg p-3 text-body-sm text-gray-600 space-y-1">
             <div>• 1亩 = 666.67平方米 ≈ 666.67㎡</div>
             <div>• 1亩 = 0.066667公顷 ≈ 0.0667ha</div>
             <div>• 1亩 = 0.000666667平方千米 ≈ 0.000667km²</div>
@@ -271,7 +271,7 @@ const reset = () => {
 
         <div>
           <h4 class="font-bold text-gray-800 mb-2">应用场景</h4>
-          <ul class="space-y-1 text-sm text-gray-600">
+          <ul class="space-y-1 text-body-sm text-gray-600">
             <li>• 农田面积计算：快速计算农田、果园、菜地的亩数</li>
             <li>• 土地测量：土地勘测、规划、评估时的面积换算</li>
             <li>• 房地产交易：宅基地、建设用地面积计算</li>
@@ -282,7 +282,7 @@ const reset = () => {
 
         <div>
           <h4 class="font-bold text-gray-800 mb-2">常见问题</h4>
-          <div class="space-y-2 text-sm text-gray-600">
+          <div class="space-y-2 text-body-sm text-gray-600">
             <div class="bg-blue-50 rounded-lg p-3">
               <div class="font-medium text-blue-800 mb-1">问：如何计算不规则土地的亩数？</div>
               <div class="text-blue-700">答：可将不规则土地分割成多个规则的矩形或三角形，分别计算后相加即可。</div>
@@ -300,7 +300,7 @@ const reset = () => {
 
         <div>
           <h4 class="font-bold text-gray-800 mb-2">计算示例</h4>
-          <div class="bg-gray-50 rounded-lg p-3 text-sm text-gray-600 space-y-2">
+          <div class="bg-gray-50 rounded-lg p-3 text-body-sm text-gray-600 space-y-2">
             <div><strong>示例1：</strong>一块地长100米，宽50米</div>
             <div class="pl-4">面积 = 100 × 50 = 5000平方米</div>
             <div class="pl-4">亩数 = 5000 ÷ 666.67 = 7.5亩</div>

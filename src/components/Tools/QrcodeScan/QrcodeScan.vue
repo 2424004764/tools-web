@@ -73,7 +73,7 @@ const openLink = (url: string) => {
       <el-tabs v-model="info.activeTab" class="mb-6">
         <el-tab-pane label="图片识别" name="upload">
           <div class="text-center">
-            <h3 class="text-lg font-medium text-gray-900 mb-4">图片识别</h3>
+            <h3 class="text-body-lg font-medium text-gray-900 mb-4">图片识别</h3>
             
             <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 max-w-md mx-auto">
               <!-- 使用 QrcodeCapture 处理文件上传 -->
@@ -89,7 +89,7 @@ const openLink = (url: string) => {
                   </el-icon>
                   <div class="text-gray-500">
                     <p>点击选择图片或拖拽图片到此处</p>
-                    <p class="text-sm">支持 PNG、JPG、JPEG 等格式</p>
+                    <p class="text-body-sm">支持 PNG、JPG、JPEG 等格式</p>
                   </div>
                 </div>
               </QrcodeCapture>
@@ -101,7 +101,7 @@ const openLink = (url: string) => {
                 class="w-full h-32 mt-4 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center"
               >
                 <div class="text-center">
-                  <p class="text-gray-500 text-sm">或拖拽图片到此处</p>
+                  <p class="text-gray-500 text-body-sm">或拖拽图片到此处</p>
                 </div>
               </QrcodeDropZone>
             </div>
@@ -110,7 +110,7 @@ const openLink = (url: string) => {
 
         <el-tab-pane label="摄像头扫描" name="camera">
           <div class="text-center">
-            <h3 class="text-lg font-medium text-gray-900 mb-4">摄像头扫描识别</h3>
+            <h3 class="text-body-lg font-medium text-gray-900 mb-4">摄像头扫描识别</h3>
             
             <!-- 扫描区域 -->
             <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 mb-4 max-w-md mx-auto">
@@ -151,7 +151,7 @@ const openLink = (url: string) => {
       <!-- 识别结果 -->
       <div v-if="scanResult" class="border-t pt-6">
         <div class="flex items-center justify-between mb-4">
-          <h4 class="text-lg font-medium text-gray-900">识别结果：</h4>
+          <h4 class="text-body-lg font-medium text-gray-900">识别结果：</h4>
           <div class="space-x-2">
             <el-button 
               size="small" 
@@ -173,7 +173,7 @@ const openLink = (url: string) => {
         </div>
         
         <div class="bg-gray-50 rounded-lg p-4">
-          <p class="text-sm text-gray-700 break-all whitespace-pre-wrap">{{ scanResult }}</p>
+          <p class="text-body-sm text-gray-700 break-all whitespace-pre-wrap">{{ scanResult }}</p>
         </div>
         
         <!-- 如果是链接，提供打开链接的按钮 -->

@@ -436,7 +436,7 @@ const loadExample = () => {
         </el-form-item>
 
         <!-- 错误提示 -->
-        <div v-if="errorMessage" class="text-red-500 text-sm bg-red-50 p-3 rounded-lg border border-red-200">
+        <div v-if="errorMessage" class="text-red-500 text-body-sm bg-red-50 p-3 rounded-lg border border-red-200">
           <div class="flex items-center mb-1">
             <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
               <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
@@ -447,7 +447,7 @@ const loadExample = () => {
         </div>
 
         <!-- 警告提示 -->
-        <div v-if="warnings.length > 0" class="text-yellow-600 text-sm bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+        <div v-if="warnings.length > 0" class="text-yellow-600 text-body-sm bg-yellow-50 p-3 rounded-lg border border-yellow-200">
           <div class="flex items-center mb-1">
             <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
               <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
@@ -498,8 +498,8 @@ const loadExample = () => {
 
     <!-- 字段选择 & 表结构预览 -->
     <div v-if="parsedFields.length > 0" class="p-4 rounded-2xl bg-white mt-4">
-      <h3 class="text-lg font-semibold mb-3">字段选择 & 表结构预览</h3>
-      <div class="text-sm text-gray-500 mb-3">双击字段名或点击编辑，修改后将同步更新到转换结果</div>
+      <h3 class="text-body-lg font-semibold mb-3">字段选择 & 表结构预览</h3>
+      <div class="text-body-sm text-gray-500 mb-3">双击字段名或点击编辑，修改后将同步更新到转换结果</div>
       <el-table :data="parsedFields" border stripe max-height="400" size="small">
         <el-table-column label="字段名" min-width="170">
           <template #default="{ row, $index }">
@@ -521,17 +521,17 @@ const loadExample = () => {
     <!-- 转换结果 -->
     <div v-if="result" class="p-4 rounded-2xl bg-white mt-4">
       <div class="flex justify-between items-center mb-3">
-        <h3 class="text-lg font-semibold">转换结果</h3>
+        <h3 class="text-body-lg font-semibold">转换结果</h3>
         <el-button type="primary" @click="copyResult">复制结果</el-button>
       </div>
-      <pre class="bg-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono">{{ result }}</pre>
+      <pre class="bg-gray-100 p-4 rounded-lg overflow-x-auto text-body-sm font-mono">{{ result }}</pre>
     </div>
 
     <!-- 描述 -->
     <ToolDetail title="功能说明">
       <div class="space-y-2">
         <p>将MySQL数据表的DDL语句转换为Go语言结构体，支持以下功能：</p>
-        <ul class="list-disc list-inside space-y-1 text-sm">
+        <ul class="list-disc list-inside space-y-1 text-body-sm">
           <li><strong>实时验证：</strong>输入DDL时实时检查语法错误和格式问题</li>
           <li><strong>自动转换：</strong>输入DDL后自动转换，无需手动点击按钮</li>
           <li><strong>自动提取：</strong>自动从DDL中提取表名并转换为结构体名</li>
@@ -547,7 +547,7 @@ const loadExample = () => {
     <!-- 使用说明 -->
     <ToolDetail title="使用说明">
       <div class="space-y-2">
-        <ol class="list-decimal list-inside space-y-1 text-sm">
+        <ol class="list-decimal list-inside space-y-1 text-body-sm">
           <li>在"MySQL DDL"文本框中粘贴完整的CREATE TABLE语句</li>
           <li>系统会实时检查DDL格式，如有问题会显示错误或警告信息</li>
           <li>点击"转换"按钮或在输入DDL后系统会自动解析字段，显示字段预览表</li>
@@ -556,7 +556,7 @@ const loadExample = () => {
           <li>配置其他选项（指针类型、时间包、可空类型等）</li>
           <li>转换结果会实时更新，点击"复制结果"按钮复制生成的Go代码</li>
         </ol>
-        <p class="text-sm text-gray-600 mt-2">
+        <p class="text-body-sm text-gray-600 mt-2">
           <strong>提示：</strong>可以点击"加载示例"按钮查看示例DDL语句。
         </p>
       </div>

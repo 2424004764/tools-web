@@ -294,7 +294,7 @@ const examples = [
     <div class="p-4 rounded-2xl bg-white space-y-4">
       <!-- 示例快捷按钮 -->
       <div class="flex items-center flex-wrap gap-2">
-        <span class="text-sm text-gray-500">示例：</span>
+        <span class="text-body-sm text-gray-500">示例：</span>
         <el-button
           v-for="ex in examples"
           :key="ex.name"
@@ -320,13 +320,13 @@ const examples = [
       </div>
 
       <!-- 错误提示 -->
-      <div v-if="info.error" class="text-red-500 text-sm bg-red-50 p-2 rounded">
+      <div v-if="info.error" class="text-red-500 text-body-sm bg-red-50 p-2 rounded">
         {{ info.error }}
       </div>
 
       <!-- 测试文本 -->
       <div>
-        <label class="text-sm font-medium text-gray-700 mb-1 block">测试文本</label>
+        <label class="text-body-sm font-medium text-gray-700 mb-1 block">测试文本</label>
         <el-input
           v-model="info.testString"
           type="textarea"
@@ -338,31 +338,31 @@ const examples = [
 
       <!-- 可视化匹配结果 -->
       <div>
-        <label class="text-sm font-medium text-gray-700 mb-1 block">匹配结果</label>
+        <label class="text-body-sm font-medium text-gray-700 mb-1 block">匹配结果</label>
         <div
-          class="font-mono text-sm p-3 bg-gray-50 rounded-lg border min-h-[60px] leading-relaxed whitespace-pre-wrap"
+          class="font-mono text-body-sm p-3 bg-gray-50 rounded-lg border min-h-[60px] leading-relaxed whitespace-pre-wrap"
           v-html="highlightedText"
         />
       </div>
 
       <!-- 匹配详情列表 -->
       <div v-if="info.matchResults.length > 0" class="bg-blue-50 rounded-lg p-3">
-        <div class="text-sm font-medium text-blue-700 mb-2">
+        <div class="text-body-sm font-medium text-blue-700 mb-2">
           共找到 {{ info.matchResults.length }} 处匹配：
         </div>
         <div class="space-y-2">
           <div
             v-for="(match, idx) in info.matchResults"
             :key="idx"
-            class="flex items-start gap-3 text-sm"
+            class="flex items-start gap-3 text-body-sm"
             :class="{ 'bg-yellow-100 rounded p-2': info.isPlaying && idx === info.stepIndex }"
           >
-            <span class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
+            <span class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-caption flex-shrink-0 mt-0.5">
               {{ idx + 1 }}
             </span>
             <div>
               <div class="font-mono text-gray-800">{{ match.text }}</div>
-              <div class="text-gray-500 text-xs">
+              <div class="text-gray-500 text-caption">
                 位置: {{ match.start }}-{{ match.end }}
                 <span v-if="match.group"> | 分组: {{ match.group }}</span>
               </div>
@@ -373,7 +373,7 @@ const examples = [
 
       <!-- 语法分解 -->
       <div v-if="info.tokens.length > 0">
-        <label class="text-sm font-medium text-gray-700 mb-1 block">语法分解</label>
+        <label class="text-body-sm font-medium text-gray-700 mb-1 block">语法分解</label>
         <div class="flex flex-wrap gap-2 p-3 bg-gray-50 rounded-lg">
           <div
             v-for="(token, idx) in info.tokens"
@@ -381,7 +381,7 @@ const examples = [
             class="relative group"
           >
             <span
-              class="px-2 py-1 rounded text-sm font-mono"
+              class="px-2 py-1 rounded text-body-sm font-mono"
               :class="{
                 'bg-green-100 text-green-800': token.type === 'literal',
                 'bg-purple-100 text-purple-800': token.type === 'metachar',
@@ -396,7 +396,7 @@ const examples = [
               {{ token.value }}
             </span>
             <!-- tooltip -->
-            <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
+            <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-caption rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
               {{ token.desc }}
             </div>
           </div>
@@ -404,7 +404,7 @@ const examples = [
       </div>
 
       <!-- 图例 -->
-      <div class="text-xs text-gray-500 flex flex-wrap gap-3">
+      <div class="text-caption text-gray-500 flex flex-wrap gap-3">
         <span class="flex items-center gap-1">
           <span class="w-3 h-3 bg-green-100 rounded inline-block"></span>字面字符
         </span>
@@ -434,7 +434,7 @@ const examples = [
 
     <!-- 描述 -->
     <ToolDetail title="描述">
-      <div class="text-sm leading-7 space-y-2">
+      <div class="text-body-sm leading-7 space-y-2">
         <p class="font-bold">功能说明</p>
         <p>正则表达式可视化工具，通过颜色标记和逐步播放帮助理解正则匹配过程。</p>
         <ul class="list-disc ml-5">

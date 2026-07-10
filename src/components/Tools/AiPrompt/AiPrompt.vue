@@ -624,7 +624,7 @@ const handleActionAndClose = (prompt: string, type: string) => {
         ]"
       >
         <div class="h-full overflow-y-auto p-4" @touchmove.stop>
-          <h3 class="text-lg font-semibold mb-4 text-gray-700 flex items-center justify-between">
+          <h3 class="text-body-lg font-semibold mb-4 text-gray-700 flex items-center justify-between">
             <span>分类导航</span>
             <el-button 
               v-if="isMobile && sidebarExpanded" 
@@ -646,7 +646,7 @@ const handleActionAndClose = (prompt: string, type: string) => {
                   class="flex items-center gap-2 flex-1"
                   @click="selectCategory(group.id, 'group')"
                 >
-                  <span class="text-lg">{{ group.icon }}</span>
+                  <span class="text-body-lg">{{ group.icon }}</span>
                   <span :class="[
                     'font-medium',
                     activeCategory === group.id && activeCategoryType === 'group' 
@@ -655,7 +655,7 @@ const handleActionAndClose = (prompt: string, type: string) => {
                   ]">{{ group.name }}</span>
                 </div>
                 <div class="flex items-center gap-2">
-                  <div class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                  <div class="text-caption text-gray-500 bg-gray-100 px-2 py-1 rounded">
                     {{ getGroupCount(group.id) }}
                   </div>
                   <div 
@@ -687,15 +687,15 @@ const handleActionAndClose = (prompt: string, type: string) => {
                   ]"
                 >
                   <div class="flex items-center gap-2">
-                    <span class="text-sm">{{ child.icon }}</span>
+                    <span class="text-body-sm">{{ child.icon }}</span>
                     <span :class="[
-                      'text-sm',
+                      'text-body-sm',
                       activeCategory === child.id && activeCategoryType === 'sub'
                         ? 'text-blue-600 font-medium' 
                         : 'text-gray-600'
                     ]">{{ child.name }}</span>
                   </div>
-                  <div class="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                  <div class="text-caption text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
                     {{ getSubCategoryCount(child.id) }}
                   </div>
                 </div>
@@ -714,8 +714,8 @@ const handleActionAndClose = (prompt: string, type: string) => {
       >
         <!-- 标题 -->
         <div class="mb-6">
-          <h2 class="text-xl font-semibold text-gray-800 mb-2">{{ getCurrentCategoryName }}</h2>
-          <p class="text-gray-600 text-sm">共 {{ filteredPrompts.length }} 个精选提示词</p>
+          <h2 class="text-h3 font-semibold text-gray-800 mb-2">{{ getCurrentCategoryName }}</h2>
+          <p class="text-gray-600 text-body-sm">共 {{ filteredPrompts.length }} 个精选提示词</p>
         </div>
 
         <!-- 提示词列表 -->
@@ -728,9 +728,9 @@ const handleActionAndClose = (prompt: string, type: string) => {
             <!-- 标题和难度 -->
             <div class="flex justify-between items-start mb-4">
               <div class="flex-1">
-                <h4 class="text-lg font-semibold text-gray-800 mb-1">{{ item.title }}</h4>
+                <h4 class="text-body-lg font-semibold text-gray-800 mb-1">{{ item.title }}</h4>
                 <!-- 分组视图时显示子分类信息 -->
-                <div v-if="activeCategoryType === 'group' && item.categoryName" class="flex items-center gap-1 text-sm text-gray-500">
+                <div v-if="activeCategoryType === 'group' && item.categoryName" class="flex items-center gap-1 text-body-sm text-gray-500">
                   <span>{{ item.categoryIcon }}</span>
                   <span>{{ item.categoryName }}</span>
                 </div>
@@ -777,7 +777,7 @@ const handleActionAndClose = (prompt: string, type: string) => {
             <!-- 提示词预览 -->
             <div class="bg-gray-50 p-4 rounded-lg mb-4">
               <div class="prompt-preview">
-                <pre class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{{ getPreviewPrompt(item.prompt) }}</pre>
+                <pre class="text-body-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{{ getPreviewPrompt(item.prompt) }}</pre>
               </div>
               <div class="mt-2 flex justify-end">
                 <el-button 
@@ -809,8 +809,8 @@ const handleActionAndClose = (prompt: string, type: string) => {
 
         <div v-else class="text-center py-12 text-gray-500">
           <div class="text-4xl mb-4">📝</div>
-          <p class="text-lg mb-2">该分类下的提示词正在整理中</p>
-          <p class="text-sm">敬请期待更多精彩内容...</p>
+          <p class="text-body-lg mb-2">该分类下的提示词正在整理中</p>
+          <p class="text-body-sm">敬请期待更多精彩内容...</p>
         </div>
       </div>
     </div>
@@ -826,7 +826,7 @@ const handleActionAndClose = (prompt: string, type: string) => {
     >
       <div class="max-h-96 overflow-y-auto">
         <div class="bg-gray-50 p-4 rounded-lg">
-          <pre class="whitespace-pre-wrap text-sm text-gray-700 leading-relaxed">{{ currentDialogPrompt }}</pre>
+          <pre class="whitespace-pre-wrap text-body-sm text-gray-700 leading-relaxed">{{ currentDialogPrompt }}</pre>
         </div>
       </div>
       

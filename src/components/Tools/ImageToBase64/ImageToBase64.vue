@@ -225,8 +225,8 @@ const clearBase64ToImage = () => {
               </svg>
             </div>
             <div>
-              <p class="text-lg font-medium text-gray-900">拖拽图片到此处或点击上传</p>
-              <p class="text-sm text-gray-500">支持 JPG、PNG、GIF、WebP 等格式</p>
+              <p class="text-body-lg font-medium text-gray-900">拖拽图片到此处或点击上传</p>
+              <p class="text-body-sm text-gray-500">支持 JPG、PNG、GIF、WebP 等格式</p>
             </div>
             <div>
               <label class="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" :class="{ 'opacity-50 cursor-not-allowed': isLoading }">
@@ -243,11 +243,11 @@ const clearBase64ToImage = () => {
         <div class="flex items-center justify-between">
           <div>
             <p class="font-medium text-gray-900">{{ fileName }}</p>
-            <p class="text-sm text-gray-500">文件大小: {{ fileSize }}</p>
+            <p class="text-body-sm text-gray-500">文件大小: {{ fileSize }}</p>
           </div>
           <button
             @click="clearResult"
-            class="text-red-600 hover:text-red-800 text-sm"
+            class="text-red-600 hover:text-red-800 text-body-sm"
             :disabled="isLoading"
           >
             清空
@@ -258,7 +258,7 @@ const clearBase64ToImage = () => {
       <!-- Base64结果 -->
       <div v-if="base64Result" class="space-y-4">
         <div class="flex items-center justify-between">
-          <h3 class="text-lg font-medium text-gray-900">Base64编码结果</h3>
+          <h3 class="text-body-lg font-medium text-gray-900">Base64编码结果</h3>
           <button
             @click="copyBase64"
             class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors"
@@ -291,24 +291,24 @@ const clearBase64ToImage = () => {
 
       <!-- Base64 转 图片 -->
       <div class="space-y-4">
-        <h3 class="text-xl font-semibold text-gray-900">Base64 转 图片</h3>
-        <p class="text-sm text-gray-600">将 Base64 字符串转换为图片，支持自动识别图片格式</p>
+        <h3 class="text-h3 font-semibold text-gray-900">Base64 转 图片</h3>
+        <p class="text-body-sm text-gray-600">将 Base64 字符串转换为图片，支持自动识别图片格式</p>
 
         <!-- 输入区域 -->
         <div class="bg-gray-50 rounded-lg p-4">
           <div class="mb-2 flex items-center justify-between">
-            <label class="text-sm font-medium text-gray-700">输入 Base64 字符串</label>
+            <label class="text-body-sm font-medium text-gray-700">输入 Base64 字符串</label>
             <div class="flex gap-2">
               <button
                 @click="pasteFromClipboard"
-                class="text-sm bg-blue-600 text-white px-3 py-1.5 rounded-md hover:bg-blue-700 transition-colors"
+                class="text-body-sm bg-blue-600 text-white px-3 py-1.5 rounded-md hover:bg-blue-700 transition-colors"
               >
                 从剪贴板粘贴
               </button>
               <button
                 v-if="base64Input"
                 @click="clearBase64ToImage"
-                class="text-sm bg-red-600 text-white px-3 py-1.5 rounded-md hover:bg-red-700 transition-colors"
+                class="text-body-sm bg-red-600 text-white px-3 py-1.5 rounded-md hover:bg-red-700 transition-colors"
               >
                 清空
               </button>
@@ -359,7 +359,7 @@ const clearBase64ToImage = () => {
               <svg class="h-5 w-5 text-yellow-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
                 <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
               </svg>
-              <div class="text-sm text-yellow-700">
+              <div class="text-body-sm text-yellow-700">
                 无法生成图片预览，请检查 Base64 字符串是否正确。支持的格式：PNG、JPG、GIF、WebP、SVG
               </div>
             </div>

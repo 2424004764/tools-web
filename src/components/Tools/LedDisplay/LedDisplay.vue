@@ -241,10 +241,10 @@ onBeforeUnmount(() => document.removeEventListener('fullscreenchange', onFsChang
           <li>礼物特效文字</li>
         </ul>
         <h4 class="mt-3 font-bold">示例 URL</h4>
-        <p class="text-xs break-all bg-gray-100 p-2 rounded">
+        <p class="text-caption break-all bg-gray-100 p-2 rounded">
           /led-display/?text=欢迎光临&color=%23ff0000&bg=%23000000&size=120&speed=15&glow=1
         </p>
-        <p class="text-gray-500 text-xs mt-2">提示：URL 中的 # 字符需编码为 %23</p>
+        <p class="text-gray-500 text-caption mt-2">提示：URL 中的 # 字符需编码为 %23</p>
       </el-text>
     </ToolDetail>
   </div>

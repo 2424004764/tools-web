@@ -216,9 +216,9 @@ onMounted(() => {
         >
           <!-- 序号和密码 -->
           <div class="flex items-center gap-3 flex-1 min-w-0">
-            <span class="text-warm-700 font-semibold text-sm flex-shrink-0">{{ index + 1 }}</span>
+            <span class="text-warm-700 font-semibold text-body-sm flex-shrink-0">{{ index + 1 }}</span>
             <el-text
-              class="font-mono text-base break-all flex-1"
+              class="font-mono text-body break-all flex-1"
               style="word-break: break-all;"
             >
               {{ password }}

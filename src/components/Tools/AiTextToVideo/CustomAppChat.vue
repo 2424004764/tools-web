@@ -2,10 +2,10 @@
   <div class="space-y-4">
     <!-- 应用标题 -->
     <div class="flex items-center gap-3 mb-4">
-      <div class="text-3xl">{{ app.icon }}</div>
+      <div class="text-h1">{{ app.icon }}</div>
       <div>
-        <h2 class="text-xl font-bold text-gray-800">{{ app.title }}</h2>
-        <p class="text-sm text-gray-600">{{ app.description }}</p>
+        <h2 class="text-h3 font-bold text-gray-800">{{ app.title }}</h2>
+        <p class="text-body-sm text-gray-600">{{ app.description }}</p>
       </div>
     </div>
 
@@ -22,16 +22,16 @@
           msg.role === 'user' ? 'bg-blue-100 ml-8' : 'bg-white mr-8'
         ]"
       >
-        <div class="text-xs text-gray-500 mb-1">
+        <div class="text-caption text-gray-500 mb-1">
           {{ msg.role === 'user' ? '我' : app.title }}
         </div>
-        <div class="text-sm text-gray-800 whitespace-pre-wrap markdown-body" v-html="renderMarkdown(msg.content)"></div>
+        <div class="text-body-sm text-gray-800 whitespace-pre-wrap markdown-body" v-html="renderMarkdown(msg.content)"></div>
       </div>
 
       <!-- 流式输出中 -->
       <div v-if="streamingContent" class="p-3 rounded-lg bg-white mr-8">
-        <div class="text-xs text-gray-500 mb-1">{{ app.title }}</div>
-        <div class="text-sm text-gray-800 whitespace-pre-wrap markdown-body" v-html="renderMarkdown(streamingContent)"></div>
+        <div class="text-caption text-gray-500 mb-1">{{ app.title }}</div>
+        <div class="text-body-sm text-gray-800 whitespace-pre-wrap markdown-body" v-html="renderMarkdown(streamingContent)"></div>
       </div>
     </div>
 
@@ -73,7 +73,7 @@
       </div>
     </div>
 
-    <div class="text-xs text-gray-500 text-center">
+    <div class="text-caption text-gray-500 text-center">
       提示：按 Ctrl+Enter 快速发送
     </div>
   </div>

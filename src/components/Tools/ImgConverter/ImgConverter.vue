@@ -144,7 +144,7 @@ const download = () => {
 
           <!-- JPG 质量滑块 -->
           <div v-if="targetFormat === 'jpeg'" class="flex items-center gap-2 ml-2">
-            <span class="text-sm text-gray-500 whitespace-nowrap">质量:</span>
+            <span class="text-body-sm text-gray-500 whitespace-nowrap">质量:</span>
             <el-slider
               v-model="jpegQuality"
               :min="0.1"
@@ -155,7 +155,7 @@ const download = () => {
               size="small"
               @change="doConvert"
             />
-            <span class="text-sm text-gray-600 w-10">{{ Math.round(jpegQuality * 100) }}%</span>
+            <span class="text-body-sm text-gray-600 w-10">{{ Math.round(jpegQuality * 100) }}%</span>
           </div>
 
           <el-button type="primary" size="small" @click="download" :disabled="!convertedSrc">
@@ -168,7 +168,7 @@ const download = () => {
         <div class="flex flex-col md:flex-row gap-4">
           <!-- 原图 -->
           <div class="flex-1 border rounded-lg overflow-hidden">
-            <div class="bg-gray-100 px-3 py-2 text-sm font-medium flex justify-between items-center">
+            <div class="bg-gray-100 px-3 py-2 text-body-sm font-medium flex justify-between items-center">
               <span>原图 ({{ sourceFormat.toUpperCase() }})</span>
               <span class="text-gray-500">{{ formatSize(originalSize) }}</span>
             </div>
@@ -179,11 +179,11 @@ const download = () => {
 
           <!-- 转换后 -->
           <div class="flex-1 border rounded-lg overflow-hidden" :class="{ 'opacity-50': converting }">
-            <div class="bg-gray-100 px-3 py-2 text-sm font-medium flex justify-between items-center">
+            <div class="bg-gray-100 px-3 py-2 text-body-sm font-medium flex justify-between items-center">
               <span>转换后 ({{ formatLabel(targetFormat) }})</span>
               <span class="flex items-center gap-2">
-                <span v-if="sizePercent() > 0" class="text-green-600 text-xs">-{{ sizePercent() }}%</span>
-                <span v-else-if="sizePercent() < 0" class="text-orange-500 text-xs">+{{ Math.abs(sizePercent()) }}%</span>
+                <span v-if="sizePercent() > 0" class="text-green-600 text-caption">-{{ sizePercent() }}%</span>
+                <span v-else-if="sizePercent() < 0" class="text-orange-500 text-caption">+{{ Math.abs(sizePercent()) }}%</span>
                 <span class="text-gray-500">{{ formatSize(convertedSize) }}</span>
               </span>
             </div>

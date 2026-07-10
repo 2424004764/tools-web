@@ -378,11 +378,11 @@ const exportOrderImage = async () => {
     <div class="p-4 rounded-2xl bg-white mb-4">
       <!-- 余额显示 -->
       <div class="text-center mb-6 p-6 bg-gradient-to-r from-yellow-100 to-orange-100 rounded-xl">
-        <h2 class="text-2xl font-bold text-gray-800 mb-2">💰 您的余额</h2>
+        <h2 class="text-h2 font-bold text-gray-800 mb-2">💰 您的余额</h2>
         <div class="text-4xl font-bold text-green-600 mb-2">
           ¥{{ formatMoney(currentBalance) }}
         </div>
-        <div class="text-sm text-gray-500">
+        <div class="text-body-sm text-gray-500">
           已消费：¥{{ formatMoney(gameState.totalSpent) }}
         </div>
         <div class="flex justify-center gap-3 mt-3">
@@ -394,7 +394,7 @@ const exportOrderImage = async () => {
             type="success"
           >
             🛒 购物车 ({{ cartItemCount }})
-            <span v-if="cartTotal > 0" class="ml-2 text-xs">
+            <span v-if="cartTotal > 0" class="ml-2 text-caption">
               ¥{{ formatMoney(cartTotal) }}
             </span>
           </el-button>
@@ -426,8 +426,8 @@ const exportOrderImage = async () => {
               :key="product.id"
               class="border rounded-lg p-4 hover:shadow-lg transition-shadow"
             >
-              <h3 class="font-bold text-lg mb-2">{{ product.name }}</h3>
-              <p class="text-gray-600 text-sm mb-3">{{ product.desc }}</p>
+              <h3 class="font-bold text-body-lg mb-2">{{ product.name }}</h3>
+              <p class="text-gray-600 text-body-sm mb-3">{{ product.desc }}</p>
               <div class="flex justify-between items-center">
                 <span class="text-red-500 font-bold">¥{{ formatMoney(product.price) }}</span>
                 <el-button
@@ -445,8 +445,8 @@ const exportOrderImage = async () => {
         <el-tab-pane label="购物车" name="cart">
           <div v-if="gameState.cart.length === 0" class="text-center py-12 text-gray-500">
             <div class="text-6xl mb-4">🛒</div>
-            <div class="text-xl">购物车空空如也</div>
-            <div class="text-sm mt-2">去挑选一些心仪的商品吧！</div>
+            <div class="text-h3">购物车空空如也</div>
+            <div class="text-body-sm mt-2">去挑选一些心仪的商品吧！</div>
             <el-button @click="activeTab = 'products'" type="primary" class="mt-4">
               去购物
             </el-button>
@@ -456,10 +456,10 @@ const exportOrderImage = async () => {
             <!-- 购物车操作栏 -->
             <div class="mb-4 p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
               <div class="text-center mb-3">
-                <div class="text-2xl font-bold text-blue-800 mb-1">
+                <div class="text-h2 font-bold text-blue-800 mb-1">
                   购物车总价：¥{{ formatMoney(cartTotal) }}
                 </div>
-                <div class="text-sm text-gray-500">共 {{ cartItemCount }} 件商品</div>
+                <div class="text-body-sm text-gray-500">共 {{ cartItemCount }} 件商品</div>
               </div>
               <div class="flex justify-center gap-2">
                 <el-button @click="clearCart" size="small">清空购物车</el-button>
@@ -483,18 +483,18 @@ const exportOrderImage = async () => {
               >
                 <div class="flex justify-between items-start mb-2">
                   <div class="flex-1">
-                    <h4 class="font-bold text-lg">{{ item.name }}</h4>
-                    <p class="text-gray-600 text-sm">{{ item.desc }}</p>
+                    <h4 class="font-bold text-body-lg">{{ item.name }}</h4>
+                    <p class="text-gray-600 text-body-sm">{{ item.desc }}</p>
                     <div class="flex items-center gap-4 mt-2">
                       <span class="text-red-500 font-bold">单价：¥{{ formatMoney(item.price) }}</span>
                       <span class="text-blue-600 font-bold">小计：¥{{ formatMoney(item.price * item.quantity) }}</span>
-                      <span class="text-gray-500 text-sm">[{{ getCategoryName(item.category) }}]</span>
+                      <span class="text-gray-500 text-body-sm">[{{ getCategoryName(item.category) }}]</span>
                     </div>
                   </div>
                 </div>
                 <div class="flex justify-between items-center">
                   <div class="flex items-center gap-2">
-                    <span class="text-sm text-gray-600">数量：</span>
+                    <span class="text-body-sm text-gray-600">数量：</span>
                     <el-button
                       @click="updateCartQuantity(item.id, item.quantity - 1)"
                       size="small"
@@ -526,14 +526,14 @@ const exportOrderImage = async () => {
         <el-tab-pane label="订单记录" name="orders">
           <div v-if="gameState.orders.length === 0" class="text-center py-12 text-gray-500">
             <div class="text-6xl mb-4">📋</div>
-            <div class="text-xl">还没有购买记录</div>
-            <div class="text-sm mt-2">快去购买一些商品吧！</div>
+            <div class="text-h3">还没有购买记录</div>
+            <div class="text-body-sm mt-2">快去购买一些商品吧！</div>
           </div>
 
           <div v-else>
             <div class="mb-4 p-4 bg-gray-50 rounded-lg">
               <div class="text-center">
-                <span class="text-lg font-bold">总消费：¥{{ formatMoney(gameState.totalSpent) }}</span>
+                <span class="text-body-lg font-bold">总消费：¥{{ formatMoney(gameState.totalSpent) }}</span>
                 <div class="mt-2">
                   <el-button @click="exportOrderImage" type="primary" size="small">
                     📸 导出订单图片
@@ -550,15 +550,15 @@ const exportOrderImage = async () => {
                 class="border rounded-lg p-3 hover:bg-gray-50"
               >
                 <div class="flex items-center gap-4 mb-1">
-                  <span class="font-medium text-lg">
+                  <span class="font-medium text-body-lg">
                     {{ order.name }}
                     <span v-if="order.quantity > 1" class="text-blue-600">× {{ order.quantity }}</span>
                   </span>
-                  <span class="text-red-500 font-bold text-lg">
+                  <span class="text-red-500 font-bold text-body-lg">
                     ¥{{ formatMoney(order.price * order.quantity) }}
                   </span>
                 </div>
-                <div class="flex items-center gap-2 text-sm text-gray-500">
+                <div class="flex items-center gap-2 text-body-sm text-gray-500">
                   <span>[{{ getCategoryName(order.category) }}]</span>
                   <span>•</span>
                   <span>{{ order.time }}</span>
@@ -631,11 +631,11 @@ const exportOrderImage = async () => {
 .ml-4 { margin-left: 1rem; }
 
 .text-center { text-align: center; }
-.text-sm { font-size: 0.875rem; }
-.text-xs { font-size: 0.75rem; }
-.text-lg { font-size: 1.125rem; }
-.text-xl { font-size: 1.25rem; }
-.text-2xl { font-size: 1.5rem; }
+.text-body-sm { font-size: 0.875rem; }
+.text-caption { font-size: 0.75rem; }
+.text-body-lg { font-size: 1.125rem; }
+.text-h3 { font-size: 1.25rem; }
+.text-h2 { font-size: 1.5rem; }
 .text-4xl { font-size: 2.25rem; }
 .text-6xl { font-size: 3.75rem; }
 

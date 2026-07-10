@@ -5,7 +5,7 @@
       <button
         @click="$emit('create-session')"
         :disabled="isCurrentSessionEmpty"
-        class="w-full py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm font-medium"
+        class="w-full py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-body-sm font-medium"
       >
         ➕ 新建对话
       </button>
@@ -24,8 +24,8 @@
             : 'bg-white hover:bg-gray-100'
         ]"
       >
-        <div class="text-sm font-medium truncate pr-6">{{ session.title }}</div>
-        <div class="text-xs text-gray-500 mt-1">{{ session.messages.length }} 条消息</div>
+        <div class="text-body-sm font-medium truncate pr-6">{{ session.title }}</div>
+        <div class="text-caption text-gray-500 mt-1">{{ session.messages.length }} 条消息</div>
         <button
           @click.stop="$emit('delete-session', session.id)"
           class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700"
@@ -34,18 +34,18 @@
         </button>
       </div>
 
-      <div v-if="sessions.length === 0" class="text-center text-gray-400 py-8 text-sm">
+      <div v-if="sessions.length === 0" class="text-center text-gray-400 py-8 text-body-sm">
         暂无对话<br>点击上方新建
       </div>
     </div>
 
     <!-- 底部模型选择 -->
     <div class="p-3 border-t bg-white">
-      <label class="text-xs text-gray-600 mb-1 block">模型</label>
+      <label class="text-caption text-gray-600 mb-1 block">模型</label>
       <select
         :value="modelValue"
         @input="$emit('update:modelValue', ($event.target as HTMLSelectElement).value)"
-        class="w-full px-2 py-1.5 border rounded text-sm"
+        class="w-full px-2 py-1.5 border rounded text-body-sm"
         :disabled="isChatting"
       >
         <option value="agnes-2.0-flash">Flash (快)</option>

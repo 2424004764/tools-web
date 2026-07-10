@@ -256,7 +256,7 @@ const downloadGif = () => {
     <div class="flex flex-col gap-4">
       <div class="bg-white rounded-2xl p-4">
         <div class="flex justify-between items-center mb-4">
-          <h3 class="text-lg font-semibold text-gray-700">1. 上传视频</h3>
+          <h3 class="text-body-lg font-semibold text-gray-700">1. 上传视频</h3>
           <el-upload
             ref="upload"
             :limit="1"
@@ -287,14 +287,14 @@ const downloadGif = () => {
               crossorigin="anonymous"
             ></video>
           </div>
-          <div class="mt-2 text-sm text-gray-500 text-center">
+          <div class="mt-2 text-body-sm text-gray-500 text-center">
             时长: {{ formatTime(videoDuration) }} | 当前: {{ formatTime(currentTime) }}
           </div>
         </div>
       </div>
 
       <div v-if="isVideoLoaded" class="bg-white rounded-2xl p-4">
-        <h3 class="text-lg font-semibold text-gray-700 mb-4">2. 设置参数</h3>
+        <h3 class="text-body-lg font-semibold text-gray-700 mb-4">2. 设置参数</h3>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div class="space-y-4">
@@ -302,7 +302,7 @@ const downloadGif = () => {
 
             <div class="space-y-3">
               <div>
-                <div class="flex justify-between text-sm text-gray-500 mb-1">
+                <div class="flex justify-between text-body-sm text-gray-500 mb-1">
                   <span>开始时间</span>
                   <span>{{ videoSettings.startTime.toFixed(1) }}s</span>
                 </div>
@@ -316,7 +316,7 @@ const downloadGif = () => {
               </div>
 
               <div>
-                <div class="flex justify-between text-sm text-gray-500 mb-1">
+                <div class="flex justify-between text-body-sm text-gray-500 mb-1">
                   <span>结束时间</span>
                   <span>{{ videoSettings.endTime.toFixed(1) }}s</span>
                 </div>
@@ -330,8 +330,8 @@ const downloadGif = () => {
 
               <div class="p-3 bg-gray-50 rounded-lg">
                 <div class="flex justify-between items-center">
-                  <span class="text-sm text-gray-600">选取时长:</span>
-                  <span class="text-lg font-semibold text-blue-600">
+                  <span class="text-body-sm text-gray-600">选取时长:</span>
+                  <span class="text-body-lg font-semibold text-blue-600">
                     {{ (videoSettings.endTime - videoSettings.startTime).toFixed(1) }}秒
                   </span>
                 </div>
@@ -344,7 +344,7 @@ const downloadGif = () => {
 
             <div class="space-y-3">
               <div>
-                <div class="flex justify-between text-sm text-gray-500 mb-1">
+                <div class="flex justify-between text-body-sm text-gray-500 mb-1">
                   <span>宽度</span>
                   <span>{{ videoSettings.width }}px</span>
                 </div>
@@ -357,7 +357,7 @@ const downloadGif = () => {
               </div>
 
               <div>
-                <div class="flex justify-between text-sm text-gray-500 mb-1">
+                <div class="flex justify-between text-body-sm text-gray-500 mb-1">
                   <span>帧率 (FPS)</span>
                   <span>{{ videoSettings.fps }}</span>
                 </div>
@@ -367,7 +367,7 @@ const downloadGif = () => {
                   :max="12"
                   :step="1"
                 ></el-slider>
-                <div class="text-xs text-gray-400 mt-1">建议5-8帧</div>
+                <div class="text-caption text-gray-400 mt-1">建议5-8帧</div>
               </div>
             </div>
           </div>
@@ -395,14 +395,14 @@ const downloadGif = () => {
             :stroke-width="20"
             status="success"
           ></el-progress>
-          <div class="text-sm text-gray-500 mt-2 text-center">
+          <div class="text-body-sm text-gray-500 mt-2 text-center">
             正在加载库并生成GIF，请稍候...
           </div>
         </div>
       </div>
 
       <div v-if="generatedGifUrl" class="bg-white rounded-2xl p-4">
-        <h3 class="text-lg font-semibold text-gray-700 mb-4">3. 预览与下载</h3>
+        <h3 class="text-body-lg font-semibold text-gray-700 mb-4">3. 预览与下载</h3>
 
         <div class="flex flex-col items-center">
           <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
@@ -414,7 +414,7 @@ const downloadGif = () => {
           </div>
 
           <div v-if="generatedGifBlob" class="mt-4 text-center">
-            <p class="text-sm text-gray-500 mb-3">
+            <p class="text-body-sm text-gray-500 mb-3">
               文件大小: {{ (generatedGifBlob.size / 1024).toFixed(2) }} KB
             </p>
             <el-button type="success" size="large" @click="downloadGif">

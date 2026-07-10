@@ -117,8 +117,8 @@ const handleButtonPress = (event: Event) => {
         <div class="space-y-4">
           <div>
             <div class="flex items-center justify-between mb-2">
-              <label class="block text-sm text-gray-700">需求描述</label>
-              <button class="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded" @click="fillExample">示例</button>
+              <label class="block text-body-sm text-gray-700">需求描述</label>
+              <button class="px-2 py-1 text-caption bg-gray-100 hover:bg-gray-200 rounded" @click="fillExample">示例</button>
             </div>
             <textarea
               v-model="description"
@@ -129,7 +129,7 @@ const handleButtonPress = (event: Event) => {
 
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm text-gray-700 mb-2">命名风格</label>
+              <label class="block text-body-sm text-gray-700 mb-2">命名风格</label>
               <select v-model="style" class="w-full p-2 border rounded-lg">
                 <option value="camelCase">camelCase</option>
                 <option value="PascalCase">PascalCase</option>
@@ -138,14 +138,14 @@ const handleButtonPress = (event: Event) => {
               </select>
             </div>
             <div>
-              <label class="block text-sm text-gray-700 mb-2">语言</label>
+              <label class="block text-body-sm text-gray-700 mb-2">语言</label>
               <select v-model="lang" class="w-full p-2 border rounded-lg">
                 <option value="en">英文</option>
                 <option value="pinyin">拼音</option>
               </select>
             </div>
             <div>
-              <label class="block text-sm text-gray-700 mb-2">数量</label>
+              <label class="block text-body-sm text-gray-700 mb-2">数量</label>
               <input v-model.number="count" type="number" min="1" max="50" class="w-full p-2 border rounded-lg" />
             </div>
           </div>
@@ -164,9 +164,9 @@ const handleButtonPress = (event: Event) => {
 
         <div class="space-y-3">
           <div class="flex items-center justify-between">
-            <div class="text-sm text-gray-600">生成结果</div>
+            <div class="text-body-sm text-gray-600">生成结果</div>
             <button
-              class="px-3 py-1 text-sm bg-emerald-500 text-white rounded transition-all duration-150 hover:bg-emerald-600"
+              class="px-3 py-1 text-body-sm bg-emerald-500 text-white rounded transition-all duration-150 hover:bg-emerald-600"
               :disabled="!results.length"
               @click="copyAll"
               @mousedown="handleButtonPress"
@@ -182,7 +182,7 @@ const handleButtonPress = (event: Event) => {
               <li v-for="(r, i) in results" :key="i" class="flex items-center justify-between bg-white p-2 rounded border">
                 <span class="truncate mr-3">{{ r }}</span>
                 <button 
-                  class="px-2 py-1 text-xs bg-blue-500 text-white rounded transition-all duration-150 hover:bg-blue-600" 
+                  class="px-2 py-1 text-caption bg-blue-500 text-white rounded transition-all duration-150 hover:bg-blue-600" 
                   @click="copyOne(r)"
                   @mousedown="handleButtonPress"
                   @touchstart="handleButtonPress"
@@ -190,7 +190,7 @@ const handleButtonPress = (event: Event) => {
                   复制
                 </button>
               </li>
-              <div v-if="!results.length" class="text-gray-400 text-sm">暂无结果</div>
+              <div v-if="!results.length" class="text-gray-400 text-body-sm">暂无结果</div>
             </ul>
           </div>
         </div>

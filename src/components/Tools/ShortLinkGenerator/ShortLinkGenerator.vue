@@ -187,7 +187,7 @@ const clearRecent = () => {
     <div class="p-4 rounded-2xl bg-white space-y-4">
       <!-- 长链接输入 -->
       <div>
-        <label class="block text-sm font-medium mb-1 text-gray-700">长链接</label>
+        <label class="block text-body-sm font-medium mb-1 text-gray-700">长链接</label>
         <el-input
           v-model="state.url"
           type="textarea"
@@ -198,7 +198,7 @@ const clearRecent = () => {
 
       <!-- 标题 -->
       <div>
-        <label class="block text-sm font-medium mb-1 text-gray-700">标题（可选）</label>
+        <label class="block text-body-sm font-medium mb-1 text-gray-700">标题（可选）</label>
         <el-input
           v-model="state.titleText"
           placeholder="给这个链接加个备注"
@@ -208,9 +208,9 @@ const clearRecent = () => {
 
       <!-- 过期时间 -->
       <div>
-        <label class="block text-sm font-medium mb-1 text-gray-700">
+        <label class="block text-body-sm font-medium mb-1 text-gray-700">
           过期时间（可选）
-          <span class="text-gray-400 text-xs">不填永不过期</span>
+          <span class="text-gray-400 text-caption">不填永不过期</span>
         </label>
         <el-date-picker
           v-model="state.expireAt"
@@ -231,9 +231,9 @@ const clearRecent = () => {
 
       <!-- 结果 -->
       <div v-if="state.resultSlug" class="bg-green-50 border border-green-200 rounded-lg p-4">
-        <div class="text-sm font-medium text-green-700 mb-2">生成成功！</div>
+        <div class="text-body-sm font-medium text-green-700 mb-2">生成成功！</div>
         <div class="flex items-center gap-2">
-          <span class="text-lg font-mono font-bold text-green-600 select-all">{{ state.resultSlug }}</span>
+          <span class="text-body-lg font-mono font-bold text-green-600 select-all">{{ state.resultSlug }}</span>
           <el-button type="success" size="small" @click="copySlug(state.resultSlug)">复制短链接</el-button>
         </div>
       </div>
@@ -242,7 +242,7 @@ const clearRecent = () => {
     <!-- 最近链接 -->
     <div v-if="state.recentLinks.length > 0" class="mt-4 p-4 rounded-2xl bg-white">
       <div class="flex items-center justify-between mb-3">
-        <h3 class="text-sm font-medium text-gray-700">最近生成的链接</h3>
+        <h3 class="text-body-sm font-medium text-gray-700">最近生成的链接</h3>
         <el-button text size="small" type="danger" @click="clearRecent">清空记录</el-button>
       </div>
       <div class="space-y-2">
@@ -252,9 +252,9 @@ const clearRecent = () => {
           class="flex flex-wrap items-start gap-1 p-2 rounded-lg hover:bg-gray-50 border border-gray-100"
         >
           <div class="flex-1 min-w-0">
-            <div v-if="link.title" class="text-sm font-medium text-gray-700 truncate">{{ link.title }}</div>
-            <div class="text-xs text-gray-400 truncate">{{ link.url }}</div>
-            <div class="text-xs text-blue-500 font-mono truncate">{{ siteBase }}{{ link.slug }}</div>
+            <div v-if="link.title" class="text-body-sm font-medium text-gray-700 truncate">{{ link.title }}</div>
+            <div class="text-caption text-gray-400 truncate">{{ link.url }}</div>
+            <div class="text-caption text-blue-500 font-mono truncate">{{ siteBase }}{{ link.slug }}</div>
           </div>
           <div class="flex items-center gap-1 shrink-0 w-full sm:w-auto justify-end sm:justify-start">
             <el-button text size="small" @click="copySlug(link.slug)">复制</el-button>

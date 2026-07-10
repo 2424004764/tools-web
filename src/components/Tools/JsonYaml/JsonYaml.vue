@@ -198,13 +198,13 @@ const swapInputOutput = () => {
     <div class="p-4 rounded-2xl bg-white space-y-4">
       <!-- 操作按钮 -->
       <div class="flex items-center flex-wrap gap-2">
-        <span class="text-sm text-gray-500">示例：</span>
+        <span class="text-body-sm text-gray-500">示例：</span>
         <el-button size="small" @click="loadSample('json')">JSON示例</el-button>
         <el-button size="small" @click="loadSample('yaml')">YAML示例</el-button>
         <el-button size="small" @click="swapInputOutput">交换输入/输出</el-button>
 
         <div class="flex items-center gap-2 ml-auto">
-          <span class="text-sm text-gray-500">转换方向：</span>
+          <span class="text-body-sm text-gray-500">转换方向：</span>
           <el-radio-group v-model="info.format" size="small">
             <el-radio-button value="json">JSON → YAML</el-radio-button>
             <el-radio-button value="yaml">YAML → JSON</el-radio-button>
@@ -215,7 +215,7 @@ const swapInputOutput = () => {
       <!-- 输入输出区域 -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div>
-          <label class="text-sm font-medium text-gray-700 mb-1 block">
+          <label class="text-body-sm font-medium text-gray-700 mb-1 block">
             {{ info.format === 'json' ? 'JSON 输入' : 'YAML 输入' }}
           </label>
           <el-input
@@ -223,11 +223,11 @@ const swapInputOutput = () => {
             type="textarea"
             :rows="12"
             :placeholder="info.format === 'json' ? '输入 JSON...' : '输入 YAML...'"
-            class="font-mono text-sm"
+            class="font-mono text-body-sm"
           />
         </div>
         <div>
-          <label class="text-sm font-medium text-gray-700 mb-1 block">
+          <label class="text-body-sm font-medium text-gray-700 mb-1 block">
             {{ info.format === 'json' ? 'YAML 输出' : 'JSON 输出' }}
           </label>
           <el-input
@@ -236,20 +236,20 @@ const swapInputOutput = () => {
             :rows="12"
             readonly
             placeholder="转换结果..."
-            class="font-mono text-sm"
+            class="font-mono text-body-sm"
           />
         </div>
       </div>
 
       <!-- 错误提示 -->
-      <div v-if="info.error" class="text-red-500 text-sm bg-red-50 p-3 rounded">
+      <div v-if="info.error" class="text-red-500 text-body-sm bg-red-50 p-3 rounded">
         {{ info.error }}
       </div>
     </div>
 
     <!-- 描述 -->
     <ToolDetail title="描述">
-      <div class="text-sm leading-7 space-y-2">
+      <div class="text-body-sm leading-7 space-y-2">
         <p class="font-bold">功能说明</p>
         <p>JSON/YAML 格式化对比工具，支持两种格式之间的相互转换。</p>
         <ul class="list-disc ml-5">

@@ -160,8 +160,8 @@ const copyOutput = async () => {
 
     <div class="p-4 rounded-2xl bg-white shadow-sm border border-slate-200">
       <div class="mb-4">
-        <div class="text-2xl font-semibold">文本加密/解密</div>
-        <div class="mt-1 text-sm text-slate-500">使用秘钥进行 AES-GCM 加密和解密，输出为 Base64 格式，适合安全传输与保护文本内容。</div>
+        <div class="text-h2 font-semibold">文本加密/解密</div>
+        <div class="mt-1 text-body-sm text-slate-500">使用秘钥进行 AES-GCM 加密和解密，输出为 Base64 格式，适合安全传输与保护文本内容。</div>
       </div>
 
       <div class="space-y-4">
@@ -197,7 +197,7 @@ const copyOutput = async () => {
         <div class="flex flex-wrap gap-3 items-center">
           <el-button type="success" :loading="isBusy" @click="handleAction">{{ mode === 'encrypt' ? '加密文本' : '解密文本' }}</el-button>
           <el-button type="warning" :disabled="!outputText" @click="copyOutput">复制结果</el-button>
-          <span class="text-sm text-slate-500">{{ textTip[mode] }}</span>
+          <span class="text-body-sm text-slate-500">{{ textTip[mode] }}</span>
         </div>
 
         <el-form-item label="输出结果">

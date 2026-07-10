@@ -9,7 +9,7 @@
             我
           </div>
           <div class="flex-1">
-            <div class="text-sm text-gray-800 whitespace-pre-wrap">{{ message.content }}</div>
+            <div class="text-body-sm text-gray-800 whitespace-pre-wrap">{{ message.content }}</div>
             <!-- 用户上传的图片 -->
             <img v-if="message.image" :src="message.image" class="mt-2 max-w-xs rounded-lg border" />
           </div>
@@ -19,7 +19,7 @@
       <!-- AI消息 -->
       <div v-if="message.role === 'assistant'" class="mt-3 pt-3 border-t border-gray-100">
         <div class="flex items-start gap-3">
-          <div class="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-sm">
+          <div class="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-body-sm">
             AI
           </div>
           <div class="flex-1 prose prose-sm max-w-none text-gray-700">
@@ -32,7 +32,7 @@
     <!-- 当前流式输出 -->
     <div v-if="streamingContent" class="bg-white rounded-lg p-4">
       <div class="flex items-start gap-3">
-        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-sm">
+        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-body-sm">
           AI
         </div>
         <div class="flex-1 prose prose-sm max-w-none text-gray-700">
@@ -50,13 +50,13 @@
     <div v-if="messages.length > 0" class="flex gap-2 justify-end">
       <button
         @click="$emit('clear-history')"
-        class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+        class="px-4 py-2 text-body-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
       >
         🗑️ 清空对话
       </button>
       <button
         @click="$emit('new-topic')"
-        class="px-4 py-2 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
+        class="px-4 py-2 text-body-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
       >
         ✨ 新话题
       </button>

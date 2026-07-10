@@ -799,7 +799,7 @@ const shouldHighlight = (text: string | undefined) => {
     <DetailHeader :title="info.title" />
 
     <div class="p-4 rounded-2xl bg-white">
-      <div class="mb-2 text-sm text-gray-500">
+      <div class="mb-2 text-body-sm text-gray-500">
         支持解析请求头Cookie（name1=value1;
         name2=value2）和响应头Set-Cookie格式，输入内容后自动解析，编辑Cookie列表后自动同步。
         <el-link class="ml-2" type="primary" @click="fillExample"
@@ -845,7 +845,7 @@ const shouldHighlight = (text: string | undefined) => {
             @clear="clearSearch"
           >
             <template #suffix v-if="state.searchText.trim()">
-              <span class="text-xs text-gray-400 mr-2"
+              <span class="text-caption text-gray-400 mr-2"
                 >{{ matchedCount }}/{{ cookies.length }}</span
               >
             </template>
@@ -853,7 +853,7 @@ const shouldHighlight = (text: string | undefined) => {
         </div>
 
         <div class="flex items-center justify-between mb-2">
-          <div class="text-sm text-gray-600">
+          <div class="text-body-sm text-gray-600">
             Cookie列表（实时同步）- {{ getValidCookieCount() }}个有效Cookie，总计{{ getTotalFieldCount() }}个字段，
             总大小: {{ formatBytes(getTotalSize()) }}
             <span v-if="getAllValidationErrors().length > 0" class="ml-2 text-red-600">
@@ -908,10 +908,10 @@ const shouldHighlight = (text: string | undefined) => {
               <!-- 基本信息 -->
               <div class="flex gap-2 items-start mb-1">
                 <div class="w-8 flex-shrink-0 text-center pt-1">
-                  <span class="text-xs text-gray-500 font-mono">{{
+                  <span class="text-caption text-gray-500 font-mono">{{
                     (item.originalIndex ?? index) + 1
                   }}</span>
-                  <div class="text-xs text-gray-400" title="Cookie大小">
+                  <div class="text-caption text-gray-400" title="Cookie大小">
                     {{ formatBytes(getCookieSize(item)) }}
                   </div>
                 </div>
@@ -930,7 +930,7 @@ const shouldHighlight = (text: string | undefined) => {
                     "
                   >
                     <template #suffix>
-                      <span class="text-xs text-gray-400">{{
+                      <span class="text-caption text-gray-400">{{
                         (item.name || "").length
                       }}</span>
                     </template>
@@ -938,12 +938,12 @@ const shouldHighlight = (text: string | undefined) => {
                   <!-- 高亮显示的文本 -->
                   <div 
                     v-if="state.searchText.trim() && shouldHighlight(item.name)"
-                    class="text-xs text-gray-600 mt-1 px-1"
+                    class="text-caption text-gray-600 mt-1 px-1"
                     v-html="highlightText(item.name, state.searchText)"
                   ></div>
                   <div 
                     v-if="!getCookieValidation(item).name.valid && item.name" 
-                    class="text-xs text-red-500 mt-1"
+                    class="text-caption text-red-500 mt-1"
                   >
                     {{ getCookieValidation(item).name.message }}
                   </div>
@@ -963,7 +963,7 @@ const shouldHighlight = (text: string | undefined) => {
                     "
                   >
                     <template #suffix>
-                      <span class="text-xs text-gray-400">{{
+                      <span class="text-caption text-gray-400">{{
                         (item.value || "").length
                       }}</span>
                     </template>
@@ -971,12 +971,12 @@ const shouldHighlight = (text: string | undefined) => {
                   <!-- 高亮显示的文本 -->
                   <div 
                     v-if="state.searchText.trim() && shouldHighlight(item.value)"
-                    class="text-xs text-gray-600 mt-1 px-1 truncate"
+                    class="text-caption text-gray-600 mt-1 px-1 truncate"
                     v-html="highlightText(item.value, state.searchText)"
                   ></div>
                   <div 
                     v-if="!getCookieValidation(item).value.valid && item.value" 
-                    class="text-xs text-red-500 mt-1"
+                    class="text-caption text-red-500 mt-1"
                   >
                     {{ getCookieValidation(item).value.message }}
                   </div>
@@ -1021,12 +1021,12 @@ const shouldHighlight = (text: string | undefined) => {
                   <!-- 高亮显示 -->
                   <div 
                     v-if="state.searchText.trim() && shouldHighlight(item.domain || '')"
-                    class="text-xs text-gray-600 mt-1 px-1"
+                    class="text-caption text-gray-600 mt-1 px-1"
                     v-html="highlightText(item.domain || '', state.searchText)"
                   ></div>
                   <div 
                     v-if="!getCookieValidation(item).domain.valid && item.domain" 
-                    class="text-xs text-red-500 mt-1"
+                    class="text-caption text-red-500 mt-1"
                   >
                     {{ getCookieValidation(item).domain.message }}
                   </div>
@@ -1048,12 +1048,12 @@ const shouldHighlight = (text: string | undefined) => {
                   <!-- 高亮显示 -->
                   <div 
                     v-if="state.searchText.trim() && shouldHighlight(item.path || '')"
-                    class="text-xs text-gray-600 mt-1 px-1"
+                    class="text-caption text-gray-600 mt-1 px-1"
                     v-html="highlightText(item.path || '', state.searchText)"
                   ></div>
                   <div 
                     v-if="!getCookieValidation(item).path.valid && item.path" 
-                    class="text-xs text-red-500 mt-1"
+                    class="text-caption text-red-500 mt-1"
                   >
                     {{ getCookieValidation(item).path.message }}
                   </div>
@@ -1074,7 +1074,7 @@ const shouldHighlight = (text: string | undefined) => {
                   <!-- 高亮显示 -->
                   <div 
                     v-if="state.searchText.trim() && shouldHighlight(item.expires || '')"
-                    class="text-xs text-gray-600 mt-1 px-1"
+                    class="text-caption text-gray-600 mt-1 px-1"
                     v-html="highlightText(item.expires || '', state.searchText)"
                   ></div>
                 </div>
@@ -1095,18 +1095,18 @@ const shouldHighlight = (text: string | undefined) => {
                   <!-- 高亮显示 -->
                   <div 
                     v-if="state.searchText.trim() && shouldHighlight(item.maxAge || '')"
-                    class="text-xs text-gray-600 mt-1 px-1"
+                    class="text-caption text-gray-600 mt-1 px-1"
                     v-html="highlightText(item.maxAge || '', state.searchText)"
                   ></div>
                   <div 
                     v-if="!getCookieValidation(item).maxAge.valid && item.maxAge" 
-                    class="text-xs text-red-500 mt-1"
+                    class="text-caption text-red-500 mt-1"
                   >
                     {{ getCookieValidation(item).maxAge.message }}
                   </div>
                 </div>
                 <!-- sameSite字段高亮 -->
-                <div class="flex items-center gap-2 text-sm">
+                <div class="flex items-center gap-2 text-body-sm">
                   <el-checkbox
                     :model-value="Boolean(item.secure)"
                     size="small"
@@ -1153,7 +1153,7 @@ const shouldHighlight = (text: string | undefined) => {
                   <!-- 高亮显示 -->
                   <div 
                     v-if="state.searchText.trim() && shouldHighlight(item.sameSite || '')"
-                    class="text-xs text-gray-600 mt-1 px-1"
+                    class="text-caption text-gray-600 mt-1 px-1"
                     v-html="highlightText(item.sameSite || '', state.searchText)"
                   ></div>
                 </div>
@@ -1164,7 +1164,7 @@ const shouldHighlight = (text: string | undefined) => {
       </div>
 
       <div class="mt-4">
-        <div class="text-sm text-gray-600 mb-1">
+        <div class="text-body-sm text-gray-600 mb-1">
           生成结果（{{
             state.viewMode === "simple" ? "请求头Cookie格式" : "Set-Cookie格式"
           }}）：

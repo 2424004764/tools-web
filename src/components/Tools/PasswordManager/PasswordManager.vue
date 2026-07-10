@@ -632,7 +632,7 @@ defineExpose({ formatTime, exportPasswords, openImportDialog })
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
           </svg>
         </div>
-        <h2 class="text-2xl font-bold text-gray-800 mb-2">密码管理器</h2>
+        <h2 class="text-h2 font-bold text-gray-800 mb-2">密码管理器</h2>
         <p class="text-gray-600 mb-4">请先登录以使用密码管理器</p>
         <el-button type="primary" @click="goToLogin">前往登录</el-button>
       </div>
@@ -756,10 +756,10 @@ defineExpose({ formatTime, exportPasswords, openImportDialog })
           >
             <div class="flex items-start justify-between mb-3">
               <div class="flex-1 min-w-0">
-                <h3 class="text-lg font-bold text-gray-800 truncate">{{ entry.title }}</h3>
-                <div v-if="entry.notes" class="text-sm text-gray-600 line-clamp-2 mt-1">{{ entry.notes }}</div>
-                <p class="text-sm text-gray-500 truncate mt-1">{{ entry.username }}</p>
-                <!-- <p class="text-xs text-gray-400 mt-1">更新于 {{ formatTime(entry.updateTime) }}</p> -->
+                <h3 class="text-body-lg font-bold text-gray-800 truncate">{{ entry.title }}</h3>
+                <div v-if="entry.notes" class="text-body-sm text-gray-600 line-clamp-2 mt-1">{{ entry.notes }}</div>
+                <p class="text-body-sm text-gray-500 truncate mt-1">{{ entry.username }}</p>
+                <!-- <p class="text-caption text-gray-400 mt-1">更新于 {{ formatTime(entry.updateTime) }}</p> -->
               </div>
               <div class="flex gap-1 ml-2">
                 <el-button size="small" @click="openEditDialog(entry)">编辑</el-button>
@@ -767,7 +767,7 @@ defineExpose({ formatTime, exportPasswords, openImportDialog })
               </div>
             </div>
 
-            <div class="space-y-2 text-sm">
+            <div class="space-y-2 text-body-sm">
               <div v-if="entry.url" class="flex items-center gap-2">
                 <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
@@ -805,7 +805,7 @@ defineExpose({ formatTime, exportPasswords, openImportDialog })
           <svg class="w-24 h-24 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
           </svg>
-          <p class="text-gray-500 text-lg">
+          <p class="text-gray-500 text-body-lg">
             {{ info.searchQuery ? '没有找到匹配的密码' : '暂无密码记录' }}
           </p>
           <el-button type="primary" class="mt-4" @click="info.searchQuery ? handleSearchClear() : openAddDialog()">
@@ -847,12 +847,12 @@ defineExpose({ formatTime, exportPasswords, openImportDialog })
                   :style="{ width: (passwordStrength / 5 * 100) + '%', backgroundColor: strengthColor }"
                 ></div>
               </div>
-              <span class="text-sm" :style="{ color: strengthColor }">{{ strengthText }}</span>
+              <span class="text-body-sm" :style="{ color: strengthColor }">{{ strengthText }}</span>
             </div>
 
             <!-- 密码生成器 -->
             <div class="bg-gray-50 rounded-lg p-3 mt-2">
-              <div class="text-sm font-medium text-gray-700 mb-2">密码生成器</div>
+              <div class="text-body-sm font-medium text-gray-700 mb-2">密码生成器</div>
               <div class="flex items-center gap-2 mb-2">
                 <el-input-number
                   v-model="info.generatedPassword.length"
@@ -861,7 +861,7 @@ defineExpose({ formatTime, exportPasswords, openImportDialog })
                   size="small"
                   style="width: 120px"
                 />
-                <span class="text-sm text-gray-600">位</span>
+                <span class="text-body-sm text-gray-600">位</span>
               </div>
               <div class="flex flex-wrap gap-2 mb-2">
                 <el-checkbox v-model="info.generatedPassword.includeLower">小写</el-checkbox>
@@ -929,7 +929,7 @@ defineExpose({ formatTime, exportPasswords, openImportDialog })
       <div class="space-y-4">
         <el-alert type="info" :closable="false">
           <p>请选择之前导出的 JSON 文件进行导入</p>
-          <p class="text-sm mt-2">注意：导入将添加到现有密码中，不会覆盖</p>
+          <p class="text-body-sm mt-2">注意：导入将添加到现有密码中，不会覆盖</p>
         </el-alert>
 
         <el-upload
@@ -944,10 +944,10 @@ defineExpose({ formatTime, exportPasswords, openImportDialog })
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
           </svg>
           <p class="text-gray-600 mt-2">点击或拖拽文件到此处</p>
-          <p class="text-gray-400 text-sm">仅支持 JSON 格式</p>
+          <p class="text-gray-400 text-body-sm">仅支持 JSON 格式</p>
         </el-upload>
 
-        <div v-if="info.importFile" class="text-center text-sm text-gray-600">
+        <div v-if="info.importFile" class="text-center text-body-sm text-gray-600">
           已选择: {{ info.importFile.name }}
         </div>
       </div>
@@ -963,7 +963,7 @@ defineExpose({ formatTime, exportPasswords, openImportDialog })
       <div class="space-y-4">
         <div>
           <h4 class="font-bold text-gray-800 mb-2">功能介绍</h4>
-          <ul class="space-y-1 text-sm text-gray-600">
+          <ul class="space-y-1 text-body-sm text-gray-600">
             <li>• 安全存储：所有密码使用AES加密存储在数据库中</li>
             <li>• 分组管理：支持自定义分组，方便分类管理不同类型的账号</li>
             <li>• 备注功能：为每个密码添加详细备注，记录重要信息</li>
@@ -975,7 +975,7 @@ defineExpose({ formatTime, exportPasswords, openImportDialog })
 
         <div>
           <h4 class="font-bold text-gray-800 mb-2">安全提示</h4>
-          <ul class="space-y-1 text-sm text-gray-600">
+          <ul class="space-y-1 text-body-sm text-gray-600">
             <li>• 所有密码在服务器端加密存储，只有您可以解密查看</li>
             <li>• 建议使用密码生成器创建强密码，保护账号安全</li>
             <li>• 请勿在公共电脑上使用或记得及时退出登录</li>
@@ -985,7 +985,7 @@ defineExpose({ formatTime, exportPasswords, openImportDialog })
 
         <div>
           <h4 class="font-bold text-gray-800 mb-2">使用方法</h4>
-          <ol class="space-y-1 text-sm text-gray-600 list-decimal list-inside">
+          <ol class="space-y-1 text-body-sm text-gray-600 list-decimal list-inside">
             <li>首次使用请先登录账号</li>
             <li>点击"添加密码"保存您的账号信息（快捷键 Alt+N）</li>
             <li>可以创建自定义分组来分类管理</li>
@@ -998,10 +998,10 @@ defineExpose({ formatTime, exportPasswords, openImportDialog })
 
         <div>
           <h4 class="font-bold text-gray-800 mb-2">快捷键</h4>
-          <ul class="space-y-1 text-sm text-gray-600">
-            <li><kbd class="px-2 py-1 bg-gray-100 rounded text-xs">Ctrl</kbd> + <kbd class="px-2 py-1 bg-gray-100 rounded text-xs">K</kbd> : 聚焦搜索框</li>
-            <li><kbd class="px-2 py-1 bg-gray-100 rounded text-xs">Alt</kbd> + <kbd class="px-2 py-1 bg-gray-100 rounded text-xs">N</kbd> : 新建密码</li>
-            <li><kbd class="px-2 py-1 bg-gray-100 rounded text-xs">Esc</kbd> : 关闭对话框</li>
+          <ul class="space-y-1 text-body-sm text-gray-600">
+            <li><kbd class="px-2 py-1 bg-gray-100 rounded text-caption">Ctrl</kbd> + <kbd class="px-2 py-1 bg-gray-100 rounded text-caption">K</kbd> : 聚焦搜索框</li>
+            <li><kbd class="px-2 py-1 bg-gray-100 rounded text-caption">Alt</kbd> + <kbd class="px-2 py-1 bg-gray-100 rounded text-caption">N</kbd> : 新建密码</li>
+            <li><kbd class="px-2 py-1 bg-gray-100 rounded text-caption">Esc</kbd> : 关闭对话框</li>
           </ul>
         </div>
       </div>

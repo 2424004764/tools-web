@@ -260,57 +260,57 @@ const downloadImage = () => {
         <div class="w-full lg:w-80 shrink-0 space-y-3">
           <!-- 上方文字（仅当 position 是 top 或 both 时显示） -->
           <div v-if="position === 'top' || position === 'both'" class="p-3 bg-gray-50 rounded-lg space-y-2">
-            <div class="text-sm font-medium text-gray-700">
+            <div class="text-body-sm font-medium text-gray-700">
               {{ position === 'both' ? '上方文字' : '文字内容' }}
             </div>
             <div class="flex items-center gap-2">
               <el-input v-model="year" placeholder="年份" size="small" class="!w-20" />
-              <span class="text-sm text-gray-500">年</span>
+              <span class="text-body-sm text-gray-500">年</span>
               <el-input v-model="season" placeholder="季节" size="small" class="!w-16" />
-              <el-checkbox v-model="useUppercaseYear" size="small" class="!text-xs">转大写</el-checkbox>
+              <el-checkbox v-model="useUppercaseYear" size="small" class="!text-caption">转大写</el-checkbox>
             </div>
             <div class="flex items-center gap-2">
               <el-input v-model="person" placeholder="人物" size="small" class="flex-1" />
-              <span class="text-sm text-gray-500">同志</span>
+              <span class="text-body-sm text-gray-500">同志</span>
             </div>
             <div class="flex items-center gap-2">
-              <span class="text-sm text-gray-500">在</span>
+              <span class="text-body-sm text-gray-500">在</span>
               <el-input v-model="place" placeholder="地点" size="small" class="flex-1" />
-              <span class="text-sm text-gray-500">留影</span>
+              <span class="text-body-sm text-gray-500">留影</span>
             </div>
-            <div class="text-xs text-gray-500 pt-1 border-t border-gray-200 mt-2">
+            <div class="text-caption text-gray-500 pt-1 border-t border-gray-200 mt-2">
               预览：<span class="text-gray-800">{{ captionTop }}</span>
             </div>
           </div>
 
           <!-- 下方文字（仅当 position 是 bottom 或 both 时显示） -->
           <div v-if="position === 'bottom' || position === 'both'" class="p-3 bg-gray-50 rounded-lg space-y-2">
-            <div class="text-sm font-medium text-gray-700">
+            <div class="text-body-sm font-medium text-gray-700">
               {{ position === 'both' ? '下方文字' : '文字内容' }}
             </div>
             <div class="flex items-center gap-2">
               <el-input v-model="yearBottom" placeholder="年份" size="small" class="!w-20" />
-              <span class="text-sm text-gray-500">年</span>
+              <span class="text-body-sm text-gray-500">年</span>
               <el-input v-model="seasonBottom" placeholder="季节" size="small" class="!w-16" />
-              <el-checkbox v-model="useUppercaseYearBottom" size="small" class="!text-xs">转大写</el-checkbox>
+              <el-checkbox v-model="useUppercaseYearBottom" size="small" class="!text-caption">转大写</el-checkbox>
             </div>
             <div class="flex items-center gap-2">
               <el-input v-model="personBottom" placeholder="人物" size="small" class="flex-1" />
-              <span class="text-sm text-gray-500">同志</span>
+              <span class="text-body-sm text-gray-500">同志</span>
             </div>
             <div class="flex items-center gap-2">
-              <span class="text-sm text-gray-500">在</span>
+              <span class="text-body-sm text-gray-500">在</span>
               <el-input v-model="placeBottom" placeholder="地点" size="small" class="flex-1" />
-              <span class="text-sm text-gray-500">留影</span>
+              <span class="text-body-sm text-gray-500">留影</span>
             </div>
-            <div class="text-xs text-gray-500 pt-1 border-t border-gray-200 mt-2">
+            <div class="text-caption text-gray-500 pt-1 border-t border-gray-200 mt-2">
               预览：<span class="text-gray-800">{{ captionBottom }}</span>
             </div>
           </div>
 
           <!-- 位置 -->
           <div class="p-3 bg-gray-50 rounded-lg">
-            <div class="text-sm font-medium text-gray-700 mb-2">位置</div>
+            <div class="text-body-sm font-medium text-gray-700 mb-2">位置</div>
             <el-radio-group v-model="position" class="flex flex-wrap">
               <el-radio-button value="top">仅上方</el-radio-button>
               <el-radio-button value="bottom">仅下方</el-radio-button>
@@ -320,13 +320,13 @@ const downloadImage = () => {
 
           <!-- 预设样式 -->
           <div class="p-3 bg-gray-50 rounded-lg">
-            <div class="text-sm font-medium text-gray-700 mb-2">预设样式</div>
+            <div class="text-body-sm font-medium text-gray-700 mb-2">预设样式</div>
             <div class="grid grid-cols-2 gap-2">
               <button
                 v-for="(p, key) in presets"
                 :key="key"
                 type="button"
-                class="px-2 py-2 rounded border-2 text-sm transition"
+                class="px-2 py-2 rounded border-2 text-body-sm transition"
                 :class="presetKey === key ? 'border-blue-500' : 'border-transparent hover:border-gray-300'"
                 :style="{ background: p.bg, color: p.fg, fontWeight: 'bold' }"
                 @click="applyPreset(key as PresetKey)"
@@ -335,7 +335,7 @@ const downloadImage = () => {
               </button>
               <button
                 type="button"
-                class="px-2 py-2 rounded border-2 text-sm transition bg-white text-gray-700"
+                class="px-2 py-2 rounded border-2 text-body-sm transition bg-white text-gray-700"
                 :class="presetKey === 'custom' ? 'border-blue-500' : 'border-gray-300 hover:border-gray-400'"
                 @click="applyPreset('custom')"
               >
@@ -346,30 +346,30 @@ const downloadImage = () => {
 
           <!-- 高级 -->
           <div class="p-3 bg-gray-50 rounded-lg space-y-2">
-            <div class="text-sm font-medium text-gray-700">高级</div>
+            <div class="text-body-sm font-medium text-gray-700">高级</div>
             <div class="flex items-center gap-2">
-              <span class="text-xs text-gray-500 w-14">背景色</span>
+              <span class="text-caption text-gray-500 w-14">背景色</span>
               <el-color-picker v-model="bgColor" size="small" />
             </div>
             <div class="flex items-center gap-2">
-              <span class="text-xs text-gray-500 w-14">文字色</span>
+              <span class="text-caption text-gray-500 w-14">文字色</span>
               <el-color-picker v-model="textColor" size="small" />
             </div>
             <div class="flex items-center gap-2">
-              <span class="text-xs text-gray-500 w-14">字体</span>
+              <span class="text-caption text-gray-500 w-14">字体</span>
               <el-select v-model="fontFamily" size="small" class="flex-1">
                 <el-option v-for="f in fontSizeOptions" :key="f" :value="f" :label="fontSizeLabels[f]" />
               </el-select>
             </div>
             <div class="flex items-center gap-2">
-              <span class="text-xs text-gray-500 w-14">条带高度</span>
+              <span class="text-caption text-gray-500 w-14">条带高度</span>
               <el-slider v-model="bandHeightScale" :min="50" :max="200" :step="10" class="flex-1" />
-              <span class="text-xs text-gray-500 w-10 text-right">{{ bandHeightScale }}%</span>
+              <span class="text-caption text-gray-500 w-10 text-right">{{ bandHeightScale }}%</span>
             </div>
             <div class="flex items-center gap-2">
-              <span class="text-xs text-gray-500 w-14">字号</span>
+              <span class="text-caption text-gray-500 w-14">字号</span>
               <el-slider v-model="fontSizeScale" :min="50" :max="200" :step="10" class="flex-1" />
-              <span class="text-xs text-gray-500 w-10 text-right">{{ fontSizeScale }}%</span>
+              <span class="text-caption text-gray-500 w-10 text-right">{{ fontSizeScale }}%</span>
             </div>
           </div>
         </div>

@@ -120,14 +120,14 @@ const cates: Cate[] = [
               >
                 <div class="w-full">
                   <div class="flex items-center gap-2">
-                    <div class="h-9 w-9 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 text-sm font-medium">
+                    <div class="h-9 w-9 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 text-body-sm font-medium">
                       {{ item.title[0] }}
                     </div>
                     <div class="flex-1 min-w-0 font-medium text-gray-900 group-hover:text-blue-600 truncate">
                       {{ item.title }}
                     </div>
                     <!-- H5 数字评分；仅移动端展示 -->
-                    <span class="text-xs text-gray-600 sm:hidden flex-shrink-0">{{ ((item.rating ?? 0)).toFixed(1) }}/5</span>
+                    <span class="text-caption text-gray-600 sm:hidden flex-shrink-0">{{ ((item.rating ?? 0)).toFixed(1) }}/5</span>
                     <span class="text-gray-400 group-hover:text-blue-500 flex-shrink-0">→</span>
                   </div>
                   <!-- 平板及以上：星星评分单独一行显示 -->
@@ -140,7 +140,7 @@ const cates: Cate[] = [
                       size="small"
                     />
                   </div>
-                  <div class="text-gray-500 text-sm whitespace-pre-line break-words mt-2" v-if="item.desc">
+                  <div class="text-gray-500 text-body-sm whitespace-pre-line break-words mt-2" v-if="item.desc">
                     {{ item.desc }}
                   </div>
                 </div>

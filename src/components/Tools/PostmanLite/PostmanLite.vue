@@ -351,7 +351,7 @@ function formatRespJson() {
         <el-button text @click="exportCurl">复制 cURL</el-button>
       </div>
 
-      <div v-if="builtUrl && builtUrl !== url" class="text-xs text-gray-500">最终请求: {{ builtUrl }}</div>
+      <div v-if="builtUrl && builtUrl !== url" class="text-caption text-gray-500">最终请求: {{ builtUrl }}</div>
 
       <el-tabs type="border-card">
         <el-tab-pane label="Params">
@@ -419,7 +419,7 @@ function formatRespJson() {
                   </template>
                   <el-button text type="danger" @click="removeRow(formItems, i)">删除</el-button>
                 </div>
-                <div v-if="f.type === 'file' && f.files?.length" class="text-xs text-gray-500">
+                <div v-if="f.type === 'file' && f.files?.length" class="text-caption text-gray-500">
                   已选: {{ f.files.map(ff => ff.name).join(', ') }}
                 </div>
               </div>
@@ -432,7 +432,7 @@ function formatRespJson() {
 
     <ToolDetail title="响应">
       <div class="space-y-2">
-        <div class="text-sm">
+        <div class="text-body-sm">
           状态: {{ respStatus }}
           <span v-if="respTime !== null"> | 时间: {{ respTime }}ms</span>
           <span v-if="respSize !== null"> | 大小: {{ (respSize/1024).toFixed(2) }} KB</span>

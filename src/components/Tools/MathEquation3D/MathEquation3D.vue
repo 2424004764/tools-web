@@ -1120,7 +1120,7 @@ onUnmounted(() => {
     <div class="p-4 rounded-2xl bg-white space-y-4">
       <!-- 方程式类型选择 -->
       <div class="space-y-2">
-        <label class="text-sm font-medium text-gray-700">方程式类型</label>
+        <label class="text-body-sm font-medium text-gray-700">方程式类型</label>
         <el-radio-group v-model="equationParams.type" @change="redraw">
           <el-radio value="parametric">参数方程 (x=f(u,v), y=g(u,v), z=h(u,v))</el-radio>
           <el-radio value="function">函数方程 (z=f(x,y))</el-radio>
@@ -1129,25 +1129,25 @@ onUnmounted(() => {
 
       <!-- 方程式输入 -->
       <div class="space-y-2">
-        <label class="text-sm font-medium text-gray-700">方程式</label>
+        <label class="text-body-sm font-medium text-gray-700">方程式</label>
         <el-input 
           v-model="equationParams.equation"
           placeholder="输入方程式，如: x=5*cos(u)*sin(v);y=5*sin(u)*sin(v);z=5*cos(v)"
           @input="redraw"
           class="font-mono"
         />
-        <div class="text-xs text-gray-500">
+        <div class="text-caption text-gray-500">
           支持函数: cos, sin, tan, sqrt, abs, exp, log, pow, pi, e
         </div>
       </div>
 
       <!-- 预设方程式 -->
       <div class="space-y-3">
-        <label class="text-sm font-medium text-gray-700">预设方程式 ({{ presetEquations.length }}个)</label>
+        <label class="text-body-sm font-medium text-gray-700">预设方程式 ({{ presetEquations.length }}个)</label>
         
         <!-- 分类选择 -->
         <div class="flex items-center gap-3 flex-wrap">
-          <span class="text-sm text-gray-600">选择分类:</span>
+          <span class="text-body-sm text-gray-600">选择分类:</span>
           <el-select 
             v-model="selectedCategory" 
             placeholder="请选择分类"
@@ -1161,7 +1161,7 @@ onUnmounted(() => {
               :value="category.value"
             />
           </el-select>
-          <span class="text-xs text-gray-500">
+          <span class="text-caption text-gray-500">
             ({{ currentCategoryEquations.length }}个方程式)
           </span>
         </div>
@@ -1176,7 +1176,7 @@ onUnmounted(() => {
             plain
             @click="setPresetEquation(preset)"
             :title="preset.description"
-            class="text-xs justify-start"
+            class="text-caption justify-start"
           >
             {{ preset.name }}
           </el-button>
@@ -1184,7 +1184,7 @@ onUnmounted(() => {
         
         <!-- 快速切换常用分类 -->
         <div class="flex flex-wrap gap-1 items-center">
-          <span class="text-xs text-gray-500 mr-2">快速切换:</span>
+          <span class="text-caption text-gray-500 mr-2">快速切换:</span>
           <el-tag 
             v-for="quickCat in ['基础几何体', '波浪类', '艺术图形', '数学函数']"
             :key="quickCat"
@@ -1201,7 +1201,7 @@ onUnmounted(() => {
       <!-- 参数范围设置 -->
       <div v-if="equationParams.type === 'parametric'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div class="space-y-2">
-          <label class="text-sm font-medium text-gray-700">参数 u 范围</label>
+          <label class="text-body-sm font-medium text-gray-700">参数 u 范围</label>
           <div class="flex gap-2 items-center">
             <el-input-number v-model="equationParams.rangeU.min" :step="0.1" size="small" @change="redraw" />
             <span>到</span>
@@ -1211,7 +1211,7 @@ onUnmounted(() => {
           </div>
         </div>
         <div class="space-y-2">
-          <label class="text-sm font-medium text-gray-700">参数 v 范围</label>
+          <label class="text-body-sm font-medium text-gray-700">参数 v 范围</label>
           <div class="flex gap-2 items-center">
             <el-input-number v-model="equationParams.rangeV.min" :step="0.1" size="small" @change="redraw" />
             <span>到</span>
@@ -1224,7 +1224,7 @@ onUnmounted(() => {
 
       <div v-if="equationParams.type === 'function'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div class="space-y-2">
-          <label class="text-sm font-medium text-gray-700">x 轴范围</label>
+          <label class="text-body-sm font-medium text-gray-700">x 轴范围</label>
           <div class="flex gap-2 items-center">
             <el-input-number v-model="equationParams.rangeX.min" :step="1" size="small" @change="redraw" />
             <span>到</span>
@@ -1234,7 +1234,7 @@ onUnmounted(() => {
           </div>
         </div>
         <div class="space-y-2">
-          <label class="text-sm font-medium text-gray-700">y 轴范围</label>
+          <label class="text-body-sm font-medium text-gray-700">y 轴范围</label>
           <div class="flex gap-2 items-center">
             <el-input-number v-model="equationParams.rangeY.min" :step="1" size="small" @change="redraw" />
             <span>到</span>
@@ -1248,11 +1248,11 @@ onUnmounted(() => {
       <!-- 显示设置 -->
       <div class="flex flex-wrap gap-4 items-center">
         <div class="flex items-center gap-2">
-          <label class="text-sm font-medium text-gray-700">颜色</label>
+          <label class="text-body-sm font-medium text-gray-700">颜色</label>
           <el-color-picker v-model="equationParams.color" @change="redraw" />
         </div>
         <div class="flex items-center gap-2">
-          <label class="text-sm font-medium text-gray-700">透明度</label>
+          <label class="text-body-sm font-medium text-gray-700">透明度</label>
           <el-slider 
             v-model="equationParams.opacity" 
             :min="0.1" 
@@ -1272,7 +1272,7 @@ onUnmounted(() => {
           ref="canvasRef" 
           class="w-full h-96 border border-gray-200 rounded-lg cursor-grab active:cursor-grabbing"
         ></canvas>
-        <div class="absolute top-2 left-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded text-xs">
+        <div class="absolute top-2 left-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded text-caption">
           鼠标拖拽旋转 | 滚轮缩放
         </div>
       </div>
@@ -1283,24 +1283,24 @@ onUnmounted(() => {
       <div class="space-y-4">
         <div>
           <h4 class="font-medium mb-2">参数方程</h4>
-          <p class="text-sm text-gray-600 mb-2">格式: x=f(u,v);y=g(u,v);z=h(u,v)</p>
-          <p class="text-sm text-gray-600">示例: x=5*cos(u)*sin(v);y=5*sin(u)*sin(v);z=5*cos(v) (球面)</p>
+          <p class="text-body-sm text-gray-600 mb-2">格式: x=f(u,v);y=g(u,v);z=h(u,v)</p>
+          <p class="text-body-sm text-gray-600">示例: x=5*cos(u)*sin(v);y=5*sin(u)*sin(v);z=5*cos(v) (球面)</p>
         </div>
         <div>
           <h4 class="font-medium mb-2">函数方程</h4>
-          <p class="text-sm text-gray-600 mb-2">格式: z=f(x,y)</p>
-          <p class="text-sm text-gray-600">示例: z=x*x/16+y*y/9 (椭圆抛物面)</p>
+          <p class="text-body-sm text-gray-600 mb-2">格式: z=f(x,y)</p>
+          <p class="text-body-sm text-gray-600">示例: z=x*x/16+y*y/9 (椭圆抛物面)</p>
         </div>
         <div>
           <h4 class="font-medium mb-2">支持的函数</h4>
-          <p class="text-sm text-gray-600">
+          <p class="text-body-sm text-gray-600">
             cos, sin, tan, sqrt, abs, exp, log, pow, pi, e<br/>
             运算符: +, -, *, /, ^, ()
           </p>
         </div>
         <div>
           <h4 class="font-medium mb-2">交互操作</h4>
-          <p class="text-sm text-gray-600">
+          <p class="text-body-sm text-gray-600">
             • 鼠标拖拽：旋转视角<br/>
             • 滚轮：缩放视图<br/>
             • 调整参数范围和步长可改变精度和性能

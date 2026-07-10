@@ -191,7 +191,7 @@ function fillJsonExample() {
         </el-radio-group>
 
         <div class="flex items-center gap-2">
-          <span class="text-sm text-gray-600">分隔符：</span>
+          <span class="text-body-sm text-gray-600">分隔符：</span>
           <el-select v-model="opts.delimKey" style="width: 160px">
             <el-option label="逗号 (,)" value="comma" />
             <el-option label="制表符 (Tab)" value="tab" />
@@ -226,7 +226,7 @@ function fillJsonExample() {
         <el-button type="danger" @click="clearAll">清空</el-button>
       </div>
 
-      <div class="mt-3 text-sm text-gray-500">
+      <div class="mt-3 text-body-sm text-gray-500">
         示例：
         <el-link type="primary" @click="fillCsvExample">CSV</el-link>
         <span class="mx-1">/</span>
@@ -237,16 +237,16 @@ function fillJsonExample() {
 
       <div class="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div v-if="mode==='csv2json'" class="lg:col-span-1">
-          <div class="mb-2 text-sm text-gray-600">CSV/TSV 输入</div>
+          <div class="mb-2 text-body-sm text-gray-600">CSV/TSV 输入</div>
           <el-input type="textarea" :rows="16" v-model="csvInput" placeholder="粘贴 CSV/TSV 内容" />
         </div>
         <div v-if="mode==='json2csv'" class="lg:col-span-1">
-          <div class="mb-2 text-sm text-gray-600">JSON 输入（数组）</div>
+          <div class="mb-2 text-body-sm text-gray-600">JSON 输入（数组）</div>
           <el-input type="textarea" :rows="16" v-model="jsonInput" placeholder='如：[{"a":1},{"a":2}]' />
         </div>
 
         <div :class="mode==='csv2json' ? 'lg:col-span-2' : 'lg:col-span-2'">
-          <div class="mb-2 text-sm text-gray-600">结果</div>
+          <div class="mb-2 text-body-sm text-gray-600">结果</div>
           <el-input type="textarea" :rows="16" v-model="result" placeholder="转换结果" />
         </div>
       </div>

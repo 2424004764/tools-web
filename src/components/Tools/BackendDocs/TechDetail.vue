@@ -1427,7 +1427,7 @@ const renderContent = (item: any) => {
         <div class="p-4">
           <!-- 技术栈信息 -->
           <div :class="['w-12 h-12 rounded-lg bg-gradient-to-br ' + currentTech.color + ' flex items-center justify-center mb-4']">
-            <span class="text-xl font-bold text-white">{{ currentTech.icon }}</span>
+            <span class="text-h3 font-bold text-white">{{ currentTech.icon }}</span>
           </div>
           <h3 class="font-bold text-gray-800 mb-4">{{ currentTech.name }} 文档</h3>
 
@@ -1438,7 +1438,7 @@ const renderContent = (item: any) => {
               :key="chapter.id"
               :href="`#${chapter.id}`"
               :class="[
-                'block px-3 py-2 rounded-lg transition-all duration-200 text-sm no-underline',
+                'block px-3 py-2 rounded-lg transition-all duration-200 text-body-sm no-underline',
                 activeChapter === chapter.id 
                   ? 'bg-blue-100 text-blue-900 font-medium' 
                   : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
@@ -1461,7 +1461,7 @@ const renderContent = (item: any) => {
         <template #header>
           <div class="flex items-center gap-3">
             <div :class="['w-10 h-10 rounded-lg bg-gradient-to-br ' + currentTech.color + ' flex items-center justify-center']">
-              <span class="text-lg font-bold text-white">{{ currentTech.icon }}</span>
+              <span class="text-body-lg font-bold text-white">{{ currentTech.icon }}</span>
             </div>
             <span class="font-bold">{{ currentTech.name }} 文档</span>
           </div>
@@ -1506,14 +1506,14 @@ const renderContent = (item: any) => {
               class="chapter-section scroll-mt-20"
               tabindex="-1"
             >
-              <h2 class="text-2xl font-bold text-gray-800 mb-6 pb-4 border-b border-gray-100">
+              <h2 class="text-h2 font-bold text-gray-800 mb-6 pb-4 border-b border-gray-100">
                 {{ chapter.title }}
               </h2>
 
               <div class="prose prose-gray max-w-none space-y-6">
                 <div v-for="(item, index) in chapter.content" :key="index" class="content-block">
                   <!-- 标题 -->
-                  <h3 v-if="item.type === 'heading'" class="text-xl font-semibold text-gray-800 mt-6 mb-3">
+                  <h3 v-if="item.type === 'heading'" class="text-h3 font-semibold text-gray-800 mt-6 mb-3">
                     {{ renderContent(item) }}
                   </h3>
 
@@ -1538,7 +1538,7 @@ const renderContent = (item: any) => {
                           <th
                             v-for="(header, i) in item.headers"
                             :key="i"
-                            class="px-4 py-3 text-left text-sm font-semibold text-gray-700"
+                            class="px-4 py-3 text-left text-body-sm font-semibold text-gray-700"
                           >
                             {{ header }}
                           </th>
@@ -1549,7 +1549,7 @@ const renderContent = (item: any) => {
                           <td
                             v-for="(cell, j) in row"
                             :key="j"
-                            class="px-4 py-3 text-sm text-gray-600"
+                            class="px-4 py-3 text-body-sm text-gray-600"
                             v-html="cell"
                           ></td>
                         </tr>
@@ -1559,10 +1559,10 @@ const renderContent = (item: any) => {
 
                   <!-- 代码块 -->
                   <div v-else-if="item.type === 'code'" class="my-4 break-words">
-                    <div class="flex items-center justify-between px-4 py-2 bg-gray-800 text-gray-300 text-sm rounded-t-lg">
+                    <div class="flex items-center justify-between px-4 py-2 bg-gray-800 text-gray-300 text-body-sm rounded-t-lg">
                       <span>{{ item.lang }}</span>
                     </div>
-                    <pre :class="isMobile ? 'bg-gray-900 text-gray-100 p-4 rounded-b-lg text-sm leading-relaxed break-words whitespace-pre-wrap' : 'bg-gray-900 text-gray-100 p-4 overflow-x-auto rounded-b-lg text-sm leading-relaxed break-words whitespace-pre-wrap'"><code>{{ item.code }}</code></pre>
+                    <pre :class="isMobile ? 'bg-gray-900 text-gray-100 p-4 rounded-b-lg text-body-sm leading-relaxed break-words whitespace-pre-wrap' : 'bg-gray-900 text-gray-100 p-4 overflow-x-auto rounded-b-lg text-body-sm leading-relaxed break-words whitespace-pre-wrap'"><code>{{ item.code }}</code></pre>
                   </div>
                 </div>
               </div>

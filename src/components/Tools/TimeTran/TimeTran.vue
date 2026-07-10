@@ -110,7 +110,7 @@ const copyUtcTime = async () => {
       <div class="flex flex-direction mt-2">
         <el-text class="mr-2 w-12">UTC</el-text>
         <el-button class="mr-3" link @click="copyUtcTime()">{{ info.nowUtcTime }} <el-icon class="ml-1 mr-1"><CopyDocument /></el-icon></el-button>
-        <el-text class="text-gray-500 text-sm flex items-center">ISO 8601 标准格式</el-text>
+        <el-text class="text-gray-500 text-body-sm flex items-center">ISO 8601 标准格式</el-text>
       </div>
 
       <div class="flex flex-direction mt-4 justify-start">

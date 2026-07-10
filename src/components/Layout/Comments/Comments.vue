@@ -80,16 +80,16 @@ watch(() => route.path, () => {
 <template>
   <div class="giscus-wrapper mt-8">
     <div class="bg-white rounded-2xl p-6 shadow-sm">
-      <h3 class="text-lg font-bold text-warm-800 mb-4 flex items-center gap-2">
+      <h3 class="text-body-lg font-bold text-ink-900 mb-4 flex items-center gap-2">
         <svg class="w-5 h-5" viewBox="0 0 16 16" fill="currentColor">
           <path d="M1.5 2.5A1.5 1.5 0 0 1 3 1h10a1.5 1.5 0 0 1 1.5 1.5v11A1.5 1.5 0 0 1 13 15H3a1.5 1.5 0 0 1-1.5-1.5v-11zM3 2a.5.5 0 0 0-.5.5v11a.5.5 0 0 0 .5.5h10a.5.5 0 0 0 .5-.5v-11A.5.5 0 0 0 13 2H3z"/>
           <path d="M5 5.5A.5.5 0 0 1 5.5 5h5a.5.5 0 0 1 0 1h-5A.5.5 0 0 1 5 5.5zm0 3A.5.5 0 0 1 5.5 8h5a.5.5 0 0 1 0 1h-5A.5.5 0 0 1 5 8.5zm0 3A.5.5 0 0 1 5.5 11.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5z"/>
         </svg>
         评论交流
       </h3>
-      <p class="text-sm text-gray-500 mb-4">
+      <p class="text-body-sm text-ink-500 mb-4">
         欢迎在下方留言讨论，如有问题或建议请提交
-        <a :href="gitUrl + '/issues'" target="_blank" class="text-warm-600 hover:text-warm-700">GitHub Issue</a>
+        <a :href="gitUrl + '/issues'" target="_blank" class="text-accent-600 hover:text-accent-700">GitHub Issue</a>
       </p>
       <div id="giscus-container"></div>
     </div>

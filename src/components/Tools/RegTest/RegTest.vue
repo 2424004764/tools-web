@@ -254,7 +254,7 @@ const execMatch = () => {
 
     <!-- desc -->
     <ToolDetail title="描述">
-      <div class="text-sm leading-7">
+      <div class="text-body-sm leading-7">
         <p class="font-bold">使用方式</p>
         <p>1) 在上方输入“待匹配文本”和“正则表达式”，可勾选“全局搜索(g)”与“忽略大小写(i)”。</p>
         <p>2) 点击“测试匹配”后，匹配到的结果与次数会显示在下方。</p>

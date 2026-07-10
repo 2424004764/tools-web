@@ -468,7 +468,7 @@ onMounted(() => {
       <div class="flex flex-col lg:flex-row gap-4">
         <!-- 左侧：水印列表 -->
         <div v-if="watermarkList.length > 0" class="w-full lg:w-72 border rounded-lg p-3 flex-shrink-0 overflow-y-auto max-h-[600px]">
-          <div class="text-sm text-gray-500 mb-2">水印列表</div>
+          <div class="text-body-sm text-gray-500 mb-2">水印列表</div>
           <div class="flex flex-wrap gap-2">
             <div
               v-for="item in watermarkList"
@@ -478,7 +478,7 @@ onMounted(() => {
               @click="editingWatermarkId = item.id"
             >
               <el-checkbox v-model="item.visible" size="small" @click.stop />
-              <span class="text-sm flex-1 truncate">
+              <span class="text-body-sm flex-1 truncate">
                 {{ item.type === 'text' ? (item.content || '文字水印') : '图片水印' }}
               </span>
               <el-button size="small" type="danger" text @click.stop="removeWatermark(item.id)">
@@ -497,18 +497,18 @@ onMounted(() => {
                   <el-checkbox v-model="item.bold" size="small">加粗</el-checkbox>
                 </template>
                 <div class="flex items-center gap-1 w-full">
-                  <span class="text-sm text-gray-500">透明度:</span>
+                  <span class="text-body-sm text-gray-500">透明度:</span>
                   <el-slider v-model="item.opacity" :min="0.05" :max="1" :step="0.05" :format-tooltip="(v: number) => `${Math.round(v * 100)}%`" class="flex-1" size="small" />
                 </div>
                 <template v-if="item.type === 'text'">
                   <div class="flex items-center gap-1 w-full">
-                    <span class="text-sm text-gray-500">字体:</span>
+                    <span class="text-body-sm text-gray-500">字体:</span>
                     <el-slider v-model="item.fontSize" :min="12" :max="100" class="flex-1" size="small" />
                   </div>
                 </template>
                 <template v-if="item.type === 'image'">
                   <div class="flex items-center gap-1 w-full">
-                    <span class="text-sm text-gray-500">缩放:</span>
+                    <span class="text-body-sm text-gray-500">缩放:</span>
                     <el-slider v-model="item.scale" :min="0.05" :max="1" :step="0.05" :format-tooltip="(v: number) => `${Math.round(v * 100)}%`" class="flex-1" size="small" />
                   </div>
                 </template>

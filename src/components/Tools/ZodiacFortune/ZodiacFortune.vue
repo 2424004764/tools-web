@@ -170,8 +170,8 @@ const hasResult = computed(() => fortuneResult.value !== null)
 
     <div class="p-4 rounded-2xl bg-white shadow-sm border border-slate-200">
       <div class="mb-4">
-        <div class="text-2xl font-semibold">星座运势查询</div>
-        <div class="mt-1 text-sm text-slate-500">选择出生日期，查看今日、本周或本月的星座运势与恋爱、事业、财富、健康建议。</div>
+        <div class="text-h2 font-semibold">星座运势查询</div>
+        <div class="mt-1 text-body-sm text-slate-500">选择出生日期，查看今日、本周或本月的星座运势与恋爱、事业、财富、健康建议。</div>
       </div>
 
       <div class="space-y-4">
@@ -194,7 +194,7 @@ const hasResult = computed(() => fortuneResult.value !== null)
 
         <div class="flex flex-wrap gap-3 items-center">
           <el-button type="primary" @click="queryFortune">查询运势</el-button>
-          <span class="text-sm text-slate-500">根据出生日期自动判断星座，并显示对应运势内容。</span>
+          <span class="text-body-sm text-slate-500">根据出生日期自动判断星座，并显示对应运势内容。</span>
         </div>
 
         <el-alert v-if="errorMessage" :title="errorMessage" type="warning" show-icon />
@@ -203,40 +203,40 @@ const hasResult = computed(() => fortuneResult.value !== null)
           <el-card class="border border-slate-200">
             <div class="flex flex-wrap justify-between gap-3">
               <div>
-                <div class="text-sm text-slate-500">星座</div>
-                <div class="text-xl font-semibold">{{ zodiacSign }}</div>
+                <div class="text-body-sm text-slate-500">星座</div>
+                <div class="text-h3 font-semibold">{{ zodiacSign }}</div>
               </div>
               <div>
-                <div class="text-sm text-slate-500">运势周期</div>
-                <div class="text-xl font-semibold">{{ periodLabel[fortuneType] }}</div>
+                <div class="text-body-sm text-slate-500">运势周期</div>
+                <div class="text-h3 font-semibold">{{ periodLabel[fortuneType] }}</div>
               </div>
               <div>
-                <div class="text-sm text-slate-500">星座日期</div>
-                <div class="text-xl font-semibold">{{ signRangeLabel(zodiacSign) }}</div>
+                <div class="text-body-sm text-slate-500">星座日期</div>
+                <div class="text-h3 font-semibold">{{ signRangeLabel(zodiacSign) }}</div>
               </div>
             </div>
           </el-card>
 
           <div v-if="fortuneResult" class="grid gap-4 sm:grid-cols-2">
             <el-card class="border border-slate-200">
-              <div class="text-sm text-slate-500">运势概述</div>
-              <div class="mt-2 text-base text-slate-700">{{ fortuneResult.summary }}</div>
+              <div class="text-body-sm text-slate-500">运势概述</div>
+              <div class="mt-2 text-body text-slate-700">{{ fortuneResult.summary }}</div>
             </el-card>
             <el-card class="border border-slate-200">
-              <div class="text-sm text-slate-500">爱情运</div>
-              <div class="mt-2 text-base text-slate-700">{{ fortuneResult.love }}</div>
+              <div class="text-body-sm text-slate-500">爱情运</div>
+              <div class="mt-2 text-body text-slate-700">{{ fortuneResult.love }}</div>
             </el-card>
             <el-card class="border border-slate-200">
-              <div class="text-sm text-slate-500">事业运</div>
-              <div class="mt-2 text-base text-slate-700">{{ fortuneResult.career }}</div>
+              <div class="text-body-sm text-slate-500">事业运</div>
+              <div class="mt-2 text-body text-slate-700">{{ fortuneResult.career }}</div>
             </el-card>
             <el-card class="border border-slate-200">
-              <div class="text-sm text-slate-500">财富运</div>
-              <div class="mt-2 text-base text-slate-700">{{ fortuneResult.wealth }}</div>
+              <div class="text-body-sm text-slate-500">财富运</div>
+              <div class="mt-2 text-body text-slate-700">{{ fortuneResult.wealth }}</div>
             </el-card>
             <el-card class="border border-slate-200 sm:col-span-2">
-              <div class="text-sm text-slate-500">健康运</div>
-              <div class="mt-2 text-base text-slate-700">{{ fortuneResult.health }}</div>
+              <div class="text-body-sm text-slate-500">健康运</div>
+              <div class="mt-2 text-body text-slate-700">{{ fortuneResult.health }}</div>
             </el-card>
           </div>
         </div>

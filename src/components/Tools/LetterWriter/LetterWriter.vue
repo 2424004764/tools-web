@@ -295,7 +295,7 @@ const togglePreview = () => {
       <!-- 左侧：编辑表单 -->
       <div class="p-4 rounded-2xl bg-white space-y-4">
         <div class="flex items-center justify-between mb-2">
-          <h3 class="text-lg font-medium text-gray-800">编辑信件</h3>
+          <h3 class="text-body-lg font-medium text-gray-800">编辑信件</h3>
           <el-button
             type="primary"
             link
@@ -308,7 +308,7 @@ const togglePreview = () => {
 
         <!-- 收件人 -->
         <div>
-          <label class="block text-sm font-medium mb-1 text-gray-700">收件人</label>
+          <label class="block text-body-sm font-medium mb-1 text-gray-700">收件人</label>
           <el-input
             v-model="state.recipient"
             placeholder="请输入收件人姓名"
@@ -318,7 +318,7 @@ const togglePreview = () => {
 
         <!-- 信件标题 -->
         <div>
-          <label class="block text-sm font-medium mb-1 text-gray-700">信件标题</label>
+          <label class="block text-body-sm font-medium mb-1 text-gray-700">信件标题</label>
           <el-input
             v-model="state.title"
             placeholder="请输入信件标题"
@@ -329,7 +329,7 @@ const togglePreview = () => {
         <!-- 风格和主题 -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-medium mb-1 text-gray-700">信纸风格</label>
+            <label class="block text-body-sm font-medium mb-1 text-gray-700">信纸风格</label>
             <el-select v-model="state.style" placeholder="选择风格" style="width: 100%">
               <el-option
                 v-for="option in styleOptions"
@@ -340,7 +340,7 @@ const togglePreview = () => {
             </el-select>
           </div>
           <div>
-            <label class="block text-sm font-medium mb-1 text-gray-700">信件主题</label>
+            <label class="block text-body-sm font-medium mb-1 text-gray-700">信件主题</label>
             <el-select v-model="state.theme" placeholder="选择主题" style="width: 100%">
               <el-option
                 v-for="option in themeOptions"
@@ -354,7 +354,7 @@ const togglePreview = () => {
 
         <!-- 正文内容 -->
         <div>
-          <label class="block text-sm font-medium mb-1 text-gray-700">信件正文</label>
+          <label class="block text-body-sm font-medium mb-1 text-gray-700">信件正文</label>
           <el-input
             v-model="state.content"
             type="textarea"
@@ -367,7 +367,7 @@ const togglePreview = () => {
 
         <!-- 署名 -->
         <div>
-          <label class="block text-sm font-medium mb-1 text-gray-700">署名/落款</label>
+          <label class="block text-body-sm font-medium mb-1 text-gray-700">署名/落款</label>
           <el-input
             v-model="state.sender"
             placeholder="请输入署名"
@@ -385,9 +385,9 @@ const togglePreview = () => {
 
         <!-- 结果 -->
         <div v-if="state.resultSlug" class="bg-green-50 border border-green-200 rounded-lg p-4">
-          <div class="text-sm font-medium text-green-700 mb-2">生成成功！</div>
+          <div class="text-body-sm font-medium text-green-700 mb-2">生成成功！</div>
           <div class="flex flex-col md:flex-row items-start md:items-center gap-2">
-            <span class="text-base font-mono font-bold text-green-600 select-all break-all">
+            <span class="text-body font-mono font-bold text-green-600 select-all break-all">
               {{ siteBase + state.resultSlug }}
             </span>
             <div class="flex gap-2">
@@ -403,7 +403,7 @@ const togglePreview = () => {
         class="p-4 rounded-2xl bg-white"
         :class="state.showPreview || 'hidden lg:block'"
       >
-        <h3 class="text-lg font-medium text-gray-800 mb-4">实时预览</h3>
+        <h3 class="text-body-lg font-medium text-gray-800 mb-4">实时预览</h3>
 
         <div v-if="!state.title && !state.recipient && !state.content && !state.sender" class="flex items-center justify-center h-[400px] text-gray-400">
           <div class="text-center">
@@ -436,8 +436,8 @@ const togglePreview = () => {
     <!-- 我的信件历史 -->
     <div v-if="state.recentLetters.length > 0" class="mt-4 p-4 rounded-2xl bg-white">
       <div class="flex items-center justify-between mb-3">
-        <h3 class="text-sm font-medium text-gray-700">我的信件历史</h3>
-        <span class="text-xs text-gray-400">{{ loggedIn ? '云端保存' : '本地保存' }}</span>
+        <h3 class="text-body-sm font-medium text-gray-700">我的信件历史</h3>
+        <span class="text-caption text-gray-400">{{ loggedIn ? '云端保存' : '本地保存' }}</span>
       </div>
       <div class="space-y-2">
         <div
@@ -447,10 +447,10 @@ const togglePreview = () => {
         >
           <div class="flex-1 min-w-0">
             <div class="font-medium text-gray-800 truncate">{{ item.title }}</div>
-            <div class="text-sm text-gray-500">
+            <div class="text-body-sm text-gray-500">
               收件人: {{ item.recipient }} | 主题: {{ getThemeLabel(item.theme) }}
             </div>
-            <div v-if="item.createdAt" class="text-xs text-gray-400 mt-1">{{ item.createdAt }}</div>
+            <div v-if="item.createdAt" class="text-caption text-gray-400 mt-1">{{ item.createdAt }}</div>
           </div>
           <div class="flex gap-1 flex-shrink-0">
             <el-button size="small" @click="openLetter(item.slug)">查看</el-button>

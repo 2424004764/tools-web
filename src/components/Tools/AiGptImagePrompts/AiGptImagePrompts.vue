@@ -67,7 +67,7 @@ const visitRepo = () => {
     <!-- 简介 -->
     <div class="p-4 rounded-2xl bg-white mb-4">
       <div class="text-center mb-6">
-        <h2 class="text-xl font-bold text-gray-800 mb-2">🤗 欢迎来到 awesome-gpt-image-2-prompts</h2>
+        <h2 class="text-h3 font-bold text-gray-800 mb-2">🤗 欢迎来到 awesome-gpt-image-2-prompts</h2>
         <p class="text-gray-600 mb-4">
           我们收录了 GPT-Image-2 在人像、海报、角色设计、UI 原型及社区实验等场景下的高质量提示词与图像案例。
         </p>
@@ -90,13 +90,13 @@ const visitRepo = () => {
           @click="visitRepo"
         >
           <div class="flex items-center mb-2">
-            <span class="text-2xl mr-2">{{ category.icon }}</span>
-            <h3 class="text-lg font-semibold text-gray-800">{{ category.name }}</h3>
-            <span class="ml-auto bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+            <span class="text-h2 mr-2">{{ category.icon }}</span>
+            <h3 class="text-body-lg font-semibold text-gray-800">{{ category.name }}</h3>
+            <span class="ml-auto bg-blue-100 text-blue-800 text-caption px-2 py-1 rounded-full">
               {{ category.count }} 个案例
             </span>
           </div>
-          <p class="text-gray-600 text-sm">{{ category.description }}</p>
+          <p class="text-gray-600 text-body-sm">{{ category.description }}</p>
         </div>
       </div>
     </div>
@@ -139,10 +139,10 @@ const visitRepo = () => {
       <div class="space-y-4">
         <div class="bg-gray-50 p-4 rounded-lg">
           <h4 class="font-semibold text-gray-800 mb-2">🎭 电影感极简人像</h4>
-          <p class="text-gray-600 text-sm mb-3">
+          <p class="text-gray-600 text-body-sm mb-3">
             生成一个电影感极简人像的提示词示例：
           </p>
-          <div class="bg-white p-3 rounded border font-mono text-sm">
+          <div class="bg-white p-3 rounded border font-mono text-body-sm">
             Generate a cinematic minimal portrait of a solitary man standing in an intense orange to red gradient environment, strong silhouette lighting, deep shadow contrast, reflective glossy floor, symmetrical composition, minimal
           </div>
           <el-button
@@ -157,10 +157,10 @@ const visitRepo = () => {
 
         <div class="bg-gray-50 p-4 rounded-lg">
           <h4 class="font-semibold text-gray-800 mb-2">🏙️ 城市海报设计</h4>
-          <p class="text-gray-600 text-sm mb-3">
+          <p class="text-gray-600 text-body-sm mb-3">
             2026 波士顿春季城市海报的提示词片段：
           </p>
-          <div class="bg-white p-3 rounded border font-mono text-sm">
+          <div class="bg-white p-3 rounded border font-mono text-body-sm">
             A striking Spring 2026 city poster for Boston with an elegant celebratory mood and a bold contemporary design. On a clean off-white textured background with large areas of negative space...
           </div>
           <el-button

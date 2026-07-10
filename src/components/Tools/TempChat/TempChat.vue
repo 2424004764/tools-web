@@ -1918,15 +1918,15 @@ onUnmounted(() => {
       <div v-if="!isSupabaseConfigured" class="max-w-2xl mx-auto">
         <div class="text-center mb-6">
           <div class="text-6xl mb-4">⚙️</div>
-          <h2 class="text-xl font-semibold text-gray-800 mb-2">需要配置 Supabase</h2>
-          <p class="text-gray-500 text-sm">临时聊天室功能需要先配置 Supabase 服务</p>
+          <h2 class="text-h3 font-semibold text-gray-800 mb-2">需要配置 Supabase</h2>
+          <p class="text-gray-500 text-body-sm">临时聊天室功能需要先配置 Supabase 服务</p>
         </div>
 
         <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
           <h3 class="font-semibold text-blue-800 mb-3">📋 配置步骤：</h3>
-          <ol class="space-y-2 text-sm text-blue-700">
+          <ol class="space-y-2 text-body-sm text-blue-700">
             <li v-for="(step, index) in configSteps" :key="index" class="flex gap-2">
-              <span class="font-shrink-0 w-5 h-5 bg-blue-200 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold">{{ index + 1 }}</span>
+              <span class="font-shrink-0 w-5 h-5 bg-blue-200 text-blue-800 rounded-full flex items-center justify-center text-caption font-bold">{{ index + 1 }}</span>
               <span>{{ step }}</span>
             </li>
           </ol>
@@ -1934,10 +1934,10 @@ onUnmounted(() => {
 
         <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
           <h3 class="font-semibold text-gray-800 mb-2">📝 环境变量配置</h3>
-          <p class="text-sm text-gray-600 mb-2">在项目根目录的 <code class="bg-gray-200 px-1 rounded">.env.development</code> 文件中添加：</p>
-          <pre class="bg-gray-800 text-green-400 p-3 rounded text-xs overflow-x-auto"><code>VITE_SUPABASE_URL='https://your-project.supabase.co'
+          <p class="text-body-sm text-gray-600 mb-2">在项目根目录的 <code class="bg-gray-200 px-1 rounded">.env.development</code> 文件中添加：</p>
+          <pre class="bg-gray-800 text-green-400 p-3 rounded text-caption overflow-x-auto"><code>VITE_SUPABASE_URL='https://your-project.supabase.co'
 VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
-          <p class="text-sm text-gray-500 mt-3">⚠️ 配置完成后需要重启开发服务器才能生效</p>
+          <p class="text-body-sm text-gray-500 mt-3">⚠️ 配置完成后需要重启开发服务器才能生效</p>
         </div>
 
         <div class="mt-4 text-center">
@@ -1951,14 +1951,14 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
       <div v-else-if="!isJoined" class="max-w-md mx-auto">
         <div class="text-center mb-6">
           <div class="text-6xl mb-4">💬</div>
-          <h2 class="text-xl font-semibold text-gray-800 mb-2">临时聊天室</h2>
-          <p class="text-gray-500 text-sm">无需注册，扫码或分享链接即可开始聊天</p>
+          <h2 class="text-h3 font-semibold text-gray-800 mb-2">临时聊天室</h2>
+          <p class="text-gray-500 text-body-sm">无需注册，扫码或分享链接即可开始聊天</p>
         </div>
 
         <div class="space-y-4">
           <!-- 房间号输入 -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">房间号</label>
+            <label class="block text-body-sm font-medium text-gray-700 mb-1">房间号</label>
             <div class="flex gap-2">
               <el-input
                 v-model="roomId"
@@ -1973,7 +1973,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
 
           <!-- 房间名称输入 -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">房间名称（可选）</label>
+            <label class="block text-body-sm font-medium text-gray-700 mb-1">房间名称（可选）</label>
             <el-input
               v-model="roomName"
               placeholder="为新房间设置名称，加入已有房间无需填写"
@@ -1984,7 +1984,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
 
           <!-- 昵称输入 -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">昵称</label>
+            <label class="block text-body-sm font-medium text-gray-700 mb-1">昵称</label>
             <div class="flex gap-2">
               <el-input
                 v-model="nickname"
@@ -2017,7 +2017,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
           <!-- 房间公告 -->
           <div class="rounded-lg p-3" :class="roomAnnouncement ? 'bg-amber-50 border border-amber-200' : 'bg-gray-50 border border-gray-200'">
             <div class="flex items-start justify-between gap-2">
-              <div class="flex items-center gap-1 text-sm font-medium" :class="roomAnnouncement ? 'text-amber-700' : 'text-gray-500'">
+              <div class="flex items-center gap-1 text-body-sm font-medium" :class="roomAnnouncement ? 'text-amber-700' : 'text-gray-500'">
                 <span>📢</span>
                 <span>公告</span>
               </div>
@@ -2027,16 +2027,16 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
                 </svg>
               </el-button>
             </div>
-            <p v-if="roomAnnouncement" class="text-amber-800 text-sm mt-1 whitespace-pre-wrap">{{ roomAnnouncement }}</p>
-            <p v-else class="text-gray-400 text-sm mt-1">暂无公告，点击编辑按钮添加</p>
+            <p v-if="roomAnnouncement" class="text-amber-800 text-body-sm mt-1 whitespace-pre-wrap">{{ roomAnnouncement }}</p>
+            <p v-else class="text-gray-400 text-body-sm mt-1">暂无公告，点击编辑按钮添加</p>
           </div>
 
           <!-- 第一行：房间信息和昵称 -->
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div class="flex items-center gap-2 flex-1 min-w-0">
-              <span class="text-sm text-gray-500 flex-shrink-0">房间:</span>
+              <span class="text-body-sm text-gray-500 flex-shrink-0">房间:</span>
               <span class="font-semibold text-gray-800 truncate">{{ roomName }}</span>
-              <span class="font-mono text-primary text-sm">({{ roomId }})</span>
+              <span class="font-mono text-primary text-body-sm">({{ roomId }})</span>
               <el-button size="small" text @click="copyRoomId" class="flex-shrink-0">
                 <el-icon :size="16"><CopyDocument /></el-icon>
               </el-button>
@@ -2045,7 +2045,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
               </el-button>
             </div>
             <div class="flex items-center gap-2 flex-shrink-0">
-              <span class="text-sm text-gray-400">{{ nickname }}</span>
+              <span class="text-body-sm text-gray-400">{{ nickname }}</span>
               <el-button size="small" text @click="openNicknameDialog" title="修改昵称">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732a2.5 2.5 0 013.536 3.536z"></path>
@@ -2056,11 +2056,11 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
           <!-- 第二行：在线人数和操作按钮 -->
           <div class="flex items-center justify-between flex-wrap gap-2">
             <div class="hidden md:flex items-center gap-1">
-              <span class="text-sm text-gray-500">在线:</span>
-              <span class="text-sm text-green-600">{{ onlineUsers.length }} 人</span>
+              <span class="text-body-sm text-gray-500">在线:</span>
+              <span class="text-body-sm text-green-600">{{ onlineUsers.length }} 人</span>
             </div>
             <div class="md:hidden flex items-center gap-1">
-              <span class="text-sm text-gray-500">在线: {{ onlineUsers.length }} 人</span>
+              <span class="text-body-sm text-gray-500">在线: {{ onlineUsers.length }} 人</span>
             </div>
             <div class="flex items-center gap-1 ml-auto flex-wrap">
               <el-button size="small" @click="showSearchDialog = true" title="搜索消息 (Ctrl+F)">
@@ -2093,7 +2093,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
         <div v-if="showQrcode" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click="toggleQrcode">
           <div class="bg-white rounded-lg p-6 max-w-sm w-full mx-4" @click.stop>
             <div class="flex justify-between items-center mb-4">
-              <h3 class="text-lg font-semibold">扫码加入聊天室</h3>
+              <h3 class="text-body-lg font-semibold">扫码加入聊天室</h3>
               <el-button text @click="toggleQrcode">
                 <el-icon :size="20"><Close /></el-icon>
               </el-button>
@@ -2107,7 +2107,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
                   :level="'M'"
                 />
               </div>
-              <p class="mt-4 text-sm text-gray-500 mb-2">房间号: <span class="font-mono font-bold">{{ roomId }}</span></p>
+              <p class="mt-4 text-body-sm text-gray-500 mb-2">房间号: <span class="font-mono font-bold">{{ roomId }}</span></p>
               <el-button size="small" @click="copyRoomLink">复制链接分享给好友</el-button>
             </div>
           </div>
@@ -2201,7 +2201,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
             </el-input>
 
             <div v-if="searchResults.length > 0" class="space-y-2">
-              <div class="text-sm text-gray-500 flex items-center justify-between">
+              <div class="text-body-sm text-gray-500 flex items-center justify-between">
                 <span>找到 {{ searchResults.length }} 条结果</span>
                 <div class="flex gap-1">
                   <el-button size="small" @click="navigateSearchResult('prev')" :disabled="searchResults.length <= 1">
@@ -2212,7 +2212,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
                   </el-button>
                 </div>
               </div>
-              <div class="text-xs text-gray-400">
+              <div class="text-caption text-gray-400">
                 当前: {{ currentSearchIndex + 1 }} / {{ searchResults.length }}
               </div>
             </div>
@@ -2241,7 +2241,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
           width="90%"
           :style="{ maxWidth: '450px' }"
         >
-          <div class="space-y-3 text-sm text-gray-600">
+          <div class="space-y-3 text-body-sm text-gray-600">
             <p class="font-medium text-gray-700">什么是临时模式？</p>
             <p>临时模式下，消息不会存储到数据库，仅通过实时广播传输。这意味着：</p>
             <ul class="list-disc list-inside ml-4 space-y-1">
@@ -2259,28 +2259,28 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
 
         <!-- 在线用户列表和设置 -->
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2">
-          <div class="flex items-center gap-2 text-sm text-gray-500 flex-wrap">
+          <div class="flex items-center gap-2 text-body-sm text-gray-500 flex-wrap">
             <span class="flex-shrink-0">在线 ({{ onlineUsers.length }}):</span>
             <template v-if="onlineUsers.length > 5 && !showAllOnlineUsers">
-              <span v-for="user in onlineUsers.slice(0, 5)" :key="user" class="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs whitespace-nowrap">
+              <span v-for="user in onlineUsers.slice(0, 5)" :key="user" class="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-caption whitespace-nowrap">
                 {{ user }}
               </span>
-              <span class="text-xs text-blue-500 cursor-pointer hover:underline" @click="showAllOnlineUsers = true">
+              <span class="text-caption text-blue-500 cursor-pointer hover:underline" @click="showAllOnlineUsers = true">
                 还有 {{ onlineUsers.length - 5 }} 人...
               </span>
             </template>
             <template v-else>
-              <span v-for="user in onlineUsers" :key="user" class="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs whitespace-nowrap">
+              <span v-for="user in onlineUsers" :key="user" class="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-caption whitespace-nowrap">
                 {{ user }}
               </span>
-              <span v-if="onlineUsers.length > 5" class="text-xs text-blue-500 cursor-pointer hover:underline" @click="showAllOnlineUsers = false">
+              <span v-if="onlineUsers.length > 5" class="text-caption text-blue-500 cursor-pointer hover:underline" @click="showAllOnlineUsers = false">
                 收起
               </span>
             </template>
           </div>
 
           <!-- 临时模式开关 -->
-          <div class="flex items-center gap-2 text-sm">
+          <div class="flex items-center gap-2 text-body-sm">
             <span class="text-gray-500">临时模式:</span>
             <el-switch
               v-model="ephemeralMode"
@@ -2316,7 +2316,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
           >
             <div class="text-center text-blue-600">
               <div class="text-4xl mb-2">📷</div>
-              <p class="text-lg font-medium">拖拽图片到此处发送</p>
+              <p class="text-body-lg font-medium">拖拽图片到此处发送</p>
             </div>
           </div>
           <!-- 加载更多提示 -->
@@ -2345,7 +2345,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
               <div class="flex items-end gap-2" :class="msg.isSelf ? 'flex-row-reverse' : ''">
                 <!-- 头像 -->
                 <div
-                  class="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0 cursor-pointer hover:opacity-80"
+                  class="w-8 h-8 rounded-full flex items-center justify-center text-white text-body-sm font-medium flex-shrink-0 cursor-pointer hover:opacity-80"
                   :class="msg.isSelf ? 'bg-blue-500' : 'bg-green-500'"
                   @click="replyToMessage(msg)"
                   title="点击回复"
@@ -2355,14 +2355,14 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
 
                 <!-- 消息内容 -->
                 <div class="relative">
-                  <div class="text-xs text-gray-400 mb-1" :class="msg.isSelf ? 'text-right' : ''">
+                  <div class="text-caption text-gray-400 mb-1" :class="msg.isSelf ? 'text-right' : ''">
                     {{ msg.nickname }} · {{ formatTime(msg.timestamp) }}
                   </div>
 
                   <!-- 引用内容 -->
                   <div v-if="msg.replyTo" class="mb-1 pl-2 border-l-2 border-gray-300">
-                    <div class="text-xs text-gray-500">@{{ msg.replyTo.nickname }}</div>
-                    <div class="text-sm text-gray-600 truncate max-w-xs">{{ msg.replyTo.content }}</div>
+                    <div class="text-caption text-gray-500">@{{ msg.replyTo.nickname }}</div>
+                    <div class="text-body-sm text-gray-600 truncate max-w-xs">{{ msg.replyTo.content }}</div>
                   </div>
 
                   <!-- 图片 -->
@@ -2391,7 +2391,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
                         <img :src="img" class="w-full h-full object-cover hover:opacity-90 transition-opacity" />
                         <div
                           v-if="imgIdx === 4 && msg.images.length > 5"
-                          class="absolute inset-0 bg-black/50 flex items-center justify-center text-white text-lg font-bold"
+                          class="absolute inset-0 bg-black/50 flex items-center justify-center text-white text-body-lg font-bold"
                         >
                           +{{ msg.images.length - 5 }}
                         </div>
@@ -2433,7 +2433,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
                     <div
                       v-if="msg.isSelf && !msg.revoked && Date.now() - msg.timestamp < REVOKE_TIME_LIMIT"
                       @click.stop="revokeMessage(msg.id)"
-                      class="bg-gray-800 text-white text-xs px-3 py-1 rounded-full flex items-center gap-1 shadow-lg cursor-pointer hover:bg-gray-700 whitespace-nowrap"
+                      class="bg-gray-800 text-white text-caption px-3 py-1 rounded-full flex items-center gap-1 shadow-lg cursor-pointer hover:bg-gray-700 whitespace-nowrap"
                       title="撤回消息 (2分钟内)"
                     >
                       <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2443,7 +2443,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
                     </div>
                     <div
                       @click.stop="copyMessage(msg.content)"
-                      class="bg-gray-800 text-white text-xs px-3 py-1 rounded-full flex items-center gap-1 shadow-lg cursor-pointer hover:bg-gray-700 whitespace-nowrap"
+                      class="bg-gray-800 text-white text-caption px-3 py-1 rounded-full flex items-center gap-1 shadow-lg cursor-pointer hover:bg-gray-700 whitespace-nowrap"
                     >
                       <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
@@ -2452,7 +2452,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
                     </div>
                     <div
                       @click.stop="replyToMessage(msg)"
-                      class="bg-gray-800 text-white text-xs px-3 py-1 rounded-full flex items-center gap-1 shadow-lg cursor-pointer hover:bg-gray-700 whitespace-nowrap"
+                      class="bg-gray-800 text-white text-caption px-3 py-1 rounded-full flex items-center gap-1 shadow-lg cursor-pointer hover:bg-gray-700 whitespace-nowrap"
                     >
                       <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path>
@@ -2464,7 +2464,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
                   <!-- 移动端长按菜单 -->
                   <div
                     v-if="false"
-                    class="md:hidden absolute left-1/2 -translate-x-1/2 -bottom-9 bg-gray-800 text-white text-xs px-3 py-1 rounded-full shadow-lg whitespace-nowrap"
+                    class="md:hidden absolute left-1/2 -translate-x-1/2 -bottom-9 bg-gray-800 text-white text-caption px-3 py-1 rounded-full shadow-lg whitespace-nowrap"
                   >
                     长按查看操作
                   </div>
@@ -2499,7 +2499,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
                 :key="cat.name"
                 @click="activeEmojiCategory = cat.name"
                 :class="[
-                  'px-3 py-1 text-xs rounded-full whitespace-nowrap transition-colors',
+                  'px-3 py-1 text-caption rounded-full whitespace-nowrap transition-colors',
                   activeEmojiCategory === cat.name
                     ? 'bg-blue-500 text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -2511,13 +2511,13 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
 
             <!-- 最近使用 -->
             <div v-if="recentEmojis.length > 0 && activeEmojiCategory === '笑脸'" class="mb-3">
-              <div class="text-xs text-gray-400 mb-2">最近使用</div>
+              <div class="text-caption text-gray-400 mb-2">最近使用</div>
               <div class="grid grid-cols-8 gap-1">
                 <button
                   v-for="emoji in recentEmojis"
                   :key="'recent-' + emoji"
                   @click="selectEmoji(emoji)"
-                  class="text-2xl p-1 hover:bg-gray-100 rounded transition-colors duration-150"
+                  class="text-h2 p-1 hover:bg-gray-100 rounded transition-colors duration-150"
                   :title="emoji"
                 >
                   {{ emoji }}
@@ -2531,7 +2531,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
                 v-for="emoji in emojiCategories.find(c => c.name === activeEmojiCategory)?.emojis || []"
                 :key="emoji"
                 @click="selectEmoji(emoji)"
-                class="text-2xl p-1 hover:bg-gray-100 rounded transition-colors duration-150"
+                class="text-h2 p-1 hover:bg-gray-100 rounded transition-colors duration-150"
                 :title="emoji"
               >
                 {{ emoji }}
@@ -2542,8 +2542,8 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
           <!-- 回复提示 -->
           <div v-if="replyingTo" class="mb-2 p-2 bg-blue-50 rounded-lg flex items-center justify-between">
             <div class="flex-1 min-w-0">
-              <div class="text-xs text-gray-500">回复 @{{ replyingTo.nickname }}</div>
-              <div class="text-sm text-gray-700 truncate">{{ replyingTo.content.substring(0, 50) }}{{ replyingTo.content.length > 50 ? '...' : '' }}</div>
+              <div class="text-caption text-gray-500">回复 @{{ replyingTo.nickname }}</div>
+              <div class="text-body-sm text-gray-700 truncate">{{ replyingTo.content.substring(0, 50) }}{{ replyingTo.content.length > 50 ? '...' : '' }}</div>
             </div>
             <el-button size="small" text @click="cancelReply" class="ml-2 flex-shrink-0">
               <el-icon><Close /></el-icon>
@@ -2551,7 +2551,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
           </div>
 
           <!-- 正在输入提示 -->
-          <div v-if="typingUsers.length > 0" class="mb-2 text-sm text-gray-500 flex items-center gap-1">
+          <div v-if="typingUsers.length > 0" class="mb-2 text-body-sm text-gray-500 flex items-center gap-1">
             <span class="typing-indicator">
               <span></span>
               <span></span>
@@ -2572,7 +2572,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
                 class="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
                 @click="removePendingImage(idx)"
               >
-                <el-icon class="text-white text-lg"><Close /></el-icon>
+                <el-icon class="text-white text-body-lg"><Close /></el-icon>
               </div>
             </div>
             <div v-if="isCompressing" class="w-20 h-20 rounded-lg border border-gray-200 flex items-center justify-center">

@@ -78,11 +78,11 @@ const copyContent = async () => {
 
     <div class="p-4 rounded-2xl bg-white">
       <div>
-        <div class="mb-2 text-gray-500 text-sm">
+        <div class="mb-2 text-gray-500 text-body-sm">
           原始文本：在此输入明文，上方将自动进行 URL 编码并显示在下方；也可只查看解码结果。
           <el-link type="primary" class="ml-2" @click="copyContent">复制原始文本</el-link>
         </div>
-        <div class="mb-1 text-xs text-gray-500 break-all">
+        <div class="mb-1 text-caption text-gray-500 break-all">
           示例：{{ exampleRaw }}
           <el-link type="primary" class="ml-2" @click="fillExample">填充</el-link>
         </div>
@@ -103,11 +103,11 @@ const copyContent = async () => {
       </div>
 
       <div class="mt-3 min-h-md bg-gray-100 p-3 mb-3">
-        <div class="mb-2 text-gray-500 text-sm">
+        <div class="mb-2 text-gray-500 text-body-sm">
           URL 编码文本：在此输入/粘贴已编码文本，将自动解码并显示在上方。
           <el-link type="primary" class="ml-2" @click="copyRes">复制 URL 编码文本</el-link>
         </div>
-        <div class="mb-1 text-xs text-gray-500 break-all">示例：{{ exampleEncoded }}</div>
+        <div class="mb-1 text-caption text-gray-500 break-all">示例：{{ exampleEncoded }}</div>
         <el-input
           type="textarea"
           :rows="8"

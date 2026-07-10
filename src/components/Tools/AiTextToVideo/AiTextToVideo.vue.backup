@@ -785,32 +785,32 @@ const generateImageToVideo = async () => {
           <!-- API配置Tab -->
           <div v-if="activeTab === 'api-config'">
             <div class="mb-6 p-4 bg-blue-50 rounded-lg">
-              <h3 class="text-lg font-semibold mb-3">🔑 API Key配置</h3>
+              <h3 class="text-body-lg font-semibold mb-3">🔑 API Key配置</h3>
               <div class="flex gap-2">
                 <input
                   v-model="apiKey"
                   type="password"
                   placeholder="请输入Agnes AI的API Key"
-                  class="flex-1 px-3 py-2 border rounded-lg text-sm"
+                  class="flex-1 px-3 py-2 border rounded-lg text-body-sm"
                 />
                 <button
                   @click="saveApiKey"
-                  class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm"
+                  class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-body-sm"
                 >
                   保存
                 </button>
               </div>
-              <p class="text-xs text-gray-500 mt-2">
+              <p class="text-caption text-gray-500 mt-2">
                 获取API Key: <a href="https://agnes-ai.com" target="_blank" class="text-blue-500 underline">agnes-ai.com</a>
               </p>
-              <p class="text-xs text-gray-500 mt-1">
+              <p class="text-caption text-gray-500 mt-1">
                 {{ userStore.user?.uid ? '✅ 已登录，保存到服务器' : '📱 未登录，保存到本地浏览器' }}
               </p>
             </div>
 
             <div class="p-4 bg-gray-50 rounded-lg mb-4">
-              <h3 class="text-sm font-semibold mb-3">📖 使用说明</h3>
-              <ul class="text-sm text-gray-700 space-y-2">
+              <h3 class="text-body-sm font-semibold mb-3">📖 使用说明</h3>
+              <ul class="text-body-sm text-gray-700 space-y-2">
                 <li class="flex items-start">
                   <span class="mr-2">🎬</span>
                   <span><strong>文生视频：</strong>输入文字描述，AI自动生成文案并制作视频</span>
@@ -831,8 +831,8 @@ const generateImageToVideo = async () => {
             </div>
 
             <div class="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-              <h3 class="text-sm font-semibold mb-2 text-yellow-800">⚠️ 温馨提示</h3>
-              <p class="text-xs text-yellow-700">
+              <h3 class="text-body-sm font-semibold mb-2 text-yellow-800">⚠️ 温馨提示</h3>
+              <p class="text-caption text-yellow-700">
                 配置API Key后即可使用所有功能。各功能Tab中也保留了API配置入口，方便您随时修改。
               </p>
             </div>
@@ -842,22 +842,22 @@ const generateImageToVideo = async () => {
           <div v-if="activeTab === 'text-to-video'">
             <!-- API Key配置 -->
             <div class="mb-6 p-4 bg-blue-50 rounded-lg">
-            <h3 class="text-sm font-semibold mb-2">API Key配置</h3>
+            <h3 class="text-body-sm font-semibold mb-2">API Key配置</h3>
             <div class="flex gap-2">
               <input
                 v-model="apiKey"
                 type="password"
                 placeholder="请输入Agnes AI的API Key"
-                class="flex-1 px-3 py-2 border rounded-lg text-sm"
+                class="flex-1 px-3 py-2 border rounded-lg text-body-sm"
               />
               <button
                 @click="saveApiKey"
-                class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm"
+                class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-body-sm"
               >
                 保存
               </button>
             </div>
-            <p class="text-xs text-gray-500 mt-2">
+            <p class="text-caption text-gray-500 mt-2">
               获取API Key: <a href="https://agnes-ai.com" target="_blank" class="text-blue-500">agnes-ai.com</a>
               {{ userStore.user?.uid ? ' (已登录，保存到服务器)' : ' (未登录，保存到本地)' }}
             </p>
@@ -865,35 +865,35 @@ const generateImageToVideo = async () => {
 
           <!-- 主题输入 -->
           <div class="mb-4">
-            <label class="block text-sm font-medium mb-2">视频主题</label>
+            <label class="block text-body-sm font-medium mb-2">视频主题</label>
             <div class="flex gap-2">
               <textarea
                 v-model="topic"
                 placeholder="例如：一只可爱的猫咪在草地上玩耍"
                 rows="3"
-                class="flex-1 px-3 py-2 border rounded-lg text-sm"
+                class="flex-1 px-3 py-2 border rounded-lg text-body-sm"
                 :disabled="isGenerating"
               />
               <button
                 @click="randomTopic"
                 :disabled="isGenerating"
-                class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm whitespace-nowrap disabled:bg-gray-50 disabled:cursor-not-allowed"
+                class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-body-sm whitespace-nowrap disabled:bg-gray-50 disabled:cursor-not-allowed"
                 title="随机示例"
               >
                 🎲 随机
               </button>
             </div>
-            <p class="text-xs text-gray-500 mt-1">
+            <p class="text-caption text-gray-500 mt-1">
               描述主体、动作、场景、镜头运动、光照和视觉风格，生成效果更佳
             </p>
           </div>
 
           <!-- 时长选择 -->
           <div class="mb-4">
-            <label class="block text-sm font-medium mb-2">视频时长</label>
+            <label class="block text-body-sm font-medium mb-2">视频时长</label>
             <select
               v-model="duration"
-              class="px-3 py-2 border rounded-lg text-sm"
+              class="px-3 py-2 border rounded-lg text-body-sm"
               :disabled="isGenerating"
             >
               <option v-for="opt in durationOptions" :key="opt.value" :value="opt.value">
@@ -904,10 +904,10 @@ const generateImageToVideo = async () => {
 
           <!-- 宽高比选择 -->
           <div class="mb-4">
-            <label class="block text-sm font-medium mb-2">视频比例</label>
+            <label class="block text-body-sm font-medium mb-2">视频比例</label>
             <select
               v-model="aspectRatio"
-              class="px-3 py-2 border rounded-lg text-sm"
+              class="px-3 py-2 border rounded-lg text-body-sm"
               :disabled="isGenerating"
             >
               <option v-for="opt in aspectRatioOptions" :key="opt.value" :value="opt.value">
@@ -930,22 +930,22 @@ const generateImageToVideo = async () => {
           <div v-if="activeTab === 'image-to-video'">
             <!-- API Key配置 -->
             <div class="mb-6 p-4 bg-blue-50 rounded-lg">
-              <h3 class="text-sm font-semibold mb-2">API Key配置</h3>
+              <h3 class="text-body-sm font-semibold mb-2">API Key配置</h3>
               <div class="flex gap-2">
                 <input
                   v-model="apiKey"
                   type="password"
                   placeholder="请输入Agnes AI的API Key"
-                  class="flex-1 px-3 py-2 border rounded-lg text-sm"
+                  class="flex-1 px-3 py-2 border rounded-lg text-body-sm"
                 />
                 <button
                   @click="saveApiKey"
-                  class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm"
+                  class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-body-sm"
                 >
                   保存
                 </button>
               </div>
-              <p class="text-xs text-gray-500 mt-2">
+              <p class="text-caption text-gray-500 mt-2">
                 获取API Key: <a href="https://agnes-ai.com" target="_blank" class="text-blue-500">agnes-ai.com</a>
                 {{ userStore.user?.uid ? ' (已登录，保存到服务器)' : ' (未登录，保存到本地)' }}
               </p>
@@ -953,7 +953,7 @@ const generateImageToVideo = async () => {
 
             <!-- 图片模式选择 -->
             <div class="mb-4">
-              <label class="block text-sm font-medium mb-2">图片模式</label>
+              <label class="block text-body-sm font-medium mb-2">图片模式</label>
               <div class="flex gap-2">
                 <button
                   @click="switchImageMode('single')"
@@ -976,14 +976,14 @@ const generateImageToVideo = async () => {
                   双图模式
                 </button>
               </div>
-              <p class="text-xs text-gray-500 mt-1">
+              <p class="text-caption text-gray-500 mt-1">
                 单图：静态图转动态视频 | 双图：两图之间过渡变换
               </p>
             </div>
 
             <!-- 图片上传 -->
             <div class="mb-4">
-              <label class="block text-sm font-medium mb-2">
+              <label class="block text-body-sm font-medium mb-2">
                 上传图片 ({{ imageMode === 'single' ? '1张' : '2张' }})
               </label>
               <input
@@ -992,12 +992,12 @@ const generateImageToVideo = async () => {
                 :multiple="imageMode === 'double'"
                 @change="handleImageUpload"
                 :disabled="isGenerating || isUploading || (imageMode === 'single' && uploadedImages.length >= 1) || (imageMode === 'double' && uploadedImages.length >= 2)"
-                class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50"
+                class="block w-full text-body-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-body-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50"
               />
 
               <!-- 预设图片 -->
               <div class="mt-3">
-                <p class="text-xs text-gray-600 mb-2">或选择预设图片：</p>
+                <p class="text-caption text-gray-600 mb-2">或选择预设图片：</p>
                 <div class="grid grid-cols-3 gap-2">
                   <button
                     v-for="preset in presetImages"
@@ -1012,27 +1012,27 @@ const generateImageToVideo = async () => {
                       class="w-full h-20 object-cover rounded-lg border hover:border-blue-500 transition-colors"
                     />
                     <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-opacity rounded-lg flex items-center justify-center">
-                      <span class="text-white text-xs opacity-0 group-hover:opacity-100">{{ preset.name }}</span>
+                      <span class="text-white text-caption opacity-0 group-hover:opacity-100">{{ preset.name }}</span>
                     </div>
                   </button>
                 </div>
               </div>
 
               <!-- 上传中提示 -->
-              <div v-if="isUploading" class="mt-3 text-sm text-blue-600">
+              <div v-if="isUploading" class="mt-3 text-body-sm text-blue-600">
                 正在上传图片...
               </div>
 
               <!-- 图片预览 -->
               <div v-if="uploadedImages.length > 0" class="mt-3">
-                <p class="text-xs text-gray-600 mb-2">已选图片：</p>
+                <p class="text-caption text-gray-600 mb-2">已选图片：</p>
                 <div class="flex gap-2">
                   <div v-for="(img, index) in uploadedImages" :key="index" class="relative">
                     <img :src="img" class="w-24 h-24 object-cover rounded-lg border" />
                     <button
                       @click="removeImage(index)"
                       :disabled="isGenerating || isUploading"
-                      class="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs hover:bg-red-600 disabled:opacity-50"
+                      class="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-caption hover:bg-red-600 disabled:opacity-50"
                     >
                       ✕
                     </button>
@@ -1043,35 +1043,35 @@ const generateImageToVideo = async () => {
 
             <!-- 视频描述 -->
             <div class="mb-4">
-              <label class="block text-sm font-medium mb-2">视频描述</label>
+              <label class="block text-body-sm font-medium mb-2">视频描述</label>
               <div class="flex gap-2">
                 <textarea
                   v-model="videoPrompt"
                   placeholder="例如：慢镜头展示，柔和光照，电影质感"
                   rows="3"
-                  class="flex-1 px-3 py-2 border rounded-lg text-sm"
+                  class="flex-1 px-3 py-2 border rounded-lg text-body-sm"
                   :disabled="isGenerating"
                 />
                 <button
                   @click="randomVideoPrompt"
                   :disabled="isGenerating"
-                  class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm whitespace-nowrap disabled:bg-gray-50 disabled:cursor-not-allowed"
+                  class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-body-sm whitespace-nowrap disabled:bg-gray-50 disabled:cursor-not-allowed"
                   title="随机示例"
                 >
                   🎲 随机
                 </button>
               </div>
-              <p class="text-xs text-gray-500 mt-1">
+              <p class="text-caption text-gray-500 mt-1">
                 描述希望的运动效果、镜头运动、光照和视觉风格
               </p>
             </div>
 
             <!-- 时长选择 -->
             <div class="mb-4">
-              <label class="block text-sm font-medium mb-2">视频时长</label>
+              <label class="block text-body-sm font-medium mb-2">视频时长</label>
               <select
                 v-model="duration"
-                class="px-3 py-2 border rounded-lg text-sm"
+                class="px-3 py-2 border rounded-lg text-body-sm"
                 :disabled="isGenerating"
               >
                 <option v-for="opt in durationOptions" :key="opt.value" :value="opt.value">
@@ -1082,10 +1082,10 @@ const generateImageToVideo = async () => {
 
             <!-- 宽高比选择 -->
             <div class="mb-4">
-              <label class="block text-sm font-medium mb-2">视频比例</label>
+              <label class="block text-body-sm font-medium mb-2">视频比例</label>
               <select
                 v-model="aspectRatio"
-                class="px-3 py-2 border rounded-lg text-sm"
+                class="px-3 py-2 border rounded-lg text-body-sm"
                 :disabled="isGenerating"
               >
                 <option v-for="opt in aspectRatioOptions" :key="opt.value" :value="opt.value">
@@ -1108,22 +1108,22 @@ const generateImageToVideo = async () => {
           <div v-if="activeTab === 'text-to-image'">
             <!-- API Key配置 -->
             <div class="mb-6 p-4 bg-blue-50 rounded-lg">
-              <h3 class="text-sm font-semibold mb-2">API Key配置</h3>
+              <h3 class="text-body-sm font-semibold mb-2">API Key配置</h3>
               <div class="flex gap-2">
                 <input
                   v-model="apiKey"
                   type="password"
                   placeholder="请输入Agnes AI的API Key"
-                  class="flex-1 px-3 py-2 border rounded-lg text-sm"
+                  class="flex-1 px-3 py-2 border rounded-lg text-body-sm"
                 />
                 <button
                   @click="saveApiKey"
-                  class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm"
+                  class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-body-sm"
                 >
                   保存
                 </button>
               </div>
-              <p class="text-xs text-gray-500 mt-2">
+              <p class="text-caption text-gray-500 mt-2">
                 获取API Key: <a href="https://agnes-ai.com" target="_blank" class="text-blue-500">agnes-ai.com</a>
                 {{ userStore.user?.uid ? ' (已登录，保存到服务器)' : ' (未登录，保存到本地)' }}
               </p>
@@ -1131,10 +1131,10 @@ const generateImageToVideo = async () => {
 
             <!-- 模型选择 -->
             <div class="mb-4">
-              <label class="block text-sm font-medium mb-2">图像模型</label>
+              <label class="block text-body-sm font-medium mb-2">图像模型</label>
               <select
                 v-model="imageModel"
-                class="px-3 py-2 border rounded-lg text-sm"
+                class="px-3 py-2 border rounded-lg text-body-sm"
                 :disabled="isGenerating"
               >
                 <option value="agnes-image-2.1-flash">Agnes Image 2.1 Flash (快速)</option>
@@ -1144,35 +1144,35 @@ const generateImageToVideo = async () => {
 
             <!-- 图片描述 -->
             <div class="mb-4">
-              <label class="block text-sm font-medium mb-2">图片描述</label>
+              <label class="block text-body-sm font-medium mb-2">图片描述</label>
               <div class="flex gap-2">
                 <textarea
                   v-model="imagePrompt"
                   placeholder="例如：一位穿着白裙的少女站在薰衣草花田中..."
                   rows="4"
-                  class="flex-1 px-3 py-2 border rounded-lg text-sm"
+                  class="flex-1 px-3 py-2 border rounded-lg text-body-sm"
                   :disabled="isGenerating"
                 />
                 <button
                   @click="randomImagePrompt"
                   :disabled="isGenerating"
-                  class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm whitespace-nowrap disabled:bg-gray-50 disabled:cursor-not-allowed"
+                  class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-body-sm whitespace-nowrap disabled:bg-gray-50 disabled:cursor-not-allowed"
                   title="随机示例"
                 >
                   🎲 随机
                 </button>
               </div>
-              <p class="text-xs text-gray-500 mt-1">
+              <p class="text-caption text-gray-500 mt-1">
                 描述主体、场景、光照、风格等细节，越详细效果越好
               </p>
             </div>
 
             <!-- 图片尺寸 -->
             <div class="mb-4">
-              <label class="block text-sm font-medium mb-2">图片比例</label>
+              <label class="block text-body-sm font-medium mb-2">图片比例</label>
               <select
                 v-model="imageAspectRatio"
-                class="px-3 py-2 border rounded-lg text-sm"
+                class="px-3 py-2 border rounded-lg text-body-sm"
                 :disabled="isGenerating"
               >
                 <option v-for="opt in aspectRatioOptions" :key="opt.value" :value="opt.value">
@@ -1183,10 +1183,10 @@ const generateImageToVideo = async () => {
 
             <!-- 生成数量 -->
             <div class="mb-4">
-              <label class="block text-sm font-medium mb-2">生成数量</label>
+              <label class="block text-body-sm font-medium mb-2">生成数量</label>
               <select
                 v-model="imageCount"
-                class="px-3 py-2 border rounded-lg text-sm"
+                class="px-3 py-2 border rounded-lg text-body-sm"
                 :disabled="isGenerating"
               >
                 <option :value="1">1张</option>
@@ -1210,22 +1210,22 @@ const generateImageToVideo = async () => {
           <div v-if="activeTab === 'ai-chat'">
             <!-- API Key配置 -->
             <div class="mb-6 p-4 bg-blue-50 rounded-lg">
-              <h3 class="text-sm font-semibold mb-2">API Key配置</h3>
+              <h3 class="text-body-sm font-semibold mb-2">API Key配置</h3>
               <div class="flex gap-2">
                 <input
                   v-model="apiKey"
                   type="password"
                   placeholder="请输入Agnes AI的API Key"
-                  class="flex-1 px-3 py-2 border rounded-lg text-sm"
+                  class="flex-1 px-3 py-2 border rounded-lg text-body-sm"
                 />
                 <button
                   @click="saveApiKey"
-                  class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm"
+                  class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-body-sm"
                 >
                   保存
                 </button>
               </div>
-              <p class="text-xs text-gray-500 mt-2">
+              <p class="text-caption text-gray-500 mt-2">
                 获取API Key: <a href="https://agnes-ai.com" target="_blank" class="text-blue-500">agnes-ai.com</a>
                 {{ userStore.user?.uid ? ' (已登录，保存到服务器)' : ' (未登录，保存到本地)' }}
               </p>
@@ -1233,10 +1233,10 @@ const generateImageToVideo = async () => {
 
             <!-- 模型选择 -->
             <div class="mb-4">
-              <label class="block text-sm font-medium mb-2">对话模型</label>
+              <label class="block text-body-sm font-medium mb-2">对话模型</label>
               <select
                 v-model="chatModel"
-                class="px-3 py-2 border rounded-lg text-sm"
+                class="px-3 py-2 border rounded-lg text-body-sm"
                 :disabled="isChatting"
               >
                 <option value="agnes-2.0-flash">Agnes 2.0 Flash (快速)</option>
@@ -1248,24 +1248,24 @@ const generateImageToVideo = async () => {
             <button
               @click="clearChat"
               :disabled="isChatting || chatMessages.length === 0"
-              class="w-full mb-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:bg-gray-50 disabled:cursor-not-allowed text-sm"
+              class="w-full mb-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:bg-gray-50 disabled:cursor-not-allowed text-body-sm"
             >
               清空对话
             </button>
 
             <!-- 输入框 -->
             <div class="mb-4">
-              <label class="block text-sm font-medium mb-2">消息</label>
+              <label class="block text-body-sm font-medium mb-2">消息</label>
               <textarea
                 v-model="chatInput"
                 placeholder="输入您的问题..."
                 rows="4"
-                class="w-full px-3 py-2 border rounded-lg text-sm"
+                class="w-full px-3 py-2 border rounded-lg text-body-sm"
                 :disabled="isChatting"
                 @keydown.ctrl.enter="sendChatMessage"
                 @keydown.meta.enter="sendChatMessage"
               />
-              <p class="text-xs text-gray-500 mt-1">
+              <p class="text-caption text-gray-500 mt-1">
                 按 Ctrl+Enter 或 Cmd+Enter 发送
               </p>
             </div>
@@ -1287,51 +1287,51 @@ const generateImageToVideo = async () => {
           <div v-if="currentStage > 0" class="mb-4 p-4 bg-gray-50 rounded-lg">
             <div class="flex items-center justify-between mb-3">
               <div class="flex items-center gap-2">
-                <div :class="['w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold',
+                <div :class="['w-8 h-8 rounded-full flex items-center justify-center text-body-sm font-semibold',
                   currentStage >= 1 ? (currentStage > 1 ? 'bg-green-500 text-white' : 'bg-blue-500 text-white') : 'bg-gray-300 text-gray-500']">
                   {{ currentStage > 1 ? '✓' : '1' }}
                 </div>
-                <span class="text-sm font-medium">生成文案</span>
+                <span class="text-body-sm font-medium">生成文案</span>
               </div>
-              <div v-if="scriptGenerateTime > 0" class="text-xs text-gray-600">
+              <div v-if="scriptGenerateTime > 0" class="text-caption text-gray-600">
                 {{ formatTime(scriptGenerateTime) }}
               </div>
             </div>
 
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
-                <div :class="['w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold',
+                <div :class="['w-8 h-8 rounded-full flex items-center justify-center text-body-sm font-semibold',
                   currentStage >= 2 ? (currentStage > 2 ? 'bg-green-500 text-white' : 'bg-blue-500 text-white') : 'bg-gray-300 text-gray-500']">
                   {{ currentStage > 2 ? '✓' : '2' }}
                 </div>
-                <span class="text-sm font-medium">生成视频</span>
+                <span class="text-body-sm font-medium">生成视频</span>
               </div>
-              <div v-if="videoGenerateTime > 0" class="text-xs text-gray-600">
+              <div v-if="videoGenerateTime > 0" class="text-caption text-gray-600">
                 {{ formatTime(videoGenerateTime) }}
               </div>
             </div>
           </div>
 
           <!-- 进度提示 -->
-          <div v-if="currentStep" class="mb-4 p-3 bg-yellow-50 rounded-lg text-sm text-gray-700">
+          <div v-if="currentStep" class="mb-4 p-3 bg-yellow-50 rounded-lg text-body-sm text-gray-700">
             {{ currentStep }}
           </div>
 
           <!-- 生成的文案 -->
           <div v-if="generatedScript && activeTab === 'text-to-video'" class="mb-6 p-4 bg-gray-50 rounded-lg">
-            <h3 class="text-sm font-semibold mb-2">生成的文案</h3>
-            <p class="text-sm text-gray-700 whitespace-pre-wrap">{{ generatedScript }}</p>
+            <h3 class="text-body-sm font-semibold mb-2">生成的文案</h3>
+            <p class="text-body-sm text-gray-700 whitespace-pre-wrap">{{ generatedScript }}</p>
           </div>
 
           <!-- 生成的图片 -->
           <div v-if="generatedImages.length > 0 && activeTab === 'text-to-image'" class="mb-6">
-            <h3 class="text-sm font-semibold mb-2">生成的图片 ({{ generatedImages.length }}张)</h3>
+            <h3 class="text-body-sm font-semibold mb-2">生成的图片 ({{ generatedImages.length }}张)</h3>
             <div class="grid grid-cols-2 gap-3">
               <div v-for="(img, index) in generatedImages" :key="index" class="relative group">
                 <img :src="img" class="w-full rounded-lg shadow cursor-pointer hover:opacity-90 transition-opacity" @click="window.open(img, '_blank')" />
                 <button
                   @click="downloadImage(img, index)"
-                  class="absolute bottom-2 right-2 px-3 py-1 bg-green-500 text-white rounded-lg hover:bg-green-600 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                  class="absolute bottom-2 right-2 px-3 py-1 bg-green-500 text-white rounded-lg hover:bg-green-600 text-caption opacity-0 group-hover:opacity-100 transition-opacity"
                 >
                   下载
                 </button>
@@ -1341,7 +1341,7 @@ const generateImageToVideo = async () => {
 
           <!-- AI对话消息 -->
           <div v-if="activeTab === 'ai-chat'" class="flex flex-col h-[600px]">
-            <h3 class="text-sm font-semibold mb-2">对话记录</h3>
+            <h3 class="text-body-sm font-semibold mb-2">对话记录</h3>
 
             <!-- 对话区域 -->
             <div ref="chatContainerRef" class="flex-1 overflow-y-auto border rounded-lg p-4 bg-gray-50 mb-4">
@@ -1353,17 +1353,17 @@ const generateImageToVideo = async () => {
                 <!-- 用户消息 -->
                 <div v-if="msg.role === 'user'" class="flex justify-end">
                   <div class="max-w-[80%] bg-blue-500 text-white rounded-lg px-4 py-2">
-                    <div class="text-sm whitespace-pre-wrap">{{ msg.content }}</div>
+                    <div class="text-body-sm whitespace-pre-wrap">{{ msg.content }}</div>
                   </div>
                 </div>
 
                 <!-- AI回复 -->
                 <div v-else class="flex justify-start">
                   <div class="max-w-[80%] bg-white rounded-lg px-4 py-2 shadow">
-                    <div class="text-sm text-gray-800 whitespace-pre-wrap">{{ msg.content }}</div>
+                    <div class="text-body-sm text-gray-800 whitespace-pre-wrap">{{ msg.content }}</div>
                     <button
                       @click="copyMessage(msg.content)"
-                      class="mt-2 text-xs text-gray-500 hover:text-blue-500"
+                      class="mt-2 text-caption text-gray-500 hover:text-blue-500"
                     >
                       📋 复制
                     </button>
@@ -1374,7 +1374,7 @@ const generateImageToVideo = async () => {
               <!-- 发送中提示 -->
               <div v-if="isChatting" class="flex justify-start">
                 <div class="bg-white rounded-lg px-4 py-2 shadow">
-                  <div class="text-sm text-gray-500">正在思考...</div>
+                  <div class="text-body-sm text-gray-500">正在思考...</div>
                 </div>
               </div>
             </div>
@@ -1382,7 +1382,7 @@ const generateImageToVideo = async () => {
 
           <!-- 生成的视频 -->
           <div v-if="generatedVideoUrl && (activeTab === 'text-to-video' || activeTab === 'image-to-video')">
-            <h3 class="text-sm font-semibold mb-2">生成的视频</h3>
+            <h3 class="text-body-sm font-semibold mb-2">生成的视频</h3>
             <div class="flex items-start gap-3">
               <div class="relative">
                 <video
@@ -1398,7 +1398,7 @@ const generateImageToVideo = async () => {
                   @mouseleave="handleVideoMouseLeave"
                 />
                 <!-- 时长标签 -->
-                <div v-if="videoDuration > 0" class="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+                <div v-if="videoDuration > 0" class="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white text-caption px-2 py-1 rounded">
                   {{ videoDuration }}秒
                 </div>
                 <!-- 播放进度条 -->
@@ -1412,11 +1412,11 @@ const generateImageToVideo = async () => {
               <div class="flex-1">
                 <button
                   @click="downloadVideo"
-                  class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 text-sm"
+                  class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 text-body-sm"
                 >
                   下载视频
                 </button>
-                <p class="text-xs text-gray-500 mt-2">悬停自动播放 | 点击放大查看</p>
+                <p class="text-caption text-gray-500 mt-2">悬停自动播放 | 点击放大查看</p>
               </div>
             </div>
           </div>
@@ -1433,7 +1433,7 @@ const generateImageToVideo = async () => {
       <div class="relative max-w-4xl max-h-[90vh] w-full" @click.stop>
         <button
           @click="showVideoModal = false"
-          class="absolute -top-10 right-0 text-white text-2xl hover:text-gray-300"
+          class="absolute -top-10 right-0 text-white text-h2 hover:text-gray-300"
         >
           ✕
         </button>
@@ -1447,7 +1447,7 @@ const generateImageToVideo = async () => {
     </div>
 
     <ToolDetail>
-      <div class="space-y-4 text-sm text-gray-700">
+      <div class="space-y-4 text-body-sm text-gray-700">
         <section>
           <h3 class="font-semibold mb-2">功能介绍</h3>
           <p>基于 Agnes AI 的文生视频工具，输入主题自动生成专业视频 Prompt 并创作短视频。支持 5-15 秒时长，多种宽高比选择，24帧流畅播放。</p>

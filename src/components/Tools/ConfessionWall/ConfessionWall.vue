@@ -492,16 +492,16 @@ onUnmounted(() => {
     <div v-if="!isSupabaseConfigured" class="bg-white rounded-lg shadow-sm p-6 max-w-2xl mx-auto">
       <div class="text-center mb-6">
         <div class="text-6xl mb-4">💌</div>
-        <h2 class="text-xl font-semibold text-gray-800 mb-2">需要配置 Supabase</h2>
-        <p class="text-gray-500 text-sm">匿名告白墙需要 Supabase 提供实时数据库支持</p>
-        <p class="text-gray-400 text-xs mt-2">💡 提示：发告白、点赞完全匿名，无需登录。只有分组管理才需要登录。</p>
+        <h2 class="text-h3 font-semibold text-gray-800 mb-2">需要配置 Supabase</h2>
+        <p class="text-gray-500 text-body-sm">匿名告白墙需要 Supabase 提供实时数据库支持</p>
+        <p class="text-gray-400 text-caption mt-2">💡 提示：发告白、点赞完全匿名，无需登录。只有分组管理才需要登录。</p>
       </div>
 
       <div class="bg-pink-50 border border-pink-200 rounded-lg p-4 mb-4">
         <h3 class="font-semibold text-pink-800 mb-3">📋 配置步骤：</h3>
-        <ol class="space-y-2 text-sm text-pink-700">
+        <ol class="space-y-2 text-body-sm text-pink-700">
           <li v-for="(step, index) in configSteps" :key="index" class="flex gap-2">
-            <span class="flex-shrink-0 w-5 h-5 bg-pink-200 text-pink-800 rounded-full flex items-center justify-center text-xs font-bold">
+            <span class="flex-shrink-0 w-5 h-5 bg-pink-200 text-pink-800 rounded-full flex items-center justify-center text-caption font-bold">
               {{ index + 1 }}
             </span>
             <span>{{ step }}</span>
@@ -511,23 +511,23 @@ onUnmounted(() => {
 
       <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
         <h3 class="font-semibold text-gray-800 mb-2">📝 建表 SQL</h3>
-        <p class="text-sm text-gray-600 mb-2">
+        <p class="text-body-sm text-gray-600 mb-2">
           打开项目根目录下的 <code class="bg-gray-200 px-1 rounded">supabase/confession-wall.sql</code>，
           复制全部内容粘贴到 Supabase SQL Editor 点击 Run 即可。
         </p>
-        <p class="text-xs text-gray-500">
+        <p class="text-caption text-gray-500">
           脚本已使用 <code class="bg-gray-200 px-1 rounded">IF NOT EXISTS</code> 等幂等语法，可重复执行不报错。
         </p>
       </div>
 
       <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
         <h3 class="font-semibold text-gray-800 mb-2">📝 环境变量</h3>
-        <p class="text-sm text-gray-600 mb-2">
+        <p class="text-body-sm text-gray-600 mb-2">
           在 <code class="bg-gray-200 px-1 rounded">.env.development</code> 中添加：
         </p>
-        <pre class="bg-gray-800 text-green-400 p-3 rounded text-xs overflow-x-auto"><code>VITE_SUPABASE_URL='https://your-project.supabase.co'
+        <pre class="bg-gray-800 text-green-400 p-3 rounded text-caption overflow-x-auto"><code>VITE_SUPABASE_URL='https://your-project.supabase.co'
 VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
-        <p class="text-sm text-gray-500 mt-3">⚠️ 配置完成后重启 <code class="bg-gray-200 px-1 rounded">pnpm dev</code> 即可生效</p>
+        <p class="text-body-sm text-gray-500 mt-3">⚠️ 配置完成后重启 <code class="bg-gray-200 px-1 rounded">pnpm dev</code> 即可生效</p>
       </div>
 
       <div class="mt-4 text-center">
@@ -588,7 +588,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
 
       <!-- 顶部统计栏 -->
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-        <div class="flex items-center gap-3 text-sm text-gray-600 flex-wrap">
+        <div class="flex items-center gap-3 text-body-sm text-gray-600 flex-wrap">
           <span
             v-if="currentGroup"
             class="px-3 py-1 rounded-full"
@@ -693,7 +693,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
     >
       <div class="space-y-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">选择分组</label>
+          <label class="block text-body-sm font-medium text-gray-700 mb-2">选择分组</label>
           <div class="group-picker">
             <button
               v-for="g in groups"
@@ -711,7 +711,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">你的心情</label>
+          <label class="block text-body-sm font-medium text-gray-700 mb-2">你的心情</label>
           <div class="mood-picker">
             <button
               v-for="m in moodOptions"
@@ -727,7 +727,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">卡片颜色</label>
+          <label class="block text-body-sm font-medium text-gray-700 mb-2">卡片颜色</label>
           <div class="color-picker">
             <button
               v-for="c in colorOptions"
@@ -745,7 +745,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">告白内容</label>
+          <label class="block text-body-sm font-medium text-gray-700 mb-2">告白内容</label>
           <el-input
             v-model="formData.content"
             type="textarea"
@@ -756,7 +756,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
           />
         </div>
 
-        <div class="text-xs text-gray-400">
+        <div class="text-caption text-gray-400">
           ⚠️ 同一设备 1 分钟内只能发布一条，请文明发言
         </div>
       </div>
@@ -778,7 +778,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
     >
       <div class="space-y-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">分组名</label>
+          <label class="block text-body-sm font-medium text-gray-700 mb-2">分组名</label>
           <el-input
             v-model="newGroupForm.name"
             placeholder="如：深夜食堂、给陌生人的信..."
@@ -788,7 +788,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">图标</label>
+          <label class="block text-body-sm font-medium text-gray-700 mb-2">图标</label>
           <div class="group-icon-picker">
             <button
               v-for="ic in groupIconOptions"
@@ -804,7 +804,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">主题色</label>
+          <label class="block text-body-sm font-medium text-gray-700 mb-2">主题色</label>
           <div class="color-picker">
             <button
               v-for="c in colorOptions"
@@ -819,7 +819,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">简介（可选）</label>
+          <label class="block text-body-sm font-medium text-gray-700 mb-2">简介（可选）</label>
           <el-input
             v-model="newGroupForm.description"
             placeholder="一句话介绍这个分组..."

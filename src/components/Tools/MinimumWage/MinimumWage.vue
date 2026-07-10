@@ -77,10 +77,10 @@ const clearSearch = () => {
             </svg>
           </div>
           <div class="ml-3">
-            <p class="text-sm text-blue-700">
+            <p class="text-body-sm text-blue-700">
               <strong>数据更新时间：</strong>截至2025年7月1日
             </p>
-            <p class="text-xs text-blue-600 mt-1">
+            <p class="text-caption text-blue-600 mt-1">
               数据来源：<a 
                 href="https://www.mohrss.gov.cn/SYrlzyhshbzb/laodongguanxi_/fwyd/202507/t20250715_549132.html" 
                 target="_blank" 
@@ -169,7 +169,7 @@ const clearSearch = () => {
 
       <!-- 统计信息 -->
       <div class="mt-4 p-3 bg-gray-50 rounded-lg">
-        <div class="text-sm text-gray-600">
+        <div class="text-body-sm text-gray-600">
           <p class="mb-2"><strong>数据说明：</strong></p>
           <ul class="list-disc list-inside space-y-1">
             <li>本表数据时间截至2025年7月1日</li>
@@ -182,7 +182,7 @@ const clearSearch = () => {
           
           <div class="mt-3 pt-3 border-t border-gray-200">
             <p class="mb-2"><strong>数据来源：</strong></p>
-            <p class="text-xs text-gray-500 break-all">
+            <p class="text-caption text-gray-500 break-all">
               <a 
                 href="https://www.mohrss.gov.cn/SYrlzyhshbzb/laodongguanxi_/fwyd/202507/t20250715_549132.html" 
                 target="_blank" 

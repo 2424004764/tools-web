@@ -102,7 +102,7 @@ watch(() => state.autoEncode, build)
     <DetailHeader :title="info.title" />
 
     <div class="p-4 rounded-2xl bg-white">
-      <div class="mb-2 text-sm text-gray-500">
+      <div class="mb-2 text-body-sm text-gray-500">
         输入完整 URL 或查询串（如：?a=1&b=2），点击“解析”即可在下方编辑后重新拼接。
         <el-link class="ml-2" type="primary" @click="fillExample">填充示例</el-link>
       </div>
@@ -125,13 +125,13 @@ watch(() => state.autoEncode, build)
       </div>
 
       <div class="mt-4">
-        <div class="text-sm text-gray-600 mb-2">基础 URL（解析时自动提取，可手动调整）：</div>
+        <div class="text-body-sm text-gray-600 mb-2">基础 URL（解析时自动提取，可手动调整）：</div>
         <el-input v-model="state.base" placeholder="示例：https://example.com/path" />
       </div>
 
       <div class="mt-4">
         <div class="flex items-center justify-between mb-2">
-          <div class="text-sm text-gray-600">参数列表</div>
+          <div class="text-body-sm text-gray-600">参数列表</div>
           <el-button size="small" @click="addRow">添加参数</el-button>
         </div>
 
@@ -149,7 +149,7 @@ watch(() => state.autoEncode, build)
       </div>
 
       <div class="mt-4">
-        <div class="text-sm text-gray-600 mb-1">拼接结果（仅查询串）：</div>
+        <div class="text-body-sm text-gray-600 mb-1">拼接结果（仅查询串）：</div>
         <el-input v-model="state.resultQuery" readonly />
         <div class="mt-2">
           <el-button type="primary" @click="copyQuery">复制查询串</el-button>
@@ -157,7 +157,7 @@ watch(() => state.autoEncode, build)
       </div>
 
       <div class="mt-4">
-        <div class="text-sm text-gray-600 mb-1">拼接结果（完整 URL）：</div>
+        <div class="text-body-sm text-gray-600 mb-1">拼接结果（完整 URL）：</div>
         <el-input v-model="state.resultFull" readonly />
         <div class="mt-2">
           <el-button type="primary" @click="copyFull">复制完整 URL</el-button>

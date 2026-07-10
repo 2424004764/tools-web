@@ -566,7 +566,7 @@ generateCron()
   
       <!-- 自定义配置区，使用Tab切换 -->
       <div class="p-4 rounded-2xl bg-white mb-6">
-        <el-text class="font-bold text-lg mb-3 block">自定义配置：</el-text>
+        <el-text class="font-bold text-body-lg mb-3 block">自定义配置：</el-text>
         
         <!-- 桌面端显示完整tabs -->
         <div class="hidden md:block">
@@ -585,7 +585,7 @@ generateCron()
               
               <!-- 指定秒配置 -->
               <div v-if="info.cronConfig.second.type === 'specific'" class="mt-3">
-                <el-text class="text-sm text-gray-600 mb-2 block">选择秒数（可多选）：</el-text>
+                <el-text class="text-body-sm text-gray-600 mb-2 block">选择秒数（可多选）：</el-text>
                 <el-checkbox-group 
                   v-model="info.cronConfig.second.selectedValues"
                   @change="handleMultiSelectChange('second', $event)"
@@ -604,14 +604,14 @@ generateCron()
               
               <!-- 间隔秒配置 -->
               <div v-if="info.cronConfig.second.type === 'step'" class="mt-3">
-                <el-text class="text-sm text-gray-600 mb-2 block">每</el-text>
+                <el-text class="text-body-sm text-gray-600 mb-2 block">每</el-text>
                 <el-input-number 
                   v-model="info.cronConfig.second.step" 
                   :min="1" 
                   :max="59"
                   @change="updateConfig('second', 'step', '*')"
                 />
-                <el-text class="text-sm text-gray-600">秒执行</el-text>
+                <el-text class="text-body-sm text-gray-600">秒执行</el-text>
               </div>
               
               <!-- 间隔范围配置 -->
@@ -649,7 +649,7 @@ generateCron()
               
               <!-- 指定分配置 -->
               <div v-if="info.cronConfig.minute.type === 'specific'" class="mt-3">
-                <el-text class="text-sm text-gray-600 mb-2 block">选择分钟（可多选）：</el-text>
+                <el-text class="text-body-sm text-gray-600 mb-2 block">选择分钟（可多选）：</el-text>
                 <el-checkbox-group 
                   v-model="info.cronConfig.minute.selectedValues"
                   @change="handleMultiSelectChange('minute', $event)"
@@ -668,14 +668,14 @@ generateCron()
               
               <!-- 间隔分配置 -->
               <div v-if="info.cronConfig.minute.type === 'step'" class="mt-3">
-                <el-text class="text-sm text-gray-600 mb-2 block">每</el-text>
+                <el-text class="text-body-sm text-gray-600 mb-2 block">每</el-text>
                 <el-input-number 
                   v-model="info.cronConfig.minute.step" 
                   :min="1" 
                   :max="59"
                   @change="updateConfig('minute', 'step', '*')"
                 />
-                <el-text class="text-sm text-gray-600">分执行</el-text>
+                <el-text class="text-body-sm text-gray-600">分执行</el-text>
               </div>
               
               <!-- 间隔范围配置 -->
@@ -713,7 +713,7 @@ generateCron()
               
               <!-- 指定时配置 -->
               <div v-if="info.cronConfig.hour.type === 'specific'" class="mt-3">
-                <el-text class="text-sm text-gray-600 mb-2 block">选择小时（可多选）：</el-text>
+                <el-text class="text-body-sm text-gray-600 mb-2 block">选择小时（可多选）：</el-text>
                 <el-checkbox-group 
                   v-model="info.cronConfig.hour.selectedValues"
                   @change="handleMultiSelectChange('hour', $event)"
@@ -732,14 +732,14 @@ generateCron()
               
               <!-- 间隔时配置 -->
               <div v-if="info.cronConfig.hour.type === 'step'" class="mt-3">
-                <el-text class="text-sm text-gray-600 mb-2 block">每</el-text>
+                <el-text class="text-body-sm text-gray-600 mb-2 block">每</el-text>
                 <el-input-number 
                   v-model="info.cronConfig.hour.step" 
                   :min="1" 
                   :max="23"
                   @change="updateConfig('hour', 'step', '*')"
                 />
-                <el-text class="text-sm text-gray-600">时执行</el-text>
+                <el-text class="text-body-sm text-gray-600">时执行</el-text>
               </div>
               
               <!-- 间隔范围配置 -->
@@ -777,7 +777,7 @@ generateCron()
               
               <!-- 指定日配置 -->
               <div v-if="info.cronConfig.day.type === 'specific'" class="mt-3">
-                <el-text class="text-sm text-gray-600 mb-2 block">选择日期（可多选）：</el-text>
+                <el-text class="text-body-sm text-gray-600 mb-2 block">选择日期（可多选）：</el-text>
                 <el-checkbox-group 
                   v-model="info.cronConfig.day.selectedValues"
                   @change="handleMultiSelectChange('day', $event)"
@@ -796,14 +796,14 @@ generateCron()
               
               <!-- 间隔日配置 -->
               <div v-if="info.cronConfig.day.type === 'step'" class="mt-3">
-                <el-text class="text-sm text-gray-600 mb-2 block">每</el-text>
+                <el-text class="text-body-sm text-gray-600 mb-2 block">每</el-text>
                 <el-input-number 
                   v-model="info.cronConfig.day.step" 
                   :min="1" 
                   :max="31"
                   @change="updateConfig('day', 'step', '*')"
                 />
-                <el-text class="text-sm text-gray-600">日执行</el-text>
+                <el-text class="text-body-sm text-gray-600">日执行</el-text>
               </div>
               
               <!-- 间隔范围配置 -->
@@ -841,7 +841,7 @@ generateCron()
               
               <!-- 指定月配置 -->
               <div v-if="info.cronConfig.month.type === 'specific'" class="mt-3">
-                <el-text class="text-sm text-gray-600 mb-2 block">选择月份（可多选）：</el-text>
+                <el-text class="text-body-sm text-gray-600 mb-2 block">选择月份（可多选）：</el-text>
                 <el-checkbox-group 
                   v-model="info.cronConfig.month.selectedValues"
                   @change="handleMultiSelectChange('month', $event)"
@@ -860,14 +860,14 @@ generateCron()
               
               <!-- 间隔月配置 -->
               <div v-if="info.cronConfig.month.type === 'step'" class="mt-3">
-                <el-text class="text-sm text-gray-600 mb-2 block">每</el-text>
+                <el-text class="text-body-sm text-gray-600 mb-2 block">每</el-text>
                 <el-input-number 
                   v-model="info.cronConfig.month.step" 
                   :min="1" 
                   :max="12"
                   @change="updateConfig('month', 'step', '*')"
                 />
-                <el-text class="text-sm text-gray-600">月执行</el-text>
+                <el-text class="text-body-sm text-gray-600">月执行</el-text>
               </div>
               
               <!-- 间隔范围配置 -->
@@ -904,7 +904,7 @@ generateCron()
               
               <!-- 指定星期配置 -->
               <div v-if="info.cronConfig.week.type === 'specific'" class="mt-3">
-                <el-text class="text-sm text-gray-600 mb-2 block">选择星期（可多选）：</el-text>
+                <el-text class="text-body-sm text-gray-600 mb-2 block">选择星期（可多选）：</el-text>
                 <el-checkbox-group 
                   v-model="info.cronConfig.week.selectedValues"
                   @change="handleMultiSelectChange('week', $event)"
@@ -957,7 +957,7 @@ generateCron()
             >
               上一页
             </el-button>
-            <el-text class="text-sm">{{ currentTabIndex + 1 }} / {{ tabList.length }}</el-text>
+            <el-text class="text-body-sm">{{ currentTabIndex + 1 }} / {{ tabList.length }}</el-text>
             <el-button 
               :disabled="currentTabIndex === tabList.length - 1"
               @click="currentTabIndex++"
@@ -984,7 +984,7 @@ generateCron()
                 
                 <!-- 指定秒配置 -->
                 <div v-if="info.cronConfig.second.type === 'specific'" class="mt-3">
-                  <el-text class="text-sm text-gray-600 mb-2 block">选择秒数（可多选）：</el-text>
+                  <el-text class="text-body-sm text-gray-600 mb-2 block">选择秒数（可多选）：</el-text>
                   <el-checkbox-group 
                     v-model="info.cronConfig.second.selectedValues"
                     @change="handleMultiSelectChange('second', $event)"
@@ -1003,14 +1003,14 @@ generateCron()
                 
                 <!-- 间隔秒配置 -->
                 <div v-if="info.cronConfig.second.type === 'step'" class="mt-3">
-                  <el-text class="text-sm text-gray-600 mb-2 block">每</el-text>
+                  <el-text class="text-body-sm text-gray-600 mb-2 block">每</el-text>
                   <el-input-number 
                     v-model="info.cronConfig.second.step" 
                     :min="1" 
                     :max="59"
                     @change="updateConfig('second', 'step', '*')"
                   />
-                  <el-text class="text-sm text-gray-600">秒执行</el-text>
+                  <el-text class="text-body-sm text-gray-600">秒执行</el-text>
                 </div>
                 
                 <!-- 间隔范围配置 -->
@@ -1048,7 +1048,7 @@ generateCron()
                 
                 <!-- 指定分配置 -->
                 <div v-if="info.cronConfig.minute.type === 'specific'" class="mt-3">
-                  <el-text class="text-sm text-gray-600 mb-2 block">选择分钟（可多选）：</el-text>
+                  <el-text class="text-body-sm text-gray-600 mb-2 block">选择分钟（可多选）：</el-text>
                   <el-checkbox-group 
                     v-model="info.cronConfig.minute.selectedValues"
                     @change="handleMultiSelectChange('minute', $event)"
@@ -1067,13 +1067,13 @@ generateCron()
                 
                 <!-- 间隔分配置 -->
                 <div v-if="info.cronConfig.minute.type === 'step'" class="mt-3">
-                  <el-text class="text-sm text-gray-600 mb-2 block">每</el-text>
+                  <el-text class="text-body-sm text-gray-600 mb-2 block">每</el-text>
                   <el-input-number 
                     v-model="info.cronConfig.minute.step"                   :min="1" 
                   :max="59"
                   @change="updateConfig('minute', 'step', '*')"
                 />
-                <el-text class="text-sm text-gray-600">分执行</el-text>
+                <el-text class="text-body-sm text-gray-600">分执行</el-text>
               </div>
               
               <!-- 间隔范围配置 -->
@@ -1111,7 +1111,7 @@ generateCron()
               
               <!-- 指定时配置 -->
               <div v-if="info.cronConfig.hour.type === 'specific'" class="mt-3">
-                <el-text class="text-sm text-gray-600 mb-2 block">选择小时（可多选）：</el-text>
+                <el-text class="text-body-sm text-gray-600 mb-2 block">选择小时（可多选）：</el-text>
                 <el-checkbox-group 
                   v-model="info.cronConfig.hour.selectedValues"
                   @change="handleMultiSelectChange('hour', $event)"
@@ -1130,14 +1130,14 @@ generateCron()
               
               <!-- 间隔时配置 -->
               <div v-if="info.cronConfig.hour.type === 'step'" class="mt-3">
-                <el-text class="text-sm text-gray-600 mb-2 block">每</el-text>
+                <el-text class="text-body-sm text-gray-600 mb-2 block">每</el-text>
                 <el-input-number 
                   v-model="info.cronConfig.hour.step" 
                   :min="1" 
                   :max="23"
                   @change="updateConfig('hour', 'step', '*')"
                 />
-                <el-text class="text-sm text-gray-600">时执行</el-text>
+                <el-text class="text-body-sm text-gray-600">时执行</el-text>
               </div>
               
               <!-- 间隔范围配置 -->
@@ -1175,7 +1175,7 @@ generateCron()
               
               <!-- 指定日配置 -->
               <div v-if="info.cronConfig.day.type === 'specific'" class="mt-3">
-                <el-text class="text-sm text-gray-600 mb-2 block">选择日期（可多选）：</el-text>
+                <el-text class="text-body-sm text-gray-600 mb-2 block">选择日期（可多选）：</el-text>
                 <el-checkbox-group 
                   v-model="info.cronConfig.day.selectedValues"
                   @change="handleMultiSelectChange('day', $event)"
@@ -1194,14 +1194,14 @@ generateCron()
               
               <!-- 间隔日配置 -->
               <div v-if="info.cronConfig.day.type === 'step'" class="mt-3">
-                <el-text class="text-sm text-gray-600 mb-2 block">每</el-text>
+                <el-text class="text-body-sm text-gray-600 mb-2 block">每</el-text>
                 <el-input-number 
                   v-model="info.cronConfig.day.step" 
                   :min="1" 
                   :max="31"
                   @change="updateConfig('day', 'step', '*')"
                 />
-                <el-text class="text-sm text-gray-600">日执行</el-text>
+                <el-text class="text-body-sm text-gray-600">日执行</el-text>
               </div>
               
               <!-- 间隔范围配置 -->
@@ -1239,7 +1239,7 @@ generateCron()
               
               <!-- 指定月配置 -->
               <div v-if="info.cronConfig.month.type === 'specific'" class="mt-3">
-                <el-text class="text-sm text-gray-600 mb-2 block">选择月份（可多选）：</el-text>
+                <el-text class="text-body-sm text-gray-600 mb-2 block">选择月份（可多选）：</el-text>
                 <el-checkbox-group 
                   v-model="info.cronConfig.month.selectedValues"
                   @change="handleMultiSelectChange('month', $event)"
@@ -1258,14 +1258,14 @@ generateCron()
               
               <!-- 间隔月配置 -->
               <div v-if="info.cronConfig.month.type === 'step'" class="mt-3">
-                <el-text class="text-sm text-gray-600 mb-2 block">每</el-text>
+                <el-text class="text-body-sm text-gray-600 mb-2 block">每</el-text>
                 <el-input-number 
                   v-model="info.cronConfig.month.step" 
                   :min="1" 
                   :max="12"
                   @change="updateConfig('month', 'step', '*')"
                 />
-                <el-text class="text-sm text-gray-600">月执行</el-text>
+                <el-text class="text-body-sm text-gray-600">月执行</el-text>
               </div>
               
               <!-- 间隔范围配置 -->
@@ -1302,7 +1302,7 @@ generateCron()
               
               <!-- 指定星期配置 -->
               <div v-if="info.cronConfig.week.type === 'specific'" class="mt-3">
-                <el-text class="text-sm text-gray-600 mb-2 block">选择星期（可多选）：</el-text>
+                <el-text class="text-body-sm text-gray-600 mb-2 block">选择星期（可多选）：</el-text>
                 <el-checkbox-group 
                   v-model="info.cronConfig.week.selectedValues"
                   @change="handleMultiSelectChange('week', $event)"
@@ -1349,7 +1349,7 @@ generateCron()
 
     <!-- 结果区域 -->
     <div class="p-4 rounded-2xl bg-white mb-6">
-      <el-text class="font-bold text-lg mb-3 block">生成的Cron表达式：</el-text>
+      <el-text class="font-bold text-body-lg mb-3 block">生成的Cron表达式：</el-text>
       <div class="flex items-center gap-3 mb-3">
         <el-input 
           v-model="info.cronExpression" 
@@ -1372,10 +1372,10 @@ generateCron()
         <el-text>次执行时间（最大200次）</el-text>
       </div>
       
-      <el-text class="text-sm text-gray-600 mb-3 block">{{ info.cronDescription }}</el-text>
+      <el-text class="text-body-sm text-gray-600 mb-3 block">{{ info.cronDescription }}</el-text>
       
       <div v-if="info.nextExecutions.length > 0">
-        <el-text class="font-bold text-lg mb-3 block">最近{{ info.executionCount }}次执行时间：</el-text>
+        <el-text class="font-bold text-body-lg mb-3 block">最近{{ info.executionCount }}次执行时间：</el-text>
         <div class="space-y-2">
           <div 
             v-for="(execution, index) in info.nextExecutions" 
@@ -1390,7 +1390,7 @@ generateCron()
 
     <!-- 预设示例 -->
     <div class="mb-6">
-      <el-text class="font-bold text-lg mb-3 block">常用示例：</el-text>
+      <el-text class="font-bold text-body-lg mb-3 block">常用示例：</el-text>
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         <el-card 
           v-for="(example, index) in info.presetExamples" 
@@ -1403,25 +1403,25 @@ generateCron()
               <span class="font-bold">{{ example.name }}</span>
             </div>
           </template>
-          <div class="text-sm text-gray-600 mb-2">{{ example.desc }}</div>
-          <div class="text-xs text-gray-500 font-mono">{{ example.cron }}</div>
+          <div class="text-body-sm text-gray-600 mb-2">{{ example.desc }}</div>
+          <div class="text-caption text-gray-500 font-mono">{{ example.cron }}</div>
         </el-card>
       </div>
     </div>
 
     <!-- 使用文档 -->
     <div class="mb-6">
-      <el-text class="font-bold text-lg mb-3 block">使用说明：</el-text>
-      <div class="space-y-4 text-sm text-gray-700">
+      <el-text class="font-bold text-body-lg mb-3 block">使用说明：</el-text>
+      <div class="space-y-4 text-body-sm text-gray-700">
         <div>
           <h4 class="font-bold mb-2">Cron表达式格式：</h4>
           <p class="mb-2">秒 分 时 日 月 周</p>
-          <p class="text-xs text-gray-500">例如：0 0 12 * * ? 表示每天中午12点执行</p>
+          <p class="text-caption text-gray-500">例如：0 0 12 * * ? 表示每天中午12点执行</p>
         </div>
         
         <div>
           <h4 class="font-bold mb-2">特殊字符说明：</h4>
-          <ul class="list-disc list-inside space-y-1 text-xs">
+          <ul class="list-disc list-inside space-y-1 text-caption">
             <li><code>*</code>：表示每个时间单位都执行</li>
             <li><code>?</code>：表示不指定该时间单位（仅用于日或周）</li>
             <li><code>/</code>：表示间隔执行，如 */5 表示每5个单位执行一次</li>
@@ -1432,7 +1432,7 @@ generateCron()
         
         <div>
           <h4 class="font-bold mb-2">常用示例：</h4>
-          <ul class="list-disc list-inside space-y-1 text-xs">
+          <ul class="list-disc list-inside space-y-1 text-caption">
             <li><code>0 0 0 * * ?</code>：每天凌晨0点执行</li>
             <li><code>0 0 12 * * ?</code>：每天中午12点执行</li>
             <li><code>0 0 0 ? * MON</code>：每周一凌晨0点执行</li>
@@ -1444,7 +1444,7 @@ generateCron()
         
         <div>
           <h4 class="font-bold mb-2">注意事项：</h4>
-          <ul class="list-disc list-inside space-y-1 text-xs">
+          <ul class="list-disc list-inside space-y-1 text-caption">
             <li>日和周不能同时指定，其中一个必须使用 ?</li>
             <li>月份范围是1-12，日期范围是1-31</li>
             <li>小时范围是0-23，分钟和秒范围是0-59</li>

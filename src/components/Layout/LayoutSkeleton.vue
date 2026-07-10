@@ -11,7 +11,7 @@ defineProps<{
 
 <template>
   <!-- Header 骨架：logo + 搜索框 + 右侧按钮 -->
-  <div v-if="variant === 'header'" class="h-16 px-4 flex items-center gap-4 border-b border-gray-100 bg-white">
+  <div v-if="variant === 'header'" class="h-16 px-4 flex items-center gap-4 border-b border-border-subtle bg-white">
     <div class="skel-block w-28 h-7 rounded"></div>
     <div class="skel-block flex-1 max-w-xl h-9 rounded-lg"></div>
     <div class="skel-block w-20 h-9 rounded-lg"></div>
@@ -33,7 +33,7 @@ defineProps<{
 </template>
 
 <style scoped>
-/* 骨架块统一样式：warm-200 底色 + 横向 shimmer 动画 */
+/* 骨架块统一样式：surface-2 底色 + 横向 shimmer 动画 */
 .skel-block {
   background: linear-gradient(
     90deg,

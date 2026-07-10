@@ -100,7 +100,7 @@ const getStyleClass = (style: string) => {
       <!-- 错误 -->
       <div v-else-if="state.error" class="flex flex-col items-center justify-center min-h-[400px]">
         <div class="text-6xl mb-4">📭</div>
-        <div class="text-xl text-gray-600 mb-2">{{ state.error }}</div>
+        <div class="text-h3 text-gray-600 mb-2">{{ state.error }}</div>
         <el-button type="primary" @click="$router.push('/letter-writer/')">返回写信工具</el-button>
       </div>
 

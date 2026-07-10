@@ -3,8 +3,8 @@
     <div class="flex items-center gap-3 mb-6">
       <div class="text-4xl">💝</div>
       <div>
-        <h2 class="text-2xl font-bold text-gray-800">祝福语生成器</h2>
-        <p class="text-sm text-gray-600">为不同场合和对象，生成温馨真挚的祝福</p>
+        <h2 class="text-h2 font-bold text-gray-800">祝福语生成器</h2>
+        <p class="text-body-sm text-gray-600">为不同场合和对象，生成温馨真挚的祝福</p>
       </div>
     </div>
 
@@ -22,14 +22,14 @@
     <div class="bg-white rounded-lg p-4 mb-4 space-y-4">
       <!-- 场合选择（仅首次显示） -->
       <div v-if="chatMessages.length === 0">
-        <label class="block text-sm font-medium text-gray-700 mb-2">选择场合</label>
+        <label class="block text-body-sm font-medium text-gray-700 mb-2">选择场合</label>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
           <button
             v-for="occasion in occasions"
             :key="occasion.value"
             @click="$emit('update:selectedOccasion', occasion.value)"
             :class="[
-              'px-3 py-2 rounded-lg text-sm font-medium transition-all',
+              'px-3 py-2 rounded-lg text-body-sm font-medium transition-all',
               selectedOccasion === occasion.value
                 ? 'bg-red-500 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -42,14 +42,14 @@
 
       <!-- 对象选择（仅首次显示） -->
       <div v-if="chatMessages.length === 0">
-        <label class="block text-sm font-medium text-gray-700 mb-2">祝福对象</label>
+        <label class="block text-body-sm font-medium text-gray-700 mb-2">祝福对象</label>
         <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
           <button
             v-for="target in targets"
             :key="target.value"
             @click="$emit('update:selectedTarget', target.value)"
             :class="[
-              'px-3 py-2 rounded-lg text-sm font-medium transition-all',
+              'px-3 py-2 rounded-lg text-body-sm font-medium transition-all',
               selectedTarget === target.value
                 ? 'bg-pink-500 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -62,14 +62,14 @@
 
       <!-- 风格选择（仅首次显示） -->
       <div v-if="chatMessages.length === 0">
-        <label class="block text-sm font-medium text-gray-700 mb-2">祝福风格</label>
+        <label class="block text-body-sm font-medium text-gray-700 mb-2">祝福风格</label>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
           <button
             v-for="style in styles"
             :key="style.value"
             @click="$emit('update:selectedStyle', style.value)"
             :class="[
-              'px-3 py-2 rounded-lg text-sm font-medium transition-all',
+              'px-3 py-2 rounded-lg text-body-sm font-medium transition-all',
               selectedStyle === style.value
                 ? 'bg-purple-500 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -82,7 +82,7 @@
 
       <!-- 追问输入（仅在有对话历史时显示） -->
       <div v-if="chatMessages.length > 0">
-        <label class="block text-sm font-medium text-gray-700 mb-2">💬 继续追问</label>
+        <label class="block text-body-sm font-medium text-gray-700 mb-2">💬 继续追问</label>
         <input
           :value="followUpQuestion"
           @input="$emit('update:followUpQuestion', ($event.target as HTMLInputElement).value)"

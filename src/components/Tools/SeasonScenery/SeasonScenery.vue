@@ -610,7 +610,7 @@ watch(() => userStore.isLoggedIn, (loggedIn) => {
     <!-- 季节选择 -->
     <div class="p-4 rounded-2xl bg-white mt-3">
       <div class="flex items-center justify-between mb-3">
-        <span class="text-lg font-medium text-gray-700">选择季节</span>
+        <span class="text-body-lg font-medium text-gray-700">选择季节</span>
       </div>
       <div class="grid grid-cols-4 gap-3">
         <div
@@ -623,7 +623,7 @@ watch(() => userStore.isLoggedIn, (loggedIn) => {
             borderColor: currentSeasonId === season.id ? season.color : 'transparent'
           }"
         >
-          <div class="text-3xl mb-1">{{ season.icon }}</div>
+          <div class="text-h1 mb-1">{{ season.icon }}</div>
           <div class="font-medium text-gray-800">{{ season.name }}</div>
         </div>
       </div>
@@ -632,8 +632,8 @@ watch(() => userStore.isLoggedIn, (loggedIn) => {
     <!-- 地点选择 -->
     <div class="p-4 rounded-2xl bg-white mt-3">
       <div class="flex items-center justify-between mb-3">
-        <span class="text-lg font-medium text-gray-700">选择地点</span>
-        <span class="text-sm text-gray-500">{{ currentLocation?.name }}</span>
+        <span class="text-body-lg font-medium text-gray-700">选择地点</span>
+        <span class="text-body-sm text-gray-500">{{ currentLocation?.name }}</span>
       </div>
       <div class="flex flex-wrap gap-2">
         <el-tag
@@ -641,7 +641,7 @@ watch(() => userStore.isLoggedIn, (loggedIn) => {
           :key="location.id"
           @click="selectLocation(location.id)"
           :type="currentLocationId === location.id ? 'primary' : 'info'"
-          class="cursor-pointer text-base px-4 py-2"
+          class="cursor-pointer text-body px-4 py-2"
           effect="light"
           :closable="!location.isBuiltIn && !location.id.startsWith('builtin-')"
           @close="deleteLocation(location)"
@@ -657,12 +657,12 @@ watch(() => userStore.isLoggedIn, (loggedIn) => {
     <!-- 图片展示 -->
     <div class="p-4 rounded-2xl bg-white mt-3">
       <div class="flex items-center justify-between mb-3">
-        <span class="text-lg font-medium text-gray-700">
+        <span class="text-body-lg font-medium text-gray-700">
           {{ currentLocation?.name }} - {{ seasonsData[currentSeasonId - 1]?.name }}
-          <span class="text-sm text-gray-500 ml-2">({{ currentSeasonImages.length }}张)</span>
+          <span class="text-body-sm text-gray-500 ml-2">({{ currentSeasonImages.length }}张)</span>
         </span>
         <div class="flex items-center gap-2">
-          <span class="text-2xl">{{ seasonsData[currentSeasonId - 1]?.icon }}</span>
+          <span class="text-h2">{{ seasonsData[currentSeasonId - 1]?.icon }}</span>
           <el-button size="small" @click="openImageDialog(seasonsData[currentSeasonId - 1]?.key)" type="primary">
             管理图片
           </el-button>
@@ -692,19 +692,19 @@ watch(() => userStore.isLoggedIn, (loggedIn) => {
         </div>
 
         <!-- 自动播放指示器 -->
-        <div v-if="autoPlayTimer !== null" class="absolute top-4 right-4 bg-black/60 text-white px-2 py-1 rounded text-xs flex items-center gap-1">
+        <div v-if="autoPlayTimer !== null" class="absolute top-4 right-4 bg-black/60 text-white px-2 py-1 rounded text-caption flex items-center gap-1">
           <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
           自动轮播
         </div>
 
         <!-- 图片计数器 -->
-        <div v-if="currentSeasonImages.length > 1" class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 text-white px-3 py-1 rounded-full text-sm">
+        <div v-if="currentSeasonImages.length > 1" class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 text-white px-3 py-1 rounded-full text-body-sm">
           {{ currentImageIndex + 1 }} / {{ currentSeasonImages.length }}
         </div>
 
         <!-- 底部描述 -->
         <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
-          <p class="text-white text-sm">{{ currentLocation?.desc }}</p>
+          <p class="text-white text-body-sm">{{ currentLocation?.desc }}</p>
         </div>
       </div>
 
@@ -720,7 +720,7 @@ watch(() => userStore.isLoggedIn, (loggedIn) => {
     <!-- 四季对比图 -->
     <div v-if="currentLocation" class="p-4 rounded-2xl bg-white mt-3">
       <div class="flex items-center justify-between mb-3">
-        <span class="text-lg font-medium text-gray-700">{{ currentLocation.name }} 四季对比</span>
+        <span class="text-body-lg font-medium text-gray-700">{{ currentLocation.name }} 四季对比</span>
       </div>
       <div class="grid grid-cols-4 gap-2">
         <div
@@ -740,8 +740,8 @@ watch(() => userStore.isLoggedIn, (loggedIn) => {
             暂无图片
           </div>
           <div class="text-center py-2 bg-gray-50">
-            <span class="text-sm">{{ season.icon }} {{ season.name }}</span>
-            <span class="text-xs text-gray-400 ml-1">({{ currentLocation.images[season.key as keyof SeasonImages]?.length || 0 }})</span>
+            <span class="text-body-sm">{{ season.icon }} {{ season.name }}</span>
+            <span class="text-caption text-gray-400 ml-1">({{ currentLocation.images[season.key as keyof SeasonImages]?.length || 0 }})</span>
           </div>
         </div>
       </div>
@@ -784,7 +784,7 @@ watch(() => userStore.isLoggedIn, (loggedIn) => {
                   @error="(e) => ((e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2280%22 height=%2280%22%3E%3Crect width=%2280%22 height=%2280%22 fill=%22%23f3f4f6%22/%3E%3Ctext x=%2240%22 y=%2245%22 font-size=%2210%22 fill=%22%239ca3af%22 text-anchor=%22middle%22%3E加载失败%3C/text%3E%3C/svg%3E')"
                 />
                 <div
-                  class="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center cursor-pointer text-xs hover:bg-red-600"
+                  class="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center cursor-pointer text-caption hover:bg-red-600"
                   @click="removeImage(season.key, index)"
                 >
                   ×

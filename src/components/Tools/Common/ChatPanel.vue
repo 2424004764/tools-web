@@ -363,8 +363,8 @@ onUnmounted(() => {
     <!-- 聊天头部 -->
     <div class="chat-header flex items-center justify-between px-3 py-2 border-b border-gray-200 bg-gray-50">
       <div class="flex items-center gap-2">
-        <span class="text-sm font-medium text-gray-700">聊天</span>
-        <span v-if="onlineUsers.length > 0" class="text-xs text-green-600">({{ onlineUsers.length }}人在线)</span>
+        <span class="text-body-sm font-medium text-gray-700">聊天</span>
+        <span v-if="onlineUsers.length > 0" class="text-caption text-green-600">({{ onlineUsers.length }}人在线)</span>
       </div>
     </div>
 
@@ -373,9 +373,9 @@ onUnmounted(() => {
       ref="messagesContainer"
       class="flex-1 overflow-y-auto p-3 space-y-3 bg-gray-50"
     >
-      <div v-if="messages.length === 0" class="flex items-center justify-center h-full text-gray-400 text-sm">
+      <div v-if="messages.length === 0" class="flex items-center justify-center h-full text-gray-400 text-body-sm">
         <div class="text-center">
-          <div class="text-2xl mb-1">💬</div>
+          <div class="text-h2 mb-1">💬</div>
           <p>开始聊天吧</p>
         </div>
       </div>
@@ -390,7 +390,7 @@ onUnmounted(() => {
           <div class="flex items-end gap-2" :class="msg.isSelf ? 'flex-row-reverse' : ''">
             <!-- 头像 -->
             <div
-              class="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0"
+              class="w-6 h-6 rounded-full flex items-center justify-center text-white text-caption font-medium flex-shrink-0"
               :class="msg.isSelf ? 'bg-blue-500' : 'bg-green-500'"
             >
               {{ msg.nickname.charAt(0) }}
@@ -398,12 +398,12 @@ onUnmounted(() => {
 
             <!-- 消息内容 -->
             <div>
-              <div class="text-xs text-gray-400 mb-1" :class="msg.isSelf ? 'text-right' : ''">
+              <div class="text-caption text-gray-400 mb-1" :class="msg.isSelf ? 'text-right' : ''">
                 {{ msg.nickname }} · {{ formatTime(msg.timestamp) }}
               </div>
 
               <div
-                class="px-3 py-1.5 rounded-lg shadow-sm text-sm break-words"
+                class="px-3 py-1.5 rounded-lg shadow-sm text-body-sm break-words"
                 :class="[
                   msg.isSelf ? 'bg-blue-500 text-white rounded-br-sm' : 'bg-white text-gray-800 rounded-bl-sm',
                   msg.revoked ? 'italic text-gray-400' : ''
@@ -432,7 +432,7 @@ onUnmounted(() => {
               <div class="opacity-0 group-hover:opacity-100 transition-opacity mt-1" :class="msg.isSelf ? 'text-right' : ''">
                 <button
                   @click="copyMessage(msg.content)"
-                  class="text-xs text-gray-400 hover:text-gray-600 mr-1"
+                  class="text-caption text-gray-400 hover:text-gray-600 mr-1"
                   title="复制"
                 >
                   复制
@@ -455,7 +455,7 @@ onUnmounted(() => {
             :key="cat.name"
             @click="activeEmojiCategory = cat.name"
             :class="[
-              'px-2 py-0.5 text-xs rounded-full whitespace-nowrap',
+              'px-2 py-0.5 text-caption rounded-full whitespace-nowrap',
               activeEmojiCategory === cat.name
                 ? 'bg-blue-500 text-white'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -467,13 +467,13 @@ onUnmounted(() => {
 
         <!-- 最近使用 -->
         <div v-if="recentEmojis.length > 0 && activeEmojiCategory === '笑脸'" class="mb-2">
-          <div class="text-xs text-gray-400 mb-1">最近使用</div>
+          <div class="text-caption text-gray-400 mb-1">最近使用</div>
           <div class="flex flex-wrap gap-1">
             <button
               v-for="emoji in recentEmojis"
               :key="'recent-' + emoji"
               @click="selectEmoji(emoji)"
-              class="text-lg p-1 hover:bg-gray-100 rounded"
+              class="text-body-lg p-1 hover:bg-gray-100 rounded"
             >
               {{ emoji }}
             </button>
@@ -486,7 +486,7 @@ onUnmounted(() => {
             v-for="emoji in emojiCategories.find(c => c.name === activeEmojiCategory)?.emojis || []"
             :key="emoji"
             @click="selectEmoji(emoji)"
-            class="text-lg p-1 hover:bg-gray-100 rounded"
+            class="text-body-lg p-1 hover:bg-gray-100 rounded"
           >
             {{ emoji }}
           </button>

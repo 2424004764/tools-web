@@ -73,7 +73,7 @@ const goToTodos = () => {
   >
     <div class="w-full max-w-md c-sm:max-w-lg c-md:max-w-xl">
       <div class="text-center mb-6 c-sm:mb-8">
-        <h1 class="text-2xl c-sm:text-3xl font-bold text-gray-800 mb-2">
+        <h1 class="text-h2 c-sm:text-h1 font-bold text-ink-900 mb-2">
           用户信息
         </h1>
       </div>
@@ -88,50 +88,50 @@ const goToTodos = () => {
                 userStore.getUserInfo.avatar || '/src/assets/default_avatar.png'
               "
               :alt="userStore.getUserInfo.username"
-              class="w-20 h-20 c-sm:w-24 c-sm:h-24 rounded-full mx-auto border-4 border-gray-200 shadow-lg"
+              class="w-20 h-20 c-sm:w-24 c-sm:h-24 rounded-full mx-auto border-4 border-border-default shadow-lg"
             />
           </div>
 
           <!-- 用户名 -->
-          <div class="bg-white border border-gray-200 rounded-lg p-3 c-sm:p-4">
+          <div class="bg-white border border-border-default rounded-lg p-3 c-sm:p-4">
             <div
               class="flex flex-col c-sm:flex-row c-sm:justify-between c-sm:items-center gap-2 c-sm:gap-0"
             >
-              <span class="text-gray-700 font-medium text-sm c-sm:text-base"
+              <span class="text-ink-700 font-medium text-body-sm c-sm:text-body"
                 >用户名:</span
               >
-              <span class="text-gray-600 text-sm c-sm:text-base break-all">{{
+              <span class="text-ink-600 text-body-sm c-sm:text-body break-all">{{
                 userStore.getUserInfo.username
               }}</span>
             </div>
           </div>
 
           <!-- 邮箱 -->
-          <div class="bg-white border border-gray-200 rounded-lg p-3 c-sm:p-4">
+          <div class="bg-white border border-border-default rounded-lg p-3 c-sm:p-4">
             <div
               class="flex flex-col c-sm:flex-row c-sm:justify-between c-sm:items-center gap-2 c-sm:gap-0"
             >
-              <span class="text-gray-700 font-medium text-sm c-sm:text-base"
+              <span class="text-ink-700 font-medium text-body-sm c-sm:text-body"
                 >邮箱:</span
               >
-              <span class="text-gray-600 text-sm c-sm:text-base break-all">{{
+              <span class="text-ink-600 text-body-sm c-sm:text-body break-all">{{
                 userStore.getUserInfo.email
               }}</span>
             </div>
           </div>
 
           <!-- 用户ID -->
-          <div class="bg-white border border-gray-200 rounded-lg p-3 c-sm:p-4">
+          <div class="bg-white border border-border-default rounded-lg p-3 c-sm:p-4">
             <div
               class="flex flex-col c-sm:flex-row c-sm:justify-between c-sm:items-start c-sm:items-center gap-2 c-sm:gap-0"
             >
-              <span class="text-gray-700 font-medium text-sm c-sm:text-base"
+              <span class="text-ink-700 font-medium text-body-sm c-sm:text-body"
                 >用户ID:</span
               >
               <div
                 class="flex flex-col c-sm:flex-row c-sm:items-center gap-2 w-full c-sm:w-auto"
               >
-                <span class="text-gray-600 text-xs c-sm:text-sm break-all">{{
+                <span class="text-ink-600 text-caption c-sm:text-body-sm break-all">{{
                   userStore.getUserInfo.uid
                 }}</span>
                 <el-button
@@ -153,16 +153,16 @@ const goToTodos = () => {
         </div>
 
         <!-- 个人功能区域 -->
-        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
-          <h3 class="text-lg font-semibold text-gray-800 mb-3 text-center">个人功能</h3>
+        <div class="bg-gradient-to-r from-accent-50 to-accent-100 border border-accent-200 rounded-lg p-4">
+          <h3 class="text-body-lg font-semibold text-ink-900 mb-3 text-center">个人功能</h3>
           <div class="grid grid-cols-1 gap-3">
             <!-- 笔记备忘录 -->
             <div 
               @click="goToNotes"
-              class="bg-white border border-gray-200 rounded-lg p-3 hover:shadow-md hover:border-blue-300 transition-all duration-200 cursor-pointer group"
+              class="bg-white border border-border-default rounded-lg p-3 hover:shadow-md hover:border-accent-300 transition-all duration-200 cursor-pointer group"
             >
               <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                <div class="w-10 h-10 bg-accent-50 rounded-lg flex items-center justify-center group-hover:bg-accent-100 transition-colors">
                   <img 
                     src="/images/logo/notes.png" 
                     alt="笔记备忘录" 
@@ -170,14 +170,14 @@ const goToTodos = () => {
                   />
                 </div>
                 <div class="flex-1">
-                  <h4 class="font-medium text-gray-800 text-sm c-sm:text-base group-hover:text-blue-600 transition-colors">
+                  <h4 class="font-medium text-ink-900 text-body-sm c-sm:text-body group-hover:text-accent-600 transition-colors">
                     笔记备忘录
                   </h4>
-                  <p class="text-gray-500 text-xs c-sm:text-sm">
+                  <p class="text-ink-500 text-caption c-sm:text-body-sm">
                     记录和管理您的个人笔记
                   </p>
                 </div>
-                <div class="text-gray-400 group-hover:text-blue-500 transition-colors">
+                <div class="text-ink-400 group-hover:text-accent-600 transition-colors">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                   </svg>
@@ -187,10 +187,10 @@ const goToTodos = () => {
             <!-- 简历管理 -->
             <div 
               @click="goToResume"
-              class="bg-white border border-gray-200 rounded-lg p-3 hover:shadow-md hover:border-green-300 transition-all duration-200 cursor-pointer group"
+              class="bg-white border border-border-default rounded-lg p-3 hover:shadow-md hover:border-accent-300 transition-all duration-200 cursor-pointer group"
             >
               <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center group-hover:bg-green-200 transition-colors">
+                <div class="w-10 h-10 bg-accent-50 rounded-lg flex items-center justify-center group-hover:bg-accent-100 transition-colors">
                   <img 
                     src="/images/logo/resume.png" 
                     alt="简历管理" 
@@ -198,14 +198,14 @@ const goToTodos = () => {
                   />
                 </div>
                 <div class="flex-1">
-                  <h4 class="font-medium text-gray-800 text-sm c-sm:text-base group-hover:text-green-600 transition-colors">
+                  <h4 class="font-medium text-ink-900 text-body-sm c-sm:text-body group-hover:text-accent-600 transition-colors">
                     简历管理
                   </h4>
-                  <p class="text-gray-500 text-xs c-sm:text-sm">
+                  <p class="text-ink-500 text-caption c-sm:text-body-sm">
                     制作和管理您的个人简历
                   </p>
                 </div>
-                <div class="text-gray-400 group-hover:text-green-500 transition-colors">
+                <div class="text-ink-400 group-hover:text-accent-600 transition-colors">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                   </svg>
@@ -215,10 +215,10 @@ const goToTodos = () => {
             <!-- 公司对比 -->
             <div 
               @click="goToCompanyCompare"
-              class="bg-white border border-gray-200 rounded-lg p-3 hover:shadow-md hover:border-purple-300 transition-all duration-200 cursor-pointer group"
+              class="bg-white border border-border-default rounded-lg p-3 hover:shadow-md hover:border-accent-300 transition-all duration-200 cursor-pointer group"
             >
               <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center group-hover:bg-purple-200 transition-colors">
+                <div class="w-10 h-10 bg-accent-50 rounded-lg flex items-center justify-center group-hover:bg-accent-100 transition-colors">
                   <img 
                     src="/images/logo/company_compare.png" 
                     alt="公司对比" 
@@ -226,14 +226,14 @@ const goToTodos = () => {
                   />
                 </div>
                 <div class="flex-1">
-                  <h4 class="font-medium text-gray-800 text-sm c-sm:text-base group-hover:text-purple-600 transition-colors">
+                  <h4 class="font-medium text-ink-900 text-body-sm c-sm:text-body group-hover:text-accent-600 transition-colors">
                     公司对比
                   </h4>
-                  <p class="text-gray-500 text-xs c-sm:text-sm">
+                  <p class="text-ink-500 text-caption c-sm:text-body-sm">
                     对比不同公司的薪资福利待遇
                   </p>
                 </div>
-                <div class="text-gray-400 group-hover:text-purple-500 transition-colors">
+                <div class="text-ink-400 group-hover:text-accent-600 transition-colors">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                   </svg>
@@ -243,10 +243,10 @@ const goToTodos = () => {
             <!-- QA页面制作 -->
             <div
               @click="goToQA"
-              class="bg-white border border-gray-200 rounded-lg p-3 hover:shadow-md hover:border-orange-300 transition-all duration-200 cursor-pointer group"
+              class="bg-white border border-border-default rounded-lg p-3 hover:shadow-md hover:border-accent-300 transition-all duration-200 cursor-pointer group"
             >
               <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center group-hover:bg-orange-200 transition-colors">
+                <div class="w-10 h-10 bg-accent-50 rounded-lg flex items-center justify-center group-hover:bg-accent-100 transition-colors">
                   <img
                     src="/images/logo/qa.png"
                     alt="QA页面制作"
@@ -254,14 +254,14 @@ const goToTodos = () => {
                   />
                 </div>
                 <div class="flex-1">
-                  <h4 class="font-medium text-gray-800 text-sm c-sm:text-base group-hover:text-orange-600 transition-colors">
+                  <h4 class="font-medium text-ink-900 text-body-sm c-sm:text-body group-hover:text-accent-600 transition-colors">
                     QA页面制作
                   </h4>
-                  <p class="text-gray-500 text-xs c-sm:text-sm">
+                  <p class="text-ink-500 text-caption c-sm:text-body-sm">
                     创建个性化的问答页面
                   </p>
                 </div>
-                <div class="text-gray-400 group-hover:text-orange-500 transition-colors">
+                <div class="text-ink-400 group-hover:text-accent-600 transition-colors">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                   </svg>
@@ -271,10 +271,10 @@ const goToTodos = () => {
             <!-- 待办事项 -->
             <div
               @click="goToTodos"
-              class="bg-white border border-gray-200 rounded-lg p-3 hover:shadow-md hover:border-teal-300 transition-all duration-200 cursor-pointer group"
+              class="bg-white border border-border-default rounded-lg p-3 hover:shadow-md hover:border-accent-300 transition-all duration-200 cursor-pointer group"
             >
               <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center group-hover:bg-teal-200 transition-colors">
+                <div class="w-10 h-10 bg-accent-50 rounded-lg flex items-center justify-center group-hover:bg-accent-100 transition-colors">
                   <img
                     src="/images/logo/todos.png"
                     alt="待办事项"
@@ -282,14 +282,14 @@ const goToTodos = () => {
                   />
                 </div>
                 <div class="flex-1">
-                  <h4 class="font-medium text-gray-800 text-sm c-sm:text-base group-hover:text-teal-600 transition-colors">
+                  <h4 class="font-medium text-ink-900 text-body-sm c-sm:text-body group-hover:text-accent-600 transition-colors">
                     待办事项
                   </h4>
-                  <p class="text-gray-500 text-xs c-sm:text-sm">
+                  <p class="text-ink-500 text-caption c-sm:text-body-sm">
                     管理您的任务和待办清单
                   </p>
                 </div>
-                <div class="text-gray-400 group-hover:text-teal-500 transition-colors">
+                <div class="text-ink-400 group-hover:text-accent-600 transition-colors">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                   </svg>

@@ -122,8 +122,8 @@ onBeforeUnmount(() => {
       <div class="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
         <div class="space-y-4">
           <div>
-            <div class="text-2xl font-semibold">番茄工作法</div>
-            <div class="mt-1 text-sm text-slate-500">设置工作时长与休息周期，自动在短休息和长休息之间切换，提高专注与恢复效率。</div>
+            <div class="text-h2 font-semibold">番茄工作法</div>
+            <div class="mt-1 text-body-sm text-slate-500">设置工作时长与休息周期，自动在短休息和长休息之间切换，提高专注与恢复效率。</div>
           </div>
 
           <el-row :gutter="16">
@@ -159,28 +159,28 @@ onBeforeUnmount(() => {
 
           <div class="grid gap-3 sm:grid-cols-3">
             <div class="p-3 rounded-lg bg-slate-50 border border-slate-200">
-              <div class="text-xs text-slate-500">当前阶段</div>
-              <div class="text-xl font-semibold text-slate-800">{{ sessionLabel }}</div>
+              <div class="text-caption text-slate-500">当前阶段</div>
+              <div class="text-h3 font-semibold text-slate-800">{{ sessionLabel }}</div>
             </div>
             <div class="p-3 rounded-lg bg-slate-50 border border-slate-200">
-              <div class="text-xs text-slate-500">已完成番茄</div>
-              <div class="text-xl font-semibold text-slate-800">{{ completedCycles }}</div>
+              <div class="text-caption text-slate-500">已完成番茄</div>
+              <div class="text-h3 font-semibold text-slate-800">{{ completedCycles }}</div>
             </div>
             <div class="p-3 rounded-lg bg-slate-50 border border-slate-200">
-              <div class="text-xs text-slate-500">当前进度</div>
-              <div class="text-xl font-semibold text-slate-800">{{ progress.toFixed(0) }}%</div>
+              <div class="text-caption text-slate-500">当前进度</div>
+              <div class="text-h3 font-semibold text-slate-800">{{ progress.toFixed(0) }}%</div>
             </div>
           </div>
         </div>
 
         <div class="space-y-4">
           <div class="p-6 rounded-3xl bg-gradient-to-br from-orange-500 via-rose-500 to-pink-600 text-white shadow-lg">
-            <div class="text-sm opacity-90">{{ sessionLabel }}</div>
+            <div class="text-body-sm opacity-90">{{ sessionLabel }}</div>
             <div class="mt-4 text-6xl font-semibold tracking-widest">{{ displayTime }}</div>
             <div class="mt-6 h-3 rounded-full bg-white/20 overflow-hidden">
               <div class="h-full bg-white transition-all" :style="{ width: progress + '%' }" />
             </div>
-            <div class="mt-3 text-xs text-white/80">当前阶段进度 {{ progress.toFixed(0) }}%</div>
+            <div class="mt-3 text-caption text-white/80">当前阶段进度 {{ progress.toFixed(0) }}%</div>
           </div>
 
           <div class="flex flex-wrap gap-3">

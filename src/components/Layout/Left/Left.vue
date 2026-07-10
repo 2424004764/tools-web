@@ -190,8 +190,8 @@ onMounted(async () => {
           :alt="appNet"
         />
         <div class="flex flex-col mt-auto mb-auto">
-          <div class="text-2xl text-warm-800">{{ appName }}</div>
-          <div class="text-sm text-warm-600">{{ appNet }}</div>
+          <div class="text-h2 text-ink-900">{{ appName }}</div>
+          <div class="text-body-sm text-ink-500">{{ appNet }}</div>
         </div>
       </router-link>
     </div>
@@ -293,8 +293,8 @@ onMounted(async () => {
 }
 .el-sub-menu :deep(.el-sub-menu__title:hover) {
   /* padding-left: 0 !important; */
-  color: #fff;
-  background-color: var(--warm-primary);
+  color: rgb(var(--surface-0));
+  background-color: rgb(var(--accent-500));
   border-radius: 1rem;
 }
 
@@ -319,27 +319,18 @@ onMounted(async () => {
   bottom: 0;
   border-radius: 1rem;
   padding: 2px;
-  background: linear-gradient(
-    45deg,
-    transparent,
-    var(--warm-primary),
-    var(--warm-secondary),
-    var(--warm-accent),
-    transparent
-  );
-  background-size: 300% 300%;
+  /* Phase 2c: 单色 accent，去掉多色 gradient + shimmer animation */
+  background: rgb(var(--accent-500));
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask-composite: xor;
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   opacity: 0;
-  transition: all 0.4s ease;
-  animation: borderMove 3s linear infinite;
+  transition: opacity 0.4s ease;
 }
 
 .el-menu-item:hover::before {
-  opacity: 0.6;
-  background-size: 150% 150%;
+  opacity: 0.4;
 }
 
 .el-menu-item::after {
@@ -351,8 +342,8 @@ onMounted(async () => {
   height: 0;
   background: radial-gradient(
     circle,
-    rgba(249, 115, 22, 0.06) 0%,
-    rgba(249, 115, 22, 0.03) 50%,
+    rgb(var(--accent-500) / 0.06) 0%,
+    rgb(var(--accent-500) / 0.03) 50%,
     transparent 70%
   );
   border-radius: 50%;
@@ -367,87 +358,32 @@ onMounted(async () => {
 }
 
 .el-menu-item.is-active {
-  color: #fff;
-  background-color: var(--warm-primary);
+  color: rgb(var(--surface-0));
+  background-color: rgb(var(--accent-500));
   border-radius: 1rem;
-  box-shadow: 
-    0 4px 12px rgba(249, 115, 22, 0.2),
-    0 0 15px rgba(249, 115, 22, 0.1);
-  border: 2px solid rgba(251, 191, 36, 0.4);
+  box-shadow:
+    0 4px 12px rgb(var(--accent-500) / 0.2),
+    0 0 15px rgb(var(--accent-500) / 0.1);
+  border: 2px solid rgb(var(--accent-400) / 0.4);
 }
 
+/* Phase 2c: active 状态使用 ::before 高亮而非 activeGlow 动画，简化反馈 */
 .el-menu-item.is-active::before {
-  opacity: 0.7;
-  background: linear-gradient(
-    45deg,
-    var(--warm-accent),
-    var(--warm-secondary),
-    var(--warm-primary),
-    var(--warm-accent)
-  );
-  background-size: 200% 200%;
+  opacity: 0.5;
 }
 
 .el-menu-item:hover {
-  color: #fff;
-  background-color: var(--warm-primary);
+  color: rgb(var(--surface-0));
+  background-color: rgb(var(--accent-500));
   border-radius: 1rem;
   transform: translateY(-1px);
-  box-shadow: 
-    0 6px 18px rgba(249, 115, 22, 0.25),
-    0 0 20px rgba(249, 115, 22, 0.15);
+  box-shadow:
+    0 6px 18px rgb(var(--accent-500) / 0.25),
+    0 0 20px rgb(var(--accent-500) / 0.15);
+  /* Phase 2c: 去掉 pulse 动画，保留 transform: translateY 作为物理反馈 */
 }
 
-@keyframes borderMove {
-  0% {
-    background-position: 0% 0%;
-  }
-  50% {
-    background-position: 100% 100%;
-  }
-  100% {
-    background-position: 0% 0%;
-  }
-}
-
-/* 添加脉冲效果 */
-.el-menu-item:hover {
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0% {
-    box-shadow: 
-      0 6px 18px rgba(249, 115, 22, 0.25),
-      0 0 20px rgba(249, 115, 22, 0.15);
-  }
-  50% {
-    box-shadow: 
-      0 6px 22px rgba(249, 115, 22, 0.3),
-      0 0 25px rgba(249, 115, 22, 0.2);
-  }
-  100% {
-    box-shadow: 
-      0 6px 18px rgba(249, 115, 22, 0.25),
-      0 0 20px rgba(249, 115, 22, 0.15);
-  }
-}
-
-/* 增强激活状态的视觉效果 */
-.el-menu-item.is-active {
-  animation: activeGlow 3s ease-in-out infinite alternate;
-}
-
-@keyframes activeGlow {
-  from {
-    box-shadow: 
-      0 4px 12px rgba(249, 115, 22, 0.2),
-      0 0 15px rgba(249, 115, 22, 0.1);
-  }
-  to {
-    box-shadow: 
-      0 4px 16px rgba(249, 115, 22, 0.3),
-      0 0 20px rgba(249, 115, 22, 0.15);
-  }
-}
+/* @keyframes borderMove 已删除（Phase 2c：去 shimmer） */
+/* @keyframes pulse 已删除（Phase 2c：transform: translateY 物理反馈替代脉冲动画） */
+/* @keyframes activeGlow 已删除（Phase 2c：active 状态用 ::before 高亮替代阴影呼吸动画） */
 </style>

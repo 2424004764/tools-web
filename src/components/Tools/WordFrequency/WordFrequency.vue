@@ -150,8 +150,8 @@ const downloadCSV = () => {
 
     <div class="p-4 rounded-2xl bg-white shadow-sm border border-slate-200">
       <div class="mb-4">
-        <div class="text-2xl font-semibold">词频统计分析</div>
-        <div class="mt-1 text-sm text-slate-500">输入文本后自动分析词语出现频率，支持中英文混合。</div>
+        <div class="text-h2 font-semibold">词频统计分析</div>
+        <div class="mt-1 text-body-sm text-slate-500">输入文本后自动分析词语出现频率，支持中英文混合。</div>
       </div>
 
       <div class="space-y-4">
@@ -198,28 +198,28 @@ const downloadCSV = () => {
         <!-- 统计信息 -->
         <div v-if="wordFrequency.length" class="grid gap-4 grid-cols-3 md:grid-cols-6">
           <div class="p-3 rounded-lg bg-blue-50 border border-blue-200">
-            <div class="text-xs text-slate-500">总词数</div>
-            <div class="text-xl font-semibold text-blue-600">{{ totalWords }}</div>
+            <div class="text-caption text-slate-500">总词数</div>
+            <div class="text-h3 font-semibold text-blue-600">{{ totalWords }}</div>
           </div>
           <div class="p-3 rounded-lg bg-green-50 border border-green-200">
-            <div class="text-xs text-slate-500">独特词数</div>
-            <div class="text-xl font-semibold text-green-600">{{ uniqueWords }}</div>
+            <div class="text-caption text-slate-500">独特词数</div>
+            <div class="text-h3 font-semibold text-green-600">{{ uniqueWords }}</div>
           </div>
           <div class="p-3 rounded-lg bg-purple-50 border border-purple-200">
-            <div class="text-xs text-slate-500">最高频次</div>
-            <div class="text-xl font-semibold text-purple-600">{{ wordFrequency[0]?.count || 0 }}</div>
+            <div class="text-caption text-slate-500">最高频次</div>
+            <div class="text-h3 font-semibold text-purple-600">{{ wordFrequency[0]?.count || 0 }}</div>
           </div>
         </div>
 
         <!-- 结果表格 -->
         <div v-if="wordFrequency.length" class="space-y-3">
           <div class="flex gap-2 items-center">
-            <span class="text-sm font-medium">词频统计结果</span>
+            <span class="text-body-sm font-medium">词频统计结果</span>
             <el-button size="small" type="primary" @click="downloadCSV">导出 CSV</el-button>
           </div>
 
           <div class="overflow-x-auto">
-            <table class="w-full text-sm border-collapse">
+            <table class="w-full text-body-sm border-collapse">
               <thead>
                 <tr class="bg-slate-100">
                   <th class="border border-slate-200 px-3 py-2 text-left">排名</th>

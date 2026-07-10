@@ -2645,22 +2645,22 @@ const generateImageToVideo = async () => {
     <div class="bg-white rounded-2xl p-4 md:p-6 shadow-sm">
       <!-- 用户 API Key 配置（游客必填，登录用户可选覆盖系统 key） -->
       <details class="mb-4 border border-gray-200 rounded-lg">
-        <summary class="px-3 py-2 cursor-pointer text-sm text-gray-700 hover:bg-gray-50 flex items-center justify-between">
+        <summary class="px-3 py-2 cursor-pointer text-body-sm text-gray-700 hover:bg-gray-50 flex items-center justify-between">
           <span>
             🔑 我的 API Key
-            <span v-if="userApiKeyCount > 0" class="ml-1 text-xs text-green-600">（已配置 {{ userApiKeyCount }} 个）</span>
-            <span v-else class="ml-1 text-xs text-gray-400">（未配置）</span>
+            <span v-if="userApiKeyCount > 0" class="ml-1 text-caption text-green-600">（已配置 {{ userApiKeyCount }} 个）</span>
+            <span v-else class="ml-1 text-caption text-gray-400">（未配置）</span>
           </span>
-          <span class="text-xs text-gray-400">点击展开</span>
+          <span class="text-caption text-gray-400">点击展开</span>
         </summary>
         <div class="px-3 py-2 border-t border-gray-200 space-y-2">
-          <p class="text-xs text-gray-500">
+          <p class="text-caption text-gray-500">
             {{ userStore.getLoginStatus ? '你也可以用自己的 Key 覆盖系统配置。' : '游客必须配置 Key 才能使用 AI 功能。Key 仅保存在你的浏览器本地，不会上传到服务器。' }}
           </p>
           <div class="flex flex-col md:flex-row gap-2">
             <select
               v-model="newApiKeyProviderSlug"
-              class="flex-1 px-3 py-1.5 border rounded text-xs"
+              class="flex-1 px-3 py-1.5 border rounded text-caption"
             >
               <option value="" disabled>选择已开放 Key 的厂商…</option>
               <option v-for="p in openProviders" :key="p.slug" :value="p.slug">
@@ -2671,22 +2671,22 @@ const generateImageToVideo = async () => {
               v-model="newApiKeyValue"
               type="password"
               placeholder="API Key"
-              class="flex-1 px-3 py-1.5 border rounded text-xs font-mono"
+              class="flex-1 px-3 py-1.5 border rounded text-caption font-mono"
             />
             <button
               @click="saveUserApiKey"
-              class="px-3 py-1.5 bg-blue-500 text-white rounded text-xs hover:bg-blue-600"
+              class="px-3 py-1.5 bg-blue-500 text-white rounded text-caption hover:bg-blue-600"
             >💾 保存</button>
           </div>
-          <p v-if="openProviders.length === 0" class="text-xs text-gray-400">
+          <p v-if="openProviders.length === 0" class="text-caption text-gray-400">
             暂无可配置 Key 的厂商（管理员尚未开放任何厂商）。
           </p>
           <div v-if="Object.keys(userApiKeys).length > 0" class="border-t pt-2 mt-2">
-            <div class="text-xs font-semibold text-gray-600 mb-1">已保存的厂商 Key：</div>
+            <div class="text-caption font-semibold text-gray-600 mb-1">已保存的厂商 Key：</div>
             <div
               v-for="(key, slug) in userApiKeys"
               :key="slug"
-              class="flex items-center justify-between text-xs py-1"
+              class="flex items-center justify-between text-caption py-1"
             >
               <span class="font-mono text-gray-700">厂商 <b>{{ slug }}</b> 的 Key</span>
               <button
@@ -3076,7 +3076,7 @@ const generateImageToVideo = async () => {
       <div class="relative max-w-4xl max-h-[90vh] w-full" @click.stop>
         <button
           @click="showVideoModal = false"
-          class="absolute -top-10 right-0 text-white text-2xl hover:text-gray-300"
+          class="absolute -top-10 right-0 text-white text-h2 hover:text-gray-300"
         >
           ✕
         </button>
@@ -3098,7 +3098,7 @@ const generateImageToVideo = async () => {
       <div class="relative max-w-4xl max-h-[90vh] w-full" @click.stop>
         <button
           @click="showImageModal = false"
-          class="absolute -top-10 right-0 text-white text-2xl hover:text-gray-300"
+          class="absolute -top-10 right-0 text-white text-h2 hover:text-gray-300"
         >
           ✕
         </button>
@@ -3106,14 +3106,14 @@ const generateImageToVideo = async () => {
           :src="currentImageUrl"
           class="w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
         />
-        <div class="absolute -bottom-10 left-0 right-0 text-center text-white text-sm">
+        <div class="absolute -bottom-10 left-0 right-0 text-center text-white text-body-sm">
           图片 {{ currentImageIndex + 1 }}
         </div>
       </div>
     </div>
 
     <ToolDetail>
-      <div class="space-y-4 text-sm text-gray-700">
+      <div class="space-y-4 text-body-sm text-gray-700">
         <section>
           <h3 class="font-semibold mb-2">功能介绍</h3>
           <p>基于 Agnes AI 的文生视频工具，输入主题自动生成专业视频 Prompt 并创作短视频。支持 5-15 秒时长，多种宽高比选择，24帧流畅播放。</p>

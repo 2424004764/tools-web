@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted, defineAsyncComponent, defineComponent, h } from 'vue'
 import LayoutSkeleton from "@/components/Layout/LayoutSkeleton.vue";
-// import Right from '@/components/Layout/Right/Right.vue'
 import { useComponentStore } from "@/store/modules/component";
 // 异步加载：SimilarRecommend + Comments 合并到同一 chunk，省一次 HTTP 请求
 const Discuss = defineAsyncComponent({
@@ -121,10 +120,10 @@ const isHomePage = computed(() => {
     <transition name="backtop-fade">
       <div
         v-show="showBackTop && !isHomePage"
-        class="fixed right-[30px] bottom-[60px] z-50 cursor-pointer w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center hover:bg-blue-50 transition-colors border border-gray-100"
+        class="fixed right-[30px] bottom-[60px] z-50 cursor-pointer w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center hover:bg-surface-2 transition-colors border border-border-subtle text-ink-700 hover:text-accent-600"
         @click="smoothScrollTop"
       >
-        <el-icon :size="20" color="#409EFF"><Top /></el-icon>
+        <el-icon :size="20"><Top /></el-icon>
       </div>
     </transition>
   </el-container>

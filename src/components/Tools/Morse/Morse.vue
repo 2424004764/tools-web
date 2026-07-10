@@ -182,7 +182,7 @@ onUnmounted(() => {
         <div class="flex items-center gap-3">
           <div class="flex items-center gap-1 shrink-0">
             <span class="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-            <span class="text-sm text-gray-600">正在播放</span>
+            <span class="text-body-sm text-gray-600">正在播放</span>
           </div>
           <div class="flex-1 relative h-2 bg-gray-200 rounded-full overflow-hidden cursor-pointer">
             <div
@@ -195,12 +195,12 @@ onUnmounted(() => {
               :style="{ left: `calc(${smoothProgress}% - 7px)` }"
             ></div>
           </div>
-          <span class="text-xs text-gray-500 shrink-0 w-10 text-right">{{ Math.round(smoothProgress) }}%</span>
+          <span class="text-caption text-gray-500 shrink-0 w-10 text-right">{{ Math.round(smoothProgress) }}%</span>
         </div>
 
         <!-- 当前播放符号可视化 -->
         <div v-if="playProgress" class="flex items-center gap-2">
-          <span class="text-xs text-gray-500">当前：</span>
+          <span class="text-caption text-gray-500">当前：</span>
           <div class="flex items-end gap-0.5">
             <template v-for="(s, si) in playProgress.split('')" :key="si">
               <div
@@ -218,7 +218,7 @@ onUnmounted(() => {
         </div>
 
         <!-- 摩斯码逐字高亮 -->
-        <div class="flex flex-wrap gap-1 font-mono text-sm leading-relaxed max-h-24 overflow-y-auto">
+        <div class="flex flex-wrap gap-1 font-mono text-body-sm leading-relaxed max-h-24 overflow-y-auto">
           <span
             v-for="(char, idx) in morseChars"
             :key="idx"

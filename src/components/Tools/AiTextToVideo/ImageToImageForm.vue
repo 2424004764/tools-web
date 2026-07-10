@@ -2,7 +2,7 @@
   <div>
     <!-- 参考图片上传 -->
     <div class="mb-4">
-      <label class="block text-sm font-medium mb-2">参考图片</label>
+      <label class="block text-body-sm font-medium mb-2">参考图片</label>
       <div v-if="!sourceImage" class="border-2 border-dashed rounded-lg p-6 text-center">
         <input
           type="file"
@@ -14,12 +14,12 @@
         />
         <label
           for="imageToImageUpload"
-          :class="['cursor-pointer text-sm text-gray-600',
+          :class="['cursor-pointer text-body-sm text-gray-600',
             (disabled || isUploading) && 'opacity-50 cursor-not-allowed']"
         >
           <div class="text-4xl mb-2">📷</div>
           <div>{{ isUploading ? '上传中...' : '点击上传参考图片' }}</div>
-          <div class="text-xs text-gray-400 mt-1">支持 JPG、PNG 格式</div>
+          <div class="text-caption text-gray-400 mt-1">支持 JPG、PNG 格式</div>
         </label>
       </div>
       <div v-else class="relative">
@@ -27,7 +27,7 @@
         <button
           @click="$emit('remove')"
           :disabled="disabled"
-          class="absolute top-2 right-2 px-3 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 text-xs disabled:bg-gray-300"
+          class="absolute top-2 right-2 px-3 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 text-caption disabled:bg-gray-300"
         >
           删除
         </button>
@@ -36,11 +36,11 @@
 
     <!-- 模型选择 -->
     <div class="mb-4">
-      <label class="block text-sm font-medium mb-2">图像模型</label>
+      <label class="block text-body-sm font-medium mb-2">图像模型</label>
       <select
         :value="model"
         @input="$emit('update:model', ($event.target as HTMLSelectElement).value)"
-        class="px-3 py-2 border rounded-lg text-sm"
+        class="px-3 py-2 border rounded-lg text-body-sm"
         :disabled="disabled"
       >
         <option value="agnes-image-2.1-flash">Agnes Image 2.1 Flash (快速)</option>
@@ -50,24 +50,24 @@
 
     <!-- 修改描述 -->
     <div class="mb-4">
-      <label class="block text-sm font-medium mb-2">修改描述</label>
+      <label class="block text-body-sm font-medium mb-2">修改描述</label>
       <textarea
         id="image-to-image-prompt-input"
         :value="prompt"
         @input="$emit('update:prompt', ($event.target as HTMLTextAreaElement).value)"
         placeholder="例如：将天空改成日落，添加彩虹..."
         rows="3"
-        class="w-full px-3 py-2 border rounded-lg text-sm"
+        class="w-full px-3 py-2 border rounded-lg text-body-sm"
         :disabled="disabled"
       />
-      <p class="text-xs text-gray-500 mt-1">
+      <p class="text-caption text-gray-500 mt-1">
         描述想要修改或添加的内容
       </p>
     </div>
 
     <!-- 生成强度 -->
     <div class="mb-4">
-      <label class="block text-sm font-medium mb-2">
+      <label class="block text-body-sm font-medium mb-2">
         生成强度: {{ strength.toFixed(1) }}
       </label>
       <input
@@ -80,7 +80,7 @@
         class="w-full"
         :disabled="disabled"
       />
-      <div class="flex justify-between text-xs text-gray-500 mt-1">
+      <div class="flex justify-between text-caption text-gray-500 mt-1">
         <span>保留原图 0</span>
         <span>完全重绘 1.0</span>
       </div>
@@ -88,12 +88,12 @@
 
     <!-- 图片比例 -->
     <div class="mb-4">
-      <label class="block text-sm font-medium mb-2">图片比例</label>
+      <label class="block text-body-sm font-medium mb-2">图片比例</label>
       <select
         id="image-to-image-aspect-ratio-select"
         :value="aspectRatio"
         @input="$emit('update:aspectRatio', ($event.target as HTMLSelectElement).value)"
-        class="px-3 py-2 border rounded-lg text-sm"
+        class="px-3 py-2 border rounded-lg text-body-sm"
         :disabled="disabled"
       >
         <option v-for="opt in aspectRatioOptions" :key="opt.value" :value="opt.value">
@@ -104,11 +104,11 @@
 
     <!-- 生成数量 -->
     <div class="mb-4">
-      <label class="block text-sm font-medium mb-2">生成数量</label>
+      <label class="block text-body-sm font-medium mb-2">生成数量</label>
       <select
         :value="count"
         @input="$emit('update:count', Number(($event.target as HTMLSelectElement).value))"
-        class="px-3 py-2 border rounded-lg text-sm"
+        class="px-3 py-2 border rounded-lg text-body-sm"
         :disabled="disabled"
       >
         <option :value="1">1张</option>

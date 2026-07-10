@@ -99,7 +99,7 @@ watch(() => [state.input, state.byLine], convertAll, { deep: true })
   <div class="flex flex-col mt-3 flex-1">
     <DetailHeader :title="info.title" />
     <div class="p-4 rounded-2xl bg-white">
-      <div class="mb-2 text-sm text-gray-500">
+      <div class="mb-2 text-body-sm text-gray-500">
         输入一个名称或多行名称，自动同时生成四种风格。
         <el-link class="ml-2" type="primary" @click="fillExample">填充示例</el-link>
       </div>
@@ -116,28 +116,28 @@ watch(() => [state.input, state.byLine], convertAll, { deep: true })
       <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div>
           <div class="flex items-center justify-between mb-2">
-            <div class="text-sm text-gray-600">camelCase</div>
+            <div class="text-body-sm text-gray-600">camelCase</div>
             <el-button size="small" @click="copyCamel">复制</el-button>
           </div>
           <el-input type="textarea" :rows="5" v-model="out.camel" readonly />
         </div>
         <div>
           <div class="flex items-center justify-between mb-2">
-            <div class="text-sm text-gray-600">PascalCase</div>
+            <div class="text-body-sm text-gray-600">PascalCase</div>
             <el-button size="small" @click="copyPascal">复制</el-button>
           </div>
           <el-input type="textarea" :rows="5" v-model="out.pascal" readonly />
         </div>
         <div>
           <div class="flex items-center justify-between mb-2">
-            <div class="text-sm text-gray-600">snake_case</div>
+            <div class="text-body-sm text-gray-600">snake_case</div>
             <el-button size="small" @click="copySnake">复制</el-button>
           </div>
           <el-input type="textarea" :rows="5" v-model="out.snake" readonly />
         </div>
         <div>
           <div class="flex items-center justify-between mb-2">
-            <div class="text-sm text-gray-600">kebab-case</div>
+            <div class="text-body-sm text-gray-600">kebab-case</div>
             <el-button size="small" @click="copyKebab">复制</el-button>
           </div>
           <el-input type="textarea" :rows="5" v-model="out.kebab" readonly />
