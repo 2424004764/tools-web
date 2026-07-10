@@ -308,23 +308,58 @@ const generatePoster = async () => {
   isGenerating.value = true
 
   try {
-    // 创建一个克隆的元素用于生成图片（不带transform）
+    // 1. 等待字体加载完成 —— html2canvas 捕获时若字体未就绪，
+    //    会用 fallback 字宽渲染，导致中文换行 / 块级高度与预览不一致。
+    if (document.fonts && document.fonts.ready) {
+      await document.fonts.ready
+    }
+
+    // 2. 等 2 帧确保 Vue 完成 DOM 更新 + Tailwind class 被 layout engine 解析
+    await new Promise<void>((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+    )
+
+    // 3. 克隆海报元素并显式重置所有可能影响 layout 的属性
     const cloneNode = poster.value.cloneNode(true) as HTMLElement
-    cloneNode.style.transform = 'none'
+    cloneNode.dataset.clonedPoster = 'true'
     cloneNode.style.position = 'absolute'
-    cloneNode.style.left = '-9999px'
+    cloneNode.style.left = '0'
     cloneNode.style.top = '0'
+    // 下面这些是 html2canvas 抓 layout 时的常见踩坑点：cloneNode 会原样复制
+    // 原节点的 inline style（含 transformOrigin / transition / boxShadow），
+    // 导致 off-screen 节点带 transform 上下文，layout 计算结果与预览不一致
+    cloneNode.style.transform = 'none'
+    cloneNode.style.transformOrigin = '50% 50%'
+    cloneNode.style.transition = 'none'
+    cloneNode.style.willChange = 'auto'
+    cloneNode.style.boxShadow = 'none'
 
     document.body.appendChild(cloneNode)
 
     const canvas = await html2canvas(cloneNode, {
       backgroundColor: null,
       useCORS: true,
-      scale: 1,
+      scale: 2,         // 2 倍 retina 输出，避免下载图发糊
       width: info.posterWidth,
       height: info.posterHeight,
       windowWidth: info.posterWidth,
-      windowHeight: info.posterHeight
+      windowHeight: info.posterHeight,
+      scrollX: 0,
+      scrollY: 0,
+      x: 0,
+      y: 0,
+      onclone: (clonedDoc) => {
+        // html2canvas 在 clonedDoc 里渲染，需要再次确认 transform/transition 没有复活
+        const cloned = clonedDoc.body.querySelector(
+          '[data-cloned-poster]'
+        ) as HTMLElement | null
+        if (cloned) {
+          cloned.style.transform = 'none'
+          cloned.style.transformOrigin = '50% 50%'
+          cloned.style.transition = 'none'
+          cloned.style.boxShadow = 'none'
+        }
+      },
     })
 
     // 移除克隆节点
