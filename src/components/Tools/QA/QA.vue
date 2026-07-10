@@ -302,6 +302,10 @@ const formatTime = (timeStr: string) => {
 
 // 复制QA链接
 const copyQALink = async (qa: QAItem) => {
+  if (!qa.isPublic) {
+    ElMessage.warning('该QA页面尚未公开，复制链接后他人无法访问。请先点击编辑并勾选「设为公开页面」')
+    return
+  }
   try {
     const link = `${window.location.origin}/qa-view/${qa.id}`
     await navigator.clipboard.writeText(link)
