@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref, computed, watch, onMounted } from 'vue'
+import { reactive, ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { copy } from '@/utils/string'
@@ -233,13 +233,53 @@ const IMAGE_HOSTS = [
   { name: 'scdn.io 图床', url: 'https://img.scdn.io/', emoji: '☁️' },
 ]
 
-// hover 触发图床子菜单的开关
+// ============ 更多下拉（自管 hover 浮层，避免 el-dropdown popper 与 Teleport 子菜单 hover 上下文冲突）============
+// 主下拉浮层显隐
+const moreDropdownVisible = ref(false)
+let moreHideTimer: number | null = null
+
+// DOM ref：trigger 用外层 span 包一层方便 $el 访问；浮层本身用于 anchor 与外部点击判断
+const moreTriggerRef = ref<HTMLElement | null>(null)
+const moreDropdownRef = ref<HTMLElement | null>(null)
+const moreDropdownPos = reactive({ top: 0, left: 0 })
+
+// 二级菜单：图床子菜单显隐
 const imageHostsHover = ref(false)
 let imageHostsHideTimer: number | null = null
 
 // 触发器 DOM ref + 子菜单位置（Teleport 到 body 后用 fixed 定位）
 const imageHostsTriggerRef = ref<HTMLElement | null>(null)
-const imageHostsPos = reactive({ top: 0, right: 0 })
+const imageHostsPos = reactive({ top: 0, left: 0 })
+const SUBMENU_WIDTH = 180 // 二级菜单 min-width
+
+const showMoreDropdown = () => {
+  if (moreHideTimer) {
+    clearTimeout(moreHideTimer)
+    moreHideTimer = null
+  }
+  if (moreTriggerRef.value) {
+    const rect = moreTriggerRef.value.getBoundingClientRect()
+    // 主菜单定位在 trigger 正下方，左缘对齐 trigger 左缘
+    moreDropdownPos.top = rect.bottom + 4
+    moreDropdownPos.left = rect.left
+  }
+  moreDropdownVisible.value = true
+}
+const scheduleHideMoreDropdown = () => {
+  if (moreHideTimer) clearTimeout(moreHideTimer)
+  moreHideTimer = window.setTimeout(() => {
+    moreDropdownVisible.value = false
+    moreHideTimer = null
+    // ⚠️ 关键：主菜单收起时不再强制关闭二级菜单
+    // 避免主菜单 mouseleave → 120ms 后强制清空二级菜单 hover，导致鼠标还没移到二级菜单它就消失
+    // 二级菜单的 hover 状态由它自己的 mouseenter/mouseleave 独立管理
+    // 仅清掉 pending 的 hide timer，避免悬挂
+    if (imageHostsHideTimer) {
+      clearTimeout(imageHostsHideTimer)
+      imageHostsHideTimer = null
+    }
+  }, 120) // 120ms 桥接，避免鼠标从 trigger 移到主菜单时闪烁关闭
+}
 
 const showImageHosts = () => {
   if (imageHostsHideTimer) {
@@ -249,22 +289,47 @@ const showImageHosts = () => {
   if (imageHostsTriggerRef.value) {
     const rect = imageHostsTriggerRef.value.getBoundingClientRect()
     imageHostsPos.top = rect.top
-    // 子菜单向右贴 trigger 左缘 - 4px 间距
-    imageHostsPos.right = window.innerWidth - rect.left + 4
+    // 默认向右侧紧贴 trigger 展开；如右侧空间不足则向左侧展开
+    const gap = 4
+    if (rect.right + gap + SUBMENU_WIDTH <= window.innerWidth) {
+      imageHostsPos.left = rect.right + gap
+    } else {
+      imageHostsPos.left = rect.left - gap - SUBMENU_WIDTH
+    }
   }
   imageHostsHover.value = true
+  // ⚠️ 关键：进入二级菜单时同步保持主菜单显示
+  // 因为 trigger 占满了主菜单宽度，鼠标从 trigger 移到二级菜单必然先 mouseleave 主菜单
+  // 没这一步，主菜单 120ms 后会 display:none 把所有菜单项也消失
+  showMoreDropdown()
 }
 const scheduleHideImageHosts = () => {
   if (imageHostsHideTimer) clearTimeout(imageHostsHideTimer)
   imageHostsHideTimer = window.setTimeout(() => {
     imageHostsHover.value = false
     imageHostsHideTimer = null
-  }, 120)  // 120ms 桥接，避免鼠标从触发器移到子菜单时闪烁关闭
+  }, 150) // 150ms 桥接：足够覆盖鼠标从 trigger 穿过主菜单 padding(~16px) 进入二级菜单
 }
-// 外层下拉关闭时也强制隐藏子菜单
-const onMoreDropdownVisibleChange = (visible: boolean) => {
-  if (!visible) {
+
+// 点击外部或 ESC 关闭主菜单
+const handleMoreClickOutside = (e: MouseEvent) => {
+  if (!moreDropdownVisible.value) return
+  const target = e.target as Node
+  if (
+    moreTriggerRef.value && !moreTriggerRef.value.contains(target) &&
+    moreDropdownRef.value && !moreDropdownRef.value.contains(target)
+  ) {
+    moreDropdownVisible.value = false
     if (imageHostsHideTimer) clearTimeout(imageHostsHideTimer)
+    imageHostsHideTimer = null
+    imageHostsHover.value = false
+  }
+}
+const handleMoreEsc = (e: KeyboardEvent) => {
+  if (e.key === 'Escape' && moreDropdownVisible.value) {
+    moreDropdownVisible.value = false
+    if (imageHostsHideTimer) clearTimeout(imageHostsHideTimer)
+    imageHostsHideTimer = null
     imageHostsHover.value = false
   }
 }
@@ -445,6 +510,13 @@ onMounted(() => {
   loadFromStorage()
   loadDraftsList()
   loadCurrentDraft()
+  // "更多" 自管浮层：点击外部 / ESC 关闭
+  document.addEventListener('click', handleMoreClickOutside)
+  document.addEventListener('keydown', handleMoreEsc)
+})
+onUnmounted(() => {
+  document.removeEventListener('click', handleMoreClickOutside)
+  document.removeEventListener('keydown', handleMoreEsc)
 })
 
 // ========== 新增方法 ==========
@@ -1737,41 +1809,77 @@ const quickSyntaxButtons = [
             {{ fullscreen.isFullscreen.value ? '⛶' : '⛶' }}
           </el-button>
 
-          <el-dropdown @visible-change="onMoreDropdownVisibleChange">
-            <el-button class="w-full sm:w-auto">
+          <!-- 更多菜单：自管 hover 浮层（避免 el-dropdown popper 与 Teleport 子菜单 hover 上下文冲突） -->
+          <span
+            ref="moreTriggerRef"
+            class="inline-block"
+          >
+            <el-button
+              class="w-full sm:w-auto"
+              @mouseenter="showMoreDropdown"
+              @mouseleave="scheduleHideMoreDropdown"
+            >
               更多
             </el-button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item @click.stop>
-                  <div
-                    ref="imageHostsTriggerRef"
-                    class="relative flex items-center justify-between"
-                    @mouseenter="showImageHosts"
-                    @mouseleave="scheduleHideImageHosts"
-                  >
-                    <span>🖼️ 图床</span>
-                    <span class="ml-6 text-gray-400">‹</span>
-                  </div>
-                </el-dropdown-item>
-                <el-dropdown-item @click="triggerImport">
-                  📥 导入 MD
-                </el-dropdown-item>
-                <el-dropdown-item @click="exportMarkdown">📤 导出 MD</el-dropdown-item>
-                <el-dropdown-item divided @click="resetContent">🔄 还原</el-dropdown-item>
-                <el-dropdown-item @click="clearContent" class="text-red-500">🗑️ 清空</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
+          </span>
+          <Teleport to="body">
+            <div
+              v-show="moreDropdownVisible"
+              class="fixed min-w-[160px] bg-white rounded-md shadow-lg border border-gray-200 py-1"
+              :style="{
+                top: moreDropdownPos.top + 'px',
+                left: moreDropdownPos.left + 'px',
+                zIndex: 9999,
+              }"
+              @mouseenter="showMoreDropdown"
+              @mouseleave="scheduleHideMoreDropdown"
+            >
+              <!-- 图床 hover 子菜单触发项 -->
+              <div
+                ref="imageHostsTriggerRef"
+                class="flex items-center justify-between px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
+                @mouseenter="showImageHosts"
+                @mouseleave="scheduleHideImageHosts"
+              >
+                <span>🖼️ 图床</span>
+                <span class="ml-6 text-gray-400">›</span>
+              </div>
+              <div
+                class="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
+                @click="triggerImport"
+              >
+                📥 导入 MD
+              </div>
+              <div
+                class="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
+                @click="exportMarkdown"
+              >
+                📤 导出 MD
+              </div>
+              <div class="border-t border-gray-100 my-1"></div>
+              <div
+                class="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
+                @click="resetContent"
+              >
+                🔄 还原
+              </div>
+              <div
+                class="px-4 py-2 text-sm text-red-500 hover:bg-gray-100 cursor-pointer"
+                @click="clearContent"
+              >
+                🗑️ 清空
+              </div>
+            </div>
+          </Teleport>
 
-          <!-- 图床二级菜单：Teleport 到 body 避免 popper overflow:hidden 裁切 -->
+          <!-- 图床二级菜单：Teleport 到 body 避免主菜单 overflow:hidden 裁切 -->
           <Teleport to="body">
             <div
               v-show="imageHostsHover"
               class="fixed min-w-[180px] bg-white rounded-md shadow-lg border border-gray-200 py-1"
               :style="{
                 top: imageHostsPos.top + 'px',
-                right: imageHostsPos.right + 'px',
+                left: imageHostsPos.left + 'px',
                 zIndex: 9999,
               }"
               @mouseenter="showImageHosts"
