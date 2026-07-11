@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref, watch, computed } from 'vue'
+import { reactive, ref, watch, computed, onMounted, onBeforeUnmount } from 'vue'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import html2canvas from "html2canvas"
@@ -185,6 +185,7 @@ const info = reactive({
 })
 
 const poster = ref()
+const previewContainer = ref<HTMLElement | null>(null)
 const isGenerating = ref(false)
 
 // 切换模板
@@ -225,6 +226,36 @@ watch(() => info.selectedAspectRatio, (newIndex) => {
   } else {
     info.isCustomSize = true
   }
+})
+
+// 移动端预览自动适配屏幕宽度，避免左右被裁剪
+const fitPreviewToScreen = () => {
+  if (typeof window === 'undefined') return
+  if (window.innerWidth >= 1024) return // 桌面端不自动调整
+  if (!previewContainer.value) return
+  const containerWidth = previewContainer.value.clientWidth - 8 // 留 8px 余量
+  if (containerWidth <= 0) return
+
+  const visualWidth = info.posterWidth * info.previewScale
+  // 仅在视觉宽度超出容器时才下调，避免覆盖用户主动调小的缩放
+  if (visualWidth > containerWidth) {
+    const idealScale = containerWidth / info.posterWidth
+    info.previewScale = Math.max(0.1, Math.floor(idealScale * 100) / 100)
+  }
+}
+
+onMounted(() => {
+  fitPreviewToScreen()
+  window.addEventListener('resize', fitPreviewToScreen)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', fitPreviewToScreen)
+})
+
+// 海报尺寸变化（如切换比例 / 自定义尺寸）后重新适配
+watch(() => [info.posterWidth, info.posterHeight], () => {
+  fitPreviewToScreen()
 })
 
 // 点击动画效果
@@ -370,8 +401,12 @@ const generatePoster = async () => {
     // 创建下载链接
     const link = document.createElement('a')
     link.href = baseImg
-    const date = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-    link.download = `闲鱼技能海报_${date}_${info.posterWidth}x${info.posterHeight}.png`
+    const now = new Date()
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const date = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`
+    const time = `${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
+    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0')
+    link.download = `闲鱼技能海报_${date}_${time}_${random}_${info.posterWidth}x${info.posterHeight}.png`
     link.click()
   } catch (error) {
     console.error('生成图片失败:', error)
@@ -678,8 +713,18 @@ const generatePoster = async () => {
           </div>
 
           <!-- 海报预览 -->
-          <div class="flex justify-center items-start overflow-hidden" style="max-height: calc(100vh - 200px);">
-            <div class="pt-4" style="width: fit-content;">
+          <div
+            ref="previewContainer"
+            class="flex justify-center items-start overflow-hidden preview-container"
+            style="max-height: calc(100vh - 200px);"
+          >
+            <div
+              class="pt-4"
+              :style="{
+                width: (info.posterWidth * info.previewScale) + 'px',
+                height: (info.posterHeight * info.previewScale) + 'px',
+              }"
+            >
               <div
                 ref="poster"
                 class="relative overflow-hidden shadow-2xl transition-all duration-300"
@@ -688,7 +733,7 @@ const generatePoster = async () => {
                   height: info.posterHeight + 'px',
                   background: info.selectedTemplate.background,
                   color: info.selectedTemplate.textColor,
-                  transformOrigin: 'top center',
+                  transformOrigin: 'top left',
                   transform: `scale(${info.previewScale})`,
                   userSelect: 'none',
                   WebkitUserSelect: 'none'
