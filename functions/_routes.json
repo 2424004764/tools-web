@@ -49,7 +49,9 @@
     "/api/confession/groups/delete",
     "/api/confession/groups/delete/*",
     "/api/confession/messages/delete",
-    "/api/confession/messages/delete/*"
+    "/api/confession/messages/delete/*",
+    "/api/life-trajectories",
+    "/api/life-trajectories/*"
   ],
   "exclude": []
 }

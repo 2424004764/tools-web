@@ -137,6 +137,12 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://tool.fologde.com/life-trajectory/</loc>
+    <lastmod>2026-07-11</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://tool.fologde.com/algorithm-visualization/</loc>
     <lastmod>2024-01-20</lastmod>
     <changefreq>monthly</changefreq>

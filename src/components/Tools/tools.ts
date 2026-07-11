@@ -1010,6 +1010,15 @@ export function getToolsCate() {
           url: '/confession-wall/',
           cateId: 11,
           cate: '趣味互动',
+        },
+        {
+          id: 132,
+          title: '人生轨迹',
+          logo: '/images/logo/chat.png',
+          desc: '轻量生活记录工具：登录后用一句文字 + 一个 emoji 记录此刻，公开可见最新优先',
+          url: '/life-trajectory/',
+          cateId: 11,
+          cate: '趣味互动',
         }
       ]
     },

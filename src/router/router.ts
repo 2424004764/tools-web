@@ -1398,5 +1398,15 @@ export const constantRoute = [
       keywords: '阿里云OSS,OSS管理,OSS在线编辑,STS临时凭证,AccessKey,RAM角色,Bucket,对象存储,在线编辑器,HTML预览,多Tab编辑器',
       description: '在线管理阿里云 OSS 对象存储，支持多 Bucket 配置、AccessKey AES-GCM 加密存储、阿里云 STS 临时凭证签发、文件浏览/上传/下载/删除、多 Tab 在线编辑器（HTML/Markdown/JSON/CSS/JS 实时预览）。登录后才能保存 AccessKey 等敏感凭证。'
     }
+  },
+  {
+    path: '/life-trajectory/',
+    component: () => import('@/components/Tools/LifeTrajectory/LifeTrajectory.vue'),
+    name: 'lifeTrajectory',
+    meta: {
+      title: '人生轨迹 - 轻量生活记录工具',
+      keywords: '人生轨迹,生活记录,心情记录,日记,随笔,mood,生活轨迹',
+      description: '在线人生轨迹记录工具，登录后用一句文字 + 一个 emoji 记录当下的心情与想法，所有用户的轨迹按时间倒序展示，数据存储于 Cloudflare D1。'
+    }
   }
 ]
