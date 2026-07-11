@@ -1,8 +1,5 @@
 import { ApiResponse } from '../utils/db.js'
 
-// 验证码存储（使用 KV 或临时内存，这里用内存演示，生产环境应使用 KV）
-const verificationCodes = new Map()
-
 // 生成6位数字验证码
 const generateCode = () => Math.floor(100000 + Math.random() * 900000).toString()
 
@@ -66,10 +63,17 @@ export async function onRequest(context) {
 
     // 生成验证码
     const code = generateCode()
-    const key = `${email}:${type}`
+    const key = `vcode:${email}:${type}`
 
-    // 存储验证码（5分钟有效）
-    verificationCodes.set(key, { code, expires: Date.now() + 5 * 60 * 1000 })
+    // 存储到 KV（5 分钟 TTL 由 KV 原生 expirationTtl 保证）
+    if (!env.VERIFICATION_CODES) {
+      return ApiResponse.error('验证码服务未配置（缺少 VERIFICATION_CODES 绑定）', request.headers.get('Origin'), 500)
+    }
+    await env.VERIFICATION_CODES.put(
+      key,
+      JSON.stringify({ code, expires: Date.now() + 5 * 60 * 1000 }),
+      { expirationTtl: 300 }
+    )
 
     // 发送邮件
     const typeText = { register: '注册', login: '登录', reset: '重置密码' }[type]
@@ -102,17 +106,28 @@ export async function onRequest(context) {
 }
 
 // 导出验证码验证函数（供其他 API 使用）
-export const verifyCode = (email, type, code) => {
-  const key = `${email}:${type}`
-  const stored = verificationCodes.get(key)
+// 注意：此函数依赖 env.VERIFICATION_CODES 绑定；调用方需把 env 一并传入
+export const verifyCode = async (env, email, type, code) => {
+  const key = `vcode:${email}:${type}`
+  if (!env || !env.VERIFICATION_CODES) return false
 
+  let stored
+  try {
+    stored = await env.VERIFICATION_CODES.get(key, { type: 'json' })
+  } catch (e) {
+    console.error('KV read failed:', e)
+    return false
+  }
   if (!stored) return false
+
+  // 防御性过期判断（KV TTL 通常已处理，但加一层防时钟漂移）
   if (Date.now() > stored.expires) {
-    verificationCodes.delete(key)
+    await env.VERIFICATION_CODES.delete(key).catch(() => {})
     return false
   }
   if (stored.code !== code) return false
 
-  verificationCodes.delete(key) // 验证成功后删除
+  // 验证成功后删除（一次性使用）
+  await env.VERIFICATION_CODES.delete(key).catch(() => {})
   return true
 }

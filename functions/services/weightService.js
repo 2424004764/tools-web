@@ -34,8 +34,8 @@ export class WeightService {
     try {
       const queryBuilder = new QueryBuilder()
         .where('uid', '=', uid)
-        .orderBy('is_default', 'DESC')
-        .orderBy('create_time', 'ASC')
+        .orderBy('isDefault', 'DESC')
+        .orderBy('createTime', 'ASC')
 
       const members = await this.memberModel.findAll(queryBuilder)
 
@@ -190,7 +190,7 @@ export class WeightService {
         .where('uid', '=', uid)
 
       // 先删除该成员的所有体重记录
-      const recordsQueryBuilder = new QueryBuilder().where('member_id', '=', id)
+      const recordsQueryBuilder = new QueryBuilder().where('memberId', '=', id)
       const records = await this.recordModel.findAll(recordsQueryBuilder)
 
       for (const record of records) {
@@ -227,18 +227,18 @@ export class WeightService {
 
       // 按成员过滤
       if (memberId) {
-        queryBuilder.where('member_id', '=', memberId)
+        queryBuilder.where('memberId', '=', memberId)
       }
 
       // 按日期范围过滤
       if (startDate) {
-        queryBuilder.where('record_date', '>=', startDate)
+        queryBuilder.where('recordDate', '>=', startDate)
       }
       if (endDate) {
-        queryBuilder.where('record_date', '<=', endDate)
+        queryBuilder.where('recordDate', '<=', endDate)
       }
 
-      queryBuilder.orderBy('record_date', 'DESC').orderBy('weight', 'DESC')
+      queryBuilder.orderBy('recordDate', 'DESC').orderBy('weight', 'DESC')
 
       if (limit) {
         queryBuilder.limit(limit)
@@ -452,7 +452,7 @@ export class WeightService {
         .where('uid', '=', uid)
 
       if (memberId) {
-        queryBuilder.where('member_id', '=', memberId)
+        queryBuilder.where('memberId', '=', memberId)
       }
 
       const records = await this.recordModel.findAll(queryBuilder)
@@ -566,13 +566,13 @@ export class WeightService {
 
       const queryBuilder = new QueryBuilder()
         .where('uid', '=', uid)
-        .where('record_date', '>=', startDateStr)
+        .where('recordDate', '>=', startDateStr)
 
       if (memberId) {
-        queryBuilder.where('member_id', '=', memberId)
+        queryBuilder.where('memberId', '=', memberId)
       }
 
-      queryBuilder.orderBy('record_date', 'ASC').orderBy('record_time', 'ASC')
+      queryBuilder.orderBy('recordDate', 'ASC').orderBy('recordTime', 'ASC')
 
       const records = await this.recordModel.findAll(queryBuilder)
 
@@ -613,7 +613,7 @@ export class WeightService {
         new QueryBuilder().where('uid', '=', uid)
       )
       const records = await this.recordModel.findAll(
-        new QueryBuilder().where('uid', '=', uid).orderBy('record_date', 'DESC')
+        new QueryBuilder().where('uid', '=', uid).orderBy('recordDate', 'DESC')
       )
 
       return {

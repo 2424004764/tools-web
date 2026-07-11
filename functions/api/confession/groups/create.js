@@ -37,7 +37,7 @@ export async function onRequest(context) {
   }
 
   // 1. 鉴权：解析 JWT 拿 uid
-  const uid = extractUidFromRequest(request)
+  const uid = await extractUidFromRequest(request, env)
   if (!uid) {
     return json({ ok: false, error: '未登录或登录已过期' }, 401)
   }

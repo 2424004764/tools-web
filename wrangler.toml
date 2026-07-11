@@ -49,3 +49,10 @@ GITEE_REDIRECT_URI = "http://127.0.0.1:8788/gitee-auth"
 GITHUB_CLIENT_ID = "Ov23lih4DozBgCiAwLWe"
 GITHUB_CLIENT_SECRET = "6d47d057db84d7f6b7b82a59c54a5fc54d89f327"
 GITHUB_REDIRECT_URI = "http://127.0.0.1:8788/github-auth"
+
+# 验证码 KV 绑定（替代 send-verification-code.js 里的内存 Map）
+# 部署前需先执行：wrangler kv:namespace create VERIFICATION_CODES
+# 拿到 namespace id 后替换下面的占位 ID
+[[kv_namespaces]]
+binding = "VERIFICATION_CODES"
+id = "c7ad6378e7ce4e219d4268e6524711aa"

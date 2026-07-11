@@ -30,7 +30,7 @@ export async function onRequest(context) {
   }
 
   const db = env.DB
-  const uid = extractUidFromRequest(request)
+  const uid = await extractUidFromRequest(request, env)
   const url = new URL(request.url)
   const capability = url.searchParams.get('capability') || 'chat_stream'
 

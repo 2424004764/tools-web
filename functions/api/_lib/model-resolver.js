@@ -1,6 +1,8 @@
 // AI 模型配置共享库
 // 提供：resolveModel / renderTemplate / extractByPath / parseCapabilities
 
+import { AuthMiddleware } from '../../middlewares/auth.js'
+
 /**
  * 从 D1 查询指定 model_key 的完整模型配置
  * @param {D1Database} db
@@ -243,23 +245,19 @@ export function buildUrl(baseUrl, path, queryTemplate, params) {
 }
 
 /**
- * 从 Authorization header 中提取 uid
+ * 从 Authorization header 中提取并验证 uid（HMAC-SHA256 验签）
  * @param {Request} request
- * @returns {string} uid（空字符串表示未登录）
+ * @param {object} [env] Cloudflare Workers env，用于读取 JWT_SECRET
+ * @returns {Promise<string>} uid（空字符串表示未登录或 token 无效）
  */
-export function extractUidFromRequest(request) {
+export async function extractUidFromRequest(request, env) {
   const authHeader = request.headers.get('Authorization')
   if (!authHeader || !authHeader.startsWith('Bearer ')) return ''
   const token = authHeader.substring(7)
-  try {
-    const parts = token.split('.')
-    if (parts.length !== 3) return ''
-    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))
-    if (payload.exp && payload.exp * 1000 <= Date.now()) return ''
-    return payload.uid || ''
-  } catch {
-    return ''
-  }
+  if (!env || !env.JWT_SECRET) return ''
+  const verifyResult = await AuthMiddleware.verifyToken(token, env.JWT_SECRET)
+  if (!verifyResult.success) return ''
+  return verifyResult.payload?.uid || ''
 }
 
 /**

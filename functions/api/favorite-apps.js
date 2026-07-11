@@ -3,6 +3,8 @@
 // GET    /api/favorite-apps?ids=1    获取当前用户收藏的 app_id 列表（轻量，用于前端判断红心状态）
 // POST   /api/favorite-apps          body: { app_id }
 // DELETE /api/favorite-apps?app_id=  删除收藏
+import { extractUidFromRequest } from './_lib/model-resolver.js'
+
 export async function onRequest(context) {
   const { request, env } = context
 
@@ -20,26 +22,9 @@ export async function onRequest(context) {
   const db = env.DB
   const url = new URL(request.url)
 
-  // 从 JWT token 中提取用户信息
-  const getUserFromToken = async () => {
-    const authHeader = request.headers.get('Authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return null
-    }
-    const token = authHeader.substring(7)
-    try {
-      const parts = token.split('.')
-      if (parts.length !== 3) return null
-      const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))
-      if (payload.exp && payload.exp * 1000 <= Date.now()) return null
-      return payload
-    } catch (e) {
-      return null
-    }
-  }
-
-  const user = await getUserFromToken()
-  if (!user || !user.uid) {
+  // 使用统一验签函数（HMAC-SHA256）提取 uid，禁止伪造 token
+  const uid = await extractUidFromRequest(request, env)
+  if (!uid) {
     return new Response(JSON.stringify({
       success: false,
       error: '请先登录'
@@ -48,7 +33,6 @@ export async function onRequest(context) {
       headers: { 'Content-Type': 'application/json', ...corsHeaders }
     })
   }
-  const uid = user.uid
 
   try {
     // GET - 获取收藏列表

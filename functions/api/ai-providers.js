@@ -30,7 +30,7 @@ export async function onRequest(context) {
 
   const db = env.DB
   const url = new URL(request.url)
-  const uid = extractUidFromRequest(request)
+  const uid = await extractUidFromRequest(request, env)
   const isAdminUser = await isAdmin(db, uid)
 
   try {

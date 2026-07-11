@@ -1,4 +1,6 @@
 // 四季景色用户数据API
+import { extractUidFromRequest } from './_lib/model-resolver.js'
+
 export async function onRequest(context) {
   const { request, env } = context
 
@@ -16,38 +18,11 @@ export async function onRequest(context) {
 
   const db = env.DB
 
-  // 验证JWT并获取用户信息
-  const getUserFromToken = async () => {
-    const authHeader = request.headers.get('Authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return null
-    }
-
-    const token = authHeader.substring(7)
-    try {
-      // 解析JWT token
-      const parts = token.split('.')
-      if (parts.length !== 3) return null
-
-      const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))
-
-      // 检查是否过期
-      if (payload.exp && payload.exp * 1000 <= Date.now()) {
-        return null
-      }
-
-      return payload
-    } catch (e) {
-      console.error('Token解析失败:', e)
-      return null
-    }
-  }
-
   try {
     // GET - 获取用户的四季景色数据
     if (request.method === 'GET') {
-      const user = await getUserFromToken()
-      if (!user || !user.uid) {
+      const uid = await extractUidFromRequest(request, env)
+      if (!uid) {
         return new Response(JSON.stringify({
           success: false,
           error: '请先登录'
@@ -59,7 +34,7 @@ export async function onRequest(context) {
 
       const result = await db.prepare(`
         SELECT data FROM user_season_scenery WHERE uid = ?
-      `).bind(user.uid).first()
+      `).bind(uid).first()
 
       // 如果没有记录，返回空数组
       const data = result ? JSON.parse(result.data) : []
@@ -74,8 +49,8 @@ export async function onRequest(context) {
 
     // POST - 保存用户的四季景色数据
     if (request.method === 'POST') {
-      const user = await getUserFromToken()
-      if (!user || !user.uid) {
+      const uid = await extractUidFromRequest(request, env)
+      if (!uid) {
         return new Response(JSON.stringify({
           success: false,
           error: '请先登录'
@@ -105,7 +80,7 @@ export async function onRequest(context) {
       // 检查是否已存在
       const existing = await db.prepare(`
         SELECT id FROM user_season_scenery WHERE uid = ?
-      `).bind(user.uid).first()
+      `).bind(uid).first()
 
       if (existing) {
         // 更新
@@ -113,14 +88,14 @@ export async function onRequest(context) {
           UPDATE user_season_scenery
           SET data = ?, update_time = ?
           WHERE uid = ?
-        `).bind(dataStr, now, user.uid).run()
+        `).bind(dataStr, now, uid).run()
       } else {
         // 插入 - 生成唯一ID
         const id = `season-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
         await db.prepare(`
           INSERT INTO user_season_scenery (id, uid, data, create_time, update_time)
           VALUES (?, ?, ?, ?, ?)
-        `).bind(id, user.uid, dataStr, now, now).run()
+        `).bind(id, uid, dataStr, now, now).run()
       }
 
       return new Response(JSON.stringify({

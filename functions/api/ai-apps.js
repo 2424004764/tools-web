@@ -1,4 +1,6 @@
 // 获取AI应用列表
+import { extractUidFromRequest } from './_lib/model-resolver.js'
+
 export async function onRequest(context) {
   const { request, env } = context
 
@@ -17,38 +19,10 @@ export async function onRequest(context) {
   const db = env.DB
   const url = new URL(request.url)
 
-  // 验证JWT并获取用户信息
-  const getUserFromToken = async () => {
-    const authHeader = request.headers.get('Authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return null
-    }
-
-    const token = authHeader.substring(7)
-    try {
-      // 解析JWT token
-      const parts = token.split('.')
-      if (parts.length !== 3) return null
-
-      const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))
-
-      // 检查是否过期
-      if (payload.exp && payload.exp * 1000 <= Date.now()) {
-        return null
-      }
-
-      return payload
-    } catch (e) {
-      console.error('Token解析失败:', e)
-      return null
-    }
-  }
-
   try {
     // GET - 获取应用列表或单个应用详情
     if (request.method === 'GET') {
-      const user = await getUserFromToken()
-      const uid = user?.uid || null
+      const uid = (await extractUidFromRequest(request, env)) || null
       const appId = url.searchParams.get('id')
 
       // 获取单个应用详情
@@ -121,8 +95,8 @@ export async function onRequest(context) {
 
     // POST - 创建自建应用（需要登录）
     if (request.method === 'POST') {
-      const user = await getUserFromToken()
-      if (!user || !user.uid) {
+      const uid = await extractUidFromRequest(request, env)
+      if (!uid) {
         return new Response(JSON.stringify({
           success: false,
           error: '请先登录'
@@ -147,7 +121,7 @@ export async function onRequest(context) {
       `).bind(
         id, name, icon, title, description, category,
         gradient_from, gradient_to, border_color,
-        user.uid,
+        uid,
         system_prompt || ''
       ).run()
 
@@ -161,8 +135,8 @@ export async function onRequest(context) {
 
     // PUT - 更新自建应用（需要登录且是应用创建者）
     if (request.method === 'PUT') {
-      const user = await getUserFromToken()
-      if (!user || !user.uid) {
+      const uid = await extractUidFromRequest(request, env)
+      if (!uid) {
         return new Response(JSON.stringify({
           success: false,
           error: '请先登录'
@@ -197,7 +171,7 @@ export async function onRequest(context) {
         title, icon, description, category,
         gradient_from, gradient_to, border_color,
         system_prompt || '',
-        appId, user.uid
+        appId, uid
       ).run()
 
       return new Response(JSON.stringify({
@@ -209,8 +183,8 @@ export async function onRequest(context) {
 
     // DELETE - 删除自建应用（需要登录且是应用创建者）
     if (request.method === 'DELETE') {
-      const user = await getUserFromToken()
-      if (!user || !user.uid) {
+      const uid = await extractUidFromRequest(request, env)
+      if (!uid) {
         return new Response(JSON.stringify({
           success: false,
           error: '请先登录'
@@ -235,7 +209,7 @@ export async function onRequest(context) {
       await db.prepare(`
         DELETE FROM ai_apps
         WHERE id = ? AND app_type = 'custom' AND uid = ?
-      `).bind(appId, user.uid).run()
+      `).bind(appId, uid).run()
 
       return new Response(JSON.stringify({
         success: true

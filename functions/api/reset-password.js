@@ -28,7 +28,7 @@ export async function onRequest(context) {
     }
 
     // 验证验证码
-    if (!verifyCode(email, 'reset', code)) {
+    if (!(await verifyCode(env, email, 'reset', code))) {
       return ApiResponse.error('验证码错误或已过期', request.headers.get('Origin'))
     }
 

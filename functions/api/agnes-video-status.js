@@ -26,7 +26,7 @@ export async function onRequest(context) {
   }
 
   const db = env.DB
-  const uid = extractUidFromRequest(request)
+  const uid = await extractUidFromRequest(request, env)
   const url = new URL(request.url)
   const videoId = url.searchParams.get('video_id')
   const modelKey = url.searchParams.get('model_key') || DEFAULT_MODEL_KEY

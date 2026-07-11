@@ -1,5 +1,35 @@
 import { getCORSHeaders } from './cors.js'
 
+// ===== 安全约束：防止 SQL 注入 =====
+const ALLOWED_OPERATORS = new Set([
+  '=', '!=', '<>',
+  '<', '<=', '>', '>=',
+  'LIKE', 'NOT LIKE',
+  'IN', 'NOT IN',
+  'IS', 'IS NOT',
+])
+const ALLOWED_DIRECTIONS = new Set(['ASC', 'DESC'])
+const MAX_LIMIT = 1000
+
+function assertIntegerInRange(value, name, min, max) {
+  if (!Number.isInteger(value) || value < min || value > max) {
+    throw new Error(`QueryBuilder.${name} 必须是 ${min}~${max} 之间的整数，收到：${value}`)
+  }
+}
+
+function assertFieldExists(model, field) {
+  // 强制字段必须在 model.config.fields 中定义，禁止把外部字符串直接当列名拼进 SQL
+  if (!model || !model.config || !model.config.fields || !model.config.fields[field]) {
+    throw new Error(`QueryBuilder 字段未在 model.config.fields 中注册: ${field}`)
+  }
+}
+
+function resolveDbField(model, field) {
+  assertFieldExists(model, field)
+  // JS 字段名 → 数据库列名；若两者同名（无 dbField 配置）则返回原名
+  return model.config.fields[field].dbField || field
+}
+
 // 查询构建器
 export class QueryBuilder {
   constructor() {
@@ -10,21 +40,42 @@ export class QueryBuilder {
   }
 
   where(field, operator, value) {
+    if (typeof operator !== 'string' || !ALLOWED_OPERATORS.has(operator)) {
+      throw new Error(`QueryBuilder.where 操作符不在白名单: ${operator}`)
+    }
+
+    if (operator === 'IS' || operator === 'IS NOT') {
+      // 仅允许 null / true / false，避免把任意字符串拼到 SQL
+      if (value !== null && value !== true && value !== false) {
+        throw new Error(`QueryBuilder.where ${operator} 的 value 必须为 null / true / false`)
+      }
+    } else if (operator === 'IN' || operator === 'NOT IN') {
+      if (!Array.isArray(value)) {
+        throw new Error(`QueryBuilder.where ${operator} 的 value 必须是数组`)
+      }
+    }
+
     this.whereConditions.push({ field, operator, value })
     return this
   }
 
   orderBy(field, direction = 'ASC') {
-    this.orderByConditions.push({ field, direction })
+    const dir = typeof direction === 'string' ? direction.toUpperCase() : direction
+    if (!ALLOWED_DIRECTIONS.has(dir)) {
+      throw new Error(`QueryBuilder.orderBy 方向必须在 [ASC, DESC] 中，收到：${direction}`)
+    }
+    this.orderByConditions.push({ field, direction: dir })
     return this
   }
 
   limit(limit) {
+    assertIntegerInRange(limit, 'limit', 0, MAX_LIMIT)
     this.limitValue = limit
     return this
   }
 
   offset(offset) {
+    assertIntegerInRange(offset, 'offset', 0, Number.MAX_SAFE_INTEGER)
     this.offsetValue = offset
     return this
   }
@@ -38,16 +89,16 @@ export class QueryBuilder {
     const params = []
 
     this.whereConditions.forEach(condition => {
-      const dbField = model.config.fields[condition.field]?.dbField || condition.field
+      const dbField = resolveDbField(model, condition.field)
 
       if (condition.operator === 'IN' || condition.operator === 'NOT IN') {
         const placeholders = Array(condition.value.length).fill('?').join(', ')
         conditions.push(`${dbField} ${condition.operator} (${placeholders})`)
         params.push(...condition.value)
       } else if (condition.operator === 'IS' || condition.operator === 'IS NOT') {
-        // 处理 IS NULL / IS NOT NULL（不使用占位符）
-        const nullValue = condition.value === null ? 'NULL' : condition.value
-        conditions.push(`${dbField} ${condition.operator} ${nullValue}`)
+        // IS / IS NOT 不使用占位符；value 已在 where() 入口限定为 null/true/false
+        const literal = condition.value === null ? 'NULL' : (condition.value ? 'TRUE' : 'FALSE')
+        conditions.push(`${dbField} ${condition.operator} ${literal}`)
       } else {
         conditions.push(`${dbField} ${condition.operator} ?`)
         params.push(condition.value)
@@ -66,7 +117,7 @@ export class QueryBuilder {
     }
 
     const orderClauses = this.orderByConditions.map(order => {
-      const dbField = model.config.fields[order.field]?.dbField || order.field
+      const dbField = resolveDbField(model, order.field)
       return `${dbField} ${order.direction}`
     })
 
