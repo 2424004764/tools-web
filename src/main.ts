@@ -12,6 +12,7 @@ import pinia from './store'
 import { useUserStore } from './store/modules/user'
 import { initializeAIProviders } from './spi/init'
 import { injectCloudflareAnalytics } from './utils/analytics'
+import { startVersionGuard } from './utils/version-guard'
 
 const app = createApp(App)
 app.use(pinia)
@@ -19,6 +20,8 @@ app.use(router)
 // 全局初始化登录态：刷新后从 localStorage 还原 isLoggedIn / user，
 // 否则未在 onMounted 显式 initUserState() 的页面守卫会误判未登录，导致死循环
 useUserStore().initUserState()
+// 版本指纹守卫：检测 CF 重新部署后让用户透明刷新到新版本
+startVersionGuard()
 app.mount('#app')
 
 // 延迟初始化AI提供者（不阻塞应用启动）

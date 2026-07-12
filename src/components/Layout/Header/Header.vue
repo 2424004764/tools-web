@@ -13,14 +13,26 @@ import { useRouter } from 'vue-router'
 const router = useRouter()
 const routeLoading = ref(false)
 
-// 监听路由变化，显示加载状态
+// 监听路由变化，显示加载状态。
+// 10s 超时兜底：chunk 加载失败且 onError 兜底也未触发时，避免 loading 永久卡住。
+let loadingTimer: ReturnType<typeof setTimeout> | null = null
+
 router.beforeEach((_to, _from, next) => {
   routeLoading.value = true
+  if (loadingTimer) clearTimeout(loadingTimer)
+  loadingTimer = setTimeout(() => {
+    routeLoading.value = false
+    loadingTimer = null
+  }, 10_000)
   next()
 })
 
 router.afterEach(() => {
   routeLoading.value = false
+  if (loadingTimer) {
+    clearTimeout(loadingTimer)
+    loadingTimer = null
+  }
 })
 // const isNavDrawer = ref(false)
 const loading = ref(false)
