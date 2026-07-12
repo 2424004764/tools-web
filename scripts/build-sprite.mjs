@@ -44,6 +44,12 @@ async function loadCell(logoUrl) {
   const pipeline = ext === '.svg'
     ? sharp(filePath, { density: SVG_DENSITY, failOn: 'none' })
     : sharp(filePath, { failOn: 'none' })
+  // 先读 metadata：channels=3 (RGB) 表示没有 alpha，渲染到 sprite 会铺满整格
+  // （缩到 80×80 后整格都被原图背景色填满，跟其他透明背景 logo 视觉不一致）
+  const meta = await pipeline.metadata()
+  if (ext !== '.svg' && meta.channels === 3) {
+    console.warn(`[sprite] ⚠ ${logoUrl} 没有 alpha 通道（${meta.channels}ch, ${meta.width}×${meta.height}）。缩到 sprite 后会铺满整格，请导出为带透明的 PNG。`)
+  }
   return await pipeline
     .resize(CELL, CELL, {
       fit: 'contain',
