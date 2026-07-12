@@ -843,7 +843,7 @@ const generateBlessings = async () => {
       }
 
       const styleMap: Record<string, string> = {
-        'warm': '温馨感人',
+        'warm': '温馨感人~',
         'formal': '正式得体',
         'humorous': '幽默风趣',
         'poetic': '诗意优美'
