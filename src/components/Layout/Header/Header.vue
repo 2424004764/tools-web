@@ -337,9 +337,19 @@ onUnmounted(() => {
     @apply w-full;
 }
 
-.el-select :deep(.el-select__wrapper){
-  background-color: rgb(var(--surface-1) / 0.9);
-  border-color: rgb(var(--border-default));
+/* 搜索框：EP 2.5+ 的 .el-select__wrapper 用 box-shadow 实现边框，
+   原来的 border-color 写法完全无效（元素无 border 属性），
+   必须用 box-shadow inset 显式画边框 */
+.el-select :deep(.el-select__wrapper) {
+  background-color: white;
+  box-shadow: 0 0 0 1px rgb(var(--border-default)) inset;
+  transition: box-shadow 0.2s ease;
+}
+.el-select :deep(.el-select__wrapper.is-hovering:not(.is-focused)) {
+  box-shadow: 0 0 0 1px rgb(var(--border-strong)) inset;
+}
+.el-select :deep(.el-select__wrapper.is-focused) {
+  box-shadow: 0 0 0 2px rgb(var(--accent-500)) inset;
 }
 
 /* 用户菜单容器（保持定位上下文，移除并行的 .user-menu / .user-menu-item scoped CSS —— 它们全代码库零引用，模板走 Tailwind utility 实现） */

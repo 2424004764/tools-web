@@ -44,24 +44,25 @@ const SPRITE_TOTAL_H = 17 * (80 + 4)
  * 根据工具的 logo URL，返回用于 :style 的精灵图样式对象。
  * 找不到坐标时返回 style=null，调用方应回退到原 <img>。
  *
- * 关键：背景尺寸是 sprite 原尺寸的一半，让 80px 的格子显示成 40px。
- * 不缩放的话 div 只显示每格的左上 1/4（用户已踩过这个坑）。
+ * displaySize：CSS 像素下的目标尺寸，默认 40px（首页卡片）。
+ * 详情页等场景可传 48 / 56 等，函数内部按 scale = displaySize / SPRITE_CELL_PX
+ * 同时缩放 backgroundSize 和 backgroundPosition，保证 cell 始终落在 div 中心。
  */
-export function useSpriteLogo(tool: { logo: string }): SpriteLogoResult {
+export function useSpriteLogo(tool: { logo: string }, displaySize = SPRITE_CELL_PX / 2): SpriteLogoResult {
   const cell = (spriteCoords as Record<string, SpriteCell | undefined>)[tool.logo]
   if (!cell) {
-    return { style: null, displaySize: SPRITE_CELL_PX / 2 }
+    return { style: null, displaySize }
   }
-  const display = SPRITE_CELL_PX / 2  // 40px
+  const scale = displaySize / SPRITE_CELL_PX
   return {
     style: {
       backgroundImage: `url(${SPRITE_URL})`,
-      backgroundPosition: `-${cell.x / 2}px -${cell.y / 2}px`,
+      backgroundPosition: `-${cell.x * scale}px -${cell.y * scale}px`,
       backgroundRepeat: 'no-repeat',
-      backgroundSize: `${SPRITE_TOTAL_W / 2}px ${SPRITE_TOTAL_H / 2}px`,
-      width: `${display}px`,
-      height: `${display}px`,
+      backgroundSize: `${SPRITE_TOTAL_W * scale}px ${SPRITE_TOTAL_H * scale}px`,
+      width: `${displaySize}px`,
+      height: `${displaySize}px`,
     },
-    displaySize: display,
+    displaySize,
   }
 }

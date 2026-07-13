@@ -116,9 +116,9 @@ onMounted(() => {
     </button>
 
     <!-- 标题 -->
-    <div class="text-h3 font-semibold text-ink-900 flex-1 min-w-0">
+    <h1 class="text-h3 font-semibold text-ink-900 flex-1 min-w-0 truncate">
       {{ props.title }}
-    </div>
+    </h1>
 
     <div class="flex flex-wrap gap-2 justify-start items-center w-full sm:w-auto">
       <!-- 专注模式开关 -->

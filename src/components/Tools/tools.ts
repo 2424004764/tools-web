@@ -1005,7 +1005,7 @@ export function getToolsCate() {
         {
           id: 131,
           title: '匿名告白墙',
-          logo: '/images/logo/chat.png',
+          logo: '/images/logo/confession-wall.png',
           desc: '无需登录的匿名留言墙，发布短消息并对他人的告白点赞或送抱抱，实时飘字互动',
           url: '/confession-wall/',
           cateId: 11,
@@ -1014,7 +1014,7 @@ export function getToolsCate() {
         {
           id: 132,
           title: '人生轨迹',
-          logo: '/images/logo/chat.png',
+          logo: '/images/logo/life-trajectory.png',
           desc: '轻量生活记录工具：登录后用一句文字 + 一个 emoji 记录此刻，公开可见最新优先',
           url: '/life-trajectory/',
           cateId: 11,
@@ -1436,11 +1436,14 @@ export function getTools(data: ToolsReqData) {
   if (title != '') {
     const searchTitle = title.toLowerCase()
 
-    // 1. 搜索普通工具
+    // 1. 搜索普通工具（title / desc / url 都参与匹配）
     list = list.filter(item => {
-      let tmpValue = item.title.toLowerCase()
-      let tmpDesc = item.desc.toLowerCase()
-      return tmpValue.indexOf(searchTitle) !== -1 || tmpDesc.indexOf(searchTitle) !== -1;
+      const tmpValue = item.title.toLowerCase()
+      const tmpDesc = item.desc.toLowerCase()
+      const tmpUrl = (item.url || '').toLowerCase()
+      return tmpValue.indexOf(searchTitle) !== -1
+          || tmpDesc.indexOf(searchTitle) !== -1
+          || tmpUrl.indexOf(searchTitle) !== -1
     });
 
     // 2. 搜索好物网站
