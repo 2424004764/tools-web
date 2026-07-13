@@ -1,5 +1,10 @@
 import type { CSSProperties } from 'vue'
 import spriteCoords from './sprite-coords.json'
+// 用 ?url 让 vite 给资源加 contenthash，自动 cache busting。
+// 旧方案：放在 public/ 下文件名固定，CDN/浏览器缓存命中旧图，与新 sprite-coords.json 错位。
+// 新方案：URL 随 hash 变化，每次部署必然下载新图，坐标与图永远一致。
+// eslint-disable-next-line import/no-unresolved
+import spriteUrl from '@/assets/sprites/tools.png?url'
 
 export interface SpriteCell {
   x: number
@@ -25,8 +30,8 @@ export interface SpriteLogoResult {
   displaySize: number
 }
 
-/** 精灵图源 URL，public/sprites/tools.png */
-export const SPRITE_URL = '/sprites/tools.png'
+/** 精灵图源 URL（vite 在构建时替换为带 contenthash 的资源路径，自动 cache busting） */
+export const SPRITE_URL = spriteUrl
 
 /** sprite 里每格实际像素（Retina @2x，CSS 仍以 40px 显示） */
 export const SPRITE_CELL_PX = 80

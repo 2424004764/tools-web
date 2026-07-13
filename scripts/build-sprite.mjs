@@ -21,7 +21,7 @@ const STRIDE = CELL + PAD  // 84
 const COLS = 8         // 列数
 const SVG_DENSITY = 300 // SVG 栅格化 DPI，越大越清晰但越慢
 
-const PNG_OUT = path.join(ROOT, 'public/sprites/tools.png')
+const PNG_OUT = path.join(ROOT, 'src/assets/sprites/tools.png')
 const COORDS_OUT = path.join(ROOT, 'src/components/Tools/sprite-coords.json')
 const TOOLS_TS = path.join(ROOT, 'src/components/Tools/tools.ts')
 
