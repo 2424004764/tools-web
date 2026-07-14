@@ -59,6 +59,15 @@ const editingMember = ref<WeightMember | null>(null)
 const loading = ref(false)
 const isFirstTime = ref(false)
 
+// 各按钮独立 loading 状态
+const memberLoading = ref(false)        // 添加成员
+const editMemberLoading = ref(false)    // 编辑成员
+const recordLoading = ref(false)        // 记录体重
+const editRecordLoading = ref(false)    // 编辑记录
+const deleteRecordLoading = ref(false)  // 删除记录
+const deleteMemberLoading = ref(false)  // 删除成员
+const shareLoading = ref(false)         // 分享导出
+
 // ===== localStorage 持久化 =====
 const userStore = useUserStore()
 
@@ -380,6 +389,7 @@ const openRecordDialog = () => {
 }
 
 const handleShare = async () => {
+  shareLoading.value = true
   try {
     // 使用 html2canvas 导出图表
     const chartEl = document.querySelector('.chart-export-container')
@@ -401,6 +411,8 @@ const handleShare = async () => {
     })
   } catch (error) {
     ElMessage.error('分享失败')
+  } finally {
+    shareLoading.value = false
   }
 }
 
@@ -418,6 +430,7 @@ const handleAddRecord = async () => {
     ElMessage.warning('请输入有效的体重值（0-500斤）')
     return
   }
+  recordLoading.value = true
   try {
     // 组合备注（标签 + 自定义备注）
     let fullNote = recordForm.value.note || ''
@@ -447,6 +460,8 @@ const handleAddRecord = async () => {
     }
   } catch (error) {
     ElMessage.error('记录失败')
+  } finally {
+    recordLoading.value = false
   }
 }
 
@@ -457,6 +472,11 @@ const handleDeleteRecord = async (record: WeightRecord) => {
       cancelButtonText: '取消',
       type: 'warning'
     })
+  } catch (error) {
+    return
+  }
+  deleteRecordLoading.value = true
+  try {
     await weightApi.deleteRecord(record.id)
     ElMessage.success('删除成功')
     await refreshData()
@@ -465,7 +485,9 @@ const handleDeleteRecord = async (record: WeightRecord) => {
       await fetchChartData()
     }
   } catch (error) {
-    // 用户取消
+    ElMessage.error('删除失败')
+  } finally {
+    deleteRecordLoading.value = false
   }
 }
 
@@ -476,6 +498,7 @@ const handleEditRecord = (record: WeightRecord) => {
 
 const handleUpdateRecord = async () => {
   if (!editingRecord.value) return
+  editRecordLoading.value = true
   try {
     await weightApi.updateRecord(editingRecord.value.id, {
       weight: editingRecord.value.weight,
@@ -492,6 +515,8 @@ const handleUpdateRecord = async () => {
     }
   } catch (error) {
     ElMessage.error('更新失败')
+  } finally {
+    editRecordLoading.value = false
   }
 }
 
@@ -500,6 +525,7 @@ const handleAddMember = async () => {
     ElMessage.warning('请输入成员名称')
     return
   }
+  memberLoading.value = true
   try {
     const result = await weightApi.createMember({
       name: memberForm.value.name,
@@ -521,6 +547,8 @@ const handleAddMember = async () => {
     isFirstTime.value = false
   } catch (error) {
     ElMessage.error('操作失败')
+  } finally {
+    memberLoading.value = false
   }
 }
 
@@ -531,6 +559,11 @@ const handleDeleteMember = async (member: WeightMember) => {
       cancelButtonText: '取消',
       type: 'warning'
     })
+  } catch (error) {
+    return
+  }
+  deleteMemberLoading.value = true
+  try {
     await weightApi.deleteMember(member.id)
     ElMessage.success('删除成功')
     if (currentMemberId.value === member.id) {
@@ -539,7 +572,9 @@ const handleDeleteMember = async (member: WeightMember) => {
     await fetchMembers()
     await refreshData()
   } catch (error) {
-    // 用户取消
+    ElMessage.error('删除失败')
+  } finally {
+    deleteMemberLoading.value = false
   }
 }
 
@@ -561,6 +596,7 @@ const handleUpdateMember = async () => {
     ElMessage.warning('请输入成员名称')
     return
   }
+  editMemberLoading.value = true
   try {
     await weightApi.updateMember(editingMember.value.id, {
       name: memberForm.value.name,
@@ -576,6 +612,8 @@ const handleUpdateMember = async () => {
     await refreshData()
   } catch (error) {
     ElMessage.error('更新失败')
+  } finally {
+    editMemberLoading.value = false
   }
 }
 
@@ -741,10 +779,10 @@ onMounted(async () => {
             </div>
             <!-- 成员操作按钮组 -->
             <template v-if="currentMember">
-              <el-button class="member-action-btn" size="small" @click="handleEditMember(currentMember)">
+              <el-button class="member-action-btn" size="small" :loading="editMemberLoading" @click="handleEditMember(currentMember)">
                 <el-icon><Edit /></el-icon>
               </el-button>
-              <el-button class="member-action-btn !text-rose-400 hover:!text-rose-500 hover:!bg-rose-50" size="small" @click="handleDeleteMember(currentMember)">
+              <el-button class="member-action-btn !text-rose-400 hover:!text-rose-500 hover:!bg-rose-50" size="small" :loading="deleteMemberLoading" @click="handleDeleteMember(currentMember)">
                 <el-icon><Delete /></el-icon>
               </el-button>
             </template>
@@ -959,7 +997,7 @@ onMounted(async () => {
             <span class="font-semibold text-gray-700">体重趋势</span>
           </div>
           <div class="flex items-center gap-2">
-            <el-button link class="!text-indigo-500 !font-medium" @click="handleShare">
+            <el-button link class="!text-indigo-500 !font-medium" :loading="shareLoading" @click="handleShare">
               <el-icon><Share /></el-icon> 分享
             </el-button>
             <el-radio-group v-model="timeRange" size="small">
@@ -1027,10 +1065,10 @@ onMounted(async () => {
               </div>
             </div>
             <div class="flex items-center gap-1 flex-shrink-0">
-              <el-button link class="!text-indigo-500" size="small" @click="handleEditRecord(record)">
+              <el-button link class="!text-indigo-500" size="small" :loading="editRecordLoading" @click="handleEditRecord(record)">
                 <el-icon><Edit /></el-icon>
               </el-button>
-              <el-button link class="!text-rose-400" size="small" @click="handleDeleteRecord(record)">
+              <el-button link class="!text-rose-400" size="small" :loading="deleteRecordLoading" @click="handleDeleteRecord(record)">
                 <el-icon><Delete /></el-icon>
               </el-button>
             </div>
@@ -1040,25 +1078,25 @@ onMounted(async () => {
     </div>
 
     <!-- 添加成员对话框 -->
-    <el-dialog v-model="showMemberDialog" title="添加成员" width="90%" :style="{ maxWidth: '420px' }">
+    <el-dialog v-model="showMemberDialog" title="添加成员" width="90%" :style="{ maxWidth: '420px' }" :close-on-click-modal="false">
       <el-form label-width="80px">
         <el-form-item label="成员名称">
-          <el-input v-model="memberForm.name" placeholder="如：我、老婆、孩子" clearable />
+          <el-input v-model="memberForm.name" placeholder="如：我、老婆、孩子" clearable :disabled="memberLoading" />
         </el-form-item>
         <el-form-item label="身高">
-          <el-input v-model="memberForm.height" type="number" placeholder="用于计算BMI">
+          <el-input v-model="memberForm.height" type="number" placeholder="用于计算BMI" :disabled="memberLoading">
             <template #append>cm</template>
           </el-input>
         </el-form-item>
         <el-form-item label="目标体重">
-          <el-input v-model="memberForm.goalWeight" type="number" placeholder="可选">
+          <el-input v-model="memberForm.goalWeight" type="number" placeholder="可选" :disabled="memberLoading">
             <template #append>斤</template>
           </el-input>
         </el-form-item>
         <el-form-item label="头像样式">
           <div class="flex items-center gap-4">
-            <el-color-picker v-model="memberForm.avatarColor" />
-            <el-select v-model="memberForm.avatarEmoji" placeholder="选Emoji" style="width: 140px" clearable filterable>
+            <el-color-picker v-model="memberForm.avatarColor" :disabled="memberLoading" />
+            <el-select v-model="memberForm.avatarEmoji" placeholder="选Emoji" style="width: 140px" clearable filterable :disabled="memberLoading">
               <el-option v-for="emoji in AVATAR_EMOJIS" :key="emoji" :label="emoji" :value="emoji" />
             </el-select>
             <div v-if="memberForm.avatarEmoji" class="avatar-circle flex items-center justify-center w-10 h-10 rounded-full text-h2" :style="{ backgroundColor: memberForm.avatarColor }">
@@ -1068,31 +1106,31 @@ onMounted(async () => {
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showMemberDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleAddMember">确定</el-button>
+        <el-button @click="showMemberDialog = false" :disabled="memberLoading">取消</el-button>
+        <el-button type="primary" :loading="memberLoading" @click="handleAddMember">确定</el-button>
       </template>
     </el-dialog>
 
     <!-- 编辑成员对话框 -->
-    <el-dialog v-model="showEditMemberDialog" title="编辑成员" width="90%" :style="{ maxWidth: '420px' }">
+    <el-dialog v-model="showEditMemberDialog" title="编辑成员" width="90%" :style="{ maxWidth: '420px' }" :close-on-click-modal="false">
       <el-form label-width="80px">
         <el-form-item label="成员名称">
-          <el-input v-model="memberForm.name" placeholder="如：我、老婆、孩子" clearable />
+          <el-input v-model="memberForm.name" placeholder="如：我、老婆、孩子" clearable :disabled="editMemberLoading" />
         </el-form-item>
         <el-form-item label="身高">
-          <el-input v-model="memberForm.height" type="number" placeholder="用于计算BMI">
+          <el-input v-model="memberForm.height" type="number" placeholder="用于计算BMI" :disabled="editMemberLoading">
             <template #append>cm</template>
           </el-input>
         </el-form-item>
         <el-form-item label="目标体重">
-          <el-input v-model="memberForm.goalWeight" type="number" placeholder="可选">
+          <el-input v-model="memberForm.goalWeight" type="number" placeholder="可选" :disabled="editMemberLoading">
             <template #append>斤</template>
           </el-input>
         </el-form-item>
         <el-form-item label="头像样式">
           <div class="flex items-center gap-4">
-            <el-color-picker v-model="memberForm.avatarColor" />
-            <el-select v-model="memberForm.avatarEmoji" placeholder="选Emoji" style="width: 140px" clearable filterable>
+            <el-color-picker v-model="memberForm.avatarColor" :disabled="editMemberLoading" />
+            <el-select v-model="memberForm.avatarEmoji" placeholder="选Emoji" style="width: 140px" clearable filterable :disabled="editMemberLoading">
               <el-option v-for="emoji in AVATAR_EMOJIS" :key="emoji" :label="emoji" :value="emoji" />
             </el-select>
             <div v-if="memberForm.avatarEmoji" class="avatar-circle flex items-center justify-center w-10 h-10 rounded-full text-h2" :style="{ backgroundColor: memberForm.avatarColor }">
@@ -1102,69 +1140,69 @@ onMounted(async () => {
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showEditMemberDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleUpdateMember">保存</el-button>
+        <el-button @click="showEditMemberDialog = false" :disabled="editMemberLoading">取消</el-button>
+        <el-button type="primary" :loading="editMemberLoading" @click="handleUpdateMember">保存</el-button>
       </template>
     </el-dialog>
 
     <!-- 记录体重对话框 -->
-    <el-dialog v-model="showRecordDialog" title="记录体重" width="90%" :style="{ maxWidth: '420px' }">
+    <el-dialog v-model="showRecordDialog" title="记录体重" width="90%" :style="{ maxWidth: '420px' }" :close-on-click-modal="false">
       <el-form label-width="70px">
         <el-form-item label="成员">
-          <el-select v-if="members.length > 1" v-model="recordForm.memberId" placeholder="选择成员" style="width: 100%">
+          <el-select v-if="members.length > 1" v-model="recordForm.memberId" placeholder="选择成员" style="width: 100%" :disabled="recordLoading">
             <el-option v-for="member in members" :key="member.id" :label="member.name" :value="member.id" />
           </el-select>
           <el-text v-else class="text-gray-600">{{ currentMember?.name || '我' }}</el-text>
         </el-form-item>
         <el-form-item label="体重">
-          <el-input v-model.number="recordForm.weight" type="number" placeholder="请输入体重" clearable>
+          <el-input v-model.number="recordForm.weight" type="number" placeholder="请输入体重" clearable :disabled="recordLoading">
             <template #append>斤</template>
           </el-input>
         </el-form-item>
         <el-form-item label="日期">
-          <el-date-picker v-model="recordForm.recordDate" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" style="width: 100%" />
+          <el-date-picker v-model="recordForm.recordDate" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" style="width: 100%" :disabled="recordLoading" />
         </el-form-item>
         <el-form-item label="时间">
-          <el-time-picker v-model="recordForm.recordTime" placeholder="选择时间" value-format="HH:mm" format="HH:mm" style="width: 100%" />
+          <el-time-picker v-model="recordForm.recordTime" placeholder="选择时间" value-format="HH:mm" format="HH:mm" style="width: 100%" :disabled="recordLoading" />
         </el-form-item>
         <el-form-item label="标签">
-          <el-select v-model="recordForm.noteTag" placeholder="选择标签（可选）" style="width: 100%" clearable>
+          <el-select v-model="recordForm.noteTag" placeholder="选择标签（可选）" style="width: 100%" clearable :disabled="recordLoading">
             <el-option v-for="tag in NOTE_TAGS" :key="tag.value" :label="tag.label" :value="tag.value">
               <span :style="{ color: tag.color }">{{ tag.label }}</span>
             </el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="备注">
-          <el-input v-model="recordForm.note" type="textarea" :rows="2" placeholder="备注（可选）" />
+          <el-input v-model="recordForm.note" type="textarea" :rows="2" placeholder="备注（可选）" :disabled="recordLoading" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showRecordDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleAddRecord">记录</el-button>
+        <el-button @click="showRecordDialog = false" :disabled="recordLoading">取消</el-button>
+        <el-button type="primary" :loading="recordLoading" @click="handleAddRecord">记录</el-button>
       </template>
     </el-dialog>
 
     <!-- 编辑记录对话框 -->
-    <el-dialog v-model="showEditDialog" title="编辑记录" width="90%" :style="{ maxWidth: '400px' }">
+    <el-dialog v-model="showEditDialog" title="编辑记录" width="90%" :style="{ maxWidth: '400px' }" :close-on-click-modal="false">
       <el-form v-if="editingRecord" label-width="70px">
         <el-form-item label="体重">
-          <el-input v-model.number="editingRecord.weight" type="number">
+          <el-input v-model.number="editingRecord.weight" type="number" :disabled="editRecordLoading">
             <template #append>斤</template>
           </el-input>
         </el-form-item>
         <el-form-item label="日期">
-          <el-date-picker v-model="editingRecord.recordDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
+          <el-date-picker v-model="editingRecord.recordDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" :disabled="editRecordLoading" />
         </el-form-item>
         <el-form-item label="时间">
-          <el-time-picker v-model="editingRecord.recordTime" value-format="HH:mm" format="HH:mm" style="width: 100%" />
+          <el-time-picker v-model="editingRecord.recordTime" value-format="HH:mm" format="HH:mm" style="width: 100%" :disabled="editRecordLoading" />
         </el-form-item>
         <el-form-item label="备注">
-          <el-input v-model="editingRecord.note" type="textarea" :rows="2" />
+          <el-input v-model="editingRecord.note" type="textarea" :rows="2" :disabled="editRecordLoading" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showEditDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleUpdateRecord">保存</el-button>
+        <el-button @click="showEditDialog = false" :disabled="editRecordLoading">取消</el-button>
+        <el-button type="primary" :loading="editRecordLoading" @click="handleUpdateRecord">保存</el-button>
       </template>
     </el-dialog>
 

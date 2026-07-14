@@ -68,6 +68,14 @@ const groups = ref<PasswordGroup[]>([])
 const total = ref(0)
 const totalPages = ref(0)
 
+// 各按钮独立 loading 状态
+const entryLoading = ref(false)      // 保存条目（新增/编辑）
+const groupLoading = ref(false)      // 保存分组（新增/编辑）
+const importing = ref(false)         // 导入密码
+const exporting = ref(false)         // 导出密码
+const deletingEntryId = ref<string>('')   // 正在删除的条目 ID
+const deletingGroupId = ref<string>('')   // 正在删除的分组 ID
+
 // 加密密钥（基于用户ID生成）
 const getEncryptionKey = () => {
   const uid = userStore.user?.uid || 'default'
@@ -311,6 +319,7 @@ const saveEntry = async () => {
     return
   }
 
+  entryLoading.value = true
   try {
     // 加密密码
     const encryptedPassword = encryptPassword(info.entryForm.password)
@@ -338,6 +347,8 @@ const saveEntry = async () => {
   } catch (e: any) {
     console.error('保存失败:', e)
     ElMessage.error(e.message || '保存失败')
+  } finally {
+    entryLoading.value = false
   }
 }
 
@@ -349,17 +360,21 @@ const deleteEntry = async (entry: PasswordEntry) => {
       cancelButtonText: '取消',
       type: 'warning'
     })
-
+  } catch {
+    return
+  }
+  deletingEntryId.value = entry.id
+  try {
     await passwordApi.deleteEntry(entry.id)
     ElMessage.success('删除成功')
 
     // 重新加载数据和统计
     await loadData()
   } catch (e: any) {
-    if (e !== 'cancel') {
-      console.error('删除失败:', e)
-      ElMessage.error(e.message || '删除失败')
-    }
+    console.error('删除失败:', e)
+    ElMessage.error(e.message || '删除失败')
+  } finally {
+    deletingEntryId.value = ''
   }
 }
 
@@ -409,6 +424,8 @@ const formatTime = (timeStr: string) => {
 
 // 导出密码
 const exportPasswords = async () => {
+  if (exporting.value) return
+  exporting.value = true
   try {
     const blob = await passwordApi.exportPasswords()
 
@@ -427,6 +444,8 @@ const exportPasswords = async () => {
     ElMessage.success('密码导出成功')
   } catch (e: any) {
     console.error('导出失败:', e)
+  } finally {
+    exporting.value = false
   }
 }
 
@@ -443,6 +462,7 @@ const importPasswords = async () => {
     return
   }
 
+  importing.value = true
   try {
     const result = await passwordApi.importPasswords(info.importFile)
 
@@ -458,6 +478,9 @@ const importPasswords = async () => {
     await loadData()
   } catch (e: any) {
     console.error('导入失败:', e)
+    ElMessage.error(e.message || '导入失败')
+  } finally {
+    importing.value = false
   }
 }
 
@@ -523,6 +546,7 @@ const saveGroup = async () => {
     return
   }
 
+  groupLoading.value = true
   try {
     if (info.groupDialogMode === 'add') {
       await passwordApi.createGroup({
@@ -545,6 +569,8 @@ const saveGroup = async () => {
   } catch (e: any) {
     console.error('保存分组失败:', e)
     ElMessage.error(e.message || '保存分组失败')
+  } finally {
+    groupLoading.value = false
   }
 }
 
@@ -569,7 +595,11 @@ const deleteGroup = async (groupId: string) => {
         }
       )
     }
-
+  } catch {
+    return
+  }
+  deletingGroupId.value = groupId
+  try {
     await passwordApi.deleteGroup(groupId)
     ElMessage.success(count > 0 ? '分组及其密码删除成功' : '分组删除成功')
 
@@ -579,10 +609,10 @@ const deleteGroup = async (groupId: string) => {
     // 重新加载数据和统计
     await loadData()
   } catch (e: any) {
-    if (e !== 'cancel') {
-      console.error('删除分组失败:', e)
-      ElMessage.error(e.message || '删除分组失败')
-    }
+    console.error('删除分组失败:', e)
+    ElMessage.error(e.message || '删除分组失败')
+  } finally {
+    deletingGroupId.value = ''
   }
 }
 
@@ -678,7 +708,7 @@ defineExpose({ formatTime, exportPasswords, openImportDialog })
                 </svg>
                 导入
               </el-button>
-              <el-button @click="exportPasswords">
+              <el-button @click="exportPasswords" :loading="exporting">
                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
                 </svg>
@@ -763,7 +793,7 @@ defineExpose({ formatTime, exportPasswords, openImportDialog })
               </div>
               <div class="flex gap-1 ml-2">
                 <el-button size="small" @click="openEditDialog(entry)">编辑</el-button>
-                <el-button size="small" type="danger" @click="deleteEntry(entry)">删除</el-button>
+                <el-button size="small" type="danger" @click="deleteEntry(entry)" :loading="deletingEntryId === entry.id">删除</el-button>
               </div>
             </div>
 
@@ -900,8 +930,8 @@ defineExpose({ formatTime, exportPasswords, openImportDialog })
       </el-form>
 
       <template #footer>
-        <el-button @click="info.showDialog = false">取消</el-button>
-        <el-button type="primary" @click="saveEntry">保存</el-button>
+        <el-button @click="info.showDialog = false" :disabled="entryLoading">取消</el-button>
+        <el-button type="primary" :loading="entryLoading" @click="saveEntry">保存</el-button>
       </template>
     </el-dialog>
 
@@ -919,8 +949,8 @@ defineExpose({ formatTime, exportPasswords, openImportDialog })
       </el-form>
 
       <template #footer>
-        <el-button @click="info.showGroupDialog = false">取消</el-button>
-        <el-button type="primary" @click="saveGroup">保存</el-button>
+        <el-button @click="info.showGroupDialog = false" :disabled="groupLoading">取消</el-button>
+        <el-button type="primary" :loading="groupLoading" @click="saveGroup">保存</el-button>
       </template>
     </el-dialog>
 
@@ -953,8 +983,8 @@ defineExpose({ formatTime, exportPasswords, openImportDialog })
       </div>
 
       <template #footer>
-        <el-button @click="info.showImportDialog = false">取消</el-button>
-        <el-button type="primary" @click="importPasswords" :disabled="!info.importFile">开始导入</el-button>
+        <el-button @click="info.showImportDialog = false" :disabled="importing">取消</el-button>
+        <el-button type="primary" :loading="importing" @click="importPasswords" :disabled="!info.importFile || importing">开始导入</el-button>
       </template>
     </el-dialog>
 

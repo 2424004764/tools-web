@@ -40,6 +40,10 @@ const messagesContainer = ref<HTMLElement | null>(null);
 const onlineUsers = ref<string[]>([]);
 const isConnecting = ref(false);
 const isSending = ref(false);
+// 更改昵称 / 公告 / 房间名称 的独立 loading
+const nicknameLoading = ref(false);
+const announcementLoading = ref(false);
+const roomNameLoading = ref(false);
 const isConnected = ref(false);
 const showQrcode = ref(false);
 const showAllOnlineUsers = ref(false);
@@ -1685,6 +1689,7 @@ const changeNickname = async () => {
     return;
   }
 
+  nicknameLoading.value = true;
   const oldNickname = nickname.value;
   nickname.value = newNickname;
   showNicknameDialog.value = false;
@@ -1708,6 +1713,7 @@ const changeNickname = async () => {
     // 忽略错误
   }
 
+  nicknameLoading.value = false;
   ElMessage.success("昵称已更改");
 };
 
@@ -1719,6 +1725,7 @@ const openAnnouncementDialog = () => {
 
 // 更新房间公告
 const updateAnnouncement = async () => {
+  announcementLoading.value = true;
   try {
     await chatDb.updateAnnouncement(roomId.value, editingAnnouncement.value);
     roomAnnouncement.value = editingAnnouncement.value;
@@ -1746,6 +1753,8 @@ const updateAnnouncement = async () => {
   } catch (error: any) {
     console.error("更新公告失败:", error);
     ElMessage.error("更新失败: " + (error.message || "请重试"));
+  } finally {
+    announcementLoading.value = false;
   }
 };
 
@@ -1763,6 +1772,7 @@ const updateRoomName = async () => {
     return;
   }
 
+  roomNameLoading.value = true;
   try {
     await chatDb.updateRoomName(roomId.value, newName);
     const oldName = roomName.value;
@@ -1789,6 +1799,8 @@ const updateRoomName = async () => {
   } catch (error: any) {
     console.error("更新房间名称失败:", error);
     ElMessage.error("更新失败: " + (error.message || "请重试"));
+  } finally {
+    roomNameLoading.value = false;
   }
 };
 
@@ -2130,8 +2142,8 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
             @keyup.enter="changeNickname"
           />
           <template #footer>
-            <el-button @click="showNicknameDialog = false">取消</el-button>
-            <el-button type="primary" @click="changeNickname" :disabled="!editingNickname.trim()">
+            <el-button @click="showNicknameDialog = false" :disabled="nicknameLoading">取消</el-button>
+            <el-button type="primary" :loading="nicknameLoading" @click="changeNickname" :disabled="!editingNickname.trim() || nicknameLoading">
               确定
             </el-button>
           </template>
@@ -2151,10 +2163,11 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
             placeholder="输入房间公告内容..."
             maxlength="500"
             show-word-limit
+            :disabled="announcementLoading"
           />
           <template #footer>
-            <el-button @click="showAnnouncementDialog = false">取消</el-button>
-            <el-button type="primary" @click="updateAnnouncement">
+            <el-button @click="showAnnouncementDialog = false" :disabled="announcementLoading">取消</el-button>
+            <el-button type="primary" :loading="announcementLoading" @click="updateAnnouncement">
               确定
             </el-button>
           </template>
@@ -2172,11 +2185,12 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
             placeholder="输入新的房间名称"
             maxlength="30"
             show-word-limit
+            :disabled="roomNameLoading"
             @keyup.enter="updateRoomName"
           />
           <template #footer>
-            <el-button @click="showRoomNameDialog = false">取消</el-button>
-            <el-button type="primary" @click="updateRoomName" :disabled="!editingRoomName.trim()">
+            <el-button @click="showRoomNameDialog = false" :disabled="roomNameLoading">取消</el-button>
+            <el-button type="primary" :loading="roomNameLoading" @click="updateRoomName" :disabled="!editingRoomName.trim() || roomNameLoading">
               确定
             </el-button>
           </template>

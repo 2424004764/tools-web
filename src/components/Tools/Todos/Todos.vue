@@ -206,18 +206,24 @@ const deleteTodo = async (id: string) => {
       cancelButtonText: '取消',
       type: 'warning',
     })
-
+  } catch {
+    return
+  }
+  operationLoading.value = true
+  try {
     const response = await functionsRequest.delete(`/api/todos/${id}`)
 
     if (response.status === 200) {
       ElMessage.success('删除成功')
       await fetchTodos(pagination.value.page, pagination.value.pageSize)
-    }
-  } catch (error: any) {
-    if (error !== 'cancel') {
-      console.error('删除待办事项失败:', error)
+    } else {
       ElMessage.error('删除失败')
     }
+  } catch (error: any) {
+    console.error('删除待办事项失败:', error)
+    ElMessage.error('删除失败')
+  } finally {
+    operationLoading.value = false
   }
 }
 

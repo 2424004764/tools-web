@@ -47,6 +47,11 @@ const isSending = ref(false)
 const sortMode = ref<'latest' | 'hot'>('latest')
 const showCreateGroup = ref(false)
 
+// 各按钮独立 loading 状态
+const creatingGroup = ref(false)
+const deletingMessageId = ref<string>('')
+const reactingMessages = ref<Record<string, boolean>>({})
+
 // 管理员登录态（复用项目自身的 JWT 认证 + user.is_admin）
 const isLoggedIn = computed(() => userStore.getLoginStatus)
 const isAdmin = computed(() => userStore.getIsAdmin)
@@ -281,6 +286,7 @@ const createGroup = async () => {
     ElMessage.warning('仅管理员可创建分组')
     return
   }
+  creatingGroup.value = true
   try {
     await confessionDb.createGroup({
       name,
@@ -304,6 +310,8 @@ const createGroup = async () => {
     } else {
       ElMessage.error('创建失败：' + (err?.message || '未知错误'))
     }
+  } finally {
+    creatingGroup.value = false
   }
 }
 
@@ -384,26 +392,25 @@ const confirmDeleteMessage = async (msg: ConfessionMessage) => {
         type: 'warning',
       }
     )
-    // 乐观更新：立即从本地移除，等 Realtime DELETE 事件做最终一致性
-    messages.value = messages.value.filter((m) => m.id !== msg.id)
-    totalCount.value = Math.max(0, totalCount.value - 1)
-
+  } catch {
+    return
+  }
+  // 乐观更新：立即从本地移除，等 Realtime DELETE 事件做最终一致性
+  messages.value = messages.value.filter((m) => m.id !== msg.id)
+  totalCount.value = Math.max(0, totalCount.value - 1)
+  deletingMessageId.value = msg.id
+  try {
     await confessionDb.deleteMessage(msg.id)
     ElMessage.success('告白已删除')
     // 注：无需再手动 loadMessages() —— Supabase Realtime DELETE 事件
     //     会推到所有客户端（messageDeleteChannel），最终一致性
   } catch (err: any) {
-    // 用户取消 → 回滚乐观更新
-    if (err === 'cancel' || /cancel/i.test(err?.message || '')) {
-      // 这里不重置：用户取消的乐观更新已"误删"显示。最稳的做法是 reload 当前分组。
-      // 但考虑到只有管理员能看到删除按钮，且操作低频，简单 reload 也可接受。
-      await loadMessages()
-      return
-    }
     // 真实失败：回滚 + 提示
     await loadMessages()
     console.error('删除告白失败:', err)
     ElMessage.error('删除失败：' + (err?.message || '未知错误'))
+  } finally {
+    deletingMessageId.value = ''
   }
 }
 
@@ -424,6 +431,7 @@ const goToLogin = () => {
 
 const toggleReaction = async (msg: ConfessionMessage, type: 'like' | 'hug') => {
   if (!isSupabaseConfigured.value) return
+  if (reactingMessages.value[msg.id]) return
 
   const set = myReactions[msg.id] || new Set()
   const had = set.has(type)
@@ -441,6 +449,7 @@ const toggleReaction = async (msg: ConfessionMessage, type: 'like' | 'hug') => {
     myReactions[msg.id] = set
   }
 
+  reactingMessages.value[msg.id] = true
   try {
     await confessionDb.toggleReaction(msg.id, type, myFingerprint)
   } catch (err) {
@@ -456,6 +465,8 @@ const toggleReaction = async (msg: ConfessionMessage, type: 'like' | 'hug') => {
       myReactions[msg.id] = set
     }
     ElMessage.error('操作失败')
+  } finally {
+    reactingMessages.value[msg.id] = false
   }
 }
 
@@ -922,7 +933,7 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
       </div>
       <template #footer>
         <el-button @click="showCreateGroup = false">取消</el-button>
-        <el-button type="primary" :disabled="!newGroupForm.name.trim()" @click="createGroup">
+        <el-button type="primary" :loading="creatingGroup" :disabled="!newGroupForm.name.trim() || creatingGroup" @click="createGroup">
           创建
         </el-button>
       </template>

@@ -58,6 +58,8 @@ const isEditing = ref(false)
 const editingId = ref<string | null>(null)
 const loading = ref(false)
 const syncing = ref(false)
+const importing = ref(false)
+const exporting = ref(false)
 const pagination = ref<Pagination>({
   total: 0,
   page: 1,
@@ -414,15 +416,21 @@ const getFavicon = (url: string) => {
 // ==================== 导入/导出 ====================
 
 const exportData = () => {
-  const data = JSON.stringify(bookmarks.value, null, 2)
-  const blob = new Blob([data], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `bookmarks-${new Date().toISOString().slice(0, 10)}.json`
-  a.click()
-  URL.revokeObjectURL(url)
-  ElMessage.success('导出成功')
+  if (exporting.value) return
+  exporting.value = true
+  try {
+    const data = JSON.stringify(bookmarks.value, null, 2)
+    const blob = new Blob([data], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `bookmarks-${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+    ElMessage.success('导出成功')
+  } finally {
+    setTimeout(() => { exporting.value = false }, 300)
+  }
 }
 
 const downloadTemplate = () => {
@@ -459,6 +467,7 @@ const importData = () => {
   input.onchange = async (e: Event) => {
     const file = (e.target as HTMLInputElement).files?.[0]
     if (!file) return
+    importing.value = true
     try {
       const text = await file.text()
       const data = JSON.parse(text)
@@ -508,6 +517,8 @@ const importData = () => {
       }
     } catch {
       ElMessage.error('导入失败，请检查 JSON 格式是否正确，可点击 ? 按钮下载导入模板参考')
+    } finally {
+      importing.value = false
     }
   }
   input.click()
@@ -608,12 +619,14 @@ onMounted(async () => {
             class="action-btn"
             @click="importData"
             :icon="Upload"
+            :loading="importing"
             circle
           />
           <el-button
             class="action-btn"
             @click="exportData"
             :icon="Download"
+            :loading="exporting"
             circle
           />
           <el-tooltip content="下载导入模板" placement="bottom">
