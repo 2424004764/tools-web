@@ -128,8 +128,8 @@ async function fullReset() {
 </script>
 
 <template>
-  <div class="flex flex-col mt-8 flex-1 items-center bg-white rounded-md p-10">
-    <div class="p-5 w-2/3">
+  <div class="flex flex-col mt-8 flex-1 items-center bg-white rounded-md p-4 md:p-10">
+    <div class="p-1 w-full md:p-5 md:w-2/3">
       <h1 class="text-h2 font-bold">关于 {{appTitle}}（源自：Tools-Web）</h1>
       <p class="mt-6">
         <el-text>本站是一个开源免费的工具站，基于（<el-link :href="gitUrl" target="_blank" type="primary">Tools-Web</el-link>）二次开发，部署在Cloudflare上。包含开发、文本、媒体、图表、生活、查询等 <span class="text-primary font-bold">{{ totalTools }}</span> 种实用工具，完全开源免费；如果对您有帮助，请将其分享给您的朋友，并且添加到收藏夹中！顺便再点个⭐️吧（<el-link :href="rawGitUrl" target="_blank" type="primary">Tools-Web源站</el-link>）！因为是纯前端，所以请求外部第三方接口用的Cloudflare 的functions实现。</el-text>
