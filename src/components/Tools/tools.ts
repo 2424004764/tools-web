@@ -1028,6 +1028,15 @@ export function getToolsCate() {
           url: '/retirement-countdown/',
           cateId: 11,
           cate: '趣味互动',
+        },
+        {
+          id: 131,
+          title: '辈分称谓计算',
+          logo: '/images/logo/generation-calculator.png',
+          desc: '以「我」为根的交互式家谱树，点击节点长出父母/兄弟/子女等分支，自动推导亲戚称谓、辈分高低与反向称呼，支持堂表、父系母系与姻亲',
+          url: '/generation-calculator/',
+          cateId: 11,
+          cate: '趣味互动',
         }
       ]
     },

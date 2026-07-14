@@ -236,7 +236,15 @@ watch(() => toolsStore.cates.length, () => {
       </button>
       <!-- card -->
       <div class="flex justify-start flex-wrap gap-[1.25%] c-xs:ml-0">
-          <router-link v-for="(item, index) in cate.list" :key="index" :to="item.url" class="flex flex-col mt-5 border-solid rounded-2xl border-border-default p-2 bg-white shadow-lg hover:bg-accent-50 hover:shadow-xl hover:border-border-default w-full sm:w-[49%] md:w-[32%] lg:w-[24%] xl:w-[19%] p-5 hover:-translate-y-3 duration-300 transition-all">
+        <div
+          v-for="(item, index) in cate.list"
+          :key="index"
+          class="w-full sm:w-[49%] md:w-[32%] lg:w-[24%] xl:w-[19%] group"
+        >
+          <router-link
+            :to="item.url"
+            class="flex flex-col mt-5 border-solid rounded-2xl border-border-default p-2 bg-white shadow-lg group-hover:bg-accent-50 group-hover:shadow-xl group-hover:border-border-default w-full p-5 group-hover:-translate-y-3 duration-300 transition-all"
+          >
             <div class="flex items-center border-b border-border-subtle pb-2">
               <img
                 v-if="!useSpriteLogo(item).style"
@@ -265,6 +273,7 @@ watch(() => toolsStore.cates.length, () => {
               <el-text line-clamp="2" class="text-ink-900">{{ item.desc }}</el-text>
             </div>
           </router-link>
+        </div>
       </div>
     </div>
 

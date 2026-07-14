@@ -1418,5 +1418,15 @@ export const constantRoute = [
       keywords: '退休倒计时,退休年龄,法定退休,延迟退休,社保,工龄',
       description: '在线退休倒计时工具，根据出生年月、性别与目标退休年龄，实时计算距离退休还有多少天、多少小时、多少分钟，自动拆解为剩余年/月/日，并支持本地保存与法定退休年龄提示。'
     }
+  },
+  {
+    path: '/generation-calculator/',
+    component: () => import('@/components/Tools/GenerationCalculator/GenerationCalculator.vue'),
+    name: 'generationCalculator',
+    meta: {
+      title: '辈分称谓计算',
+      keywords: '辈分计算,亲戚称呼,称谓计算器,家谱树,亲属关系,堂表兄弟,家族辈分,叫法',
+      description: '在线辈分称谓计算工具，以「我」为根的交互式家谱树，点击节点长出父母、兄弟姐妹、配偶、子女等分支，自动推导中国式亲戚称谓、辈分高低（长N辈/平辈/晚N辈）、直系/旁系/姻亲及父系母系，并给出对方对我的反向称呼，附辈分速查表。'
+    }
   }
 ]
