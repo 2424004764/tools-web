@@ -1408,5 +1408,15 @@ export const constantRoute = [
       keywords: '人生轨迹,生活记录,心情记录,日记,随笔,mood,生活轨迹',
       description: '在线人生轨迹记录工具，登录后用一句文字 + 一个 emoji 记录当下的心情与想法，所有用户的轨迹按时间倒序展示，数据存储于 Cloudflare D1。'
     }
+  },
+  {
+    path: '/retirement-countdown/',
+    component: () => import('@/components/Tools/RetirementCountdown/RetirementCountdown.vue'),
+    name: 'retirementCountdown',
+    meta: {
+      title: '退休倒计时',
+      keywords: '退休倒计时,退休年龄,法定退休,延迟退休,社保,工龄',
+      description: '在线退休倒计时工具，根据出生年月、性别与目标退休年龄，实时计算距离退休还有多少天、多少小时、多少分钟，自动拆解为剩余年/月/日，并支持本地保存与法定退休年龄提示。'
+    }
   }
 ]

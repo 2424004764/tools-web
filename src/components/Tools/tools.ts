@@ -1019,6 +1019,15 @@ export function getToolsCate() {
           url: '/life-trajectory/',
           cateId: 11,
           cate: '趣味互动',
+        },
+        {
+          id: 130,
+          title: '退休倒计时',
+          logo: '/images/logo/retirement-countdown.png',
+          desc: '根据出生年月、工作开始时间、性别与目标退休年龄，实时倒计时距离退休还有多少天，含工龄格子图',
+          url: '/retirement-countdown/',
+          cateId: 11,
+          cate: '趣味互动',
         }
       ]
     },
