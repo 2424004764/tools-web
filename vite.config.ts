@@ -133,14 +133,31 @@ function spriteWatcher(): Plugin {
   }
 }
 
+// 本地时间格式化（YYYY-MM-DD HH:mm:ss）
+function formatLocalTime(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
+         `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+}
+
 // https://vitejs.dev/config/
 export default defineConfig(({command, mode}) => {
   let env = loadEnv(mode, process.cwd())
   const isProd = mode === 'production'
 
+  // build 时注入当前时间，About.vue 展示。
+  // 两次 JSON.stringify 是 Vite define 的标准做法（外层把字符串包成字符串字面量，内层转义）。
+  // dev 模式不显示具体时间，避免 HMR 期间数字跳动干扰开发。
+  const now = new Date()
+  const buildTimeISO = isProd ? now.toISOString() : ''
+  const buildTimeLocal = isProd ? formatLocalTime(now) : ''
+
   return {
     define: {
-      'process.env.NODE_ENV': JSON.stringify(mode)
+      'process.env.NODE_ENV': JSON.stringify(mode),
+      // 在 TS 中以 declare const 暴露，详见 src/vite-env.d.ts
+      '__BUILD_TIME__': JSON.stringify(buildTimeISO),
+      '__BUILD_TIME_LOCAL__': JSON.stringify(buildTimeLocal),
     },
     // 编译优化
     esbuild: {

@@ -17,6 +17,8 @@ const totalTools = computed(() => {
   return count
 })
 
+// 构建时间显示在底部页脚（Floor.vue），所有页面都能看到
+
 onMounted(async () => {
   if (toolsStore.cates.length === 0) {
     await toolsStore.getToolCate()
