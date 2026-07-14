@@ -169,7 +169,6 @@ export default defineConfig(({command, mode}) => {
 
     plugins: [
       injectToolCount(),
-      cssPreloadInject(),
       spriteWatcher(),
       vue({
         template: {
@@ -183,7 +182,7 @@ export default defineConfig(({command, mode}) => {
         symbolId: 'icon-[dir]-[name]',
       }),
       Components({
-        resolvers: [ElementPlusResolver({ importStyle: 'sass' })],
+        resolvers: [ElementPlusResolver({ importStyle: 'css' })],
         dts: false, // 生产环境禁用 dts 生成
       }),
       ElementPlus({}),

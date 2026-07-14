@@ -149,11 +149,16 @@ body {
   }
 }
 
-/* ─── Element Plus 主题覆盖 ─────────────────────────────────────── */
+/* ─── Element Plus 主题覆盖 ───────────────────────────────────────
+   之前用 `:root { --el-color-primary: ... }` 覆盖，但 EP 自身的 :root 块
+   在 unplugin-element-plus 注入的 CSS 末尾，会覆盖这里的设置，导致按钮变回默认蓝色。
 
-/* primary: 跟随品牌 accent（原 --warm-primary=#f97316）
-   主色从 accent-500 (3.4:1) 改为 accent-600 (4.6:1)，满足 WCAG AA 4.5:1 对比度标准 */
-:root {
+   这里改用 `:root[data-app], body` 提高特异性，并放在文件最末尾，确保覆盖最后生效。
+   实际上更稳的方案是用 JS 在 app.use() 后用 document.documentElement.style.setProperty
+   强制覆盖（最稳），但需要业务代码配合。先用更高特异性选择器。*/
+:root[data-app],
+html:root {
+  /* primary: 跟随品牌 accent (从 WCAG AA 对比度 4.5:1 考虑用 accent-600) */
   --el-color-primary: rgb(var(--accent-600));
   --el-color-primary-light-3: rgb(var(--accent-500));
   --el-color-primary-light-5: rgb(var(--accent-400));
@@ -162,8 +167,7 @@ body {
   --el-color-primary-light-9: rgb(var(--accent-100));
   --el-color-primary-dark-2: rgb(var(--accent-700));
 
-  /* success / warning / danger / info — 恢复 EP 原生语义色 */
-  /* 此前 success/warning 被覆盖为 amber/橙色，语义错位（绿色才是「成功」的通用认知） */
+  /* success / warning / danger / info — 使用 token 阶梯 */
   --el-color-success: rgb(var(--success-500));
   --el-color-success-light-3: rgb(var(--success-400));
   --el-color-success-light-5: rgb(var(--success-300));
@@ -195,4 +199,10 @@ body {
   --el-color-info-light-8: rgb(var(--info-100));
   --el-color-info-light-9: rgb(var(--info-50));
   --el-color-info-dark-2: rgb(var(--info-600));
+}
+
+/* 兜底：无论上面特异性是否生效，用更高优先级选择器 + !important 强制覆盖关键变量 */
+:root,
+html {
+  --el-color-primary: rgb(var(--accent-600)) !important;
 }
