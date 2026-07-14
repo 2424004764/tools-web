@@ -15,6 +15,46 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
 
+    <!-- 老 tab / bfcache / 已缓存的 SPA 强制刷新兜底
+         这段代码永远跑在最新 HTML 里（因为 HTML 是 no-store，每次刷新都是新版）
+         它做两件事：
+           ① 检测 SPA 的 js hash 与服务端最新 hash，不一致就强制刷新
+           ② 检测 pageshow 事件（mobile Chrome bfcache restore 标志），
+              如果是从 bfcache 恢复的页面，强制硬刷一次 -->
+    <script>
+    (function() {
+      // ① 版本对比：当前 SPA 跑的老 chunk vs 服务器最新 chunk
+      function checkAndReload() {
+        fetch('/index.html?_=' + Date.now(), { cache: 'no-store', credentials: 'same-origin' })
+          .then(function(r) { return r.ok ? r.text() : '' })
+          .then(function(html) {
+            if (!html) return;
+            var m = html.match(/\/js\/index-([a-f0-9]+)\.js/);
+            var serverHash = m ? m[1] : null;
+            var scripts = document.querySelectorAll('script[src*="/js/index-"]');
+            var currentHash = null;
+            for (var i = 0; i < scripts.length; i++) {
+              var sm = scripts[i].src.match(/\/js\/index-([a-f0-9]+)\.js/);
+              if (sm) { currentHash = sm[1]; break; }
+            }
+            if (serverHash && currentHash && serverHash !== currentHash) {
+              // 服务端有新版本，硬刷
+              window.location.replace(location.pathname + location.search + location.hash);
+            }
+          })
+          .catch(function() { /* 网络/部署瞬时错误，静默 */ });
+      }
+      checkAndReload();
+
+      // ② bfcache 强制拦截：pageshow 的 e.persisted=true 表示页面从 bfcache 恢复
+      window.addEventListener('pageshow', function(e) {
+        if (e.persisted) {
+          window.location.reload();
+        }
+      });
+    })();
+    </script>
+
     <!-- DNS 预连接（优先级更高） -->
     <link rel="preconnect" href="https://image.pollinations.ai" crossorigin>
     <link rel="preconnect" href="https://static.cloudflareinsights.com" crossorigin>

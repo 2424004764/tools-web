@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useToolsStore } from '@/store/modules/tools';
+import { ElMessage, ElMessageBox } from 'element-plus';
 const gitUrl = ref(import.meta.env.VITE_GIT_URL || '')
 const rawGitUrl = ref(import.meta.env.VITE_RAW_GIT_URL || '')
 const appTitle = ref(import.meta.env.VITE_APP_TITLE || '')
@@ -21,6 +22,109 @@ onMounted(async () => {
     await toolsStore.getToolCate()
   }
 })
+
+/**
+ * 清理缓存并强制刷新（保留登录态）
+ *
+ * 清理范围：
+ *   ① 所有 Service Worker（反注册，老 SW 不会再拦截网络）
+ *   ② Cache API 全部缓存（fonts/images/css/js）
+ *   ③ sessionStorage（仅本次会话的临时数据）
+ *
+ * 不清理：
+ *   ✗ localStorage（包含登录态 / 收藏夹 / 偏好，删了下次要重新登录）
+ *   ✗ cookies（同登录态）
+ *
+ * 之后用 location.replace() 强制刷新 —— 比 reload() 更彻底，
+ * 会重新发起新请求而不是从 bfcache 还原。
+ */
+async function clearCacheAndReload() {
+  const messages: string[] = []
+
+  // ① 反注册所有 Service Worker
+  if ('serviceWorker' in navigator) {
+    try {
+      const regs = await navigator.serviceWorker.getRegistrations()
+      await Promise.all(regs.map(r => r.unregister()))
+      messages.push(`SW ×${regs.length}`)
+    } catch (e) { /* ignore */ }
+  }
+
+  // ② 清空 Cache API
+  if ('caches' in window) {
+    try {
+      const keys = await caches.keys()
+      await Promise.all(keys.map(k => caches.delete(k)))
+      messages.push(`Cache ×${keys.length}`)
+    } catch (e) { /* ignore */ }
+  }
+
+  // ③ 清 sessionStorage（可选，主要是清掉一些临时标记）
+  try {
+    sessionStorage.clear()
+    messages.push('sessionStorage')
+  } catch (e) { /* ignore */ }
+
+  if (messages.length > 0) {
+    ElMessage.success(`已清理 ${messages.join(' / ')}，正在刷新…`)
+  } else {
+    ElMessage.success('无可清理项，正在刷新…')
+  }
+
+  // 用 replace 而非 reload：replace 不依赖当前内存状态，
+  // 强制从服务器重新拉取，避免 bfcache 还原旧页面
+  setTimeout(() => {
+    window.location.replace(location.pathname + location.search + location.hash)
+  }, 500)
+}
+
+/**
+ * 完全重置 —— 警告：会清掉登录态、收藏夹、所有偏好
+ *
+ * 在"清理缓存"基础上额外清掉：
+ *   ④ localStorage（含登录 token、用户偏好、收藏夹等）
+ *
+ * 用户确认后才执行，避免误操作。
+ */
+async function fullReset() {
+  try {
+    await ElMessageBox.confirm(
+      '将清除所有本地数据（登录态、收藏夹、偏好设置等），并强制刷新页面。继续？',
+      '完全重置',
+      {
+        confirmButtonText: '确定重置',
+        cancelButtonText: '取消',
+        type: 'warning',
+        confirmButtonClass: 'el-button--danger',
+      }
+    )
+  } catch {
+    return // 用户取消
+  }
+
+  // 先做标准清理
+  if ('serviceWorker' in navigator) {
+    try {
+      const regs = await navigator.serviceWorker.getRegistrations()
+      await Promise.all(regs.map(r => r.unregister()))
+    } catch (e) { /* ignore */ }
+  }
+  if ('caches' in window) {
+    try {
+      const keys = await caches.keys()
+      await Promise.all(keys.map(k => caches.delete(k)))
+    } catch (e) { /* ignore */ }
+  }
+  try { sessionStorage.clear() } catch (e) { /* ignore */ }
+  // ④ 清 localStorage —— 登录态/收藏等都会丢
+  try { localStorage.clear() } catch (e) { /* ignore */ }
+
+  ElMessage.success('已完全重置，3 秒后跳到首页…')
+  setTimeout(() => {
+    // 跳到首页确保清理完整（路由可能已被破坏）
+    window.location.replace('/')
+  }, 800)
+}
 </script>
 
 <template>
@@ -74,7 +178,37 @@ onMounted(async () => {
       <p>
         <el-text>linux.do：<el-link href="https://linux.do" type="primary" target="_blank">https://linux.do</el-link></el-text>
       </p>
-       
+
+      <h1 class="text-h2 font-bold mt-6 mb-6">页面管理</h1>
+      <div class="space-y-4">
+        <p class="text-body-sm text-ink-700">
+          如果你遇到 <strong class="text-danger-600">刷新没变化</strong>、<strong class="text-danger-600">看不到新工具</strong>、
+          <strong class="text-danger-600">界面显示陈旧</strong> 等问题，可以用下面的按钮清理本地缓存并强制拉取最新版本。
+        </p>
+        <p class="text-body-sm text-ink-700">
+          <span class="inline-block w-2 h-2 rounded-full bg-accent-500 mr-1.5 align-middle"></span>
+          <strong>清理缓存并刷新</strong>：保留你的登录态、收藏夹等数据，只清掉缓存层面的旧资源。
+        </p>
+        <p class="text-body-sm text-ink-700">
+          <span class="inline-block w-2 h-2 rounded-full bg-danger-500 mr-1.5 align-middle"></span>
+          <strong>完全重置</strong>：在清理缓存基础上，额外清掉登录态、偏好设置等所有本地数据，刷新后需要重新登录。
+        </p>
+        <div class="flex flex-wrap gap-3 pt-2">
+          <el-button type="primary" size="large" @click="clearCacheAndReload">
+            🧹 清理缓存并刷新
+          </el-button>
+          <el-button type="danger" plain size="large" @click="fullReset">
+            ⚠️ 完全重置（含登录态）
+          </el-button>
+        </div>
+        <el-text size="small" class="text-ink-500 block">
+          清理的是浏览器本地的缓存层（磁盘缓存 / Service Worker / Cache API / 内存缓存），
+          与服务端无关。如果清理后仍未看到最新版本，请到
+          <el-link type="primary" target="_blank" :href="gitUrl + '/issues/new'">GitHub issues</el-link>
+          反馈。
+        </el-text>
+      </div>
+
     </div>
   </div>
 </template>
