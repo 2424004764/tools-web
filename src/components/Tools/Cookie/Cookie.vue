@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { reactive, ref, watch, nextTick, computed } from "vue";
-import { Search } from "@element-plus/icons-vue";
+import Search from '~icons/ep/search'
 import DetailHeader from "@/components/Layout/DetailHeader/DetailHeader.vue";
 import ToolDetail from "@/components/Layout/ToolDetail/ToolDetail.vue";
 import { copy } from "@/utils/string";

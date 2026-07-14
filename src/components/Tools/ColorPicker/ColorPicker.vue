@@ -3,7 +3,7 @@ import { reactive,ref,onMounted } from 'vue'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { copy } from '@/utils/string'
-import { CopyDocument } from '@element-plus/icons-vue'
+import CopyDocument from '~icons/ep/copyDocument'
 import { colord, extend } from 'colord';
 import cmykPlugin from 'colord/plugins/cmyk';
 import hwbPlugin from 'colord/plugins/hwb';

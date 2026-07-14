@@ -5,7 +5,7 @@ import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { ElMessage } from 'element-plus'
 import { copy } from '@/utils/string'
 import { isBinary, isOctal, isDecimal, isHexadecimal } from '@/utils/verify'
-import { InfoFilled } from '@element-plus/icons-vue'
+import InfoFilled from '~icons/ep/infoFilled'
 import { scale58ToBase, scale62ToBase, scale64ToBase, baseToScale58, baseToScale62, baseToScale64 } from '@/utils/math'
 
 const info = reactive({

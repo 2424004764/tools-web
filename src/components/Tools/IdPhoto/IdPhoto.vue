@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, reactive, nextTick } from 'vue'
 import { UploadProps, UploadRawFile, genFileId } from 'element-plus'
-import { Download, RefreshLeft, ZoomIn, ZoomOut } from '@element-plus/icons-vue'
+import Download from '~icons/ep/download'
+import RefreshLeft from '~icons/ep/refreshLeft'
+import ZoomIn from '~icons/ep/zoomIn'
+import ZoomOut from '~icons/ep/zoomOut'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 

@@ -2,6 +2,10 @@ name = "tool-web"
 account_id = "974e77b1692d56d57b27a1cef7fcc08c"
 # type = "typescript"  # 或者 "typescript" 根据你使用的语言类型
 
+# 锁定 Cloudflare Workers 运行时版本，避免 wrangler 升级后行为不一致
+# 参考：https://developers.cloudflare.com/workers/configuration/compatibility-dates/
+compatibility_date = "2024-09-23"
+
 # D1 数据库配置 仅用以本地调试，线上走pages绑定的db
 [[d1_databases]]
 binding = "DB"
@@ -31,23 +35,31 @@ database_id = "afdabfae-6edd-4def-8e77-6a1171009b9c"
 
 # [可以先执行一下安装最新的npm install -g wrangler@latest] 本地启动调试服务（dev后面的.也是命令的一部分，别漏了）：wrangler pages dev .   测试登录的话 需要另开一个窗口启动调试服务
 # 本地调试设置环境变量（线上的环境变量是绑定在pages的变量和机密里）：
+# ─── 警告 ────────────────────────────────────────────────────
+# 敏感密钥 (*_SECRET / API_KEY / JWT_SECRET) 不得在此文件明文存储！
+# 当前 secrets 已迁移到 Cloudflare Pages Dashboard 的"变量和机密"绑定；
+# 本地开发请把真实值放进 .dev.vars（已 gitignore）。
+# 历史泄露的密钥请到对应平台轮换（见 SECRET_MIGRATION.md）。
+# ──────────────────────────────────────────────────────────────
 [vars]
-JWT_SECRET = "6197upXX81DUXMF9I8f@IqVOi3NEYYR@FBTDmyMf1mY5A4ExMiiTz2!hr%5tpPZfXE^d^"
-RESEND_API_KEY = "re_PQQu3MM5_P1QBizt7vbU25dGHjRDhh6My" # 替换为你的 Resend API Key
-RESEND_FROM_EMAIL = "一方工具箱 <noreply@tool-helper.fologde.com>" # 替换为你的发件邮箱
-LINUXDO_CLIENT_ID = "ndZjdtb3uuqsdQsLXVP9EryepP4g9p1C"
-LINUXDO_CLIENT_SECRET = "tPD2IZxu5SeG9HfoF3CkwVc3CrllVQXt"
+# 非敏感 / 可公开的 ID（如 OAuth client_id、回调地址）可继续放在此处
+JWT_SECRET = "PLACEHOLDER_REPLACE_VIA_CF_DASHBOARD"           # TODO: 在 Cloudflare Pages Dashboard 绑定
+RESEND_API_KEY = "PLACEHOLDER_REPLACE_VIA_CF_DASHBOARD"        # TODO: 同上
+RESEND_FROM_EMAIL = "一方工具箱 <noreply@tool-helper.fologde.com>"
+LINUXDO_CLIENT_ID = "ndZjdtb3uuqsdQsLXVP9EryepP4g9p1C"          # OAuth client_id 公开安全
+LINUXDO_CLIENT_SECRET = "PLACEHOLDER_REPLACE_VIA_CF_DASHBOARD"  # TODO: 同上
 LINUXDO_REDIRECT_URI = "http://127.0.0.1:8788/linuxdo-auth"
 # QQ登录配置（已隐藏）
 QQ_CLIENT_ID = "102806259"
+QQ_CLIENT_SECRET = "PLACEHOLDER_REPLACE_VIA_CF_DASHBOARD"       # TODO: 同上
 QQ_REDIRECT_URI = "http://127.0.0.1:8788/qq-auth"
 # Gitee登录配置
 GITEE_CLIENT_ID = "a33bfc0232834f1fd309dc2c1696821bc821e5f746ef28869496d88fb7b4b104"
-GITEE_CLIENT_SECRET = "667d2c96eed94a91b4cd5542a408d719817071b2b8800b45abd8cc0b87eaa16c"
+GITEE_CLIENT_SECRET = "PLACEHOLDER_REPLACE_VIA_CF_DASHBOARD"     # TODO: 同上
 GITEE_REDIRECT_URI = "http://127.0.0.1:8788/gitee-auth"
 # Github登录配置
 GITHUB_CLIENT_ID = "Ov23lih4DozBgCiAwLWe"
-GITHUB_CLIENT_SECRET = "6d47d057db84d7f6b7b82a59c54a5fc54d89f327"
+GITHUB_CLIENT_SECRET = "PLACEHOLDER_REPLACE_VIA_CF_DASHBOARD"   # TODO: 同上
 GITHUB_REDIRECT_URI = "http://127.0.0.1:8788/github-auth"
 
 # 验证码 KV 绑定（替代 send-verification-code.js 里的内存 Map）

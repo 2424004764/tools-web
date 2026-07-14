@@ -5,7 +5,12 @@ import functionsRequest from '@/utils/functionsRequest'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Refresh, Promotion, EditPen, Delete, User, ChatLineRound } from '@element-plus/icons-vue'
+import Refresh from '~icons/ep/refresh'
+import Promotion from '~icons/ep/promotion'
+import EditPen from '~icons/ep/editPen'
+import Delete from '~icons/ep/delete'
+import User from '~icons/ep/user'
+import ChatLineRound from '~icons/ep/chatLineRound'
 import { useUserStore } from '@/store/modules/user'
 
 interface Trajectory {

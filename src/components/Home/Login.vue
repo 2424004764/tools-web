@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, reactive } from "vue";
 import { ElMessage } from "element-plus";
-import { Loading } from "@element-plus/icons-vue";
+import Loading from '~icons/ep/loading'
 import { jwtDecode } from "jwt-decode";
 import { useUserStore } from "@/store/modules/user";
 import axios from "axios";

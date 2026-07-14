@@ -5,7 +5,10 @@ import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { copy } from '@/utils/string'
 import 'viewerjs/dist/viewer.css'
 import { directive as vViewer } from 'v-viewer'
-import { ArrowDown, ArrowRight, Menu, Close } from '@element-plus/icons-vue'
+import ArrowDown from '~icons/ep/arrowDown'
+import ArrowRight from '~icons/ep/arrowRight'
+import Menu from '~icons/ep/menu'
+import Close from '~icons/ep/close'
 const gitUrl = ref(import.meta.env.VITE_GIT_URL || '')
 
 const info = reactive({

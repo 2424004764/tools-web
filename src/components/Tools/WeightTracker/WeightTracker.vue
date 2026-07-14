@@ -1378,7 +1378,15 @@ onMounted(async () => {
 </template>
 
 <script lang="ts">
-import { DataAnalysis, Loading, Plus, Promotion, Share, TrendCharts, Calendar, Edit, Delete } from '@element-plus/icons-vue'
+import DataAnalysis from '~icons/ep/dataAnalysis'
+import Loading from '~icons/ep/loading'
+import Plus from '~icons/ep/plus'
+import Promotion from '~icons/ep/promotion'
+import Share from '~icons/ep/share'
+import TrendCharts from '~icons/ep/trendCharts'
+import Calendar from '~icons/ep/calendar'
+import Edit from '~icons/ep/edit'
+import Delete from '~icons/ep/delete'
 export default {
   components: { DataAnalysis, Loading, Plus, Promotion, Share, TrendCharts, Calendar, Edit, Delete }
 }

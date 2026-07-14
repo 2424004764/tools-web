@@ -26,7 +26,7 @@ const Floor = defineAsyncComponent({
 })
 
 import { useRoute } from 'vue-router';
-import { Top } from '@element-plus/icons-vue';
+import Top from '~icons/ep/top'
 import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
 
 const showBackTop = ref(false)
@@ -118,13 +118,16 @@ const isHomePage = computed(() => {
 
     <!-- 回到顶部 -->
     <transition name="backtop-fade">
-      <div
+      <button
         v-show="showBackTop && !isHomePage"
+        type="button"
+        aria-label="回到顶部"
+        title="回到顶部"
         class="fixed right-[30px] bottom-[60px] z-50 cursor-pointer w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center hover:bg-surface-2 transition-colors border border-border-subtle text-ink-700 hover:text-accent-600"
         @click="smoothScrollTop"
       >
-        <el-icon :size="20"><Top /></el-icon>
-      </div>
+        <el-icon :size="20" aria-hidden="true"><Top /></el-icon>
+      </button>
     </transition>
   </el-container>
 </el-config-provider>

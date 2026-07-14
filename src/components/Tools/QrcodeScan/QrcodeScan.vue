@@ -4,7 +4,10 @@ import { QrcodeStream, QrcodeDropZone, QrcodeCapture } from 'qrcode-reader-vue3'
 import { ElMessage } from 'element-plus'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
-import { Camera, Upload, CopyDocument, Delete } from '@element-plus/icons-vue'
+import Camera from '~icons/ep/camera'
+import Upload from '~icons/ep/upload'
+import CopyDocument from '~icons/ep/copyDocument'
+import Delete from '~icons/ep/delete'
 
 const info = reactive({
   title: "二维码识别",

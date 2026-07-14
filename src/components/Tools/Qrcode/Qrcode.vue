@@ -2,7 +2,8 @@
 import { reactive, ref, computed, onMounted, onUnmounted } from "vue";
 import DetailHeader from "@/components/Layout/DetailHeader/DetailHeader.vue";
 import QRCodeVue3 from "qrcode-vue3";
-import { Delete, Plus } from "@element-plus/icons-vue";
+import Delete from '~icons/ep/delete'
+import Plus from '~icons/ep/plus'
 import { ElMessage, type UploadFile } from "element-plus";
 import { v4 as uuidv4 } from "uuid";
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'

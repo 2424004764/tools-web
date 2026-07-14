@@ -2,7 +2,7 @@
 import { reactive, ref, onMounted, onUnmounted, computed } from 'vue'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
-import { Refresh } from '@element-plus/icons-vue'
+import Refresh from '~icons/ep/refresh'
 
 const info = reactive({
   title: "数字华容道",

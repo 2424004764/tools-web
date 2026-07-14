@@ -3,7 +3,8 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import FlipCard from './FlipCard.vue'
-import { FullScreen, Refresh } from '@element-plus/icons-vue'
+import FullScreen from '~icons/ep/fullScreen'
+import Refresh from '~icons/ep/refresh'
 
 const title = '翻页时钟'
 

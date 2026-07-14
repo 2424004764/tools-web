@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { v4 as uuidv4 } from 'uuid'
-import { Plus, Delete } from '@element-plus/icons-vue'
+import Plus from '~icons/ep/plus'
+import Delete from '~icons/ep/delete'
 
 defineOptions({ name: 'FieldEditor' })
 

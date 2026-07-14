@@ -1588,7 +1588,8 @@ const renderContent = (item: any) => {
 </template>
 
 <script lang="ts">
-import { ArrowLeft, Menu } from '@element-plus/icons-vue'
+import ArrowLeft from '~icons/ep/arrowLeft'
+import Menu from '~icons/ep/menu'
 export default {
   components: { ArrowLeft, Menu }
 }

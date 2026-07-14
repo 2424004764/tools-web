@@ -357,7 +357,7 @@ onMounted(() => {
 </template>
 
 <script lang="ts">
-import { DocumentCopy } from '@element-plus/icons-vue'
+import DocumentCopy from '~icons/ep/documentCopy'
 export default {
   components: {
     DocumentCopy

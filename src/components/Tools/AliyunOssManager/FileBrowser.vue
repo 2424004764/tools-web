@@ -1,10 +1,17 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import {
-  Folder, Document, Refresh, Upload, Download, Delete,
-  ArrowUp, Search, Link, EditPen, Picture
-} from '@element-plus/icons-vue'
+import Folder from '~icons/ep/folder'
+import Document from '~icons/ep/document'
+import Refresh from '~icons/ep/refresh'
+import Upload from '~icons/ep/upload'
+import Download from '~icons/ep/download'
+import Delete from '~icons/ep/delete'
+import ArrowUp from '~icons/ep/arrowUp'
+import Search from '~icons/ep/search'
+import Link from '~icons/ep/link'
+import EditPen from '~icons/ep/editPen'
+import Picture from '~icons/ep/picture'
 import type { OssConfig } from '@/api/oss'
 import { ossStsProvider } from '@/api/oss'
 import { OssClient, callWithOss, formatSize, guessContentType, isTextFile, isImageFile, type OssObject } from '@/utils/oss'

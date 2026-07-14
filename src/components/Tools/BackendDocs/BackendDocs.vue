@@ -192,7 +192,7 @@ const getStatusColor = (status: string) => {
 </template>
 
 <script lang="ts">
-import { ArrowRight } from '@element-plus/icons-vue'
+import ArrowRight from '~icons/ep/arrowRight'
 export default {
   components: { ArrowRight }
 }

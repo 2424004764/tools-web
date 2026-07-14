@@ -17,6 +17,14 @@ const router = createRouter({
   },
 })
 
+// SEO meta 数据源：每个路由的 meta 字段（见 router.ts）
+// - keywords / description / og:* 等由 index.html 静态 + Vite 构建时注入（首页）+ 路由 meta 三层共同决定
+// - 运行时（SPA 内部导航）只更新 document.title 即可；爬虫读静态 HTML，不执行 JS，
+//   所以 querySelector 改 keywords/description 对 SEO 无意义，且会触发布局抖动。
+
+const APP_TITLE = import.meta.env.VITE_APP_TITLE as string
+const APP_DESC = import.meta.env.VITE_APP_DESC as string
+
 router.beforeEach((to, _from, next) => {
   // 硬刷成功后第一次进入路由：清除 flag，避免误判
   if (sessionStorage.getItem(HARD_RELOAD_FLAG)) {
@@ -31,9 +39,6 @@ router.beforeEach((to, _from, next) => {
     return // 不调用 next()，中断当前 SPA 导航
   }
 
-  if (to.meta.title) {
-    document.title = to.meta.title + '-' + import.meta.env.VITE_APP_TITLE
-  }
   next()
 })
 
@@ -50,28 +55,11 @@ router.onError((error) => {
   window.location.replace(router.currentRoute.value.fullPath || '/')
 })
 
-//路由后置卫士
+// 路由后置：仅更新 document.title（SPA 内部导航的用户体验优化）
 router.afterEach((to) => {
-  const { title, keywords, description } = to.meta
-
-  if (title) {
-    document.title = title + '-' + import.meta.env.VITE_APP_TITLE
-  } else {
-    document.title = import.meta.env.VITE_APP_TITLE + '-' + import.meta.env.VITE_APP_DESC
-  }
-
-  // 批量更新 meta 标签
-  const metaUpdates = [
-    { selector: 'meta[name="keywords"]', attr: 'content', value: String(keywords || '') },
-    { selector: 'meta[name="description"]', attr: 'content', value: String(description || '') },
-    { selector: 'meta[property="og:title"]', attr: 'content', value: document.title },
-    { selector: 'meta[property="og:site_name"]', attr: 'content', value: document.title },
-    { selector: 'meta[property="og:description"]', attr: 'content', value: String(description || '') },
-  ]
-
-  metaUpdates.forEach(({ selector, attr, value }) => {
-    document.querySelector(selector)?.setAttribute(attr, value)
-  })
+  document.title = to.meta.title
+    ? `${to.meta.title as string}-${APP_TITLE}`
+    : `${APP_TITLE}-${APP_DESC}`
 })
 
 export default router

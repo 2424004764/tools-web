@@ -6,6 +6,10 @@ import 'virtual:svg-icons-register'
 import router from './router'
 //styles
 import './styles/tailwind.css'
+// 自托管 Inter Variable 字体（仅拉丁子集，~30KB woff2）；中文走系统 PingFang/Microsoft YaHei 兜底
+// 1) 触发 Vite 把 woff2 资源打包进 dist/assets/ 并自动加 contenthash（受 _headers 缓存 1 年）
+// 2) 自动注入 @font-face CSS，配合 Tailwind fontFamily.display/body 在字体加载后切换
+import '@fontsource-variable/inter/wght.css'
 // loading.css 已删除（Phase 1 清理：全代码库零引用，原 .route-loading 仅占首屏 CSS 字节）
 //pinia
 import pinia from './store'

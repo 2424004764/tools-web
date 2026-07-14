@@ -6,7 +6,7 @@ import { useToolsStore } from '@/store/modules/tools'
 import { useComponentStore } from '@/store/modules/component'
 // import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from "vue-router"
-import { Top } from '@element-plus/icons-vue'
+import Top from '~icons/ep/top'
 import { useSpriteLogo } from '@/components/Tools/useSpriteLogo'
 //store
 const toolsStore = useToolsStore()
@@ -225,13 +225,15 @@ watch(() => toolsStore.cates.length, () => {
     <!-- list -->
     <div v-for="(cate, index) in toolsStore.cates" :key="index">
       <!-- cate title -->
-      <div 
-        class="mt-8 mb-3 text-h3 font-bold text-ink-900 cursor-pointer hover:text-accent-600 transition-colors duration-200" 
+      <button
+        type="button"
+        class="mt-8 mb-3 text-h3 font-bold text-ink-900 cursor-pointer hover:text-accent-600 transition-colors duration-200 bg-transparent border-0 text-left w-full"
         :id="'cate_' + cate.id"
+        :aria-label="`跳转到 ${cate.title} 分类`"
         @click="gotoAnchor('cate_' + cate.id)"
       >
-        {{ cate.title }}
-      </div>
+        <h2 class="text-h3 font-bold m-0">{{ cate.title }}</h2>
+      </button>
       <!-- card -->
       <div class="flex justify-start flex-wrap gap-[1.25%] c-xs:ml-0">
           <router-link v-for="(item, index) in cate.list" :key="index" :to="item.url" class="flex flex-col mt-5 border-solid rounded-2xl border-border-default p-2 bg-white shadow-lg hover:bg-accent-50 hover:shadow-xl hover:border-border-default w-full sm:w-[49%] md:w-[32%] lg:w-[24%] xl:w-[19%] p-5 hover:-translate-y-3 duration-300 transition-all">
@@ -268,13 +270,16 @@ watch(() => toolsStore.cates.length, () => {
 
     <!-- 返回顶部 -->
     <transition name="fade">
-      <div
+      <button
         v-show="showBackTop"
-        class="fixed right-[30px] bottom-[60px] z-50 cursor-pointer w-14 h-14 rounded-full bg-white shadow-lg flex items-center justify-center hover:bg-blue-50 transition-colors border border-gray-100"
+        type="button"
+        aria-label="回到顶部"
+        title="回到顶部"
+        class="fixed right-[30px] bottom-[60px] z-50 cursor-pointer w-14 h-14 rounded-full bg-white shadow-lg flex items-center justify-center hover:bg-blue-50 transition-colors border border-gray-100 bg-white"
         @click="scrollToTop"
       >
-        <el-icon :size="28" color="#409EFF"><Top /></el-icon>
-      </div>
+        <el-icon :size="28" color="#409EFF" aria-hidden="true"><Top /></el-icon>
+      </button>
     </transition>
   </div>
 </template>

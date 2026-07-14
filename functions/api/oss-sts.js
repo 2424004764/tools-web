@@ -6,7 +6,7 @@ import { AuthMiddleware } from '../middlewares/auth.js'
 import { OssService } from '../services/ossService.js'
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 }

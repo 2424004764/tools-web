@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, reactive } from 'vue'
-import { VideoPause,VideoPlay,CopyDocument,Refresh } from '@element-plus/icons-vue'
+import VideoPause from '~icons/ep/videoPause'
+import VideoPlay from '~icons/ep/videoPlay'
+import CopyDocument from '~icons/ep/copyDocument'
+import Refresh from '~icons/ep/refresh'
 import { Jh_getTimeStamp,Jh_timeStampToTime,Jh_convertTimeStamp,Jh_getUtcISO8601 } from '@/utils/time'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'

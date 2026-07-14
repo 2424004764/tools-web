@@ -10,7 +10,6 @@ export async function onRequest(context) {
     return new Response(null, {
       status: 204,
       headers: {
-        'Access-Control-Allow-Origin': origin || '*',
         'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization'
       }
@@ -25,9 +24,8 @@ export async function onRequest(context) {
     return new Response(JSON.stringify({ error: '服务器错误' }), {
       status: 500,
       headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': origin || '*'
-      }
+        'Content-Type': 'application/json'
+  }
     })
   }
 }

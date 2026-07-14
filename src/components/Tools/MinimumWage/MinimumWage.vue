@@ -2,7 +2,7 @@
 import { reactive, ref, computed } from 'vue'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
-import { Search } from '@element-plus/icons-vue'
+import Search from '~icons/ep/search'
 
 const info = reactive({
   title: "最低工资标准查询",

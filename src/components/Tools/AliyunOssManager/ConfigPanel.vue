@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { reactive, ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Connection, QuestionFilled, ArrowDown, CircleCheck, CircleClose } from '@element-plus/icons-vue'
+import Connection from '~icons/ep/connection'
+import QuestionFilled from '~icons/ep/questionFilled'
+import ArrowDown from '~icons/ep/arrowDown'
+import CircleCheck from '~icons/ep/circleCheck'
+import CircleClose from '~icons/ep/circleClose'
 import { ossApi, ossStsProvider, type OssConfig, type OssConfigInput } from '@/api/oss'
 
 const props = defineProps<{

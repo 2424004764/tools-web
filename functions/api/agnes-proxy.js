@@ -25,7 +25,7 @@ export async function onRequest(context) {
   if (request.method === 'OPTIONS') {
     return new Response(null, {
       headers: {
-        'Access-Control-Allow-Origin': '*',
+
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization'
       }
@@ -35,7 +35,7 @@ export async function onRequest(context) {
   if (request.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      headers: { 'Content-Type': 'application/json'}
     })
   }
 
@@ -47,10 +47,9 @@ export async function onRequest(context) {
     if (!isValidEndpoint(endpoint)) {
       return new Response(JSON.stringify({
         error: 'endpoint 不在白名单或格式非法',
-        allowed: Array.from(ALLOWED_ENDPOINTS),
-      }), {
+        allowed: Array.from(ALLOWED_ENDPOINTS) }), {
         status: 400,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        headers: { 'Content-Type': 'application/json'}
       })
     }
 
@@ -71,14 +70,12 @@ export async function onRequest(context) {
     return new Response(JSON.stringify(result), {
       status: response.status,
       headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      }
+        'Content-Type': 'application/json' }
     })
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      headers: { 'Content-Type': 'application/json'}
     })
   }
 }

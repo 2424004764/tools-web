@@ -122,7 +122,7 @@ export async function onRequest(context) {
       status: 200,
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
-        'Access-Control-Allow-Origin': '*',
+
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization'
       }
@@ -138,7 +138,7 @@ export async function onRequest(context) {
       status: 500,
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
-        'Access-Control-Allow-Origin': '*'
+
       }
     });
   }
@@ -149,7 +149,7 @@ export async function onRequestOptions() {
   return new Response(null, {
     status: 200,
     headers: {
-      'Access-Control-Allow-Origin': '*',
+
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization'
     }

@@ -1,7 +1,18 @@
 /*
+  # ─── 基础安全头（全站默认） ─────────────────────────────
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(), camera=(), microphone=(), payment=(), usb=(), magnetometer=(), gyroscope=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+
+  # ─── 内容安全策略 ──────────────────────────────────────
+  #  - script-src 允许 'unsafe-inline'：因为 Vite 注入的 inline <script>（hash 路由 fallback）+ version-guard 内联脚本 + Element Plus 动态样式。
+  #    生产环境若进一步加固，可改用 nonce / hash 注入。
+  #  - img-src 加 image.pollinations.ai：文生图工具直连 Pollinations。
+  #  - img-src 加 data: blob:：Canvas 截图、Base64 图片、PDF.js worker 渲染。
+  #  - connect-src *：AI 代理/外部 API 多为 * 调用（Agnes、Pollinations、Supabase 等）。
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com https://accounts.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https: wss:; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://accounts.google.com
 
 /js/*
   Cache-Control: public, max-age=31536000, immutable

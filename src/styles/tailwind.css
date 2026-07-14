@@ -3,36 +3,19 @@
 @tailwind utilities;
 
 /**
- * tools-web 全局 CSS 变量（Phase 1 引入新 token 系统）
+ * tools-web 全局 CSS 变量
  *
- * 新 token（RGB 空格分隔，让 Tailwind utility 通过 alpha-value 支持透明度）：
+ * token（RGB 空格分隔，让 Tailwind utility 通过 alpha-value 支持透明度）：
  *   --ink-{50..950}    文本 / 强对比 neutral 阶梯
  *   --surface-{0..3}   卡片 / 容器底色
  *   --border-{subtle,default,strong}
  *   --accent-{50..950} 品牌主色 = 暖橙
  *   --danger-{50..950} 语义红色
  *   --success-{50..950} --warning-{50..950} --info-{50..950}  EP 原生语义色
- *
- * 旧 --warm-* / --base-* 标记 @deprecated 保留至 Phase 4 收尾，避免外部缓存断裂。
  */
 
 :root {
-  /* ─── @deprecated 旧 token（保留至 Phase 4 收尾，v2 删除） ──── */
-  /* @deprecated — use --accent-* instead. */
-  --base-warm: #fef7ed;
-  --base-orange: #fdead5;
-  --base-black: #7c2d12;
-  --warm-primary: #f97316;
-  --warm-primary-hover: #ea580c;
-  --warm-secondary: #f59e0b;
-  --warm-accent: #fbbf24;
-  --warm-muted: #fed7aa;
-  --warm-border: #fdba74;
-  --warm-bg-card: #fffbeb;
-  --warm-text: #92400e;
-  --warm-text-muted: #b45309;
-
-  /* ─── 新 token 系统 ─────────────────────────────────────────── */
+  /* ─── token 系统 ─────────────────────────────────────────── */
 
   /* ink — 文本 / 强对比 neutral */
   --ink-50:  250 250 250;
@@ -135,17 +118,49 @@ body {
   font-family: theme('fontFamily.body');
 }
 
+/* ─── 可访问性 — 焦点可见 ─────────────────────────────────── */
+/* 鼠标点击不显示焦点环（避免视觉噪音），仅键盘 Tab 时显示 */
+:focus {
+  outline: none;
+}
+:focus-visible {
+  outline: 2px solid rgb(var(--accent-600));
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+/* Element Plus 组件的焦点环用 box-shadow 实现（EP 内部样式覆盖 outline） */
+.el-button:focus-visible,
+.el-input__wrapper:focus-visible,
+.el-select__wrapper:focus-visible {
+  outline: 2px solid rgb(var(--accent-600));
+  outline-offset: 2px;
+}
+
+/* ─── 可访问性 — prefers-reduced-motion ─────────────────────── */
+/* 用户在系统中设置了"减少动效"时，关闭无限循环动画与过渡 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* ─── Element Plus 主题覆盖 ─────────────────────────────────────── */
 
-/* primary: 跟随品牌 accent（原 --warm-primary=#f97316，保持不变） */
+/* primary: 跟随品牌 accent（原 --warm-primary=#f97316）
+   主色从 accent-500 (3.4:1) 改为 accent-600 (4.6:1)，满足 WCAG AA 4.5:1 对比度标准 */
 :root {
-  --el-color-primary: rgb(var(--accent-500));
-  --el-color-primary-light-3: rgb(var(--accent-400));
-  --el-color-primary-light-5: rgb(var(--accent-300));
-  --el-color-primary-light-7: rgb(var(--accent-200));
-  --el-color-primary-light-8: rgb(var(--accent-100));
-  --el-color-primary-light-9: rgb(var(--accent-50));
-  --el-color-primary-dark-2: rgb(var(--accent-600));
+  --el-color-primary: rgb(var(--accent-600));
+  --el-color-primary-light-3: rgb(var(--accent-500));
+  --el-color-primary-light-5: rgb(var(--accent-400));
+  --el-color-primary-light-7: rgb(var(--accent-300));
+  --el-color-primary-light-8: rgb(var(--accent-200));
+  --el-color-primary-light-9: rgb(var(--accent-100));
+  --el-color-primary-dark-2: rgb(var(--accent-700));
 
   /* success / warning / danger / info — 恢复 EP 原生语义色 */
   /* 此前 success/warning 被覆盖为 amber/橙色，语义错位（绿色才是「成功」的通用认知） */

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref,computed, watch } from 'vue'
 import { UploadProps,UploadRawFile,genFileId } from 'element-plus'
-import { Download } from '@element-plus/icons-vue'
+import Download from '~icons/ep/download'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import JSZip from 'jszip'

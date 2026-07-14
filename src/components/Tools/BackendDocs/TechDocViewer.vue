@@ -400,7 +400,9 @@ const backToTop = () => {
 </template>
 
 <script lang="ts">
-import { ArrowLeft, Menu, CaretTop } from '@element-plus/icons-vue'
+import ArrowLeft from '~icons/ep/arrowLeft'
+import Menu from '~icons/ep/menu'
+import CaretTop from '~icons/ep/caretTop'
 export default {
   components: { ArrowLeft, Menu, CaretTop }
 }

@@ -12,7 +12,7 @@ import {
 } from './_lib/model-resolver.js'
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 }
@@ -76,7 +76,7 @@ export async function onRequest(context) {
       status: upstream.status,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
+
       }
     })
   } catch (error) {

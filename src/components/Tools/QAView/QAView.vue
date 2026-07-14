@@ -3,7 +3,10 @@ import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import functionsRequest from '@/utils/functionsRequest'
 import { ElMessage } from 'element-plus'
-import { QuestionFilled, ChatDotRound, Share, CopyDocument } from '@element-plus/icons-vue'
+import QuestionFilled from '~icons/ep/questionFilled'
+import ChatDotRound from '~icons/ep/chatDotRound'
+import Share from '~icons/ep/share'
+import CopyDocument from '~icons/ep/copyDocument'
 
 interface QAItem {
   id: string

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
 import { UploadProps, UploadRawFile, genFileId } from 'element-plus'
-import { Download, Switch } from '@element-plus/icons-vue'
+import Download from '~icons/ep/download'
+import Switch from '~icons/ep/switch'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 

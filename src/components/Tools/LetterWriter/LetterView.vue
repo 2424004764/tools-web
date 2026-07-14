@@ -3,7 +3,7 @@ import { reactive, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { copy } from '@/utils/string'
 import { ElMessage } from 'element-plus'
-import { Loading } from '@element-plus/icons-vue'
+import Loading from '~icons/ep/loading'
 
 const route = useRoute()
 

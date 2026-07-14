@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed, onUnmounted, nextTick } from 'vue'
-import { Search } from '@element-plus/icons-vue';
+import Search from '~icons/ep/search'
 import { ElMessage } from 'element-plus'
 import { useToolsStore } from '@/store/modules/tools'
 import { useComponentStore } from '@/store/modules/component'
@@ -190,22 +190,30 @@ onUnmounted(() => {
   <header class="h-24 w-full flex justify-between pt-2 pb-2 c-xs:h-16 c-xs:border-b-[1px] border-border-subtle items-center c-xs:fixed c-xs:top-0 c-xs:left-0 c-xs:right-0 c-xs:z-50 c-xs:bg-white">
     <div class="flex items-center w-full">
       <Transition name="fold" class="hidden c-sm:block c-md:hidden c-xs:block text-ink-700">
-        <svg v-if="!componentStore.leftComDrawer" @click="componentStore.setleftComDrawerStatus(true)" t="1702978210636" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="7618" width="30" height="30">
-          <path fill="currentColor" fill-opacity=".9" d="M895.936 256l-768-0.896 0.128-64L896 192l-0.064 64zM179.2 689.152l202.688-152a32 32 0 0 0 0-51.2L179.2 333.952a32 32 0 0 0-51.2 25.6v304a32 32 0 0 0 51.2 25.6z m12.8-89.6v-176l117.312 88L192 599.552zM896 544H480v-64H896v64z m-0.064 288l-768-0.896 0.128-64L896 768l-0.064 64z" p-id="7619"></path>
-        </svg>
-        <svg v-else @click="componentStore.setleftComDrawerStatus(false)" t="1702978577170" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="1587" width="30" height="30">
-          <path fill="currentColor" fill-opacity=".9" d="M128.064 192l768 0.896-0.128 64L128 256l0.064-64z m514.048 294.848a32 32 0 0 0 0 51.2l202.688 152a32 32 0 0 0 51.2-25.6v-304a32 32 0 0 0-51.2-25.6l-202.688 152zM832 424.448v176l-117.312-88L832 424.448zM128 480h416v64H128v-64z m0.064 288l768 0.896-0.128 64L128 832l0.064-64z" p-id="1588"></path>
-        </svg>
+        <button v-if="!componentStore.leftComDrawer" type="button" class="icon-btn bg-transparent border-0 p-0 cursor-pointer text-ink-700" aria-label="打开导航菜单" :aria-expanded="componentStore.leftComDrawer" @click="componentStore.setleftComDrawerStatus(true)">
+          <svg t="1702978210636" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="7618" width="30" height="30" aria-hidden="true">
+            <path fill="currentColor" fill-opacity=".9" d="M895.936 256l-768-0.896 0.128-64L896 192l-0.064 64zM179.2 689.152l202.688-152a32 32 0 0 0 0-51.2L179.2 333.952a32 32 0 0 0-51.2 25.6v304a32 32 0 0 0 51.2 25.6z m12.8-89.6v-176l117.312 88L192 599.552zM896 544H480v-64H896v64z m-0.064 288l-768-0.896 0.128-64L896 768l-0.064 64z" p-id="7619"></path>
+          </svg>
+        </button>
+        <button v-else type="button" class="icon-btn bg-transparent border-0 p-0 cursor-pointer text-ink-700" aria-label="关闭导航菜单" :aria-expanded="componentStore.leftComDrawer" @click="componentStore.setleftComDrawerStatus(false)">
+          <svg t="1702978577170" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="1587" width="30" height="30" aria-hidden="true">
+            <path fill="currentColor" fill-opacity=".9" d="M128.064 192l768 0.896-0.128 64L128 256l0.064-64z m514.048 294.848a32 32 0 0 0 0 51.2l202.688 152a32 32 0 0 0 51.2-25.6v-304a32 32 0 0 0-51.2-25.6l-202.688 152zM832 424.448v176l-117.312-88L832 424.448zM128 480h416v64H128v-64z m0.064 288l768 0.896-0.128 64L128 832l0.064-64z" p-id="1588"></path>
+          </svg>
+        </button>
       </Transition>
 
       <!-- c-md:block -->
       <Transition name="fold" class="hidden c-md:block text-ink-700">
-        <svg v-if="!componentStore.leftCom" @click="componentStore.setLeftComStatus(true)" t="1702978577170" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="1587" width="30" height="30">
-          <path fill="currentColor" fill-opacity=".9" d="M128.064 192l768 0.896-0.128 64L128 256l0.064-64z m514.048 294.848a32 32 0 0 0 0 51.2l202.688 152a32 32 0 0 0 51.2-25.6v-304a32 32 0 0 0-51.2-25.6l-202.688 152zM832 424.448v176l-117.312-88L832 424.448zM128 480h416v64H128v-64z m0.064 288l768 0.896-0.128 64L128 832l0.064-64z" p-id="1588"></path>
-        </svg>
-        <svg v-else @click="componentStore.setLeftComStatus(false)" t="1702978210636" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="7618" width="30" height="30">
-          <path fill="currentColor" fill-opacity=".9" d="M895.936 256l-768-0.896 0.128-64L896 192l-0.064 64zM895.936 256l-768-0.896 0.128-64L896 192l-0.064 64zM179.2 689.152l202.688-152a32 32 0 0 0 0-51.2L179.2 333.952a32 32 0 0 0-51.2 25.6v304a32 32 0 0 0 51.2 25.6z m12.8-89.6v-176l117.312 88L192 599.552zM896 544H480v-64H896v64z m-0.064 288l-768-0.896 0.128-64L896 768l-0.064 64z" p-id="7619"></path>
-        </svg>
+        <button v-if="!componentStore.leftCom" type="button" class="icon-btn bg-transparent border-0 p-0 cursor-pointer text-ink-700" aria-label="打开侧边栏" :aria-expanded="!componentStore.leftCom" @click="componentStore.setLeftComStatus(true)">
+          <svg t="1702978577170" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="1587" width="30" height="30" aria-hidden="true">
+            <path fill="currentColor" fill-opacity=".9" d="M128.064 192l768 0.896-0.128 64L128 256l0.064-64z m514.048 294.848a32 32 0 0 0 0 51.2l202.688 152a32 32 0 0 0 51.2-25.6v-304a32 32 0 0 0-51.2-25.6l-202.688 152zM832 424.448v176l-117.312-88L832 424.448zM128 480h416v64H128v-64z m0.064 288l768 0.896-0.128 64L128 832l0.064-64z" p-id="1588"></path>
+          </svg>
+        </button>
+        <button v-else type="button" class="icon-btn bg-transparent border-0 p-0 cursor-pointer text-ink-700" aria-label="关闭侧边栏" :aria-expanded="!componentStore.leftCom" @click="componentStore.setLeftComStatus(false)">
+          <svg t="1702978210636" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="7618" width="30" height="30" aria-hidden="true">
+            <path fill="currentColor" fill-opacity=".9" d="M895.936 256l-768-0.896 0.128-64L896 192l-0.064 64zM895.936 256l-768-0.896 0.128-64L896 192l-0.064 64zM179.2 689.152l202.688-152a32 32 0 0 0 0-51.2L179.2 333.952a32 32 0 0 0-51.2 25.6v304a32 32 0 0 0 51.2 25.6z m12.8-89.6v-176l117.312 88L192 599.552zM896 544H480v-64H896v64z m-0.064 288l-768-0.896 0.128-64L896 768l-0.064 64z" p-id="7619"></path>
+          </svg>
+        </button>
       </Transition>
 
       <div class="ml-3 mr-1 text-ink-900">
@@ -273,36 +281,50 @@ onUnmounted(() => {
           
           <!-- 已登录状态：显示用户名和下拉菜单 -->
           <div v-else class="relative">
-            <div 
-              class="relative cursor-pointer text-ink-700 hover:text-accent-600 flex items-center gap-1 px-3 py-2 rounded hover:bg-accent-50"
+            <button
+              type="button"
+              class="relative cursor-pointer text-ink-700 hover:text-accent-600 flex items-center gap-1 px-3 py-2 rounded hover:bg-accent-50 bg-transparent border-0"
+              :aria-haspopup="'menu'"
+              :aria-expanded="userMenuVisible"
+              aria-label="用户菜单"
               @click="toggleUserMenu"
               @mouseenter="showUserMenu"
               @mouseleave="hideUserMenu"
             >
               <span class="whitespace-nowrap">{{ user?.username || user?.email || '用户' }}</span>
-              <svg class="w-4 h-4 text-ink-400 transition-transform duration-200" :class="{ 'rotate-180': userMenuVisible }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg class="w-4 h-4 text-ink-400 transition-transform duration-200" :class="{ 'rotate-180': userMenuVisible }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <polyline points="6,9 12,15 18,9"></polyline>
               </svg>
-              
-              <!-- 悬浮菜单 -->
-              <div 
-                v-show="userMenuVisible"
-                class="absolute top-full right-0 mt-1 bg-surface-1 border border-border-default rounded-lg shadow-lg py-2 min-w-[120px] z-50"
-                @mouseenter="showUserMenu"
-                @mouseleave="hideUserMenu"
+            </button>
+
+            <!-- 悬浮菜单 -->
+            <div
+              v-show="userMenuVisible"
+              role="menu"
+              aria-label="用户菜单"
+              class="absolute top-full right-0 mt-1 bg-surface-1 border border-border-default rounded-lg shadow-lg py-2 min-w-[120px] z-50"
+              @mouseenter="showUserMenu"
+              @mouseleave="hideUserMenu"
+            >
+              <div
+                role="menuitem"
+                tabindex="0"
+                class="px-4 py-2 hover:bg-accent-50 cursor-pointer text-ink-700 hover:text-accent-700"
+                @click.stop="goToUserInfo"
+                @keyup.enter="goToUserInfo"
+                @keyup.space.prevent="goToUserInfo"
               >
-                <div 
-                  class="px-4 py-2 hover:bg-accent-50 cursor-pointer text-ink-700 hover:text-accent-700"
-                  @click.stop="goToUserInfo"
-                >
-                  个人中心
-                </div>
-                <div 
-                  class="px-4 py-2 hover:bg-danger-50 cursor-pointer text-danger-600"
-                  @click.stop="handleLogout"
-                >
-                  退出登录
-                </div>
+                个人中心
+              </div>
+              <div
+                role="menuitem"
+                tabindex="0"
+                class="px-4 py-2 hover:bg-danger-50 cursor-pointer text-danger-600"
+                @click.stop="handleLogout"
+                @keyup.enter="handleLogout"
+                @keyup.space.prevent="handleLogout"
+              >
+                退出登录
               </div>
             </div>
           </div>

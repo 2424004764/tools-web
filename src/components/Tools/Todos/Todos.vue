@@ -4,7 +4,11 @@ import functionsRequest from '@/utils/functionsRequest'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Refresh, Plus, Edit, Delete, Clock } from '@element-plus/icons-vue'
+import Refresh from '~icons/ep/refresh'
+import Plus from '~icons/ep/plus'
+import Edit from '~icons/ep/edit'
+import Delete from '~icons/ep/delete'
+import Clock from '~icons/ep/clock'
 
 interface Todo {
   id: string

@@ -4,19 +4,17 @@ import functionsRequest from '@/utils/functionsRequest'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { 
-  Refresh, 
-  Plus, 
-  Edit, 
-  Delete, 
-  View, 
-  Search, 
-  OfficeBuilding, 
-  Document, 
-  Picture, 
-  Filter, 
-  DataBoard
-} from '@element-plus/icons-vue'
+import Refresh from '~icons/ep/refresh'
+import Plus from '~icons/ep/plus'
+import Edit from '~icons/ep/edit'
+import Delete from '~icons/ep/delete'
+import View from '~icons/ep/view'
+import Search from '~icons/ep/search'
+import OfficeBuilding from '~icons/ep/officeBuilding'
+import Document from '~icons/ep/document'
+import Picture from '~icons/ep/picture'
+import Filter from '~icons/ep/filter'
+import DataBoard from '~icons/ep/dataBoard'
 import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
 

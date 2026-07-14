@@ -2,7 +2,9 @@
 import { reactive, ref, onMounted, computed, onUnmounted } from 'vue'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
-import { Refresh, Edit, Check } from '@element-plus/icons-vue'
+import Refresh from '~icons/ep/refresh'
+import Edit from '~icons/ep/edit'
+import Check from '~icons/ep/check'
 
 const info = reactive({
   title: "数独游戏",

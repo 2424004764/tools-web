@@ -8,6 +8,7 @@ import Components from 'unplugin-vue-components/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import ElementPlus from 'unplugin-element-plus/vite'
 import AutoImport from 'unplugin-auto-import/vite'
+import Icons from 'unplugin-icons/vite'
 import viteCompression from 'vite-plugin-compression'
 
 /**
@@ -173,6 +174,20 @@ export default defineConfig(({command, mode}) => {
         resolvers: [ElementPlusResolver()],
         dts: false, // 生产环境禁用 dts 生成
       }),
+      // 按需引入 Element Plus 图标（用 iconify-json/ep 数据源，单个 SVG 约 1KB）
+      // 使用方式：import TopIcon from '~icons/ep/top'
+      // 在 <script setup> 中可直接 <TopIcon /> 或通过别名 <Top /> 引用
+      Icons({
+        compiler: 'vue3',
+        autoInstall: true,
+        collections: {
+          ep: () => import('@iconify-json/ep/icons.json').then(i => i.default as any),
+        },
+        // 让每个图标默认作为 Vue 组件注册（PascalCase 命名）
+        defaultClass: 'inline-block',
+        // 生成 icons.d.ts 类型声明，配合 vite-env.d.ts 的 ~icons/* shim 解决 TS 报错
+        dts: 'src/types/auto-icons.d.ts',
+      }),
       // 仅生产环境压缩
       ...(isProd ? [
         viteCompression({
@@ -196,7 +211,7 @@ export default defineConfig(({command, mode}) => {
       }
     },
     build: {
-      target: 'es2015',
+      target: 'es2020',
       cssCodeSplit: true,
       sourcemap: false,
       minify: 'terser',
@@ -210,7 +225,11 @@ export default defineConfig(({command, mode}) => {
       rollupOptions: {
         output: {
           manualChunks: {
-            'vue-vendor': ['vue', 'vue-router', 'pinia', 'element-plus', '@element-plus/icons-vue'],
+            // Vue 核心 + 路由 + 状态管理（首屏必下）
+            'vue-vendor': ['vue', 'vue-router', 'pinia'],
+            // Element Plus 单独成 chunk：方便首屏 preload，且与 icon chunk 解耦
+            // （icon 不强制进此 chunk，让 Rollup 按引用页自动分包）
+            'element-plus': ['element-plus'],
             'editor': ['@wangeditor/editor', '@wangeditor/editor-for-vue'],
             'charts': ['echarts'],
             'codemirror': ['codemirror', '@codemirror/commands', '@codemirror/lang-javascript', '@codemirror/lang-json'],
@@ -271,7 +290,8 @@ export default defineConfig(({command, mode}) => {
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api\/pollinations/, ''),
           headers: {
-            Authorization: 'Bearer NpgaKlHjioTlyo2B'
+            // Token 从 .env.* 读取，禁止硬编码进源码
+            Authorization: `Bearer ${env.VITE_POLLINATIONS_API_KEY || ''}`
           }
         },
         [env.VITE_APP_BASE_API] : {
@@ -370,7 +390,15 @@ export default defineConfig(({command, mode}) => {
         'element-plus',
         'lodash',
       ],
-      exclude: ['@wangeditor/editor', 'echarts', 'three', 'pdfjs-dist'],
+      // @element-plus/icons-vue 全量 ~250KB，按需 ESM import 即可，无需预构建全部
+      // 后续可改 unplugin-icons + @iconify-json/ep 实现 icon-level 按需（45+ 处 import 替换）
+      exclude: [
+        '@wangeditor/editor',
+        '@element-plus/icons-vue',
+        'echarts',
+        'three',
+        'pdfjs-dist',
+      ],
     },
   }
 })

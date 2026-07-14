@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, reactive, watch, computed } from 'vue'
 import { UploadProps, UploadRawFile, genFileId, ElMessage } from 'element-plus'
-import { Download as DownloadIcon } from '@element-plus/icons-vue'
+import DownloadIcon from '~icons/ep/download'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 

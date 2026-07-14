@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref, watch } from 'vue'
 import { UploadProps, UploadRawFile, genFileId } from 'element-plus'
-import { Download, Plus, Delete } from '@element-plus/icons-vue'
+import Download from '~icons/ep/download'
+import Plus from '~icons/ep/plus'
+import Delete from '~icons/ep/delete'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 

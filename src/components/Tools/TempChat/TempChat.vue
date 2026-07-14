@@ -4,7 +4,9 @@ import { useRoute } from "vue-router";
 import DetailHeader from "@/components/Layout/DetailHeader/DetailHeader.vue";
 import ToolDetail from "@/components/Layout/ToolDetail/ToolDetail.vue";
 import { ElMessage, ElImageViewer } from "element-plus";
-import { CopyDocument, Close, QuestionFilled } from "@element-plus/icons-vue";
+import CopyDocument from '~icons/ep/copyDocument'
+import Close from '~icons/ep/close'
+import QuestionFilled from '~icons/ep/questionFilled'
 import QrcodeVue3 from "qrcode-vue3";
 import { supabase, chatDb } from "@/utils/supabase";
 

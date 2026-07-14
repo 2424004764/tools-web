@@ -1,0 +1,36 @@
+# ============================================================
+# Cloudflare Pages Functions 本地开发用环境变量（机密）
+# 复制本文件为 .dev.vars 并填入真实值
+# .dev.vars 已被 .gitignore，不会被提交
+# ============================================================
+
+# ---------- 鉴权 ----------
+# JWT 签名密钥（生产环境必须与 Dashboard 同步轮换）
+JWT_SECRET=local-dev-jwt-secret-change-in-production
+
+# ---------- 邮件 ----------
+# Resend 邮件 API Key（https://resend.com/api-keys）
+RESEND_API_KEY=re_local_dev_only
+# 发件邮箱（必须使用 Resend 验证过的域名）
+RESEND_FROM_EMAIL=一方工具箱 <noreply@tool-helper.fologde.com>
+
+# ---------- OAuth 登录（生产环境到对应平台控制台取 Secret） ----------
+# GitHub OAuth (https://github.com/settings/developers)
+GITHUB_CLIENT_SECRET=local-dev-only
+
+# Gitee OAuth (https://gitee.com/oauth/applications)
+GITEE_CLIENT_SECRET=local-dev-only
+
+# Linux.do OAuth
+LINUXDO_CLIENT_SECRET=local-dev-only
+
+# QQ 互联 OAuth
+QQ_CLIENT_SECRET=local-dev-only
+
+# ---------- Supabase ----------
+SUPABASE_URL=https://wvdyjqjwkhfvfcmjpaoo.supabase.co
+SUPABASE_SERVICE_KEY=sb_publishable_LOCAL_DEV_ONLY
+
+# ---------- Pollinations ----------
+# 文生图 / 文生文 API Key（前端通过 vite.config.ts 代理使用 VITE_POLLINATIONS_API_KEY）
+# 后端如有直连需求可在此声明 POLLINATIONS_API_KEY

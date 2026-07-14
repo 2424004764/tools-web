@@ -194,7 +194,8 @@ export default {
       },
 
       fontFamily: {
-        // Phase 1 仅声明栈，不引字；Phase 4 下载 Inter woff2 + fonts.css 后实际生效
+        // Inter Variable 由 @fontsource-variable/inter 提供 woff2（main.ts 导入触发 Vite 打包）
+        // 中文走系统 PingFang / Microsoft YaHei / Noto Sans CJK SC 兜底
         display: [
           'Inter',
           '-apple-system',
