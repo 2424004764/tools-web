@@ -8,6 +8,13 @@
     <meta name="renderer" content="webkit">
     <meta name="referrer" content="no-referrer-when-downgrade">
 
+    <!-- 强制禁用所有缓存层：HTML/响应头失败时仍有兜底
+         这套 meta 是给那些不严格遵守 Cache-Control 的中间代理/老浏览器看的
+         主流浏览器已靠 _headers 的 no-store 处理 -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
     <!-- DNS 预连接（优先级更高） -->
     <link rel="preconnect" href="https://image.pollinations.ai" crossorigin>
     <link rel="preconnect" href="https://static.cloudflareinsights.com" crossorigin>

@@ -33,3 +33,23 @@ setTimeout(() => {
 if (import.meta.env.PROD) {
   injectCloudflareAnalytics()
 }
+
+/**
+ * 反注册任何残留的 Service Worker。
+ *
+ * 背景：项目历史上短暂启用过 vite-plugin-pwa（dev-dist/sw.js）做 PWA 测试，
+ * 即使现在生产构建不再生成 SW，老用户浏览器里可能还驻留着 SW。
+ * 残留的 SW 会无视 _headers 缓存控制，按自己的策略响应 fetch，
+ * 导致"刷新页面但内容没变"。这里在每次应用启动时主动清理。
+ */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.getRegistrations().then((regs) => {
+      regs.forEach((reg) => {
+        reg.unregister().then((ok) => {
+          if (ok) console.info('[main] 已清理残留 service worker:', reg.scope)
+        })
+      })
+    })
+  })
+}
