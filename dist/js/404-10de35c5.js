@@ -1,0 +1,1 @@
+import{_ as e}from"./index-9d4f3ff4.js";/* empty css                 */import{$ as s}from"./element-plus-b700535a.js";import{y as r,z as o,P as t}from"./vue-vendor-38e11f3a.js";const m=e({},[["render",function(e,m){const n=s;return r(),o("div",null,[t(n,{"image-size":200})])}]]);export{m as default};
