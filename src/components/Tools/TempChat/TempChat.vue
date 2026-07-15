@@ -171,7 +171,7 @@ const lightboxVisible = ref(false);
 const lightboxImages = ref<string[]>([]);
 const lightboxCurrentIndex = ref(0);
 
-// 保存昵称到本地存储
+// 保存昵称到本地存储（仅用于历史记录，识别自己过去发送的消息）
 const saveNickname = (nick: string) => {
   // 获取当前存储的历史昵称
   const saved = localStorage.getItem('tempchat-mynicknames');
@@ -195,16 +195,11 @@ const saveNickname = (nick: string) => {
   }
 
   myNicknames.value = nicknames;
-
-  // 保存当前昵称
-  localStorage.setItem('tempchat-current-nickname', nick);
 };
 
-// 加载保存的昵称
-const loadSavedNickname = () => {
-  const current = localStorage.getItem('tempchat-current-nickname');
+// 加载历史昵称（仅用于 isSelfMessage 识别，不自动恢复当前昵称）
+const loadSavedNicknames = () => {
   const saved = localStorage.getItem('tempchat-mynicknames');
-
   if (saved) {
     try {
       myNicknames.value = JSON.parse(saved);
@@ -212,14 +207,6 @@ const loadSavedNickname = () => {
       myNicknames.value = [];
     }
   }
-
-  // 如果有保存的当前昵称，使用它
-  if (current) {
-    nickname.value = current;
-    return true;
-  }
-
-  return false;
 };
 
 // 判断消息是否是自己发送的
@@ -238,12 +225,63 @@ const generateRoomId = () => {
 };
 
 // 生成随机昵称
+// 英文风格（形容词 + 自然意象）+ 简短有意境中文 + 诗意中文昵称
 const generateNickname = () => {
-  const adjectives = ['快乐的', '聪明的', '可爱的', '勇敢的', '温柔的', '活泼的', '神秘的', '优雅的'];
-  const nouns = ['小猫', '小狗', '兔子', '熊猫', '狐狸', '松鼠', '海豚', '企鹅'];
-  const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
-  const noun = nouns[Math.floor(Math.random() * nouns.length)];
-  nickname.value = adj + noun;
+  // 英文昵称：形容词 + 名词
+  const enAdjectives = [
+    'Quiet', 'Brave', 'Gentle', 'Wild', 'Bright', 'Silver', 'Golden', 'Lucky', 'Hidden', 'Starlit',
+    'Lonely', 'Ancient', 'Whispering', 'Wandering', 'Midnight', 'Sunny', 'Frosty', 'Velvet',
+    'Crimson', 'Emerald', 'Sapphire', 'Misty', 'Roaming', 'Drifting', 'Sleeping', 'Restless',
+    'Cozy', 'Drowsy', 'Echoing', 'Silent', 'Faraway', 'Twilight', 'Hollow', 'Endless',
+    'Frozen', 'Woven', 'Patient', 'Noble', 'Dusty', 'Ivy', 'Jolly', 'Merry', 'Soft',
+    'Willow', 'Linen', 'Flickering',
+  ];
+  const enNouns = [
+    'River', 'Star', 'Moon', 'Owl', 'Fox', 'Deer', 'Rose', 'Maple', 'Breeze', 'Horizon',
+    'Ocean', 'Forest', 'Mountain', 'Cloud', 'Falcon', 'Wolf', 'Pine', 'Willow',
+    'Meadow', 'Lantern', 'Ember', 'Comet', 'Phoenix', 'Raven', 'Swan', 'Storm', 'Compass',
+    'Echo', 'Cascade', 'Aurora', 'Thistle', 'Marigold', 'Cipher', 'Wisp', 'Wanderer',
+    'Voyager', 'Drifter', 'Ridge', 'Sparrow', 'Heron', 'Badger', 'Otter', 'Lynx',
+    'Acorn', 'Linden', 'Cedar', 'Magnolia', 'Harbor', 'Glade', 'Glimmer', 'Beacon',
+    'Quill', 'Tide', 'Solstice', 'Gale', 'Zephyr', 'Sage', 'Bramble', 'Hearth',
+    'Lark', 'Finch', 'Bough',
+  ];
+
+  // 简短有意境的中文昵称（两字）
+  const cnSimple = [
+    '清欢', '山月', '清风', '明月', '听雨', '闲云', '归雁', '拾光', '念安', '若溪',
+    '鹿鸣', '竹隐', '松吟', '云深', '鹤归', '江雪', '寻舟', '流年', '半夏', '微凉',
+    '无恙', '知秋', '向晚', '初晴', '如初', '知遇', '长歌', '远山', '近水', '归园',
+    '寻梦', '听雪', '望月', '等风', '念远', '惜朝', '柔光', '暮云', '烟雨', '青衿',
+    '白衣', '墨染', '书简', '拾蕊', '枕月', '栖云', '折枝', '解忧', '候月', '待雪',
+    '寻隐', '望舒', '听泉', '浮云', '弄墨', '煮茶', '听蝉', '看花', '濯缨', '挂帆',
+  ];
+
+  // 诗意中文昵称（三字/四字）
+  const cnPoetic = [
+    '听风者', '拾光人', '追月者', '山间客', '林中鹿', '桃花仙', '踏雪客', '寻梅客',
+    '听泉人', '青衫客', '白衣仙', '星河畔', '云深处', '半山人', '海上舟', '风雅客',
+    '折枝人', '解忧铺', '陌上花', '山中月', '望舒人', '浮云客', '溪边客', '烟波客',
+    '采菊人', '抚琴人', '弄墨人', '煮茶人', '听蝉人', '看花人', '候月人', '待雪人',
+    '濯缨人', '寻隐者', '挂帆人', '横舟客', '一苇客', '望岳人', '过溪人', '踏青人',
+    '枕月人', '栖云人', '拾蕊人', '寻舟人', '栖霞客', '观星客', '听雨人', '赏雪人',
+    '候鸟人', '望海人', '寻路人', '归田客', '采薇人', '布衣客', '行吟者', '访客人',
+    '看云人', '拾叶人', '听潮人', '望峰人', '远游客', '山行者', '解语人', '半亩翁',
+  ];
+
+  const r = Math.random();
+  if (r < 0.5) {
+    // 50% 英文风格
+    const adj = enAdjectives[Math.floor(Math.random() * enAdjectives.length)];
+    const noun = enNouns[Math.floor(Math.random() * enNouns.length)];
+    nickname.value = adj + noun;
+  } else if (r < 0.8) {
+    // 30% 简短有意境的中文
+    nickname.value = cnSimple[Math.floor(Math.random() * cnSimple.length)];
+  } else {
+    // 20% 诗意中文
+    nickname.value = cnPoetic[Math.floor(Math.random() * cnPoetic.length)];
+  }
 };
 
 // 获取房间链接
@@ -1829,13 +1867,11 @@ const selectEmoji = (emoji: string) => {
 
 // 组件挂载
 onMounted(() => {
-  // 先尝试加载保存的昵称
-  const hasSaved = loadSavedNickname();
+  // 加载历史昵称（用于识别自己过去发送的消息），但不自动恢复当前昵称
+  loadSavedNicknames();
 
-  // 如果没有保存的昵称，才生成新的
-  if (!hasSaved) {
-    generateNickname();
-  }
+  // 每次进入都重新生成一个随机昵称
+  generateNickname();
 
   // 加载最近使用的表情
   const saved = localStorage.getItem('tempchat-recent-emojis');
