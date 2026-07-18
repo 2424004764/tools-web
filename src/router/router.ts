@@ -383,6 +383,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/line-art',
+    component: () => import('@/components/Tools/LineArt/LineArt.vue'),
+    name: 'lineArt',
+    meta: {
+      title: "图片转线稿图",
+      keywords: '图片转线稿,照片转线稿图,一键生成线稿,铅笔素描,线描图生成,批量转线稿',
+      description: '在线图片转线稿图工具，采用铅笔素描算法一键把照片、插画转为黑白线稿，支持批量上传、拖拽、剪贴板粘贴，可调节线条强度与粗细，纯前端本地处理保护隐私',
+    }
+  },
+  {
     path: '/webinfo',
     component: () => import('@/components/Tools/WebInfo/WebInfo.vue'),
     name: 'webInfo',
