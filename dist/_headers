@@ -12,8 +12,8 @@
   #  - img-src 加 image.pollinations.ai：文生图工具直连 Pollinations。
   #  - img-src 加 data: blob:：Canvas 截图、Base64 图片、PDF.js worker 渲染。
   #  - connect-src *：AI 代理/外部 API 多为 * 调用（Agnes、Pollinations、Supabase 等）。
-  #  - script-src / frame-src 加 https://giscus.app：评论区使用 giscus（加载 client.js 并内嵌 giscus iframe）。
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com https://accounts.google.com https://giscus.app; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https: wss:; frame-src https://giscus.app; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://accounts.google.com
+  #  - script-src / frame-src / style-src 加 https://giscus.app：评论区使用 giscus（加载 client.js、default.css 并内嵌 giscus iframe）。
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com https://accounts.google.com https://giscus.app; style-src 'self' 'unsafe-inline' https://giscus.app; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https: wss:; frame-src https://giscus.app; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://accounts.google.com
 
 /js/*
   Cache-Control: public, max-age=31536000, immutable

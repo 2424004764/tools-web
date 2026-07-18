@@ -102,6 +102,11 @@ watch(() => route.path, () => {
 }
 
 /* giscus 主题适配 */
+:deep(.giscus),
+:deep(.giscus-frame) {
+  width: 100%;
+}
+
 :deep(.giscus-frame) {
   border-radius: 8px;
 }
