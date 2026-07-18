@@ -36,9 +36,24 @@ export const SPRITE_URL = spriteUrl
 /** sprite 里每格实际像素（Retina @2x，CSS 仍以 40px 显示） */
 export const SPRITE_CELL_PX = 80
 
-/** sprite 整体尺寸（8 列 × 17 行 × STRIDE 84）；由构建脚本保证 */
-const SPRITE_TOTAL_W = 8 * (80 + 4)
-const SPRITE_TOTAL_H = 17 * (80 + 4)
+/**
+ * 从坐标数据中动态计算精灵图总尺寸。
+ * 之前硬编码 17 行 → 新增工具后行数变化 → backgroundSize 与实际图片不匹配 → logo 位置全错。
+ * 现在从 JSON 中的最大 x/y 反推，行列数无论如何变化都自动同步。
+ */
+function computeSpriteDimensions(coords: Record<string, SpriteCell>) {
+  const PAD = 4
+  const STRIDE = SPRITE_CELL_PX + PAD
+  const cells = Object.values(coords)
+  const maxX = cells.length > 0 ? Math.max(...cells.map((c) => c.x)) : 0
+  const maxY = cells.length > 0 ? Math.max(...cells.map((c) => c.y)) : 0
+  return {
+    width: maxX + STRIDE,
+    height: maxY + STRIDE,
+  }
+}
+
+const spriteDimensions = computeSpriteDimensions(spriteCoords as Record<string, SpriteCell>)
 
 /**
  * 根据工具的 logo URL，返回用于 :style 的精灵图样式对象。
@@ -59,7 +74,7 @@ export function useSpriteLogo(tool: { logo: string }, displaySize = SPRITE_CELL_
       backgroundImage: `url(${SPRITE_URL})`,
       backgroundPosition: `-${cell.x * scale}px -${cell.y * scale}px`,
       backgroundRepeat: 'no-repeat',
-      backgroundSize: `${SPRITE_TOTAL_W * scale}px ${SPRITE_TOTAL_H * scale}px`,
+      backgroundSize: `${spriteDimensions.width * scale}px ${spriteDimensions.height * scale}px`,
       width: `${displaySize}px`,
       height: `${displaySize}px`,
     },

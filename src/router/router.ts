@@ -1438,5 +1438,25 @@ export const constantRoute = [
       keywords: '辈分计算,亲戚称呼,称谓计算器,家谱树,亲属关系,堂表兄弟,家族辈分,叫法',
       description: '在线辈分称谓计算工具，以「我」为根的交互式家谱树，点击节点长出父母、兄弟姐妹、配偶、子女等分支，自动推导中国式亲戚称谓、辈分高低（长N辈/平辈/晚N辈）、直系/旁系/姻亲及父系母系，并给出对方对我的反向称呼，附辈分速查表。'
     }
+  },
+  {
+    path: '/lights-out/',
+    component: () => import('@/components/Tools/LightsOut/LightsOut.vue'),
+    name: 'lightsOut',
+    meta: {
+      title: '点灯小游戏',
+      keywords: '点灯游戏,Lights Out,点亮小游戏,灯泡游戏,益智游戏,逻辑推理,关灯游戏',
+      description: '经典 Lights Out 点灯小游戏，在 5×5 灯泡棋盘上，点击任意一盏灯会切换自身和上下左右四盏邻居灯的状态，目标是熄灭所有灯泡。支持多种难度、撤销、提示和最佳纪录挑战。'
+    }
+  },
+  {
+    path: '/image-color-count/',
+    component: () => import('@/components/Tools/ImageColorCount/ImageColorCount.vue'),
+    name: 'imageColorCount',
+    meta: {
+      title: '图片颜色数统计',
+      keywords: '图片颜色统计,颜色数量,取色器,调色板,图片分析,palette,color count',
+      description: '在线统计一张图片中出现了多少种不同的颜色，支持采样步长与颜色量化（每通道 bit），按出现次数展示 Top N 调色板，可导出 JSON / CSV，全部在浏览器本地完成。'
+    }
   }
 ]

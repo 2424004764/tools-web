@@ -767,7 +767,7 @@ export function getToolsCate() {
         {
           id: 72,
           title: '视频转GIF动图',
-          logo: '/images/logo/video_to_gif.svg',
+          logo: '/images/logo/video_to_gif.png',
           desc: '在线视频转GIF工具，支持选择视频片段、自定义帧率、尺寸和质量，纯前端处理保护隐私',
           url: '/video-to-gif/',
           cateId: 5,
@@ -812,9 +812,18 @@ export function getToolsCate() {
         {
           id: 133,
           title: '图片转线稿图',
-          logo: '/images/logo/line_art.svg',
+          logo: '/images/logo/line_art.png',
           desc: '一键把照片、插画转换为黑白线稿图，支持批量上传、拖拽、Ctrl+V粘贴，可调线条强度与粗细，纯前端处理保护隐私',
           url: '/line-art/',
+          cateId: 5,
+          cate: '图片处理',
+        },
+        {
+          id: 135,
+          title: '图片颜色数统计',
+          logo: '/images/logo/image-color-count.png',
+          desc: '统计一张图片中出现了多少种不同的颜色，支持采样步长与颜色量化，按出现次数展示 Top N 调色板，可导出 JSON / CSV',
+          url: '/image-color-count/',
           cateId: 5,
           cate: '图片处理',
         },
@@ -996,7 +1005,7 @@ export function getToolsCate() {
         {
           id: 94,
           title: '翻页时钟',
-          logo: '/images/logo/flip_clock.svg',
+          logo: '/images/logo/flip_clock.png',
           desc: '经典翻页时钟，3D翻转动画效果，实时显示时间和日期',
           url: '/flip-clock/',
           cateId: 11,
@@ -1044,6 +1053,15 @@ export function getToolsCate() {
           logo: '/images/logo/generation-calculator.png',
           desc: '以「我」为根的交互式家谱树，点击节点长出父母/兄弟/子女等分支，自动推导亲戚称谓、辈分高低与反向称呼，支持堂表、父系母系与姻亲',
           url: '/generation-calculator/',
+          cateId: 11,
+          cate: '趣味互动',
+        },
+        {
+          id: 134,
+          title: '点灯小游戏',
+          logo: '/images/logo/lights-out.png',
+          desc: '经典 Lights Out 点灯游戏，支持 5×5 / 6×6 / 7×7 / 8×8 多种棋盘尺寸，点击一盏灯会切换其上下左右四盏邻居的状态，挑战把所有灯都熄灭',
+          url: '/lights-out/',
           cateId: 11,
           cate: '趣味互动',
         }
@@ -1416,7 +1434,7 @@ export function getToolsCate() {
         {
           id: 129,
           title: '四季景色',
-          logo: '/images/logo/season-scenery.svg',
+          logo: '/images/logo/season-scenery.png',
           desc: '展示不同地方一年四季的变化，欣赏祖国大好河山的美丽景色',
           url: '/season-scenery/',
           cateId: 13,
