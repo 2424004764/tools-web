@@ -1,0 +1,1 @@
+import{ak as e,y as o,z as n,C as l}from"./vue-vendor-38e11f3a.js";const r={class:"inline-block",viewBox:"0 0 1024 1024",width:"1.2em",height:"1.2em"};const s=e({name:"ep-promotion",render:function(e,s){return o(),n("svg",r,s[0]||(s[0]=[l("path",{fill:"currentColor",d:"m64 448l832-320l-128 704l-446-243.3L832 192L242.8 545.5zm256 512V657l192 111z"},null,-1)]))}});export{s as P};
