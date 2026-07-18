@@ -809,6 +809,15 @@ export function getToolsCate() {
           cateId: 5,
           cate: '图片处理',
         },
+        {
+          id: 133,
+          title: '图片转线稿图',
+          logo: '/images/logo/line_art.svg',
+          desc: '一键把照片、插画转换为黑白线稿图，支持批量上传、拖拽、Ctrl+V粘贴，可调线条强度与粗细，纯前端处理保护隐私',
+          url: '/line-art/',
+          cateId: 5,
+          cate: '图片处理',
+        },
       ]
     },
     {
