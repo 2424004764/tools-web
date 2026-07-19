@@ -12,32 +12,37 @@ import Icons from 'unplugin-icons/vite'
 import viteCompression from 'vite-plugin-compression'
 
 /**
- * 从 src/components/Tools/tools.ts 读取真实工具数，替换 index.html 里
- * 硬编码的 "80+" 占位（description / og:description / twitter:description /
- * 结构化数据 / title 共 5 处）。
+ * build time 把两类「写死在 index.html 但本应是变量」的内容替换为真实值：
+ *
+ *   1. 工具数量：解析 src/components/Tools/tools.ts，统计独立 url 路径数，
+ *      把 "80+" 占位（description / og / twitter / JSON-LD / title 等多处）替换为 "N+"。
+ *   2. 站点名：把 "开发者工具箱" 占位（title / og:site_name / og:title /
+ *      twitter:title / JSON-LD 等多处）替换为 .env 中 VITE_APP_TITLE 的值。
  *
  * 必要性：SEO 爬虫读的是静态 HTML，不会执行 JS。
  * 运行期只能更新 <meta name="keywords"> 这种不影响 SEO 抓取的字段。
- * 真正的工具数量必须在 build time 注入到 HTML 里。
+ * 因此这两类字段都必须在 build time 注入。
  *
  * 工作机制：
- *   1. 解析 tools.ts 提取 url: '/xxx' 这些工具路径，去重统计
- *   2. 跳过 'https://...' 这种好物网站外部链接
- *   3. 把 html 中所有 "80+" 替换成 "{N}+"（N 为真实数量）
+ *   - tools.ts：正则 `url: '/xxx'` → Set 去重 → 跳过 https:// 外部链接 → count
+ *   - VITE_APP_TITLE：通过 loadEnv(mode, cwd) 读取，默认回退 "开发者工具箱"
+ *   - 占位写法：源代码中保留 "开发者工具箱" 与 "80+" 两个固定 token；
+ *     若 VITE_APP_TITLE 与 token 相同则跳过站点名替换（无变更日志噪声）
  */
-function injectToolCount(): Plugin {
+function injectSiteMeta(): Plugin {
   return {
-    name: 'tools-web-inject-tool-count',
+    name: 'tools-web-inject-site-meta',
     apply: 'build',
     transformIndexHtml: {
       order: 'pre',
       handler(html) {
+        // ---------- 1. 工具数量 ----------
         const toolsPath = path.resolve(__dirname, 'src/components/Tools/tools.ts')
         const content = readFileSync(toolsPath, 'utf-8')
         const urls = new Set<string>()
-        const re = /url:\s*'([^']+)'/g
+        const urlRe = /url:\s*'([^']+)'/g
         let m: RegExpExecArray | null
-        while ((m = re.exec(content)) !== null) {
+        while ((m = urlRe.exec(content)) !== null) {
           // 仅统计以 / 开头的 SPA 工具路由；跳过 https://... 外部站点
           if (m[1].startsWith('/') && !m[1].startsWith('//')) {
             urls.add(m[1])
@@ -45,9 +50,29 @@ function injectToolCount(): Plugin {
         }
         const count = urls.size
         const countLabel = `${count}+`
-        const replaced = (html.match(/80\+/g) || []).length
-        const updated = html.replace(/80\+/g, countLabel)
-        console.log(`[inject-tool-count] tools=${count}, replaced ${replaced} 处 "80+" → "${countLabel}"`)
+        const countMatches = html.match(/80\+/g)
+        const countReplaced = countMatches ? countMatches.length : 0
+        let updated = html.replace(/80\+/g, countLabel)
+
+        // ---------- 2. 站点名（VITE_APP_TITLE） ----------
+        const env = loadEnv(
+          (process.env.NODE_ENV as 'development' | 'production') || 'production',
+          process.cwd(),
+        )
+        const siteToken = '开发者工具箱'
+        const siteName = env.VITE_APP_TITLE || siteToken
+        let siteReplaced = 0
+        if (siteName !== siteToken) {
+          const siteRegex = new RegExp(siteToken, 'g')
+          const matches = updated.match(siteRegex)
+          siteReplaced = matches ? matches.length : 0
+          updated = updated.replace(siteRegex, siteName)
+        }
+
+        console.log(
+          `[inject-site-meta] tools=${count} ("80+" → "${countLabel}", ${countReplaced} 处)` +
+          ` | siteName="${siteName}" (${siteReplaced} 处替换)`,
+        )
         return updated
       },
     },
@@ -168,7 +193,7 @@ export default defineConfig(({command, mode}) => {
     cacheDir: 'node_modules/.vite',
 
     plugins: [
-      injectToolCount(),
+      injectSiteMeta(),
       spriteWatcher(),
       vue({
         template: {
