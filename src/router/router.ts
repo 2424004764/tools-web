@@ -1450,6 +1450,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/make24/',
+    component: () => import('@/components/Tools/Make24/Make24.vue'),
+    name: 'make24',
+    meta: {
+      title: '24 点（算 24）',
+      keywords: '24点,算24,24点游戏,24 point,数学游戏,口算,益智游戏,加减乘除,四则运算,算术,儿童数学',
+      description: '经典 24 点（算 24）数学游戏：系统随机发 4 张牌，玩家用 +、-、×、÷ 和括号将结果算成 24。提供三档难度、连击记录、参考解法提示与本局历史，规则简单但挑战思维。'
+    }
+  },
+  {
     path: '/image-color-count/',
     component: () => import('@/components/Tools/ImageColorCount/ImageColorCount.vue'),
     name: 'imageColorCount',
