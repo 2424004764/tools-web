@@ -1064,6 +1064,15 @@ export function getToolsCate() {
           url: '/lights-out/',
           cateId: 11,
           cate: '趣味互动',
+        },
+        {
+          id: 135,
+          title: '24 点（算 24）',
+          logo: '/images/logo/make24.png',
+          desc: '经典 24 点数学游戏，随机发 4 张牌，用 +、-、×、÷ 和括号算出 24，多档难度、连击与提示',
+          url: '/make24/',
+          cateId: 11,
+          cate: '趣味互动',
         }
       ]
     },
