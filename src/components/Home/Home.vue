@@ -269,7 +269,7 @@ watch(() => toolsStore.cates.length, () => {
                 </div>
               </div>
             </div>
-            <div class="flex items-center justify-between mt-2">
+            <div class="mt-2 min-h-[3rem]">
               <el-text line-clamp="2" class="text-ink-900">{{ item.desc }}</el-text>
             </div>
           </router-link>
