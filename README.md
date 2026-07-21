@@ -118,6 +118,11 @@ git提交
 git add . && git commit -m "feat 新增xx功能" && git push origin master
 ```
 
+git重置本次全部改动 含：新增、删除、编辑
+```
+git reset --hard HEAD && git clean -df
+```
+
 ### Cloudflare部署
 
 详见我的公众号文章：[https://mp.weixin.qq.com/s/kIrz2uAv0cmT3f2rPWbtdQ](https://mp.weixin.qq.com/s/RXWAGN6OpKw2qa1DKF_5-g)

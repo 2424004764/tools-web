@@ -2634,6 +2634,8 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
 
           <div class="flex gap-2 items-end">
             <el-button
+              size="default"
+              class="!h-10 chat-action-btn"
               @click="showEmojiPicker = !showEmojiPicker"
               :type="showEmojiPicker ? 'primary' : 'default'"
             >
@@ -2641,6 +2643,8 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
             </el-button>
             <input ref="imageInputRef" type="file" accept="image/*" multiple class="hidden" @change="handleImageFileSelect" />
             <el-button
+              size="default"
+              class="!h-10 chat-action-btn"
               @click="imageInputRef?.click()"
               :disabled="isCompressing"
               title="发送图片"
@@ -2658,9 +2662,16 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
               @keydown="handleKeydown"
               @input="handleInput"
               @paste="handlePaste"
-              class="flex-1"
+              class="flex-1 chat-input"
             />
-            <el-button type="primary" @click="sendMessage" :disabled="(!inputMessage.trim() && pendingImages.length === 0) || isSending" :loading="isSending">
+            <el-button
+              type="primary"
+              size="default"
+              class="!h-10 chat-action-btn"
+              @click="sendMessage"
+              :disabled="(!inputMessage.trim() && pendingImages.length === 0) || isSending"
+              :loading="isSending"
+            >
               发送
             </el-button>
           </div>
@@ -2962,5 +2973,27 @@ VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
 :deep(.mention-highlight.mention-self) {
   color: #ffffff;
   background-color: rgba(255, 255, 255, 0.25);
+}
+
+/* 聊天输入框与按钮高度对齐 */
+.chat-input :deep(.el-textarea__inner) {
+  resize: none !important;
+  min-height: 40px !important;
+  height: 40px !important;
+  line-height: 24px !important;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+  box-sizing: border-box !important;
+}
+
+.chat-input :deep(.el-input__count) {
+  background: transparent;
+  height: auto;
+  line-height: 1;
+}
+
+.chat-action-btn {
+  flex-shrink: 0;
+  height: 40px !important;
 }
 </style>
