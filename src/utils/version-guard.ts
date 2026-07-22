@@ -20,6 +20,9 @@ const POLL_INTERVAL = 30_000 // 30s 轮询一次
 // 内存缓存：服务器侧最新指纹
 let latestFingerprint = ''
 
+// 是否已完成至少一次版本检查（用于区分"尚未检查"和"检查后发现一致"）
+let hasChecked = false
+
 /**
  * 从当前 document 提取主入口 chunk 的 hash 作为指纹
  * 兜底：HTML 字符串长度（chunk 提取失败时仍能区分大小改动）
@@ -34,9 +37,8 @@ function extractCurrentFingerprint(): string {
 }
 
 /**
- * 拉取服务器侧最新部署的 index.html 并提取指纹
- * 加 CF-Cache-Status: BYPASS 头绕过 Cloudflare 边缘缓存，
- * 防止「轮询拿到老 hash、实际是新 hash」导致的硬刷死循环。
+ * 拉取服务器侧最新部署的 index.html 并提取指纹。
+ * 通过 ?_=Date.now() 查询参数 + Cache-Control 请求头绕过所有缓存层。
  */
 async function fetchLatestFingerprint(): Promise<string> {
   const res = await fetch('/index.html?_=' + Date.now(), {
@@ -44,7 +46,6 @@ async function fetchLatestFingerprint(): Promise<string> {
     headers: {
       'Cache-Control': 'no-cache, no-store, must-revalidate',
       'Pragma': 'no-cache',
-      'CF-Cache-Status': 'BYPASS',
     },
   })
   if (!res.ok) throw new Error(`status ${res.status}`)
@@ -64,6 +65,15 @@ export function isAppStale(): boolean {
 }
 
 /**
+ * 是否已完成至少一次版本检查。
+ * 用于 router beforeEach：在首次检查完成前不清除硬刷计数器，
+ * 避免「页面刚加载、latestFingerprint 尚为空 → isAppStale()=false → 计数器被错误重置」。
+ */
+export function isVersionCheckComplete(): boolean {
+  return hasChecked
+}
+
+/**
  * 启动轮询。dev 模式跳过（HMR 不需要这套机制，且 /index.html 在 dev 下不存在）。
  */
 export function startVersionGuard(): void {
@@ -78,6 +88,7 @@ export function startVersionGuard(): void {
 async function pollLatest(): Promise<void> {
   try {
     latestFingerprint = await fetchLatestFingerprint()
+    hasChecked = true
   } catch {
     // 静默：网络/部署瞬时错误不影响主流程
   }
