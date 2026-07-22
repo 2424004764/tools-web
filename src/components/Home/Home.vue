@@ -47,9 +47,9 @@ const scrollToAnchor = async () => {
   // 如果是滚动触发的路由更新，不执行 scrollIntoView，避免循环
   if (isScrollTriggeredUpdate.value) return
 
-  // 暂时禁用滚动监听，避免循环触发
-  const wasActive = isScrollListenerActive.value
+  // 暂时禁用滚动监听（双重门控），避免循环触发
   isScrollListenerActive.value = false
+  isScrollingToAnchor.value = true
 
   await nextTick()
   requestAnimationFrame(() => {
@@ -60,11 +60,11 @@ const scrollToAnchor = async () => {
     })
 
     // 滚动完成后，延迟恢复滚动监听
+    // 延迟 1.5s 确保 smooth scroll 动画完全结束，避免残余滚动事件触发 URL 变更
     setTimeout(() => {
-      if (wasActive) {
-        isScrollListenerActive.value = true
-      }
-    }, 1000)
+      isScrollingToAnchor.value = false
+      isScrollListenerActive.value = true
+    }, 1500)
   })
 }
 
@@ -74,6 +74,8 @@ const isScrollListenerActive = ref(false)
 const isUserClickingCategory = ref(false)
 // 标记是否是滚动触发的路由更新（避免循环）
 const isScrollTriggeredUpdate = ref(false)
+// 标记是否正在执行 scrollToAnchor（scrollIntoView 产生的滚动事件不触发 URL 变更）
+const isScrollingToAnchor = ref(false)
 
 // 滚动监听函数
 const handleScroll = () => {
@@ -81,6 +83,8 @@ const handleScroll = () => {
   if (!isScrollListenerActive.value) return
   // 如果用户正在点击分类，暂时跳过滚动监听
   if (isUserClickingCategory.value) return
+  // scrollToAnchor 产生的平滑滚动事件不触发 URL 变更，避免与版本守卫形成硬刷循环
+  if (isScrollingToAnchor.value) return
   
   const categories = toolsStore.cates
   if (categories.length === 0) return
@@ -175,20 +179,21 @@ const gotoAnchor = async (anchor: string) => {
 onMounted(async () => {
   await nextTick()
 
+  // 预先添加滚动监听器；handleScroll 通过 isScrollListenerActive / isScrollingToAnchor 双重门控
+  window.addEventListener('scroll', throttledHandleScroll)
+
   // 只在有明确的 query.value 时才滚动到锚点
   if (route.query && route.query.value) {
     scrollToAnchor()
+    // scrollToAnchor 将在 ~1.5s 后设置 isScrollListenerActive = true
+  } else {
+    // 无锚点需求，延迟激活滚动监听
+    setTimeout(() => {
+      if (route.path === '/') {
+        isScrollListenerActive.value = true
+      }
+    }, 500)
   }
-  // 移除自动滚动到 #collect 的逻辑，避免页面一加载就滚动
-
-  // 延迟激活滚动监听，给用户一些时间
-  setTimeout(() => {
-    // 只在首页激活滚动监听
-    if (route.path === '/') {
-      isScrollListenerActive.value = true
-      window.addEventListener('scroll', throttledHandleScroll)
-    }
-  }, 500) // 延迟500ms
 })
 
 onUnmounted(() => {
@@ -203,11 +208,12 @@ onUnmounted(() => {
 // 监听路由变化
 watch(() => route.path, (newPath) => {
   if (newPath === '/') {
-    isScrollListenerActive.value = true
-    window.addEventListener('scroll', throttledHandleScroll)
+    // 回到首页时重新激活滚动监听（scrollToAnchor 会自行管理 isScrollingToAnchor 门控）
+    if (!isScrollingToAnchor.value) {
+      isScrollListenerActive.value = true
+    }
   } else {
     isScrollListenerActive.value = false
-    window.removeEventListener('scroll', throttledHandleScroll)
   }
 })
 

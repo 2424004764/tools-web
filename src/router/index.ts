@@ -1,7 +1,7 @@
 //通过vue-router插件实现模板路由配置
 import { createRouter, createWebHistory } from 'vue-router'
 import { constantRoute } from './router'
-import { isAppStale } from '@/utils/version-guard'
+import { isAppStale, isVersionCheckComplete } from '@/utils/version-guard'
 import { useUserStore } from '@/store/modules/user'
 
 // 硬刷防循环 flag：硬刷后落到新页面，beforeEach 检测到并清除
@@ -11,6 +11,9 @@ const HARD_RELOAD_FLAG = '__hard_reload_guard__'
 // （典型场景：CDN 边缘缓存返回老 hash 导致 isAppStale() 永远 true）
 const MAX_RELOADS_PER_SESSION = 3
 const RELOAD_COUNT_KEY = '__reload_count__'
+// 两次硬刷之间最短间隔（ms），防止 scroll→router.replace→硬刷→scroll→... 的快速循环
+const MIN_RELOAD_INTERVAL = 5000
+const LAST_RELOAD_TIME_KEY = '__last_reload_ts__'
 
 //创建路由器
 const router = createRouter({
@@ -42,18 +45,28 @@ router.beforeEach((to, _from, next) => {
   // 受 MAX_RELOADS_PER_SESSION 上限保护，超过后停止硬刷（CDN 缓存异常场景下的死循环兜底）。
   if (isAppStale()) {
     const reloadCount = parseInt(sessionStorage.getItem(RELOAD_COUNT_KEY) || '0', 10)
-    if (reloadCount < MAX_RELOADS_PER_SESSION) {
+    const lastReload = parseInt(sessionStorage.getItem(LAST_RELOAD_TIME_KEY) || '0', 10)
+    const now = Date.now()
+
+    // 两次硬刷之间最小间隔，防止 scroll → router.replace → 硬刷 的紧密循环
+    if (reloadCount < MAX_RELOADS_PER_SESSION && (now - lastReload) > MIN_RELOAD_INTERVAL) {
       sessionStorage.setItem(HARD_RELOAD_FLAG, '1')
       sessionStorage.setItem(RELOAD_COUNT_KEY, String(reloadCount + 1))
+      sessionStorage.setItem(LAST_RELOAD_TIME_KEY, String(now))
       window.location.replace(to.fullPath || '/')
       return // 不调用 next()，中断当前 SPA 导航
     }
-    // 达到上限：跳过硬刷，避免死循环。让用户手动刷新或后续 tab 活动后恢复。
-    console.warn('[version-guard] 已达硬刷上限，跳过本轮。')
-  } else {
-    // hash 一致 → 重置计数（成功落到新版本）
+    if (reloadCount >= MAX_RELOADS_PER_SESSION) {
+      console.warn('[version-guard] 已达硬刷上限，跳过本轮。')
+    }
+  } else if (isVersionCheckComplete()) {
+    // hash 一致 且 已至少完成一次版本检查 → 重置计数（成功落到新版本）
+    // 注意：仅在检查完成后重置，避免页面刚加载时 latestFingerprint 为空导致误清除
     if (sessionStorage.getItem(RELOAD_COUNT_KEY)) {
       sessionStorage.removeItem(RELOAD_COUNT_KEY)
+    }
+    if (sessionStorage.getItem(LAST_RELOAD_TIME_KEY)) {
+      sessionStorage.removeItem(LAST_RELOAD_TIME_KEY)
     }
   }
 
