@@ -35,9 +35,18 @@ function extractCurrentFingerprint(): string {
 
 /**
  * 拉取服务器侧最新部署的 index.html 并提取指纹
+ * 加 CF-Cache-Status: BYPASS 头绕过 Cloudflare 边缘缓存，
+ * 防止「轮询拿到老 hash、实际是新 hash」导致的硬刷死循环。
  */
 async function fetchLatestFingerprint(): Promise<string> {
-  const res = await fetch('/index.html?_=' + Date.now(), { cache: 'no-store' })
+  const res = await fetch('/index.html?_=' + Date.now(), {
+    cache: 'no-store',
+    headers: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'CF-Cache-Status': 'BYPASS',
+    },
+  })
   if (!res.ok) throw new Error(`status ${res.status}`)
   const html = await res.text()
   const m = html.match(/\/js\/index-([a-f0-9]+)\.js/)

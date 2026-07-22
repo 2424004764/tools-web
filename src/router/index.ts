@@ -7,6 +7,11 @@ import { useUserStore } from '@/store/modules/user'
 // 硬刷防循环 flag：硬刷后落到新页面，beforeEach 检测到并清除
 const HARD_RELOAD_FLAG = '__hard_reload_guard__'
 
+// 同一会话最多硬刷 N 次，超出后停止硬刷避免死循环
+// （典型场景：CDN 边缘缓存返回老 hash 导致 isAppStale() 永远 true）
+const MAX_RELOADS_PER_SESSION = 3
+const RELOAD_COUNT_KEY = '__reload_count__'
+
 //创建路由器
 const router = createRouter({
   history: createWebHistory(),
@@ -34,10 +39,22 @@ router.beforeEach((to, _from, next) => {
 
   // 版本过期：CF 已重新部署，但当前 SPA 还停在旧 chunk 上。
   // 直接硬刷到目标 URL —— 用户感受是"点完就到目标页"，无感知。
+  // 受 MAX_RELOADS_PER_SESSION 上限保护，超过后停止硬刷（CDN 缓存异常场景下的死循环兜底）。
   if (isAppStale()) {
-    sessionStorage.setItem(HARD_RELOAD_FLAG, '1')
-    window.location.replace(to.fullPath || '/')
-    return // 不调用 next()，中断当前 SPA 导航
+    const reloadCount = parseInt(sessionStorage.getItem(RELOAD_COUNT_KEY) || '0', 10)
+    if (reloadCount < MAX_RELOADS_PER_SESSION) {
+      sessionStorage.setItem(HARD_RELOAD_FLAG, '1')
+      sessionStorage.setItem(RELOAD_COUNT_KEY, String(reloadCount + 1))
+      window.location.replace(to.fullPath || '/')
+      return // 不调用 next()，中断当前 SPA 导航
+    }
+    // 达到上限：跳过硬刷，避免死循环。让用户手动刷新或后续 tab 活动后恢复。
+    console.warn('[version-guard] 已达硬刷上限，跳过本轮。')
+  } else {
+    // hash 一致 → 重置计数（成功落到新版本）
+    if (sessionStorage.getItem(RELOAD_COUNT_KEY)) {
+      sessionStorage.removeItem(RELOAD_COUNT_KEY)
+    }
   }
 
   // ===== Admin 后台鉴权 =====
