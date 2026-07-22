@@ -95,6 +95,10 @@ export async function onRequest(context) {
       `).bind(userId, email, avatar, nowStr, nowStr, thirdPartyUid, username, 0, 'google').run();
     }
 
+    // 查询 is_admin（确保 JWT 反映最新管理员状态）
+    const adminRow = await db.prepare('SELECT is_admin FROM user WHERE id = ?').bind(userId).first();
+    const isAdmin = adminRow?.is_admin ? 1 : 0;
+
     // 生成JWT（HS256）
     if (!env.JWT_SECRET) {
       throw new Error('缺少 JWT_SECRET 环境变量');
@@ -105,6 +109,7 @@ export async function onRequest(context) {
         email,
         avatar,
         username,
+        is_admin: isAdmin,
         thirdPartyType: 'google',
         thirdPartyUid,
         thirdPartyLevel: 0,  // Google没有等级概念，默认0

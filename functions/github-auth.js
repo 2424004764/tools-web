@@ -541,10 +541,14 @@ async function processUserLogin(userData, env) {
             console.log('新用户ID:', userId);
         }
 
+        // 查询最新的 is_admin（无论新老用户都要重新取，确保 JWT 反映当前权限）
+        const adminRow = await db.prepare('SELECT is_admin FROM user WHERE id = ?').bind(userId).first();
+        const isAdmin = adminRow?.is_admin ? 1 : 0;
+
         // 生成JWT令牌
         console.log('生成JWT令牌...');
         const jwtSecret = env.JWT_SECRET;
-        
+
         if (!jwtSecret) {
             throw new Error('缺少 JWT_SECRET 环境变量');
         }
@@ -553,6 +557,7 @@ async function processUserLogin(userData, env) {
             uid: userId,
             username: username,
             email: email,
+            is_admin: isAdmin,
             thirdPartyType: 'github',
             iat: Math.floor(Date.now() / 1000),
             exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60) // 7天过期
