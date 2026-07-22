@@ -67,6 +67,11 @@ const isSpecialPage = computed(() => {
   return isQAViewPage.value || isLetterViewPage.value;
 });
 
+// 判断是否为后台管理页面（使用 AdminLayout，跳过默认 Header/Left/Floor）
+const isAdminPage = computed(() => {
+  return route.path.startsWith('/admin');
+});
+
 // 判断是否为首页
 const isHomePage = computed(() => {
   return route.name === 'home' || route.path === '/';
@@ -76,7 +81,11 @@ const isHomePage = computed(() => {
 
 <template>
   <el-config-provider :locale="zhCn">
-    <el-container>
+    <!-- 后台管理：AdminLayout 自带 Header/侧栏/Floor -->
+    <router-view v-if="isAdminPage" />
+
+    <!-- 正常页面 -->
+    <el-container v-else>
     <!-- left -->
     <el-aside
       v-if="!isSpecialPage"

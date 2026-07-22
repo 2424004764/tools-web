@@ -2,6 +2,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { constantRoute } from './router'
 import { isAppStale } from '@/utils/version-guard'
+import { useUserStore } from '@/store/modules/user'
 
 // 硬刷防循环 flag：硬刷后落到新页面，beforeEach 检测到并清除
 const HARD_RELOAD_FLAG = '__hard_reload_guard__'
@@ -37,6 +38,25 @@ router.beforeEach((to, _from, next) => {
     sessionStorage.setItem(HARD_RELOAD_FLAG, '1')
     window.location.replace(to.fullPath || '/')
     return // 不调用 next()，中断当前 SPA 导航
+  }
+
+  // ===== Admin 后台鉴权 =====
+  // 前端守卫仅改善体验；真正拦截由后端 _middleware.js 二次把关。
+  // 鉴权失败规则：
+  //   - 未登录：跳 /login?redirect=原路径
+  //   - 已登录但非管理员：跳首页
+  if (to.path.startsWith('/admin')) {
+    const userStore = useUserStore()
+    userStore.initUserState()
+    if (!userStore.getLoginStatus) {
+      return next({
+        path: '/login',
+        query: { redirect: to.fullPath },
+      })
+    }
+    if (!userStore.getIsAdmin) {
+      return next({ path: '/' })
+    }
   }
 
   next()

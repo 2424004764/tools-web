@@ -128,6 +128,13 @@ const goToUserInfo = async () => {
   router.push('/userinfo')
 }
 
+// 跳转到管理后台
+const goToAdmin = async () => {
+  userMenuVisible.value = false
+  await nextTick()
+  router.push('/admin')
+}
+
 // 切换用户菜单显示状态
 const toggleUserMenu = () => {
   userMenuVisible.value = !userMenuVisible.value
@@ -315,6 +322,17 @@ onUnmounted(() => {
                 @keyup.space.prevent="goToUserInfo"
               >
                 个人中心
+              </div>
+              <div
+                v-if="userStore.getIsAdmin"
+                role="menuitem"
+                tabindex="0"
+                class="px-4 py-2 hover:bg-accent-50 cursor-pointer text-accent-700 hover:text-accent-800"
+                @click.stop="goToAdmin"
+                @keyup.enter="goToAdmin"
+                @keyup.space.prevent="goToAdmin"
+              >
+                管理后台
               </div>
               <div
                 role="menuitem"

@@ -51,7 +51,11 @@
     "/api/confession/messages/delete",
     "/api/confession/messages/delete/*",
     "/api/life-trajectories",
-    "/api/life-trajectories/*"
+    "/api/life-trajectories/*",
+
+    "/api/admin",
+    "/api/admin/*",
+    "/api/tools"
   ],
   "exclude": []
 }
