@@ -1468,5 +1468,62 @@ export const constantRoute = [
       keywords: '图片颜色统计,颜色数量,取色器,调色板,图片分析,palette,color count',
       description: '在线统计一张图片中出现了多少种不同的颜色，支持采样步长与颜色量化（每通道 bit），按出现次数展示 Top N 调色板，可导出 JSON / CSV，全部在浏览器本地完成。'
     }
-  }
+  },
+
+  // ===== 管理后台 =====
+  // 由 AdminLayout 统一承载，自带侧栏与顶栏，绕过默认 App.vue 的 Header/Footer/Left。
+  // 鉴权由 router/index.ts 的 beforeEach 守卫与后端 _middleware.js 双重把关。
+  {
+    path: '/admin',
+    component: () => import('@/components/Admin/AdminLayout.vue'),
+    name: 'admin',
+    redirect: '/admin/dashboard',
+    meta: {
+      title: '管理后台',
+      keywords: '管理后台',
+      description: '后台管理：用户、积分、工具开关。',
+    },
+    children: [
+      {
+        path: 'dashboard',
+        component: () => import('@/components/Admin/AdminDashboard.vue'),
+        name: 'adminDashboard',
+        meta: {
+          title: '仪表盘',
+          keywords: '后台仪表盘',
+          description: '管理后台总览',
+        },
+      },
+      {
+        path: 'users',
+        component: () => import('@/components/Admin/AdminUsers.vue'),
+        name: 'adminUsers',
+        meta: {
+          title: '用户管理',
+          keywords: '后台用户管理',
+          description: '查看、禁用用户，调整积分',
+        },
+      },
+      {
+        path: 'credits',
+        component: () => import('@/components/Admin/AdminCredits.vue'),
+        name: 'adminCredits',
+        meta: {
+          title: '积分流水',
+          keywords: '后台积分流水',
+          description: '查看所有积分变动记录',
+        },
+      },
+      {
+        path: 'tools',
+        component: () => import('@/components/Admin/AdminTools.vue'),
+        name: 'adminTools',
+        meta: {
+          title: '工具开关',
+          keywords: '后台工具开关',
+          description: '启用/禁用前台工具',
+        },
+      },
+    ],
+  },
 ]
