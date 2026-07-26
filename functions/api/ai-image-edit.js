@@ -4,7 +4,7 @@
 // Fields: prompt, model, size, image (file)
 //
 // 有 image → 图生图：POST bafang.me/v1/images/edits（form-data）
-// 无 image → 文生图：POST bafang.me/v1/chat/completions（application/json）
+// 无 image → 文生图：POST bafang.me/v1/images/generations（application/json）
 //
 // 鉴权：CF 环境变量 BAFANG_API_KEY
 //
@@ -13,13 +13,8 @@
 //   - cost > 0：必须登录；上游 4xx/5xx 或网络异常触发 reverse 流水自动回退积分
 //   - model 查找优先级：tool_models → tool_features.credit_cost（兜底）→ 0
 //
-// 响应兼容：
-//   - edits 端点：data[0].url（首选）/ data[0].b64_json（兜底）
-//   - chat 端点：choices[0].message.content
-//       * 数组项 type='image_url' → image_url.url
-//       * 字符串以 http 开头 → URL
-//       * 字符串以 data:image 开头 → data URL
-//       * 其它 → 当成 raw text 截前 200 字符报错
+// 响应兼容（两个端点均为 OpenAI images 格式）：
+//   data[0].url（首选）/ data[0].b64_json（兜底）
 
 import { extractUidFromRequest } from './_lib/model-resolver.js'
 
@@ -126,46 +121,6 @@ async function reverseDeduction(env, uid, cost, relatedTxId, reason) {
       }
     }
   }
-}
-
-/**
- * 从 chat/completions 响应里提取图片 URL/dataURL
- * 兼容：数组项、纯 URL 字符串、data URL、Markdown
- */
-function extractImageFromChatResponse(data) {
-  const content = data?.choices?.[0]?.message?.content
-
-  // 1) 数组：[{type:'image_url', image_url:{url:'...'}}]
-  if (Array.isArray(content)) {
-    for (const item of content) {
-      if (item?.type === 'image_url' && item.image_url?.url) {
-        return item.image_url.url
-      }
-      if (typeof item === 'string' && (item.startsWith('http') || item.startsWith('data:image'))) {
-        return item
-      }
-    }
-    return ''
-  }
-
-  // 2) 字符串
-  if (typeof content === 'string') {
-    const trimmed = content.trim()
-    if (!trimmed) return ''
-    // data URL
-    if (trimmed.startsWith('data:image')) return trimmed
-    // 裸 URL
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed
-    // Markdown 图片 ![alt](url)
-    const md = /!\[[^\]]*\]\((https?:\/\/[^\s)]+|data:image[^)]+)\)/.exec(trimmed)
-    if (md) return md[1]
-    // 兜底：如果是纯 base64（>100 字符且只含 base64 字符）
-    if (trimmed.length > 100 && /^[A-Za-z0-9+/=\s]+$/.test(trimmed)) {
-      return 'data:image/png;base64,' + trimmed.replace(/\s+/g, '')
-    }
-  }
-
-  return ''
 }
 
 /**
@@ -358,8 +313,8 @@ export async function onRequest(context) {
       body: upstreamForm,
     }
   } else {
-    // 文生图：POST /v1/chat/completions（application/json）
-    upstreamPath = '/v1/chat/completions'
+    // 文生图：POST /v1/images/generations（application/json）
+    upstreamPath = '/v1/images/generations'
     upstreamInit = {
       method: 'POST',
       headers: {
@@ -368,8 +323,8 @@ export async function onRequest(context) {
       },
       body: JSON.stringify({
         model: modelKey,
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.7,
+        prompt,
+        size,
       }),
     }
   }
@@ -407,10 +362,8 @@ export async function onRequest(context) {
 
     const data = await upstreamResponse.json()
 
-    // 解析响应：edits 端点 vs chat 端点
-    const imageUrl = hasImage
-      ? extractImageFromEditsResponse(data)
-      : extractImageFromChatResponse(data)
+    // 解析响应：两个端点都是 OpenAI images 格式（data[0].url / data[0].b64_json）
+    const imageUrl = extractImageFromEditsResponse(data)
 
     if (!imageUrl) {
       console.error('[ai-image-edit] 无法从响应中提取图片:', JSON.stringify(data).slice(0, 500))
