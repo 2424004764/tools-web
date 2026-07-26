@@ -44,8 +44,14 @@ function withSecurityHeaders(response) {
 
 export async function onRequest(context) {
   const { request } = context
-  const origin = request.headers.get('Origin')
   const path = new URL(request.url).pathname
+
+  // 静态资源直通：不经过任何 middleware 处理，避免 context.next() 包装导致 stream 断裂
+  if (/\.(js|css|png|jpg|svg|ico|woff2?|ttf|webp|json|xml|txt)$/.test(path)) {
+    return context.next()
+  }
+
+  const origin = request.headers.get('Origin')
 
   // 非受保护路径直接走原逻辑
   if (!needsCORS(path)) {
