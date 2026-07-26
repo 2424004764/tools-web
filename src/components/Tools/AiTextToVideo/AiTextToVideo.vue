@@ -852,7 +852,7 @@ const generateBlessings = async () => {
       const prompt = `请为${occasionMap[blessingsOccasion.value]}场合，给${targetMap[blessingsTarget.value]}写一段${styleMap[blessingsStyle.value]}的祝福语。
 
 要求：
-1. 语言${styleMap[blessingsStyle.value]}，情感真挚
+1. 语言${styleMap[blessingsStyle.value]}，情感需要真挚
 2. 适合${targetMap[blessingsTarget.value]}的身份和关系
 3. 贴合${occasionMap[blessingsOccasion.value]}的场景
 4. 提供3-5个不同版本的祝福语
