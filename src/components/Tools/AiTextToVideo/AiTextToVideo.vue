@@ -876,13 +876,11 @@ const generateBlessings = async () => {
       )
     }
 
-    // 保存AI回复
     blessingsChatMessages.value.push({
       role: 'assistant',
       content: result
     })
 
-    // 清空追问输入
     if (isFollowUp) {
       blessingsFollowUpQuestion.value = ''
     }
@@ -890,7 +888,6 @@ const generateBlessings = async () => {
     ElMessage.success('祝福语生成完成')
   } catch (error: any) {
     ElMessage.error('生成失败: ' + (error.message || '未知错误'))
-    // 失败时移除刚添加的用户消息
     if (blessingsChatMessages.value.length > 0) {
       blessingsChatMessages.value.pop()
     }
