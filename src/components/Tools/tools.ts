@@ -1336,6 +1336,15 @@ export function getToolsCate() {
           cateId: 10,
           cate: 'AI工具'
         },
+        {
+          id: '3889b1f9-8016-40cd-8d49-39073602a6b5',
+          title: 'AI图片编辑',
+          logo: '/images/logo/ai_image_edit.svg',
+          desc: 'AI智能图片编辑，支持文生图和图生图，上传图片+文字描述即可一键生成或修改图片',
+          url: '/ai-image-edit/',
+          cateId: 10,
+          cate: 'AI工具'
+        },
         // {
         //   id: 2,
         //   title: '在线文本转语音',

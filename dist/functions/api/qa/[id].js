@@ -8,15 +8,6 @@ export async function onRequest(context) {
   const id = pathParts[pathParts.length - 1]
   const origin = request.headers.get('Origin')
 
-  // 添加调试日志
-  console.log('QA [id] API Debug:', {
-    method: request.method,
-    pathname: url.pathname,
-    pathParts,
-    id,
-    fullUrl: url.href
-  })
-
   // 处理OPTIONS请求
   if (request.method === 'OPTIONS') {
     return ApiResponse.cors(origin)

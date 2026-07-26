@@ -49,10 +49,12 @@ export interface AdminUserCredits {
 export interface CreditTransaction {
   id: string
   uid: string
-  type: 'grant' | 'deduct' | 'reset' | 'reverse'
+  type: 'grant' | 'deduct' | 'reverse'
   amount: number
   balance_after: number
   reason: string | null
+  /** 流水来源：迁移前的老数据为 null（前端展示为"未知"） */
+  source: 'system' | 'admin' | 'tool' | null
   operator_uid: string
   operator_email?: string
   operator_name?: string | null
@@ -73,6 +75,23 @@ export interface ToolFeature {
   logo: string | null
   sort_order: number
   is_enabled: number
+  /** 每次使用消耗的积分；0 = 免费（model 维度未配置时的兜底） */
+  credit_cost: number
+  created_at: string
+  updated_at: string
+}
+
+/** 工具可用的 model（按 model 维度扣费时用） */
+export interface ToolModel {
+  id: number
+  tool_url: string
+  model_key: string
+  model_label: string
+  description: string | null
+  credit_cost: number
+  sort_order: number
+  is_enabled: number
+  is_default: number
   created_at: string
   updated_at: string
 }

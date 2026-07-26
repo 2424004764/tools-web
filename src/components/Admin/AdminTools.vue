@@ -5,10 +5,17 @@ import {
   updateAdminTool,
   batchToggleTools,
 } from '@/api/admin/tool'
+import {
+  fetchAdminToolModels,
+  createAdminToolModel,
+  updateAdminToolModel,
+  deleteAdminToolModel,
+} from '@/api/admin/tool-model'
 import type {
   AdminPagination,
   ToolCategorySummary,
   ToolFeature,
+  ToolModel,
 } from '@/types/admin'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
@@ -92,15 +99,45 @@ const editDialog = reactive({
   sort_order: 0,
   title: '',
   description: '',
+  credit_cost: 0,
   submitting: false,
 })
 
-const openEditDialog = (row: ToolFeature) => {
+// ============ 工具 model 列表（编辑弹窗内） ============
+const modelList = ref<ToolModel[]>([])
+const modelLoading = ref(false)
+const newModel = reactive({
+  visible: false,
+  model_key: '',
+  model_label: '',
+  description: '',
+  credit_cost: 0,
+  sort_order: 0,
+  is_default: false,
+  submitting: false,
+})
+
+const loadModels = async (toolUrl: string) => {
+  if (!toolUrl) return
+  modelLoading.value = true
+  try {
+    modelList.value = await fetchAdminToolModels(toolUrl)
+  } catch (err: any) {
+    console.error(err)
+    ElMessage.error(err?.response?.data?.error || '加载 model 列表失败')
+  } finally {
+    modelLoading.value = false
+  }
+}
+
+const openEditDialog = async (row: ToolFeature) => {
   editDialog.row = row
   editDialog.sort_order = row.sort_order
   editDialog.title = row.title
   editDialog.description = row.description || ''
+  editDialog.credit_cost = row.credit_cost ?? 0
   editDialog.visible = true
+  await loadModels(row.url)
 }
 
 const submitEdit = async () => {
@@ -111,6 +148,7 @@ const submitEdit = async () => {
       sort_order: editDialog.sort_order,
       title: editDialog.title,
       description: editDialog.description,
+      credit_cost: editDialog.credit_cost,
     })
     ElMessage.success('已保存')
     editDialog.visible = false
@@ -119,6 +157,97 @@ const submitEdit = async () => {
     ElMessage.error(err?.response?.data?.error || '操作失败')
   } finally {
     editDialog.submitting = false
+  }
+}
+
+const openNewModelDialog = () => {
+  newModel.model_key = ''
+  newModel.model_label = ''
+  newModel.description = ''
+  newModel.credit_cost = 0
+  newModel.sort_order = modelList.value.length
+  newModel.is_default = modelList.value.length === 0
+  newModel.visible = true
+}
+
+const submitNewModel = async () => {
+  if (!editDialog.row) return
+  if (!newModel.model_key.trim() || !newModel.model_label.trim()) {
+    ElMessage.warning('model_key 和 model_label 必填')
+    return
+  }
+  newModel.submitting = true
+  try {
+    await createAdminToolModel({
+      tool_url: editDialog.row.url,
+      model_key: newModel.model_key.trim(),
+      model_label: newModel.model_label.trim(),
+      description: newModel.description.trim(),
+      credit_cost: newModel.credit_cost,
+      sort_order: newModel.sort_order,
+      is_default: newModel.is_default,
+    })
+    ElMessage.success('已添加')
+    newModel.visible = false
+    await loadModels(editDialog.row.url)
+  } catch (err: any) {
+    ElMessage.error(err?.response?.data?.error || '添加失败')
+  } finally {
+    newModel.submitting = false
+  }
+}
+
+const setDefaultModel = async (m: ToolModel) => {
+  if (!editDialog.row) return
+  if (m.is_default === 1) return
+  try {
+    await updateAdminToolModel(m.id, { is_default: 1 })
+    ElMessage.success(`已将「${m.model_label}」设为默认`)
+    await loadModels(editDialog.row.url)
+  } catch (err: any) {
+    ElMessage.error(err?.response?.data?.error || '操作失败')
+  }
+}
+
+const toggleModelEnabled = async (m: ToolModel) => {
+  if (!editDialog.row) return
+  const next = m.is_enabled === 1 ? 0 : 1
+  try {
+    await updateAdminToolModel(m.id, { is_enabled: next })
+    await loadModels(editDialog.row.url)
+  } catch (err: any) {
+    ElMessage.error(err?.response?.data?.error || '操作失败')
+  }
+}
+
+const updateModelCost = async (m: ToolModel, value: number | undefined) => {
+  if (!editDialog.row) return
+  if (value === undefined || value === m.credit_cost) return
+  try {
+    await updateAdminToolModel(m.id, { credit_cost: value })
+    await loadModels(editDialog.row.url)
+  } catch (err: any) {
+    ElMessage.error(err?.response?.data?.error || '操作失败')
+  }
+}
+
+const removeModel = async (m: ToolModel) => {
+  try {
+    await ElMessageBox.confirm(
+      `确认删除 model「${m.model_label}」？若它是默认项，会自动把 sort_order 最小的其它启用项设为默认。`,
+      '删除 model',
+      { type: 'warning' },
+    )
+  } catch {
+    return
+  }
+  if (!editDialog.row) return
+  try {
+    await deleteAdminToolModel(m.id)
+    ElMessage.success('已删除')
+    await loadModels(editDialog.row.url)
+  } catch (err: any) {
+    ElMessage.error(err?.response?.data?.error || '删除失败')
   }
 }
 
@@ -338,7 +467,7 @@ onMounted(() => {
     <el-dialog
       v-model="editDialog.visible"
       :title="`编辑工具 - ${editDialog.row?.title || ''}`"
-      width="480px"
+      width="720px"
       :close-on-click-modal="false"
     >
       <el-form label-width="80px" class="!mt-2" v-if="editDialog.row">
@@ -363,6 +492,78 @@ onMounted(() => {
           />
           <span class="ml-2 text-xs text-ink-500">越小越靠前</span>
         </el-form-item>
+        <el-form-item label="兜底积分">
+          <el-input-number
+            v-model="editDialog.credit_cost"
+            :min="0"
+            :max="999999"
+            :step="1"
+            controls-position="right"
+          />
+          <span class="ml-2 text-xs text-ink-500">model 未配置时按此值；0 = 免费</span>
+        </el-form-item>
+
+        <!-- 模型列表子表 -->
+        <el-form-item label="模型列表">
+          <div class="w-full">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs text-ink-500">
+                按 model 维度独立配置积分；前端下拉框从这里渲染
+              </span>
+              <el-button size="small" type="primary" plain @click="openNewModelDialog">
+                + 新增 model
+              </el-button>
+            </div>
+            <el-table
+              :data="modelList"
+              v-loading="modelLoading"
+              size="small"
+              :empty-text="modelList.length === 0 && !modelLoading ? '该工具还没有配置 model（点击右上角新增）' : '加载中'"
+              border
+            >
+              <el-table-column label="默认" width="70" align="center">
+                <template #default="{ row: m }">
+                  <el-tag v-if="m.is_default === 1" type="success" size="small" effect="dark">默认</el-tag>
+                  <el-button
+                    v-else
+                    link
+                    size="small"
+                    type="primary"
+                    :disabled="m.is_enabled !== 1"
+                    @click="setDefaultModel(m)"
+                  >设为默认</el-button>
+                </template>
+              </el-table-column>
+              <el-table-column prop="model_key" label="Key" min-width="140" />
+              <el-table-column prop="model_label" label="名称" min-width="160" />
+              <el-table-column label="积分" width="130" align="center">
+                <template #default="{ row: m }">
+                  <el-input-number
+                    :model-value="m.credit_cost"
+                    :min="0"
+                    :max="999999"
+                    size="small"
+                    controls-position="right"
+                    @change="(v) => updateModelCost(m, v)"
+                  />
+                </template>
+              </el-table-column>
+              <el-table-column label="启用" width="80" align="center">
+                <template #default="{ row: m }">
+                  <el-switch
+                    :model-value="m.is_enabled === 1"
+                    @change="() => toggleModelEnabled(m)"
+                  />
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="80" align="center" fixed="right">
+                <template #default="{ row: m }">
+                  <el-button link size="small" type="danger" @click="removeModel(m)">删除</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="editDialog.visible = false">取消</el-button>
@@ -371,6 +572,41 @@ onMounted(() => {
           :loading="editDialog.submitting"
           @click="submitEdit"
         >保存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 新增 model 弹窗 -->
+    <el-dialog
+      v-model="newModel.visible"
+      title="新增 model"
+      width="480px"
+      :close-on-click-modal="false"
+      append-to-body
+    >
+      <el-form label-width="100px" class="!mt-2">
+        <el-form-item label="model_key" required>
+          <el-input v-model="newModel.model_key" placeholder="例如 gpt-image-2-1k" maxlength="100" />
+        </el-form-item>
+        <el-form-item label="显示名称" required>
+          <el-input v-model="newModel.model_label" placeholder="例如 gpt-image-2 1k（标准）" maxlength="200" />
+        </el-form-item>
+        <el-form-item label="描述">
+          <el-input v-model="newModel.description" type="textarea" :rows="2" maxlength="500" />
+        </el-form-item>
+        <el-form-item label="积分">
+          <el-input-number v-model="newModel.credit_cost" :min="0" :max="999999" :step="1" controls-position="right" />
+        </el-form-item>
+        <el-form-item label="排序">
+          <el-input-number v-model="newModel.sort_order" :min="0" :max="9999" controls-position="right" />
+        </el-form-item>
+        <el-form-item label="设为默认">
+          <el-switch v-model="newModel.is_default" />
+          <span class="ml-2 text-xs text-ink-500">开启后会把同工具下其它默认项替换</span>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="newModel.visible = false">取消</el-button>
+        <el-button type="primary" :loading="newModel.submitting" @click="submitNewModel">添加</el-button>
       </template>
     </el-dialog>
   </div>

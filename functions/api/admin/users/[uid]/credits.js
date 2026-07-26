@@ -93,10 +93,10 @@ export async function onRequest(context) {
         db
           .prepare(
             `INSERT INTO credit_transactions
-             (id, uid, type, amount, balance_after, reason, operator_uid, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+             (id, uid, type, amount, balance_after, reason, operator_uid, source, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           )
-          .bind(txId, uid, 'grant', signedAmount, newBalance, reasonText, operatorUid, now),
+          .bind(txId, uid, 'grant', signedAmount, newBalance, reasonText, operatorUid, 'admin', now),
       ]
     } else {
       // deduct: 用 UPDATE 带 WHERE balance >= amount 条件保证原子性
@@ -113,10 +113,10 @@ export async function onRequest(context) {
         db
           .prepare(
             `INSERT INTO credit_transactions
-             (id, uid, type, amount, balance_after, reason, operator_uid, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+             (id, uid, type, amount, balance_after, reason, operator_uid, source, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           )
-          .bind(txId, uid, 'deduct', signedAmount, newBalance, reasonText, operatorUid, now),
+          .bind(txId, uid, 'deduct', signedAmount, newBalance, reasonText, operatorUid, 'admin', now),
       ]
     }
 

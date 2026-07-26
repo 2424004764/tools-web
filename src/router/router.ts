@@ -662,6 +662,16 @@ export const constantRoute = [
       description: '输入主题自动生成视频文案并创作短视频，支持5秒/10秒时长',
     }
   },
+  {
+    path: '/ai-image-edit',
+    component: () => import('@/components/Tools/AiImageEdit/AiImageEdit.vue'),
+    name: 'AiImageEdit',
+    meta: {
+      title: "AI图片编辑",
+      keywords: 'AI图片编辑,AI修图,图片处理,AI超分辨率,图生图,AI图片生成,在线修图',
+      description: 'AI智能图片编辑工具，支持图片编辑、图片生成和超分辨率，上传图片加文字描述即可一键生成',
+    }
+  },
   // {
   //   path: '/ai-text-to-speech',
   //   component: () => import('@/components/Tools/AiTextToSpeech/AiTextToSpeech.vue'),

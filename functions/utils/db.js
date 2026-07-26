@@ -646,57 +646,49 @@ export class QAModel extends Model {
   // 重写update方法以处理JSON数据
   async update(id, data) {
     try {
-      console.log('QAModel update called with:', { id, data })
-      
       const now = new Date().toISOString()
-      
+
       // 处理qaItems JSON序列化
       const qaItemsJson = data.qaItems ? JSON.stringify(data.qaItems) : '[]'
-      console.log('Serialized qaItems:', qaItemsJson)
-      
+
       const updateFields = []
       const values = []
-      
+
       if (data.title !== undefined) {
         updateFields.push('title = ?')
         values.push(data.title)
       }
-      
+
       if (data.qaItems !== undefined) {
         updateFields.push('qa_items = ?')
         values.push(qaItemsJson)
       }
-      
+
       if (data.headerContent !== undefined) {
         updateFields.push('header_content = ?')
         values.push(data.headerContent)
       }
-      
+
       if (data.footerContent !== undefined) {
         updateFields.push('footer_content = ?')
         values.push(data.footerContent)
       }
-      
+
       if (data.isPublic !== undefined) {
         updateFields.push('is_public = ?')
         values.push(data.isPublic ? 1 : 0)
       }
-      
+
       updateFields.push('update_time = ?')
       values.push(now)
       values.push(id)
 
       const sql = `UPDATE ${this.config.tableName} SET ${updateFields.join(', ')} WHERE id = ?`
-      console.log('Update SQL:', sql)
-      console.log('Update values:', values)
-      
       const result = await this.db.prepare(sql).bind(...values).run()
-      console.log('Update result:', result)
-      
+
       // 修复：检查正确的changes字段
       const changes = result.meta?.changes ?? result.changes ?? 0
-      console.log('Changes count:', changes)
-      
+
       return changes > 0
     } catch (error) {
       console.error('QAModel update error:', error)
@@ -769,29 +761,22 @@ export class QAModel extends Model {
       }
       
       const results = await this.db.prepare(sql).bind(...params).all()
-      console.log('Raw database results:', results)
-      
+
       return results.map(result => {
-        console.log('Processing result:', result)
-        console.log('qa_items type:', typeof result.qa_items)
-        console.log('qa_items value:', result.qa_items)
-        
         // 反序列化JSON数据，添加错误处理
         let qaItems = []
         try {
           if (result.qa_items && typeof result.qa_items === 'string') {
             qaItems = JSON.parse(result.qa_items)
-            console.log('Parsed qaItems:', qaItems)
           } else if (Array.isArray(result.qa_items)) {
             qaItems = result.qa_items
-            console.log('Using existing array:', qaItems)
           }
         } catch (error) {
           console.error('Error parsing qa_items:', error, 'Raw data:', result.qa_items)
           qaItems = []
         }
-        
-        const finalResult = {
+
+        return {
           id: result.id,
           uid: result.uid,
           title: result.title,
@@ -802,9 +787,6 @@ export class QAModel extends Model {
           createTime: result.create_time,
           updateTime: result.update_time
         }
-        
-        console.log('Final result:', finalResult)
-        return finalResult
       })
     } catch (error) {
       console.error('QAModel find error:', error)
@@ -827,34 +809,25 @@ export class QAModel extends Model {
     }
     
     const results = await this.db.prepare(sql).bind(...params).all()
-    console.log('findAll results:', results)
-    console.log('results type:', typeof results)
-    console.log('results is array:', Array.isArray(results))
-    
+
     // 确保results是数组
     const resultsArray = Array.isArray(results) ? results : (results.results || [])
-    
+
     return resultsArray.map(result => {
-      console.log('Processing result:', result)
-      console.log('qa_items type:', typeof result.qa_items)
-      console.log('qa_items value:', result.qa_items)
-      
       // 反序列化JSON数据，添加错误处理
       let qaItems = []
       try {
         if (result.qa_items && typeof result.qa_items === 'string') {
           qaItems = JSON.parse(result.qa_items)
-          console.log('Parsed qaItems:', qaItems)
         } else if (Array.isArray(result.qa_items)) {
           qaItems = result.qa_items
-          console.log('Using existing array:', qaItems)
         }
       } catch (error) {
         console.error('Error parsing qa_items:', error, 'Raw data:', result.qa_items)
         qaItems = []
       }
-      
-      const finalResult = {
+
+      return {
         id: result.id,
         uid: result.uid,
         title: result.title,
@@ -865,9 +838,6 @@ export class QAModel extends Model {
         createTime: result.create_time,
         updateTime: result.update_time
       }
-      
-      console.log('Final result:', finalResult)
-      return finalResult
     })
   }
 }

@@ -35,6 +35,7 @@ export async function updateAdminTool(
     description: string
     title: string
     logo: string
+    credit_cost: number
   }>,
 ): Promise<ToolFeature> {
   const res = await functionsRequest.put(`/api/admin/tools/${id}`, payload)

@@ -38,7 +38,7 @@ export async function onRequest(context) {
   try {
     const where = []
     const args = []
-    if (type === 'grant' || type === 'deduct' || type === 'reset' || type === 'reverse') {
+    if (type === 'grant' || type === 'deduct' || type === 'reverse') {
       where.push('t.type = ?')
       args.push(type)
     }
@@ -64,7 +64,7 @@ export async function onRequest(context) {
 
     const list = await db
       .prepare(
-        `SELECT t.id, t.uid, t.type, t.amount, t.balance_after, t.reason,
+        `SELECT t.id, t.uid, t.type, t.amount, t.balance_after, t.reason, t.source,
                 t.operator_uid, t.related_tx_id, t.created_at,
                 u_target.email AS user_email, u_target.username AS user_name,
                 op.email AS operator_email, op.username AS operator_name

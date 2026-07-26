@@ -66,7 +66,7 @@ export async function onRequest(context) {
     const list = await db
       .prepare(
         `SELECT id, title, url, category_id, category_name, description, logo,
-                sort_order, is_enabled, created_at, updated_at
+                sort_order, is_enabled, credit_cost, created_at, updated_at
          FROM tool_features
          ${whereSql}
          ORDER BY category_id ASC, sort_order ASC, id ASC

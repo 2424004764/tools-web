@@ -66,7 +66,7 @@ async function handleGet(db, uid) {
   // 最近 10 条流水
   const recentTx = await db
     .prepare(
-      `SELECT id, type, amount, balance_after, reason, operator_uid, created_at
+      `SELECT id, type, amount, balance_after, reason, source, operator_uid, created_at
        FROM credit_transactions WHERE uid = ?
        ORDER BY created_at DESC LIMIT 10`,
     )

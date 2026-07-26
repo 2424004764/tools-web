@@ -143,9 +143,8 @@ src/
 部署命令（参考 CLAUDE.md）：
 
 ```bash
-pnpm build
-xcopy /E /I /H /Y .\functions\* .\dist\functions\
-xcopy /Y .\wrangler.toml .\dist\
+pnpm build:pro
+# 等价于 pnpm build + pnpm sync:functions（同步 functions/、wrangler.toml、robots.txt、sitemap.xml 到 dist/）
 ```
 
 ## 扩展点

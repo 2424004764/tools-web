@@ -423,6 +423,30 @@ export default defineConfig(({command, mode}) => {
           target: 'http://127.0.0.1:8788',
           changeOrigin: true,
         },
+        '/api/tools/credit-cost': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
+        '/api/tools/models': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
+        '/api/admin/tool-models': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
+        '/api/admin/tool-models/': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
+        '/api/me': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
+        '/api/ai-image-edit': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
         '/s/': {
           target: 'http://127.0.0.1:8788',
           changeOrigin: true,

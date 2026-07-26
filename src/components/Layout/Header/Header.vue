@@ -8,6 +8,7 @@ import { useUserStore } from '@/store/modules/user'
 import 'element-plus/theme-chalk/display.css'
 import { ToolsInfo } from '@/components/Tools/tools.type.ts';
 
+import UserBalanceBadge from '@/components/User/UserBalanceBadge.vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -286,8 +287,9 @@ onUnmounted(() => {
             </el-tooltip>
           </router-link>
           
-          <!-- 已登录状态：显示用户名和下拉菜单 -->
-          <div v-else class="relative">
+          <!-- 已登录状态：积分徽章 + 用户名和下拉菜单 -->
+          <div v-else class="flex items-center gap-1">
+            <UserBalanceBadge />
             <button
               type="button"
               class="relative cursor-pointer text-ink-700 hover:text-accent-600 flex items-center gap-1 px-3 py-2 rounded hover:bg-accent-50 bg-transparent border-0"
