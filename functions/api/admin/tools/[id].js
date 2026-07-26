@@ -57,6 +57,14 @@ export async function onRequest(context) {
     sets.push('logo = ?')
     args.push(String(body.logo).slice(0, 200))
   }
+  if (body.credit_cost !== undefined) {
+    const c = Number(body.credit_cost)
+    if (!Number.isInteger(c) || c < 0 || c > 999999) {
+      return jsonError('credit_cost 必须是 0~999999 的非负整数', 400)
+    }
+    sets.push('credit_cost = ?')
+    args.push(c)
+  }
 
   if (sets.length === 0) return jsonError('没有要更新的字段', 400)
 
@@ -77,7 +85,7 @@ export async function onRequest(context) {
     const row = await db
       .prepare(
         `SELECT id, title, url, category_id, category_name, description, logo,
-                sort_order, is_enabled, created_at, updated_at
+                sort_order, is_enabled, credit_cost, created_at, updated_at
          FROM tool_features WHERE id = ?`,
       )
       .bind(id)

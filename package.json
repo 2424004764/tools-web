@@ -10,7 +10,8 @@
     "prebuild": "pnpm sprite:build",
     "prebuild:pro": "pnpm sprite:build",
     "build": "vue-tsc --noEmit && vite build --mode development",
-    "build:pro": "vue-tsc --noEmit && vite build --mode production",
+    "build:pro": "vue-tsc --noEmit && vite build --mode production && pnpm sync:functions",
+    "sync:functions": "node scripts/sync-functions.mjs",
     "preview": "vite preview",
     "generate:sitemap": "node scripts/generate-sitemap.js"
   },

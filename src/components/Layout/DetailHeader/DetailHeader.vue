@@ -121,6 +121,9 @@ onMounted(() => {
     </h1>
 
     <div class="flex flex-wrap gap-2 justify-start items-center w-full sm:w-auto">
+      <!-- 自定义右侧内容（slot：例如用户积分 badge） -->
+      <slot name="right" />
+
       <!-- 专注模式开关 -->
       <div class="flex items-center gap-2 px-3 py-2">
         <span class="text-body-sm font-medium text-ink-700">专注模式</span>

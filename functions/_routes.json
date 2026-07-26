@@ -55,7 +55,15 @@
 
     "/api/admin",
     "/api/admin/*",
-    "/api/tools"
+    "/api/tools",
+    "/api/ai-image-edit",
+    "/api/ai-image-edit/*",
+    "/api/tools/credit-cost",
+    "/api/tools/models",
+    "/api/admin/tool-models",
+    "/api/admin/tool-models/*",
+    "/api/me/credits",
+    "/api/me/credits/transactions"
   ],
   "exclude": []
 }

@@ -29,6 +29,33 @@ const formatTime = (s: string) => {
 
 const fmtAmount = (n: number) => (n > 0 ? `+${n}` : `${n}`)
 
+// 流水来源。迁移前的老数据为 null → 展示"未知"
+const sourceLabel = (s: 'system' | 'admin' | 'tool' | null | undefined) => {
+  switch (s) {
+    case 'system':
+      return '系统'
+    case 'admin':
+      return '管理员'
+    case 'tool':
+      return '工具'
+    default:
+      return '未知'
+  }
+}
+
+const sourceClass = (s: 'system' | 'admin' | 'tool' | null | undefined) => {
+  switch (s) {
+    case 'system':
+      return 'bg-slate-100 text-slate-700'
+    case 'admin':
+      return 'bg-indigo-100 text-indigo-700'
+    case 'tool':
+      return 'bg-emerald-100 text-emerald-700'
+    default:
+      return 'bg-gray-50 text-gray-400'
+  }
+}
+
 onMounted(load)
 </script>
 
@@ -106,13 +133,19 @@ onMounted(load)
         </el-table-column>
         <el-table-column label="类型" width="80">
           <template #default="{ row }">
-            <el-tag
-              :type="row.type === 'grant' ? 'success' : 'danger'"
-              size="small"
-              effect="plain"
-            >
-              {{ row.type === 'grant' ? '赠送' : row.type === 'deduct' ? '扣减' : row.type }}
-            </el-tag>
+            <div class="flex flex-col items-start gap-0.5">
+              <el-tag
+                :type="row.type === 'grant' ? 'success' : 'danger'"
+                size="small"
+                effect="plain"
+              >
+                {{ row.type === 'grant' ? '赠送' : row.type === 'deduct' ? '扣减' : row.type }}
+              </el-tag>
+              <span
+                class="text-[10px] px-1 py-0.5 rounded"
+                :class="sourceClass(row.source)"
+              >{{ sourceLabel(row.source) }}</span>
+            </div>
           </template>
         </el-table-column>
         <el-table-column label="变动" width="100" align="right">

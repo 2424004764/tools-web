@@ -34,6 +34,9 @@ database_id = "afdabfae-6edd-4def-8e77-6a1171009b9c"
 # 使用该命令查看本地有哪些表：wrangler d1 execute yifang-tool --command="SELECT name FROM sqlite_master WHERE type='table';"
 
 # [可以先执行一下安装最新的npm install -g wrangler@latest] 本地启动调试服务（dev后面的.也是命令的一部分，别漏了）：wrangler pages dev .   测试登录的话 需要另开一个窗口启动调试服务
+# pages_build_output_dir：明确指定 `wrangler pages deploy` 不带参时的静态资源目录
+# 与 pnpm build:pro 产出的位置保持一致
+pages_build_output_dir = "dist"
 # 本地调试设置环境变量（线上的环境变量是绑定在pages的变量和机密里）：
 # ─── 警告 ────────────────────────────────────────────────────
 # 敏感密钥 (*_SECRET / API_KEY / JWT_SECRET) 不得在此文件明文存储！

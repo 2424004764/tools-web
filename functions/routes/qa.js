@@ -9,20 +9,10 @@ export class QARouter {
 
   async handle(request, path, env, origin) {
     const method = request.method
-    const url = new URL(request.url)
-    
-    // 添加调试日志
-    console.log('QA Router Debug:', {
-      method,
-      path,
-      url: url.pathname,
-      fullUrl: url.href
-    })
-    
+
     try {
       // 处理不同的路由
       if (path === '' || path === '/') {
-        console.log('Handling root path')
         if (method === 'GET') {
           return await this.getQAList(request, origin, env)
         } else if (method === 'POST') {
@@ -31,8 +21,7 @@ export class QARouter {
       } else {
         // 处理带ID的路径，去掉开头的/（如果有的话）
         const id = path.startsWith('/') ? path.substring(1) : path
-        console.log('Handling ID path:', { id, method })
-        
+
         if (method === 'GET') {
           return await this.getQAById(id, origin, env)
         } else if (method === 'PUT') {
@@ -41,8 +30,7 @@ export class QARouter {
           return await this.deleteQA(id, request, origin, env)
         }
       }
-      
-      console.log('No matching route found')
+
       return ApiResponse.error('Not Found', origin, 404)
     } catch (error) {
       console.error('QA Router error:', error)
@@ -138,20 +126,14 @@ export class QARouter {
 
   // 更新QA（需要认证）
   async updateQA(id, request, origin, env) {
-    console.log('updateQA called with id:', id)
-    
     const authResult = await AuthMiddleware.extractUserFromRequest(request, env)
     if (!authResult.success) {
-      console.log('Auth failed:', authResult.error)
       return AuthMiddleware.createAuthErrorResponse(authResult.error, origin)
     }
 
     const user = authResult.user
-    console.log('User authenticated:', user.id)
-    
     const body = await request.json()
-    console.log('Request body:', body)
-    
+
     // 验证必填字段
     if (!body.title || !body.qaItems || !Array.isArray(body.qaItems) || body.qaItems.length === 0) {
       return ApiResponse.error('标题和问答对不能为空', origin, 400)
@@ -165,17 +147,13 @@ export class QARouter {
     }
 
     // 检查QA是否存在且属于当前用户
-    console.log('Looking for QA with id:', id)
     const existingQA = await this.qaModel.findById(id)
-    console.log('Found existing QA:', existingQA)
-    
+
     if (!existingQA) {
-      console.log('QA not found in database')
       return ApiResponse.error('QA页面不存在', origin, 404)
     }
 
     if (existingQA.uid !== user.id) {
-      console.log('User not authorized. QA uid:', existingQA.uid, 'User id:', user.id)
       return ApiResponse.error('无权限访问', origin, 403)
     }
 
@@ -190,10 +168,8 @@ export class QARouter {
       isPublic: Boolean(body.isPublic)
     }
 
-    console.log('Updating with data:', updateData)
     const success = await this.qaModel.update(id, updateData)
-    console.log('Update result:', success)
-    
+
     if (success) {
       return ApiResponse.success({
         message: 'QA页面更新成功'

@@ -56,7 +56,7 @@ export async function onRequest(context) {
     // 最近 10 条流水（join user 取邮箱）
     const recentTx = await db
       .prepare(
-        `SELECT t.id, t.uid, t.type, t.amount, t.balance_after, t.reason,
+        `SELECT t.id, t.uid, t.type, t.amount, t.balance_after, t.reason, t.source,
                 t.operator_uid, t.created_at, u.email AS user_email, u.username AS user_name
          FROM credit_transactions t
          LEFT JOIN user u ON u.id = t.uid
