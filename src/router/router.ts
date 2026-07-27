@@ -1534,6 +1534,16 @@ export const constantRoute = [
           description: '启用/禁用前台工具',
         },
       },
+      {
+        path: 'generation-records',
+        component: () => import('@/components/Admin/AdminGenerationRecords.vue'),
+        name: 'adminGenerationRecords',
+        meta: {
+          title: '请求日志',
+          keywords: '后台请求日志',
+          description: '查看 AI 工具调用记录，按时间倒序',
+        },
+      },
     ],
   },
 ]

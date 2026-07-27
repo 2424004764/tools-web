@@ -16,6 +16,7 @@ const menus: MenuItem[] = [
   { index: '/admin/users', title: '用户管理', icon: 'user' },
   { index: '/admin/credits', title: '积分流水', icon: 'coin' },
   { index: '/admin/tools', title: '工具开关', icon: 'tools' },
+  { index: '/admin/generation-records', title: '请求日志', icon: 'logs' },
 ]
 
 const activeIndex = (path: string) => {

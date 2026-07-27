@@ -17,6 +17,7 @@
 //   data[0].url（首选）/ data[0].b64_json（兜底）
 
 import { extractUidFromRequest } from './_lib/model-resolver.js'
+import { startGeneration, finalizeGeneration } from './_lib/record-generation.js'
 
 const TOOL_URL = '/ai-image-edit/'
 
@@ -144,6 +145,14 @@ export async function onRequest(context) {
   if (request.method !== 'POST') {
     return json({ ok: false, error: 'Method not allowed' }, 405)
   }
+
+  // 请求级时间戳 + 客户端信息（写日志用）
+  const t0 = Date.now()
+  const clientIp =
+    request.headers.get('CF-Connecting-IP') ||
+    request.headers.get('X-Forwarded-For')?.split(',')[0]?.trim() ||
+    null
+  const userAgent = (request.headers.get('User-Agent') || '').slice(0, 256) || null
 
   const apiKey = env.BAFANG_API_KEY
   if (!apiKey) {
@@ -337,26 +346,101 @@ export async function onRequest(context) {
     promptLen: prompt.length,
   }))
 
-  // 上游超时：AI 生图通常 30-90s。
+  // 客户端断开检测：监听 request.signal，关闭/刷新页面都会触发。
+  // 触发时：取消 upstream fetch（省资源）+ 退还积分 + 日志记 'reversed'。
+  let clientAborted = false
+  if (request.signal) {
+    request.signal.addEventListener('abort', () => {
+      if (!clientAborted) {
+        clientAborted = true
+        console.log('[ai-image-edit] client disconnected, will refund if deducted')
+        // 顺带取消 upstream fetch，避免白跑
+        try { upstreamController.abort() } catch {}
+      }
+    })
+  }
+
+  // 上游超时：10 分钟（600s）。生图模型偶尔会跑到 3-5 分钟。
   // 注意：Cloudflare Workers 免费计划可能出现单次请求 CPU 时间/耗时限制，
-  // 若 Worker 被平台强行终止，catch 块不会执行，reverseDeduction 不会触发，
-  // 积分已扣但不会退还。这是平台层面的限制，代码无法绕过。
-  // 付费计划（Unbound）上限 900s，留 120s 超时足矣。
-  const UPSTREAM_TIMEOUT_MS = 120000
+  // 若 Worker 被平台强行终止（不是客户端断开），catch 块不会执行，
+  // reverseDeduction 不会触发，积分已扣但不会退还——这是平台层面的限制。
+  // 付费计划（Unbound）上限 900s，600s 超时留 300s 余量。
+  const UPSTREAM_TIMEOUT_MS = 600000
   const upstreamController = new AbortController()
   const upstreamTimer = setTimeout(() => upstreamController.abort(), UPSTREAM_TIMEOUT_MS)
   upstreamInit.signal = upstreamController.signal
 
+  // 已扣费标志：失败时若已扣费，状态记为 'reversed'（表示自动退还过）
+  const reversed = cost > 0 && uid && txId
+
+  // 通用记录字段（start / finalize 共用）
+  const recordBase = {
+    uid,
+    source: TOOL_URL,
+    mode: hasImage ? 'image-to-image' : 'text-to-image',
+    model: modelKey,
+    cost,
+    txId: txId || null,
+    idempotencyKey,
+    rawData: {
+      prompt,
+      size,
+      has_input_image: hasImage ? 1 : 0,
+      client_ip: clientIp,
+      user_agent: userAgent,
+      request: hasImage
+        ? { endpoint: '/v1/images/edits', model: modelKey, size, prompt, image_size: imageFile.size, image_type: imageFile.type }
+        : { endpoint: '/v1/images/generations', model: modelKey, size, prompt },
+    },
+  }
+
+  // 两段式日志：先插入 in_progress，请求结束再 UPDATE 终态
+  const recordId = crypto.randomUUID()
+  const startOk = await startGeneration(env, recordId, recordBase)
+  // 终态写入 helper（自动算 durationMs，方便各 return 点调用）
+  const finalizeRecord = (extra) => finalizeGeneration(env, recordId, {
+    ...recordBase,
+    durationMs: Date.now() - t0,
+    startOk,
+    ...extra,
+  })
+
+  let upstreamT0 = 0
+  let upstreamDurationMs = 0
+
   try {
+    upstreamT0 = Date.now()
     const upstreamResponse = await fetch(`https://bafang.me${upstreamPath}`, upstreamInit)
+    upstreamDurationMs = Date.now() - upstreamT0
     clearTimeout(upstreamTimer)
+
+    // 上游已成功返回但客户端已断开：仍按"退还"处理（用户感知不到结果）
+    if (clientAborted) {
+      console.log('[ai-image-edit] fetch returned but client already gone, refunding')
+      if (reversed) {
+        await reverseDeduction(env, uid, cost, txId, 'ai-image-edit:reverse:client-disconnected-after-fetch')
+      }
+      await finalizeRecord({
+        status: reversed ? 'reversed' : 'failed',
+        upstreamStatus: upstreamResponse.status,
+        upstreamDurationMs,
+        errorMessage: '客户端已断开连接',
+      })
+      return await errorJson(db, uid, '客户端已断开连接', 499)
+    }
 
     if (!upstreamResponse.ok) {
       const errText = await upstreamResponse.text().catch(() => '')
       console.error('[ai-image-edit] 上游错误:', upstreamResponse.status, errText.slice(0, 500))
-      if (cost > 0 && uid && txId) {
+      if (reversed) {
         await reverseDeduction(env, uid, cost, txId, `ai-image-edit:reverse:upstream-${upstreamResponse.status}`)
       }
+      await finalizeRecord({
+        status: reversed ? 'reversed' : 'failed',
+        upstreamStatus: upstreamResponse.status,
+        upstreamDurationMs,
+        errorMessage: `上游错误 ${upstreamResponse.status}: ${errText.slice(0, 300)}`,
+      })
       return await errorJson(db, uid, `上游错误 ${upstreamResponse.status}: ${errText.slice(0, 300)}`, upstreamResponse.status)
     }
 
@@ -367,13 +451,28 @@ export async function onRequest(context) {
 
     if (!imageUrl) {
       console.error('[ai-image-edit] 无法从响应中提取图片:', JSON.stringify(data).slice(0, 500))
-      if (cost > 0 && uid && txId) {
+      if (reversed) {
         await reverseDeduction(env, uid, cost, txId, 'ai-image-edit:reverse:no-image-in-response')
       }
+      await finalizeRecord({
+        status: reversed ? 'reversed' : 'failed',
+        upstreamStatus: upstreamResponse.status,
+        upstreamDurationMs,
+        errorMessage: '上游返回成功但未找到图片数据',
+        rawData: { ...recordBase.rawData, response: data },
+      })
       return await errorJson(db, uid, '上游返回成功但未找到图片数据', 502)
     }
 
     console.log('[ai-image-edit] 成功:', imageUrl.slice(0, 100) + (imageUrl.length > 100 ? '...' : ''))
+
+    await finalizeRecord({
+      status: 'success',
+      resultUrl: imageUrl,
+      upstreamStatus: upstreamResponse.status,
+      upstreamDurationMs,
+      rawData: { ...recordBase.rawData, response: data },
+    })
 
     return json({
       ok: true,
@@ -386,13 +485,34 @@ export async function onRequest(context) {
     })
   } catch (error) {
     console.error('[ai-image-edit] 请求失败:', error)
-    const isTimeout = error?.name === 'AbortError' || /abort/i.test(error?.message || '')
-    if (cost > 0 && uid && txId) {
-      const reason = isTimeout
-        ? 'ai-image-edit:reverse:upstream-timeout'
-        : 'ai-image-edit:reverse:network-error'
+    const isClientAbort = clientAborted
+    const isTimeout = !isClientAbort && (error?.name === 'AbortError' || /abort/i.test(error?.message || ''))
+    if (reversed) {
+      const reason = isClientAbort
+        ? 'ai-image-edit:reverse:client-disconnected'
+        : isTimeout
+          ? 'ai-image-edit:reverse:upstream-timeout'
+          : 'ai-image-edit:reverse:network-error'
       await reverseDeduction(env, uid, cost, txId, reason)
     }
-    return await errorJson(db, uid, isTimeout ? '上游调用超时，请稍后重试' : (error.message || '调用失败'), isTimeout ? 504 : 500)
+    await finalizeRecord({
+      status: reversed ? 'reversed' : (isTimeout ? 'timeout' : 'failed'),
+      upstreamDurationMs,
+      errorMessage: isClientAbort
+        ? '客户端已断开连接'
+        : isTimeout
+          ? '上游调用超时'
+          : (error?.message || '调用失败'),
+    })
+    return await errorJson(
+      db,
+      uid,
+      isClientAbort
+        ? '客户端已断开连接'
+        : isTimeout
+          ? '上游调用超时，请稍后重试'
+          : (error.message || '调用失败'),
+      isClientAbort ? 499 : (isTimeout ? 504 : 500),
+    )
   }
 }

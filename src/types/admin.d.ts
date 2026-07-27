@@ -115,3 +115,30 @@ export interface AdminDashboard {
   recentTransactions: CreditTransaction[]
   tools: { total: number; enabled: number }
 }
+
+/** 生成记录（AI 工具调用日志） */
+export interface GenerationRecord {
+  id: string
+  uid: string | null
+  user_email?: string | null
+  user_name?: string | null
+  /** 工具 URL，例如 '/ai-image-edit/' */
+  source: string
+  /** 子模式，例如 'text-to-image' / 'image-to-image' */
+  mode: string | null
+  model: string | null
+  status: 'in_progress' | 'success' | 'failed' | 'timeout' | 'reversed'
+  cost: number
+  result_url: string | null
+  error_message: string | null
+  duration_ms: number
+  upstream_duration_ms: number | null
+  upstream_status: number | null
+  idempotency_key: string | null
+  tx_id: string | null
+  /** 原始 JSON 字符串 */
+  raw_data: string
+  /** 后端预解析后的对象（解析失败为 null） */
+  raw_data_parsed: Record<string, unknown> | null
+  created_at: string
+}
