@@ -1,5 +1,6 @@
 // 当前用户相关 API
 import { functionsRequest } from '@/utils/functionsRequest'
+import type { GenerationRecord } from '@/types/admin'
 
 export interface MyCredits {
   balance: number
@@ -52,6 +53,32 @@ export async function fetchMyTransactions(
   })
   return {
     list: (res.data?.list as CreditTransaction[]) || [],
+    pagination: res.data?.pagination || {
+      total: 0, page, pageSize, totalPages: 0, hasNext: false, hasPrev: false,
+    },
+  }
+}
+
+/**
+ * 当前用户的 AI 生成历史
+ * @param status '' 表示不过滤
+ */
+export async function fetchMyGenerationRecords(
+  page = 1,
+  pageSize = 10,
+  status: '' | 'in_progress' | 'success' | 'failed' | 'timeout' | 'reversed' = '',
+  keyword = '',
+): Promise<{ list: GenerationRecord[]; pagination: MyCreditsPagination }> {
+  const res = await functionsRequest.get('/api/me/generation-records', {
+    params: {
+      page,
+      pageSize,
+      status: status || undefined,
+      keyword: keyword || undefined,
+    },
+  })
+  return {
+    list: (res.data?.list as GenerationRecord[]) || [],
     pagination: res.data?.pagination || {
       total: 0, page, pageSize, totalPages: 0, hasNext: false, hasPrev: false,
     },

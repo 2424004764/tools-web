@@ -3,6 +3,7 @@ import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { UploadProps } from 'element-plus'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
+import GenerationHistoryDialog from './GenerationHistoryDialog.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { autoDown } from '@/utils/file'
 import { functionsRequest } from '@/utils/functionsRequest'
@@ -39,6 +40,9 @@ const isLoading = ref(false)
 
 // 用户 store（右上角积分 badge 用）
 const userStore = useUserStore()
+
+// 历史弹窗 ref
+const historyRef = ref<InstanceType<typeof GenerationHistoryDialog> | null>(null)
 
 // 图片上传 — 保存 File 对象，预览用 base64
 const uploadRef = ref<any>(null)
@@ -423,11 +427,11 @@ const generateImage = async () => {
       fd.append('image', imageFile.value)
     }
 
-    // AI 生图通常 30-90s，覆盖默认 30s 超时到 3 分钟
+    // AI 生图偶尔跑到 3-5 分钟，覆盖默认 30s 超时到 11 分钟（后端 10 分钟 + 1 分钟缓冲）
     // 每次提交带 Idempotency-Key：网络重试时复用扣费；同 key 30 分钟内最多扣一次
     const idempotencyKey = crypto.randomUUID()
     const res = await functionsRequest.post('/api/ai-image-edit', fd, {
-      timeout: 180000,
+      timeout: 660000,
       headers: { 'Idempotency-Key': idempotencyKey },
     })
     const data = res.data
@@ -502,7 +506,21 @@ const openInNewTab = () => {
 
 <template>
   <div class="flex flex-col mt-3 flex-1">
-    <DetailHeader :title="info.title" />
+    <DetailHeader :title="info.title">
+        <template #right>
+          <button
+            v-if="userStore.getLoginStatus"
+            type="button"
+            class="px-3 py-1.5 text-sm rounded-lg border border-accent-300 text-accent-700 hover:bg-accent-50 transition-colors flex items-center gap-1.5"
+            @click="historyRef?.open()"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            我的历史
+          </button>
+        </template>
+      </DetailHeader>
 
     <div class="p-4 rounded-2xl bg-white">
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -688,7 +706,7 @@ const openInNewTab = () => {
               <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
             </svg>
             <span>
-              <strong>请勿关闭浏览器或刷新页面</strong>，否则请求将被中断无法看到结果（积分会自动退还）
+              <strong>请勿关闭浏览器或刷新页面</strong>，否则请求将提前终止，已扣积分会自动退还
               <span v-if="currentModelCost === 0" class="text-amber-700">（当前为免费）</span>
             </span>
           </div>
@@ -739,7 +757,7 @@ const openInNewTab = () => {
                 <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
                 </svg>
-                <span>请勿关闭浏览器或刷新页面，否则会扣费失败</span>
+                <span>请勿关闭浏览器或刷新页面，否则请求将提前终止，已扣积分会自动退还</span>
               </div>
             </div>
           </div>
@@ -795,6 +813,9 @@ const openInNewTab = () => {
         <p class="text-ink-500">提示：生成结果受提示词质量影响，详细的描述通常能得到更好的效果。</p>
       </div>
     </ToolDetail>
+
+    <!-- 用户生成历史弹窗 -->
+    <GenerationHistoryDialog ref="historyRef" />
   </div>
 </template>
 

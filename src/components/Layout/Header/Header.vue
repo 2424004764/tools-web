@@ -129,11 +129,11 @@ const goToUserInfo = async () => {
   router.push('/userinfo')
 }
 
-// 跳转到管理后台
+// 跳转到管理后台（新标签页打开，避免在工具页跳转导致状态丢失）
 const goToAdmin = async () => {
   userMenuVisible.value = false
   await nextTick()
-  router.push('/admin')
+  window.open('/admin/dashboard', '_blank', 'noopener,noreferrer')
 }
 
 // 切换用户菜单显示状态
