@@ -64,7 +64,8 @@
     "/api/admin/tool-models/*",
     "/api/me/credits",
     "/api/me/credits/transactions",
-    "/api/me/generation-records"
+    "/api/me/generation-records",
+    "/api/me/generation-records/*"
   ],
   "exclude": []
 }

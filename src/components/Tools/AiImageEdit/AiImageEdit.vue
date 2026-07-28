@@ -8,6 +8,7 @@ import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { autoDown } from '@/utils/file'
 import { functionsRequest } from '@/utils/functionsRequest'
 import { fetchToolModels, type PublicToolModel } from '@/api/tool-models'
+import { fetchMyGenerationRecordImage } from '@/api/me'
 import { useUserStore } from '@/store/modules/user'
 
 const info = reactive({
@@ -158,6 +159,7 @@ onUnmounted(() => {
 
 // 生成结果
 const resultImageUrl = ref('')
+const currentRecordId = ref('')
 const elapsedSeconds = ref(0)
 let elapsedTimer: ReturnType<typeof setInterval> | null = null
 
@@ -449,6 +451,7 @@ const generateImage = async () => {
     }
 
     resultImageUrl.value = data.data?.url || ''
+    currentRecordId.value = data.data?.recordId || ''
 
     // 用服务端返回的权威 balanceAfter 覆盖（理论上等于 balanceBefore - cost，
     // 幂等命中时也可能不同；这里以服务端为准）
@@ -482,7 +485,21 @@ const generateImage = async () => {
 // 下载图片
 const downloadImage = () => {
   if (!resultImageUrl.value) return
-  // 如果是远程 URL，通过 fetch 下载
+  // 优先走后端代理（绕过第三方图床 CORS）；有 recordId 时必走
+  if (currentRecordId.value) {
+    fetchMyGenerationRecordImage(currentRecordId.value)
+      .then(({ blob, filename }) => {
+        const url = URL.createObjectURL(blob)
+        autoDown(url, filename)
+        setTimeout(() => URL.revokeObjectURL(url), 1000)
+      })
+      .catch(() => {
+        // 代理失败降级：直接打开
+        window.open(resultImageUrl.value, '_blank', 'noopener,noreferrer')
+      })
+    return
+  }
+  // 无 recordId（极少见）：直接 fetch 试一下，跨域失败再降级
   fetch(resultImageUrl.value)
     .then(r => r.blob())
     .then(blob => {
@@ -491,8 +508,7 @@ const downloadImage = () => {
       setTimeout(() => URL.revokeObjectURL(url), 1000)
     })
     .catch(() => {
-      // 降级：直接打开
-      window.open(resultImageUrl.value, '_blank')
+      window.open(resultImageUrl.value, '_blank', 'noopener,noreferrer')
     })
 }
 

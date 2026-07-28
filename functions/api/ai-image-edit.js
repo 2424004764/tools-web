@@ -478,6 +478,7 @@ export async function onRequest(context) {
       ok: true,
       data: {
         url: imageUrl,
+        recordId, // 前端下载走代理 /api/me/generation-records/:id/image 用
         cost,
         txId: txId || null,
         balanceAfter: cost > 0 ? balanceAfter : null,
