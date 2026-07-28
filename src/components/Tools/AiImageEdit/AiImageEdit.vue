@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { UploadProps } from 'element-plus'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
@@ -41,6 +42,7 @@ const isLoading = ref(false)
 
 // 用户 store（右上角积分 badge 用）
 const userStore = useUserStore()
+const router = useRouter()
 
 // 历史弹窗 ref
 const historyRef = ref<InstanceType<typeof GenerationHistoryDialog> | null>(null)
@@ -106,7 +108,24 @@ const handlePaste = (e: ClipboardEvent) => {
 // 提示词缓存 key：刷新页面后自动恢复上次输入
 const PROMPT_CACHE_KEY = 'ai-image-edit:prompt'
 
+// 响应式：< 640px 视为手机端 → 「我的历史」改走独立页面 /ai-image-edit/history
+const isMobile = ref(false)
+const MOBILE_BREAKPOINT = 640
+const updateIsMobile = () => {
+  isMobile.value = typeof window !== 'undefined' && window.innerWidth < MOBILE_BREAKPOINT
+}
+
+const openHistory = () => {
+  if (isMobile.value) {
+    router.push('/ai-image-edit/history')
+  } else {
+    historyRef.value?.open()
+  }
+}
+
 onMounted(() => {
+  updateIsMobile()
+  window.addEventListener('resize', updateIsMobile)
   document.addEventListener('paste', handlePaste)
   fetchModelList()
   // 恢复上次提交的提示词
@@ -151,6 +170,7 @@ const fetchModelList = async () => {
 
 onUnmounted(() => {
   document.removeEventListener('paste', handlePaste)
+  window.removeEventListener('resize', updateIsMobile)
   if (elapsedTimer) { clearInterval(elapsedTimer); elapsedTimer = null }
   stopCanvasLoading()
   stopBtnAnim()
@@ -528,7 +548,7 @@ const openInNewTab = () => {
             v-if="userStore.getLoginStatus"
             type="button"
             class="px-3 py-1.5 text-sm rounded-lg border border-accent-300 text-accent-700 hover:bg-accent-50 transition-colors flex items-center gap-1.5"
-            @click="historyRef?.open()"
+            @click="openHistory"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />

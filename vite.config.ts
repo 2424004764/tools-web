@@ -291,6 +291,11 @@ export default defineConfig(({command, mode}) => {
       warmup: {
         clientFiles: ['./src/main.ts', './src/App.vue', './src/router/index.ts'],
       },
+      // Windows 下 chokidar 经常漏事件（被杀毒/索引服务拦截），改用轮询保证 HMR 稳定
+      watch: {
+        usePolling: true,
+        interval: 300,
+      },
       proxy: {
         '/api/agnes-chat': {
           target: 'http://127.0.0.1:8788',
