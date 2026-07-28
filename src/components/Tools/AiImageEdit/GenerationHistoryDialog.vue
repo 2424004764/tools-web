@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, reactive, ref } from 'vue'
-import { fetchMyGenerationRecords } from '@/api/me'
+import { fetchMyGenerationRecords, fetchMyGenerationRecordImage } from '@/api/me'
 import type { GenerationRecord } from '@/types/admin'
 import { autoDown } from '@/utils/file'
 
@@ -155,15 +155,18 @@ const getPrompt = (rec: GenerationRecord): string => {
   return (rec.raw_data_parsed as any)?.prompt || ''
 }
 
-const downloadResult = async (url: string) => {
+const downloadResult = async (id: string, fallbackUrl: string | null) => {
   try {
-    const r = await fetch(url)
-    const blob = await r.blob()
+    // 走后端代理：避免第三方图床 CORS
+    const { blob, filename } = await fetchMyGenerationRecordImage(id)
     const objUrl = URL.createObjectURL(blob)
-    autoDown(objUrl, `ai-image-${Date.now()}.png`)
+    autoDown(objUrl, filename)
     setTimeout(() => URL.revokeObjectURL(objUrl), 1000)
   } catch {
-    window.open(url, '_blank', 'noopener,noreferrer')
+    // 后端失败降级：用 window.open 打开，用户可右键另存
+    if (fallbackUrl) {
+      window.open(fallbackUrl, '_blank', 'noopener,noreferrer')
+    }
   }
 }
 </script>
@@ -287,7 +290,7 @@ const downloadResult = async (url: string) => {
             type="primary"
             link
             size="small"
-            @click="downloadResult(row.result_url)"
+            @click="downloadResult(row.id, row.result_url)"
           >
             下载
           </el-button>

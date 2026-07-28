@@ -85,3 +85,23 @@ export async function fetchMyGenerationRecords(
   }
 }
 
+/**
+ * 下载单条生成记录的图片（走后端代理，绕过第三方图床 CORS）
+ * @returns blob + 推断的文件名（来自 Content-Disposition）
+ */
+export async function fetchMyGenerationRecordImage(
+  id: string,
+): Promise<{ blob: Blob; filename: string }> {
+  const res = await functionsRequest.get(
+    `/api/me/generation-records/${encodeURIComponent(id)}/image`,
+    { responseType: 'blob' },
+  )
+  const cd = (res.headers as any)?.['content-disposition'] as string | undefined
+  let filename = 'ai-image.png'
+  if (cd) {
+    const m = /filename="?([^";]+)"?/.exec(cd)
+    if (m) filename = m[1]
+  }
+  return { blob: res.data as Blob, filename }
+}
+
