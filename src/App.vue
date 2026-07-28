@@ -77,6 +77,11 @@ const isHomePage = computed(() => {
   return route.name === 'home' || route.path === '/';
 });
 
+// 判断是否为「我的」子页面（如积分明细），需要隐藏底部评论交流
+const isMeCreditsPage = computed(() => {
+  return route.name === 'me-credits';
+});
+
 </script>
 
 <template>
@@ -118,7 +123,7 @@ const isHomePage = computed(() => {
             <component :is="Component" :key="route.path"></component>
           </transition>
         </router-view>
-        <Discuss v-if="!isSpecialPage && !isHomePage && !componentStore.hideAllUI" />
+        <Discuss v-if="!isSpecialPage && !isHomePage && !isMeCreditsPage && !componentStore.hideAllUI" />
       </el-main>
       <el-footer v-if="!isSpecialPage" class="md:mb-6 mt-12 c-xs:mb-12">
         <Floor />

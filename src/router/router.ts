@@ -672,6 +672,16 @@ export const constantRoute = [
       description: 'AI智能图片编辑工具，支持图片编辑、图片生成和超分辨率，上传图片加文字描述即可一键生成',
     }
   },
+  {
+    path: '/ai-image-edit/history',
+    component: () => import('@/components/Tools/AiImageEdit/GenerationHistoryPage.vue'),
+    name: 'AiImageEditHistory',
+    meta: {
+      title: "我的生成历史",
+      keywords: '生成历史,AI图片编辑历史,生成记录',
+      description: '查看 AI 图片编辑生成历史记录',
+    }
+  },
   // {
   //   path: '/ai-text-to-speech',
   //   component: () => import('@/components/Tools/AiTextToSpeech/AiTextToSpeech.vue'),
@@ -1117,6 +1127,17 @@ export const constantRoute = [
       title: "待办事项",
       keywords: '待办事项,任务管理,TODO,优先级,截止日期,任务清单',
       description: '在线待办事项管理工具，支持优先级设置、截止日期提醒，高效管理个人任务清单',
+    }
+  },
+  {
+    // 手机端专用：积分流水独立页面（桌面端走弹窗 CreditTransactionsDialog）
+    path: '/me/credits',
+    component: () => import('@/components/User/CreditTransactionsPage.vue'),
+    name: 'me-credits',
+    meta: {
+      title: "积分消耗明细",
+      keywords: '积分,明细,消耗,流水,获得,退还',
+      description: '查看账户积分余额与流水明细，包括消费、获得、退还等记录',
     }
   },
   {

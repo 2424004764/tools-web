@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useUserStore } from '@/store/modules/user'
 import CreditTransactionsDialog from './CreditTransactionsDialog.vue'
 
+const router = useRouter()
 const userStore = useUserStore()
 
 // 本地 ref 副本 + $subscribe：Pinia 每次 mutation 都同步，不依赖 Vue 响应式追踪
@@ -29,10 +31,23 @@ const tone = computed(() => {
 
 const formattedBalance = computed(() => balanceDisplay.value.toLocaleString('zh-CN'))
 
+// 响应式：< 640px 视为手机端 → 跳转独立页面，不再用弹窗
+const MOBILE_BREAKPOINT = 640
+const isMobile = ref(false)
+const updateIsMobile = () => {
+  isMobile.value = typeof window !== 'undefined' && window.innerWidth < MOBILE_BREAKPOINT
+}
+
 onMounted(() => {
   if (userStore.isLoggedIn) {
     userStore.fetchCredits()
   }
+  updateIsMobile()
+  window.addEventListener('resize', updateIsMobile)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', updateIsMobile)
 })
 
 // 登录态变化时重新拉
@@ -40,10 +55,18 @@ watch(() => userStore.isLoggedIn, (v) => {
   if (v) userStore.fetchCredits()
 })
 
-// 弹窗控制
+// 弹窗控制（仅桌面端使用）
 const dialogVisible = ref(false)
 const openDialog = () => {
   dialogVisible.value = true
+}
+const openCreditsPage = () => {
+  router.push('/me/credits')
+}
+
+const onClick = () => {
+  if (isMobile.value) openCreditsPage()
+  else openDialog()
 }
 </script>
 
@@ -51,7 +74,7 @@ const openDialog = () => {
   <template v-if="userStore.isLoggedIn">
     <button
       type="button"
-      @click="openDialog"
+      @click="onClick"
       class="flex items-center gap-1.5 px-3 py-2 rounded-lg select-none transition-all duration-200 hover:scale-105"
       :class="{
         'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-100 hover:ring-emerald-300': tone === 'normal',
@@ -64,7 +87,6 @@ const openDialog = () => {
         <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z" />
         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clip-rule="evenodd" />
       </svg>
-      <!-- v-text + :key 双保险：v-text 直接操作 textContent -->
       <span
         :key="refreshKey"
         v-text="`${formattedBalance} `"
