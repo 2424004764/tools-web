@@ -1345,6 +1345,15 @@ export function getToolsCate() {
           cateId: 10,
           cate: 'AI工具'
         },
+        {
+          id: 'ai-media-works-2026-07-29',
+          title: 'AI 媒体作品',
+          logo: '/images/logo/ai-media-works.png',
+          desc: '汇集免费 AI 模型（Agnes 等）自动生成的图片与视频画廊，每天定时更新，可按分类与类型筛选浏览',
+          url: '/ai-media-works/',
+          cateId: 10,
+          cate: 'AI工具'
+        },
         // {
         //   id: 2,
         //   title: '在线文本转语音',
