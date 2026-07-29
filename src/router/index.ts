@@ -4,8 +4,7 @@ import { constantRoute } from './router'
 import { isAppStale, isVersionCheckComplete } from '@/utils/version-guard'
 import { useUserStore } from '@/store/modules/user'
 
-// 硬刷防循环 flag：硬刷后落到新页面，afterEach 清除（导航成功才清）。
-// 配合 router.onError 双重防循环：flag 存在 → onError 跳 /404 而非再次 reload
+// 硬刷防循环 flag：硬刷后落到新页面，beforeEach 检测到并清除
 const HARD_RELOAD_FLAG = '__hard_reload_guard__'
 
 // 同一会话最多硬刷 N 次，超出后停止硬刷避免死循环
@@ -15,6 +14,10 @@ const RELOAD_COUNT_KEY = '__reload_count__'
 // 两次硬刷之间最短间隔（ms），防止 scroll→router.replace→硬刷→scroll→... 的快速循环
 const MIN_RELOAD_INTERVAL = 5000
 const LAST_RELOAD_TIME_KEY = '__last_reload_ts__'
+
+// chunk 加载失败重试计数器：同一会话累加，导航成功清零
+const CHUNK_ERROR_KEY = '__chunk_error_count__'
+const MAX_CHUNK_ERRORS = 3
 
 //创建路由器
 const router = createRouter({
@@ -36,6 +39,11 @@ const APP_TITLE = import.meta.env.VITE_APP_TITLE as string
 const APP_DESC = import.meta.env.VITE_APP_DESC as string
 
 router.beforeEach((to, _from, next) => {
+  // 硬刷成功后第一次进入路由：清除 flag，避免误判
+  if (sessionStorage.getItem(HARD_RELOAD_FLAG)) {
+    sessionStorage.removeItem(HARD_RELOAD_FLAG)
+  }
+
   // 版本过期：CF 已重新部署，但当前 SPA 还停在旧 chunk 上。
   // 直接硬刷到目标 URL —— 用户感受是"点完就到目标页"，无感知。
   // 受 MAX_RELOADS_PER_SESSION 上限保护，超过后停止硬刷（CDN 缓存异常场景下的死循环兜底）。
@@ -89,37 +97,28 @@ router.beforeEach((to, _from, next) => {
 })
 
 // 兜底：chunk 404（轮询窗口期内罕见发生）。硬刷到目标 URL。
-// 双重防循环：
-//   1. HARD_RELOAD_FLAG：前一次硬刷仍有效 → 跳 404（afterEach 仅成功导航后清除）
-//   2. CHUNK_ERROR_COUNT：同一会话累计超过 3 次 → 跳 404（防止 afterEach 因故未清除 flag）
-const CHUNK_ERROR_KEY = '__chunk_error_count__'
-const MAX_CHUNK_ERRORS = 3
+// 计数器防循环：同一会话 chunk 错误超过 MAX_CHUNK_ERRORS 次后，
+// 改用缓存破坏式硬刷（加 ?_=timestamp）让浏览器绕过 CDN 边缘缓存获取最新 index.html。
 router.onError((error) => {
-  console.warn('[router] chunk load failed, hard reloading:', error)
-  if (sessionStorage.getItem(HARD_RELOAD_FLAG)) {
-    sessionStorage.removeItem(HARD_RELOAD_FLAG)
-    sessionStorage.removeItem(CHUNK_ERROR_KEY)
-    router.replace('/404')
-    return
-  }
-  // 兜底计数器：防止 flag 机制失效导致无限 reload
+  console.warn('[router] chunk load failed:', error)
   const errCount = parseInt(sessionStorage.getItem(CHUNK_ERROR_KEY) || '0', 10)
   if (errCount >= MAX_CHUNK_ERRORS) {
-    console.warn('[router] chunk error 已达上限，跳转 /404')
+    // 多次重试失败，用 timestamp 破坏 CDN/Browser 缓存
+    console.warn('[router] chunk error 已达上限，缓存破坏式刷新')
     sessionStorage.removeItem(CHUNK_ERROR_KEY)
-    router.replace('/404')
+    const target = router.currentRoute.value.fullPath || '/'
+    window.location.href = target.startsWith('/') ? '/?_=' + Date.now() : '/?_=' + Date.now()
     return
   }
   sessionStorage.setItem(CHUNK_ERROR_KEY, String(errCount + 1))
-  sessionStorage.setItem(HARD_RELOAD_FLAG, '1')
   window.location.replace(router.currentRoute.value.fullPath || '/')
 })
 
 // 路由后置：仅更新 document.title（SPA 内部导航的用户体验优化）
-// 并清除硬刷防循环 flag（导航成功完成才清除，避免 beforeEnter 提前清除导致 onError 防循环失效）
+// 同时清除 chunk 错误计数器（导航成功说明一切正常）
 router.afterEach((to) => {
-  if (sessionStorage.getItem(HARD_RELOAD_FLAG)) {
-    sessionStorage.removeItem(HARD_RELOAD_FLAG)
+  if (sessionStorage.getItem(CHUNK_ERROR_KEY)) {
+    sessionStorage.removeItem(CHUNK_ERROR_KEY)
   }
   document.title = to.meta.title
     ? `${to.meta.title as string}-${APP_TITLE}`
