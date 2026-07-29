@@ -23,6 +23,9 @@
               如果是从 bfcache 恢复的页面，强制硬刷一次 -->
     <script>
     (function() {
+      var RELOAD_KEY = '__inline_reload_count__';
+      var MAX_RELOADS = 2;
+
       // ① 版本对比：当前 SPA 跑的老 chunk vs 服务器最新 chunk
       function checkAndReload() {
         fetch('/index.html?_=' + Date.now(), { cache: 'no-store', credentials: 'same-origin' })
@@ -38,8 +41,17 @@
               if (sm) { currentHash = sm[1]; break; }
             }
             if (serverHash && currentHash && serverHash !== currentHash) {
-              // 服务端有新版本，硬刷
+              var count = parseInt(sessionStorage.getItem(RELOAD_KEY) || '0', 10);
+              if (count >= MAX_RELOADS) {
+                // 已重载多次仍不一致 → 可能是 CDN 多节点版本不同步，停止重载让 Vue 层兜底
+                sessionStorage.removeItem(RELOAD_KEY);
+                return;
+              }
+              sessionStorage.setItem(RELOAD_KEY, String(count + 1));
               window.location.replace(location.pathname + location.search + location.hash);
+            } else {
+              // 版本一致，清除计数器
+              sessionStorage.removeItem(RELOAD_KEY);
             }
           })
           .catch(function() { /* 网络/部署瞬时错误，静默 */ });
@@ -110,7 +122,7 @@
     </script>
 
     <title>一方工具箱 - 一个开源免费的工具站 | MD5加密 JSON格式化 二维码 AI绘画 正则测试 时间戳转换 Base64 147+工具</title>
-    <script type="module" crossorigin src="/js/index-0d37ca9d.js"></script>
+    <script type="module" crossorigin src="/js/index-f17815c7.js"></script>
     <link rel="modulepreload" crossorigin href="/js/vue-vendor-fcb00381.js">
     <link rel="modulepreload" crossorigin href="/js/element-plus-ffdafce6.js">
     <link rel="stylesheet" href="/css/index-d45ba58c.css">

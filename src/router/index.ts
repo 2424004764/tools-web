@@ -47,6 +47,8 @@ router.beforeEach((to, _from, next) => {
   // 版本过期：CF 已重新部署，但当前 SPA 还停在旧 chunk 上。
   // 直接硬刷到目标 URL —— 用户感受是"点完就到目标页"，无感知。
   // 受 MAX_RELOADS_PER_SESSION 上限保护，超过后停止硬刷（CDN 缓存异常场景下的死循环兜底）。
+  // 注意：index.html 有 Cache-Control: no-store，location.replace 即可获取最新版本，
+  // 不需要额外加 query 参数破坏缓存 —— 内联版本检查脚本（index.html）已处理 CDN 不一致场景。
   if (isAppStale()) {
     const reloadCount = parseInt(sessionStorage.getItem(RELOAD_COUNT_KEY) || '0', 10)
     const lastReload = parseInt(sessionStorage.getItem(LAST_RELOAD_TIME_KEY) || '0', 10)
@@ -57,9 +59,7 @@ router.beforeEach((to, _from, next) => {
       sessionStorage.setItem(HARD_RELOAD_FLAG, '1')
       sessionStorage.setItem(RELOAD_COUNT_KEY, String(reloadCount + 1))
       sessionStorage.setItem(LAST_RELOAD_TIME_KEY, String(now))
-      // 带 cache-bust 参数，确保绕过 Service Worker / CDN 缓存层拿到最新 index.html
-      const sep = to.fullPath.includes('?') ? '&' : '?'
-      window.location.replace(to.fullPath + sep + '_v=' + Date.now())
+      window.location.replace(to.fullPath || '/')
       return // 不调用 next()，中断当前 SPA 导航
     }
     if (reloadCount >= MAX_RELOADS_PER_SESSION) {
@@ -98,22 +98,24 @@ router.beforeEach((to, _from, next) => {
   next()
 })
 
-// 兜底：chunk 404（版本守卫未及时检测到新部署时发生）。
-// 问题根因：window.location.replace() 即使面对 _headers 中的 no-store，
-// Service Worker / CDN 边缘节点仍可能返回旧 index.html → chunk hash 仍是旧的 → 再次 404 → 死循环。
-// 修复：首次 chunk 错误就用 _cb 参数破坏所有缓存层；计数器兜底防止无限重载。
+// 兜底：chunk 404 导致页面无法渲染。
+// 首次错误带 _cb 参数硬刷新（绕过 Service Worker / CDN 缓存），
+// 超过上限后直接渲染静态错误提示，不依赖 SPA 路由（避免 404 组件也加载失败）。
 router.onError((error) => {
   console.warn('[router] chunk load failed:', error)
   const errCount = parseInt(sessionStorage.getItem(CHUNK_ERROR_KEY) || '0', 10) + 1
-  sessionStorage.setItem(CHUNK_ERROR_KEY, String(errCount))
 
   if (errCount > MAX_CHUNK_ERRORS) {
-    console.warn('[router] chunk 重试已达上限，跳转 /404')
+    // 多次重试仍失败：直接渲染静态 DOM，不走 vue-router（避免 404 chunk 也失败）
     sessionStorage.removeItem(CHUNK_ERROR_KEY)
-    router.replace('/404')
+    document.body.innerHTML =
+      '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#666">' +
+      '<div style="text-align:center"><h2 style="font-size:18px;margin-bottom:8px">页面加载失败</h2>' +
+      '<p style="font-size:14px">请检查网络后<a href="/" style="color:#409EFF">刷新重试</a></p></div></div>'
     return
   }
 
+  sessionStorage.setItem(CHUNK_ERROR_KEY, String(errCount))
   const target = router.currentRoute.value.fullPath || '/'
   const sep = target.includes('?') ? '&' : '?'
   window.location.replace(target + sep + '_cb=' + Date.now())
