@@ -15,7 +15,7 @@ const RELOAD_COUNT_KEY = '__reload_count__'
 const MIN_RELOAD_INTERVAL = 5000
 const LAST_RELOAD_TIME_KEY = '__last_reload_ts__'
 
-// chunk 加载失败重试计数器：同一会话累加，导航成功清零
+// chunk 加载失败计数器（onError 兜底）
 const CHUNK_ERROR_KEY = '__chunk_error_count__'
 const MAX_CHUNK_ERRORS = 3
 
@@ -57,7 +57,9 @@ router.beforeEach((to, _from, next) => {
       sessionStorage.setItem(HARD_RELOAD_FLAG, '1')
       sessionStorage.setItem(RELOAD_COUNT_KEY, String(reloadCount + 1))
       sessionStorage.setItem(LAST_RELOAD_TIME_KEY, String(now))
-      window.location.replace(to.fullPath || '/')
+      // 带 cache-bust 参数，确保绕过 Service Worker / CDN 缓存层拿到最新 index.html
+      const sep = to.fullPath.includes('?') ? '&' : '?'
+      window.location.replace(to.fullPath + sep + '_v=' + Date.now())
       return // 不调用 next()，中断当前 SPA 导航
     }
     if (reloadCount >= MAX_RELOADS_PER_SESSION) {
@@ -96,22 +98,25 @@ router.beforeEach((to, _from, next) => {
   next()
 })
 
-// 兜底：chunk 404（轮询窗口期内罕见发生）。硬刷到目标 URL。
-// 计数器防循环：同一会话 chunk 错误超过 MAX_CHUNK_ERRORS 次后，
-// 改用缓存破坏式硬刷（加 ?_=timestamp）让浏览器绕过 CDN 边缘缓存获取最新 index.html。
+// 兜底：chunk 404（版本守卫未及时检测到新部署时发生）。
+// 问题根因：window.location.replace() 即使面对 _headers 中的 no-store，
+// Service Worker / CDN 边缘节点仍可能返回旧 index.html → chunk hash 仍是旧的 → 再次 404 → 死循环。
+// 修复：首次 chunk 错误就用 _cb 参数破坏所有缓存层；计数器兜底防止无限重载。
 router.onError((error) => {
   console.warn('[router] chunk load failed:', error)
-  const errCount = parseInt(sessionStorage.getItem(CHUNK_ERROR_KEY) || '0', 10)
-  if (errCount >= MAX_CHUNK_ERRORS) {
-    // 多次重试失败，用 timestamp 破坏 CDN/Browser 缓存
-    console.warn('[router] chunk error 已达上限，缓存破坏式刷新')
+  const errCount = parseInt(sessionStorage.getItem(CHUNK_ERROR_KEY) || '0', 10) + 1
+  sessionStorage.setItem(CHUNK_ERROR_KEY, String(errCount))
+
+  if (errCount > MAX_CHUNK_ERRORS) {
+    console.warn('[router] chunk 重试已达上限，跳转 /404')
     sessionStorage.removeItem(CHUNK_ERROR_KEY)
-    const target = router.currentRoute.value.fullPath || '/'
-    window.location.href = target.startsWith('/') ? '/?_=' + Date.now() : '/?_=' + Date.now()
+    router.replace('/404')
     return
   }
-  sessionStorage.setItem(CHUNK_ERROR_KEY, String(errCount + 1))
-  window.location.replace(router.currentRoute.value.fullPath || '/')
+
+  const target = router.currentRoute.value.fullPath || '/'
+  const sep = target.includes('?') ? '&' : '?'
+  window.location.replace(target + sep + '_cb=' + Date.now())
 })
 
 // 路由后置：仅更新 document.title（SPA 内部导航的用户体验优化）
