@@ -845,6 +845,8 @@ const openInNewTab = () => {
         <p><strong>模型说明：</strong></p>
         <ul class="list-disc pl-5 space-y-2">
           <li><strong>gpt-image-2：</strong>通用图片编辑/生成模型，适用于文生图和图生图任务。</li>
+          <li><strong>Gemini 3 Pro Image Preview：</strong>Google 旗舰图片模型，质量高、支持文生图与图生图。</li>
+          <li><strong>Gemini 3.1 Flash Image Preview：</strong>Google Flash 图片预览版，速度快、性价比高，支持文生图与图生图。</li>
         </ul>
         <p class="text-ink-500">提示：生成结果受提示词质量影响，详细的描述通常能得到更好的效果。</p>
       </div>

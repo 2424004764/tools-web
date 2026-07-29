@@ -4,6 +4,8 @@ import type {
   AdminPagination,
   AdminUser,
   AdminUserDetail,
+  BatchAdjustCreditPayload,
+  BatchAdjustCreditResult,
   CreditTransaction,
 } from '@/types/admin'
 
@@ -52,7 +54,7 @@ export async function toggleAdminUserDisabled(
 export interface CreditLogsParams {
   page?: number
   pageSize?: number
-  type?: '' | 'grant' | 'deduct'
+  type?: '' | 'grant' | 'deduct' | 'reverse'
 }
 
 export async function fetchUserCreditLogs(
@@ -60,7 +62,7 @@ export async function fetchUserCreditLogs(
   params: CreditLogsParams = {},
 ): Promise<{ list: CreditTransaction[]; pagination: AdminPagination }> {
   const res = await functionsRequest.get(
-    `/api/admin/users/${uid}/credits/logs`,
+    `/api/admin/users/${uid}/credits-logs`,
     { params },
   )
   return res.data.data
@@ -87,5 +89,20 @@ export async function adjustUserCredits(
   payload: AdjustCreditPayload,
 ): Promise<AdjustCreditResult> {
   const res = await functionsRequest.post(`/api/admin/users/${uid}/credits`, payload)
+  return res.data.data
+}
+
+/**
+ * 批量调整积分
+ * - 不传 uids / 传空数组 = 作用于所有非管理员用户（服务端自动排除管理员和发起人）
+ * - 传 uids = 仅作用于列表中的用户（同样自动过滤管理员）
+ */
+export async function batchAdjustUserCredits(
+  payload: BatchAdjustCreditPayload,
+): Promise<BatchAdjustCreditResult> {
+  const res = await functionsRequest.post(
+    '/api/admin/users/credits/batch',
+    payload,
+  )
   return res.data.data
 }

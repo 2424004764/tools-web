@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import {
   fetchAdminTools,
   updateAdminTool,
@@ -10,6 +10,7 @@ import {
   createAdminToolModel,
   updateAdminToolModel,
   deleteAdminToolModel,
+  batchReorderToolModels,
 } from '@/api/admin/tool-model'
 import type {
   AdminPagination,
@@ -18,6 +19,7 @@ import type {
   ToolModel,
 } from '@/types/admin'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import Sortable from 'sortablejs'
 
 const loading = ref(false)
 const list = ref<ToolFeature[]>([])
@@ -120,6 +122,7 @@ const newModel = reactive({
 const loadModels = async (toolUrl: string) => {
   if (!toolUrl) return
   modelLoading.value = true
+  destroySortable()  // 加载新数据前先清掉旧 Sortable
   try {
     modelList.value = await fetchAdminToolModels(toolUrl)
   } catch (err: any) {
@@ -127,6 +130,11 @@ const loadModels = async (toolUrl: string) => {
     ElMessage.error(err?.response?.data?.error || '加载 model 列表失败')
   } finally {
     modelLoading.value = false
+    // 等 el-table 渲染完 DOM 再挂 Sortable
+    await nextTick()
+    if (modelList.value.length > 0) {
+      initModelSortable()
+    }
   }
 }
 
@@ -250,6 +258,65 @@ const removeModel = async (m: ToolModel) => {
     ElMessage.error(err?.response?.data?.error || '删除失败')
   }
 }
+
+// ============ 拖拽重排 model ============
+const modelTableRef = ref<any>(null)
+const modelReordering = ref(false)  // 保存中：禁用拖拽、显示 loading
+let sortableInstance: Sortable | null = null
+
+// 销毁现有 Sortable（防止重复 init）
+const destroySortable = () => {
+  if (sortableInstance) {
+    sortableInstance.destroy()
+    sortableInstance = null
+  }
+}
+
+// 在 model 表格 tbody 上挂 Sortable
+const initModelSortable = () => {
+  destroySortable()
+  const tableEl = modelTableRef.value?.$el
+  if (!tableEl) return
+  // el-table 的 tbody 在 .el-table__body-wrapper > table > tbody
+  const tbody = tableEl.querySelector('.el-table__body-wrapper tbody') as HTMLElement | null
+  if (!tbody) return
+  sortableInstance = Sortable.create(tbody, {
+    handle: '.model-drag-handle',
+    animation: 150,
+    ghostClass: 'model-row-ghost',
+    chosenClass: 'model-row-chosen',
+    onEnd: handleModelSortEnd,
+  })
+}
+
+// 拖拽结束：本地重排数组 + 调批量保存
+const handleModelSortEnd = async (evt: Sortable.SortableEvent) => {
+  if (!editDialog.row) return
+  const { oldIndex, newIndex } = evt
+  if (oldIndex === newIndex || oldIndex == null || newIndex == null) return
+
+  // 乐观更新：本地数组立即重排
+  const moved = modelList.value.splice(oldIndex, 1)[0]
+  modelList.value.splice(newIndex, 0, moved)
+
+  // 重新分配 sort_order = 当前下标（保持连续、便于阅读）
+  const items = modelList.value.map((m, idx) => ({ id: m.id, sort_order: idx }))
+  modelReordering.value = true
+  try {
+    await batchReorderToolModels(items)
+    ElMessage.success('排序已保存')
+  } catch (err: any) {
+    ElMessage.error(err?.response?.data?.error || '保存排序失败，正在恢复…')
+    // 失败时从服务端拉回权威顺序
+    await loadModels(editDialog.row.url)
+  } finally {
+    modelReordering.value = false
+  }
+}
+
+onBeforeUnmount(() => {
+  destroySortable()
+})
 
 // ============ 按分类批量启停 ============
 const handleCategoryToggle = async (cat: ToolCategorySummary, enable: boolean) => {
@@ -515,12 +582,28 @@ onMounted(() => {
               </el-button>
             </div>
             <el-table
+              ref="modelTableRef"
               :data="modelList"
-              v-loading="modelLoading"
+              v-loading="modelLoading || modelReordering"
               size="small"
+              row-key="id"
               :empty-text="modelList.length === 0 && !modelLoading ? '该工具还没有配置 model（点击右上角新增）' : '加载中'"
               border
             >
+              <el-table-column width="44" align="center" label-class-name="!pl-0">
+                <template #default>
+                  <span
+                    class="model-drag-handle inline-flex items-center justify-center w-6 h-6 text-ink-400 hover:text-ink-700 cursor-grab active:cursor-grabbing select-none"
+                    title="拖动调整顺序"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+                      <circle cx="7" cy="5" r="1.4" /><circle cx="13" cy="5" r="1.4" />
+                      <circle cx="7" cy="10" r="1.4" /><circle cx="13" cy="10" r="1.4" />
+                      <circle cx="7" cy="15" r="1.4" /><circle cx="13" cy="15" r="1.4" />
+                    </svg>
+                  </span>
+                </template>
+              </el-table-column>
               <el-table-column label="默认" width="70" align="center">
                 <template #default="{ row: m }">
                   <el-tag v-if="m.is_default === 1" type="success" size="small" effect="dark">默认</el-tag>
@@ -611,3 +694,18 @@ onMounted(() => {
     </el-dialog>
   </div>
 </template>
+
+<style scoped>
+/* Sortable 拖拽视觉反馈（仅作用于编辑弹窗内的 model 表格） */
+:deep(.model-row-ghost) {
+  background: #eef2ff !important;
+  opacity: 0.5;
+}
+:deep(.model-row-chosen) {
+  background: #f0f9ff !important;
+}
+:deep(.model-drag-handle:hover) {
+  background: #f3f4f6;
+  border-radius: 4px;
+}
+</style>
