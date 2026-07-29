@@ -96,6 +96,29 @@ export interface ToolModel {
   updated_at: string
 }
 
+/** 批量调整积分请求体 */
+export interface BatchAdjustCreditPayload {
+  type: 'grant' | 'deduct'
+  amount: number
+  reason?: string
+  /** 缺省/空数组 = 作用于所有非管理员用户 */
+  uids?: string[]
+}
+
+/** 批量调整积分返回 */
+export interface BatchAdjustCreditResult {
+  /** 实际尝试处理的用户数（已自动排除管理员和发起人） */
+  total: number
+  succeeded: number
+  /** 仅 deduct 模式可能出现：用户余额本就是 0，已跳过 */
+  skipped: number
+  failed: { uid: string; error: string }[]
+  /** 实际余额净变动：grant 为正、deduct 为负（部分扣减按实际值计算） */
+  total_delta: number
+  /** |实际变动| 之和（审计用） */
+  balance_change_total: number
+}
+
 /** 分类聚合 */
 export interface ToolCategorySummary {
   category_id: number

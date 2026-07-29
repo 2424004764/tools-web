@@ -3,8 +3,12 @@
 // Content-Type: multipart/form-data
 // Fields: prompt, model, size, image (file)
 //
-// 有 image → 图生图：POST bafang.me/v1/images/edits（form-data）
-// 无 image → 文生图：POST bafang.me/v1/images/generations（application/json）
+// 路由分支（按 model_key 决定走哪条上游路径）：
+//   - gemini-*（Google Gemini 图片模型）→ bafang.me/v1beta/models/{model}:generateContent
+//     使用 Google 原生 contents/parts/generationConfig 格式，鉴权用 x-goog-api-key
+//   - 其他（gpt-image-2 等）→ bafang.me OpenAI 兼容端点
+//     有 image → POST /v1/images/edits（form-data）
+//     无 image → POST /v1/images/generations（application/json）
 //
 // 鉴权：CF 环境变量 BAFANG_API_KEY
 //
@@ -13,8 +17,9 @@
 //   - cost > 0：必须登录；上游 4xx/5xx 或网络异常触发 reverse 流水自动回退积分
 //   - model 查找优先级：tool_models → tool_features.credit_cost（兜底）→ 0
 //
-// 响应兼容（两个端点均为 OpenAI images 格式）：
-//   data[0].url（首选）/ data[0].b64_json（兜底）
+// 响应兼容：
+//   - OpenAI 路径：data[0].url（首选）/ data[0].b64_json（兜底）
+//   - Gemini 路径：candidates[0].content.parts[].inline_data.data（base64）
 
 import { extractUidFromRequest } from './_lib/model-resolver.js'
 import { startGeneration, finalizeGeneration } from './_lib/record-generation.js'
@@ -133,6 +138,96 @@ function extractImageFromEditsResponse(data) {
   if (data?.data?.[0]?.b64_json) return 'data:image/png;base64,' + data.data[0].b64_json
   if (data?.url) return data.url
   if (Array.isArray(data?.data) && data.data[0]?.url) return data.data[0].url
+  return ''
+}
+
+// ============ Gemini 专用 ============
+
+/** 检测是否走 Google Gemini 原生 API 路径（bafang.me 透传到 Google） */
+function isGeminiModel(modelKey) {
+  return typeof modelKey === 'string' && modelKey.toLowerCase().startsWith('gemini-')
+}
+
+/**
+ * 前端 size 字符串 → Gemini aspectRatio
+ * 1024x1024 → 1:1
+ * 1024x1792 → 9:16（竖版）
+ * 1792x1024 → 16:9（横版）
+ * 其他（含 auto）→ 1:1（最常见，避免上游默认行为不可控）
+ */
+function mapSizeToAspectRatio(size) {
+  switch (size) {
+    case '1024x1792':
+    case '1024x1920':
+    case '1080x1920':
+      return '9:16'
+    case '1792x1024':
+    case '1920x1024':
+    case '1920x1080':
+      return '16:9'
+    case '1024x1024':
+    case '1080x1080':
+      return '1:1'
+    default:
+      return '1:1'
+  }
+}
+
+/** 把 File 读成 base64 字符串（不带 data: 前缀） */
+async function fileToBase64(file) {
+  const buf = await file.arrayBuffer()
+  const bytes = new Uint8Array(buf)
+  let binary = ''
+  const chunk = 8192
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode.apply(
+      null,
+      bytes.subarray(i, Math.min(i + chunk, bytes.length)),
+    )
+  }
+  return btoa(binary)
+}
+
+/**
+ * 构造 Gemini generateContent 请求体
+ * - 文生图：parts = [{ text: prompt }]
+ * - 图生图：parts = [{ text: prompt }, { inline_data: { mime_type, data } }]
+ * 固定 responseModalities: ['IMAGE']，imageSize 默认 '1K'（生成速度快、积分低）
+ */
+async function buildGeminiRequestBody({ prompt, hasImage, imageFile, aspectRatio, imageSize = '1K' }) {
+  const parts = [{ text: prompt }]
+  if (hasImage && imageFile) {
+    const b64 = await fileToBase64(imageFile)
+    parts.push({
+      inline_data: {
+        mime_type: imageFile.type || 'image/png',
+        data: b64,
+      },
+    })
+  }
+  return {
+    contents: [{ role: 'user', parts }],
+    generationConfig: {
+      responseModalities: ['IMAGE'],
+      imageConfig: { aspectRatio, imageSize },
+    },
+  }
+}
+
+/**
+ * 从 Gemini generateContent 响应里提取图片
+ * 遍历 candidates[0].content.parts[]，找到第一个有 inline_data 的部分
+ * 返回 data:mime;base64,... 形式
+ */
+function extractImageFromGeminiResponse(data) {
+  const parts = data?.candidates?.[0]?.content?.parts
+  if (!Array.isArray(parts)) return ''
+  for (const part of parts) {
+    if (part?.inline_data?.data) {
+      const mime = part.inline_data.mime_type || 'image/png'
+      return `data:${mime};base64,${part.inline_data.data}`
+    }
+  }
   return ''
 }
 
@@ -308,8 +403,26 @@ export async function onRequest(context) {
   // ============ 5. 调上游 ============
   let upstreamPath, upstreamInit
 
-  if (hasImage) {
-    // 图生图：POST /v1/images/edits（form-data）
+  if (isGeminiModel(modelKey)) {
+    // Gemini 走 Google 原生 API：POST /v1beta/models/{model}:generateContent
+    // 请求体用 contents/parts/generationConfig 格式，鉴权用 x-goog-api-key
+    const geminiBody = await buildGeminiRequestBody({
+      prompt,
+      hasImage,
+      imageFile,
+      aspectRatio: mapSizeToAspectRatio(size),
+    })
+    upstreamPath = `/v1beta/models/${modelKey}:generateContent`
+    upstreamInit = {
+      method: 'POST',
+      headers: {
+        'x-goog-api-key': apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(geminiBody),
+    }
+  } else if (hasImage) {
+    // OpenAI 风格图生图：POST /v1/images/edits（form-data）
     const upstreamForm = new FormData()
     upstreamForm.append('model', modelKey)
     upstreamForm.append('size', size)
@@ -322,7 +435,7 @@ export async function onRequest(context) {
       body: upstreamForm,
     }
   } else {
-    // 文生图：POST /v1/images/generations（application/json）
+    // OpenAI 风格文生图：POST /v1/images/generations（application/json）
     upstreamPath = '/v1/images/generations'
     upstreamInit = {
       method: 'POST',
@@ -388,9 +501,19 @@ export async function onRequest(context) {
       has_input_image: hasImage ? 1 : 0,
       client_ip: clientIp,
       user_agent: userAgent,
-      request: hasImage
-        ? { endpoint: '/v1/images/edits', model: modelKey, size, prompt, image_size: imageFile.size, image_type: imageFile.type }
-        : { endpoint: '/v1/images/generations', model: modelKey, size, prompt },
+      request: isGeminiModel(modelKey)
+        ? {
+            endpoint: `/v1beta/models/${modelKey}:generateContent`,
+            model: modelKey,
+            aspectRatio: mapSizeToAspectRatio(size),
+            imageSize: '1K',
+            prompt,
+            image_mime: hasImage ? imageFile.type : null,
+            image_size: hasImage ? imageFile.size : 0,
+          }
+        : hasImage
+          ? { endpoint: '/v1/images/edits', model: modelKey, size, prompt, image_size: imageFile.size, image_type: imageFile.type }
+          : { endpoint: '/v1/images/generations', model: modelKey, size, prompt },
     },
   }
 
@@ -446,8 +569,12 @@ export async function onRequest(context) {
 
     const data = await upstreamResponse.json()
 
-    // 解析响应：两个端点都是 OpenAI images 格式（data[0].url / data[0].b64_json）
-    const imageUrl = extractImageFromEditsResponse(data)
+    // 解析响应：按上游格式分支
+    //   - OpenAI 路径：data[0].url / data[0].b64_json
+    //   - Gemini 路径：candidates[0].content.parts[].inline_data.data
+    const imageUrl = isGeminiModel(modelKey)
+      ? extractImageFromGeminiResponse(data)
+      : extractImageFromEditsResponse(data)
 
     if (!imageUrl) {
       console.error('[ai-image-edit] 无法从响应中提取图片:', JSON.stringify(data).slice(0, 500))
