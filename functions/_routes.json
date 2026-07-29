@@ -58,6 +58,8 @@
     "/api/tools",
     "/api/ai-image-edit",
     "/api/ai-image-edit/*",
+    "/api/ai-media-works",
+    "/api/ai-media-works/*",
     "/api/tools/credit-cost",
     "/api/tools/models",
     "/api/admin/tool-models",

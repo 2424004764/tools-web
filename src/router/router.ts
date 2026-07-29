@@ -682,6 +682,16 @@ export const constantRoute = [
       description: '查看 AI 图片编辑生成历史记录',
     }
   },
+  {
+    path: '/ai-media-works/',
+    component: () => import('@/components/Tools/AiMediaWorks/AiMediaWorks.vue'),
+    name: 'AiMediaWorks',
+    meta: {
+      title: 'AI 媒体作品',
+      keywords: 'AI媒体作品,AI图片,AI视频,AI生成作品,agnes,作品画廊',
+      description: '汇集免费 AI 模型（Agnes 等）自动生成的图片与视频，每天定时更新，可按分类与类型筛选浏览。',
+    },
+  },
   // {
   //   path: '/ai-text-to-speech',
   //   component: () => import('@/components/Tools/AiTextToSpeech/AiTextToSpeech.vue'),
@@ -1563,6 +1573,16 @@ export const constantRoute = [
           title: '请求日志',
           keywords: '后台请求日志',
           description: '查看 AI 工具调用记录，按时间倒序',
+        },
+      },
+      {
+        path: 'ai-media-works',
+        component: () => import('@/components/Admin/AdminAiMediaWorks.vue'),
+        name: 'adminAiMediaWorks',
+        meta: {
+          title: 'AI 媒体作品',
+          keywords: '后台AI媒体作品',
+          description: '管理 AI 媒体作品：审核、通过、删除',
         },
       },
     ],

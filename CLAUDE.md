@@ -38,7 +38,11 @@ Tools-Web 是一个基于 Vue 3 + TypeScript + Vite 的在线工具箱应用。�
 
 > 现有代理路径参考：/api/agnes-chat、/api/ai-apps、/api/letters、/api/ai-apps 等都在 `vite.config.ts` 的 `server.proxy` 中。
 
-### 本地开发注意事项
+### 新增工具须双注册：tools.ts + tool_features 表
+
+`src/components/Tools/tools.ts` 管前端展示，`tool_features` 表管后台开关。两处都要加。
+
+新增迁移后执行：`pnpm exec wrangler d1 execute yifang-tool --local --file=migrations/XXX.sql`（线上加 `--remote`）。
 
 ### 本地开发注意事项
 
