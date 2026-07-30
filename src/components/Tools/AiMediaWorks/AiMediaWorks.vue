@@ -297,6 +297,7 @@ function openOriginal(item: any) {
                 :poster="item.thumbnail_url || undefined"
                 class="w-full h-full object-cover"
                 muted
+                playsinline
                 preload="metadata"
                 @mouseenter="(e) => (e.target as HTMLVideoElement).play().catch(() => {})"
                 @mouseleave="(e) => {
@@ -379,6 +380,8 @@ function openOriginal(item: any) {
             :poster="selected.thumbnail_url || undefined"
             controls
             autoplay
+            muted
+            playsinline
             loop
             class="max-w-full max-h-[88vh]"
           />
