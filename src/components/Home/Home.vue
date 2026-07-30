@@ -47,9 +47,13 @@ const scrollToAnchor = async () => {
   // 如果是滚动触发的路由更新，不执行 scrollIntoView，避免循环
   if (isScrollTriggeredUpdate.value) return
 
+  // 如果已经在滚动到同一个锚点，跳过以避免重叠调用
+  if (isScrollingToAnchor.value && pendingScrollAnchor.value === anchor) return
+
   // 暂时禁用滚动监听（双重门控），避免循环触发
   isScrollListenerActive.value = false
   isScrollingToAnchor.value = true
+  pendingScrollAnchor.value = anchor
 
   await nextTick()
   requestAnimationFrame(() => {
@@ -64,6 +68,7 @@ const scrollToAnchor = async () => {
     setTimeout(() => {
       isScrollingToAnchor.value = false
       isScrollListenerActive.value = true
+      pendingScrollAnchor.value = ''
     }, 1500)
   })
 }
@@ -76,6 +81,8 @@ const isUserClickingCategory = ref(false)
 const isScrollTriggeredUpdate = ref(false)
 // 标记是否正在执行 scrollToAnchor（scrollIntoView 产生的滚动事件不触发 URL 变更）
 const isScrollingToAnchor = ref(false)
+// 记录正在滚动到的目标锚点，用于 handleScroll 比对以避免在安全期结束后误触发 URL 回写
+const pendingScrollAnchor = ref('')
 
 // 滚动监听函数
 const handleScroll = () => {
@@ -85,7 +92,7 @@ const handleScroll = () => {
   if (isUserClickingCategory.value) return
   // scrollToAnchor 产生的平滑滚动事件不触发 URL 变更，避免与版本守卫形成硬刷循环
   if (isScrollingToAnchor.value) return
-  
+
   const categories = toolsStore.cates
   if (categories.length === 0) return
 
@@ -94,13 +101,13 @@ const handleScroll = () => {
 
   // 查找当前可视区域内的分类
   let activeCategory = ''
-  
+
   for (const cate of categories) {
     const element = document.getElementById(`cate_${cate.id}`)
     if (element) {
       const rect = element.getBoundingClientRect()
       const elementTop = scrollTop + rect.top
-      
+
       // 如果分类标题在视窗顶部以下100px范围内，则认为是当前活跃分类
       if (elementTop <= scrollTop + 100) {
         activeCategory = `cate_${cate.id}`
@@ -109,8 +116,12 @@ const handleScroll = () => {
       }
     }
   }
-  
-  // 更新活跃分类和URL（添加防抖，避免频繁更新路由）
+
+  // 如果检测到的活跃分类与 scrollToAnchor 正在滚向的目标一致，跳过 URL 更新
+  // 避免安全期（1.5s）结束后残余滚动事件又把 URL 改写成不同值
+  if (pendingScrollAnchor.value && activeCategory === pendingScrollAnchor.value) return
+
+  // 更新活跃分类和URL
   if (activeCategory && activeCategory !== componentStore.activeCategory) {
     componentStore.setActiveCategory(activeCategory)
     // 同步更新URL地址栏
@@ -118,15 +129,14 @@ const handleScroll = () => {
     if (currentValue !== activeCategory) {
       // 标记这是滚动触发的更新
       isScrollTriggeredUpdate.value = true
-      // 使用 replace 避免添加历史记录
+      // 使用 replace 避免添加历史记录；finally 确保导航完成后（或失败后）才复位标志位，
+      // 避免 setTimeout(100ms) 早于 router 异步流程结束而导致 scrollToAnchor 误触发
       router.replace({
         path: "/",
         query: { value: activeCategory }
-      })
-      // 更新后重置标志
-      setTimeout(() => {
+      }).finally(() => {
         isScrollTriggeredUpdate.value = false
-      }, 100)
+      })
     }
   }
 }
@@ -156,12 +166,18 @@ const gotoAnchor = async (anchor: string) => {
 
   if (route.path === "/") {
     if (current === anchor) {
+      // 直接滚动时也设置 pendingScrollAnchor，防止 handleScroll 误判
+      pendingScrollAnchor.value = anchor
       await nextTick()
       document?.getElementById(anchor)?.scrollIntoView({
         behavior: 'smooth',
         block: 'start',
         inline: 'start',
       })
+      // 滚动完成后清除
+      setTimeout(() => {
+        pendingScrollAnchor.value = ''
+      }, 1500)
       return
     }
     await router.replace({
