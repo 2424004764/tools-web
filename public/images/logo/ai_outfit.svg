@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ec4899"/>
+      <stop offset="0.5" stop-color="#a855f7"/>
+      <stop offset="1" stop-color="#6366f1"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#g)"/>
+  <!-- 衣架 -->
+  <path d="M32 14 a3 3 0 1 0 0 -0.01" stroke="#fff" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+  <path d="M32 16 L32 21" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>
+  <!-- 衣架横梁 + 衣物 -->
+  <path d="M14 30 L50 30" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M16 30 Q14 38 18 46 L46 46 Q50 38 48 30 Z" fill="#fff" fill-opacity="0.9"/>
+  <!-- 领口 -->
+  <path d="M28 30 Q32 34 36 30" stroke="url(#g)" stroke-width="2" fill="none" stroke-linecap="round"/>
+</svg>

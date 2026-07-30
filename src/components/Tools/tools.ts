@@ -1354,6 +1354,15 @@ export function getToolsCate() {
           cateId: 10,
           cate: 'AI工具'
         },
+        {
+          id: 'd7354ccf-b8b2-4f9c-856c-4000c8e6959a',
+          title: 'AI 穿搭建议',
+          logo: '/images/logo/ai_outfit.svg',
+          desc: '上传人物照片，可选上传衣物照片，AI 自动设计穿搭或按衣物照替换：未传衣物时自动设计穿搭，传了衣物时替换为指定衣物',
+          url: '/ai-outfit/',
+          cateId: 10,
+          cate: 'AI工具'
+        },
         // {
         //   id: 2,
         //   title: '在线文本转语音',

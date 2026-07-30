@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { fetchMyGenerationRecords, fetchMyGenerationRecordImage } from '@/api/me'
 import type { GenerationRecord } from '@/types/admin'
 import { autoDown } from '@/utils/file'
@@ -12,6 +13,17 @@ interface Pagination {
   hasNext: boolean
   hasPrev: boolean
 }
+
+// 从当前路由自动 derive tool 来源（/ai-outfit -> '/ai-outfit/'，/ai-image-edit -> '/ai-image-edit/'）
+// Dialog 在 /ai-outfit 时打开 → 自动只看 outfit 记录；Page 在 /ai-image-edit/history 或 /ai-outfit/history 时同样适用。
+const route = useRoute()
+function deriveSource(): string {
+  const path = route.path || ''
+  if (path.startsWith('/ai-outfit')) return '/ai-outfit/'
+  if (path.startsWith('/ai-image-edit')) return '/ai-image-edit/'
+  return ''
+}
+const source = deriveSource()
 
 const loading = ref(false)
 const list = ref<GenerationRecord[]>([])
@@ -54,6 +66,7 @@ const load = async () => {
       pagination.value.pageSize,
       filter.value.status,
       filter.value.keyword,
+      source,
     )
     list.value = result.list
     pagination.value = result.pagination

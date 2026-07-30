@@ -80,7 +80,13 @@ id = "c7ad6378e7ce4e219d4268e6524711aa"
 # 填在 toml [vars] 是为了让 .dev.vars 缓存怪问题下也能被 wrangler 正确注入到函数 env
 [env.dev.vars]
 AIMW_KEY = "dev-local-test-key-7f3a9b2c1e8d"
+# bafang.me（AI 图片编辑 / AI 穿搭建议 共用）
+# 重要：per [[memory:wrangler-dot-dev-vars-not-propagated]]，单独写在 .dev.vars 不够，
+# 必须也写在 wrangler.toml 的 [env.dev.vars] 里，wrangler 4.59.2 才会注入到函数运行时 env。
+BAFANG_API_KEY = "sk-UbQqE9Nd1gVznm5qLrjq6qH4J1Sbc4ncAJoYLXThCjGVWx7m"
 
 [env.production.vars]
 # 线上绑定时填入真实值（带引号保护特殊字符）
 AIMW_KEY = "eB16n6DlEDKBN@Of"
+# 线上绑定方式：在 Cloudflare Pages Dashboard → Settings → Variables and secrets → 设为 Secret
+BAFANG_API_KEY = "REPLACE_AT_CF_DASHBOARD"

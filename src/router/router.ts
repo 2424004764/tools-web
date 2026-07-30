@@ -692,6 +692,26 @@ export const constantRoute = [
       description: '汇集免费 AI 模型（Agnes 等）自动生成的图片与视频，每天定时更新，可按分类与类型筛选浏览。',
     },
   },
+  {
+    path: '/ai-outfit',
+    component: () => import('@/components/Tools/AiOutfit/AiOutfit.vue'),
+    name: 'AiOutfit',
+    meta: {
+      title: 'AI 穿搭建议',
+      keywords: 'AI穿搭,虚拟试衣,outfit,穿搭建议,搭配,换装,AI试衣,服装替换',
+      description: '上传人物照片，可选上传衣物照片，AI 给出穿搭建议：未传衣物时自动设计穿搭，传了衣物时替换为指定衣物。',
+    }
+  },
+  {
+    path: '/ai-outfit/history',
+    component: () => import('@/components/Tools/AiOutfit/GenerationHistoryPage.vue'),
+    name: 'AiOutfitHistory',
+    meta: {
+      title: '我的穿搭生成历史',
+      keywords: '穿搭历史,AI穿搭生成历史,AI搭配记录',
+      description: '查看 AI 穿搭建议的生成历史记录',
+    }
+  },
   // {
   //   path: '/ai-text-to-speech',
   //   component: () => import('@/components/Tools/AiTextToSpeech/AiTextToSpeech.vue'),
