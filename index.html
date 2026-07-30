@@ -27,8 +27,10 @@
       var MAX_RELOADS = 2;
 
       // ① 版本对比：当前 SPA 跑的老 chunk vs 服务器最新 chunk
+      // 直接 fetch /，避免 Cloudflare 把 /index.html 308 重定向到 / 时把随机参数带回去触发 loop
+      // Cloudflare _headers 对 /index.html 是 Cache-Control: no-store，配合 cache:'no-store' 自然每次拿最新
       function checkAndReload() {
-        fetch('/index.html?_=' + Date.now(), { cache: 'no-store', credentials: 'same-origin' })
+        fetch('/', { cache: 'no-store', credentials: 'same-origin' })
           .then(function(r) { return r.ok ? r.text() : '' })
           .then(function(html) {
             if (!html) return;
@@ -48,7 +50,8 @@
                 return;
               }
               sessionStorage.setItem(RELOAD_KEY, String(count + 1));
-              window.location.replace(location.pathname + location.search + location.hash);
+              // 跳到纯路径（去掉 search/hash），避免随机参数污染下次 load
+              window.location.replace(location.pathname + location.hash);
             } else {
               // 版本一致，清除计数器
               sessionStorage.removeItem(RELOAD_KEY);
