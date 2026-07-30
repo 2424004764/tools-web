@@ -59,6 +59,7 @@ export async function onRequest(context) {
   const pageSize = Math.min(100, Math.max(1, parseInt(url.searchParams.get('pageSize')) || 10))
   const status = (url.searchParams.get('status') || '').trim()
   const keyword = (url.searchParams.get('keyword') || '').trim()
+  const source = (url.searchParams.get('source') || '').trim()
   const offset = (page - 1) * pageSize
 
   try {
@@ -67,6 +68,11 @@ export async function onRequest(context) {
     if (status && VALID_STATUS.includes(status)) {
       where.push('r.status = ?')
       args.push(status)
+    }
+    if (source) {
+      // 精确匹配 tool_features.url 关联的 source 字段
+      where.push('r.source = ?')
+      args.push(source)
     }
     if (keyword) {
       // 搜索 prompt / model / error_message（前端最关心的字段）

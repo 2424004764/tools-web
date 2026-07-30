@@ -135,36 +135,6 @@ const onImageError = (e: Event) => {
     )
 }
 
-// 视频首帧截取为 poster（跨域失败则静默跳过，保持遮罩）
-const onVideoLoadedMeta = (e: Event) => {
-  const video = e.target as HTMLVideoElement
-  // 已有真实 poster 就不需要截帧
-  if (video.dataset.posterReady) return
-  // 跳到 0.5s 避开纯黑首帧
-  video.currentTime = 0.5
-}
-const onVideoSeeked = (e: Event) => {
-  const video = e.target as HTMLVideoElement
-  if (video.dataset.posterReady) return
-  try {
-    const canvas = document.createElement('canvas')
-    canvas.width = video.videoWidth || 320
-    canvas.height = video.videoHeight || 320
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-    const posterUrl = canvas.toDataURL('image/jpeg', 0.7)
-    video.setAttribute('poster', posterUrl)
-    video.dataset.posterReady = '1'
-    // 隐藏遮罩
-    const overlay = video.parentElement?.querySelector('.video-poster-overlay') as HTMLElement | null
-    if (overlay) overlay.style.display = 'none'
-  } catch (_) {
-    // 跨域视频无法截帧，保持遮罩
-    video.dataset.posterReady = '1'
-  }
-}
-
 // 类型切换时的标签
 const typeTabs: { value: '' | 'image' | 'video'; label: string; icon: string }[] = [
   { value: '', label: '全部', icon: '✦' },
@@ -322,15 +292,6 @@ function openOriginal(item: any) {
                 @error="onImageError"
               />
               <template v-else>
-                <!-- 无缩略图时的播放按钮遮罩（截帧成功会自动隐藏） -->
-                <div
-                  v-if="!item.thumbnail_url"
-                  class="video-poster-overlay absolute inset-0 z-10 flex items-center justify-center bg-gray-800/80 pointer-events-none group-hover:opacity-0 transition-opacity duration-200"
-                >
-                  <div class="w-10 h-10 rounded-full bg-white/25 flex items-center justify-center">
-                    <span class="text-white text-lg">▶</span>
-                  </div>
-                </div>
                 <video
                   :src="item.media_url"
                   :poster="item.thumbnail_url || undefined"
@@ -338,8 +299,6 @@ function openOriginal(item: any) {
                   muted
                   playsinline
                   preload="metadata"
-                  @loadedmetadata="onVideoLoadedMeta"
-                  @seeked="onVideoSeeked"
                   @mouseenter="(e) => (e.target as HTMLVideoElement).play().catch(() => {})"
                   @mouseleave="(e) => {
                     const v = e.target as HTMLVideoElement

@@ -62,12 +62,14 @@ export async function fetchMyTransactions(
 /**
  * 当前用户的 AI 生成历史
  * @param status '' 表示不过滤
+ * @param source '' 表示不过滤（前端可传 '/ai-outfit/' / '/ai-image-edit/' 等限定来源）
  */
 export async function fetchMyGenerationRecords(
   page = 1,
   pageSize = 10,
   status: '' | 'in_progress' | 'success' | 'failed' | 'timeout' | 'reversed' = '',
   keyword = '',
+  source = '',
 ): Promise<{ list: GenerationRecord[]; pagination: MyCreditsPagination }> {
   const res = await functionsRequest.get('/api/me/generation-records', {
     params: {
@@ -75,6 +77,7 @@ export async function fetchMyGenerationRecords(
       pageSize,
       status: status || undefined,
       keyword: keyword || undefined,
+      source: source || undefined,
     },
   })
   return {
