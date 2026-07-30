@@ -41,7 +41,9 @@ function extractCurrentFingerprint(): string {
  * 通过 ?_=Date.now() 查询参数 + Cache-Control 请求头绕过所有缓存层。
  */
 async function fetchLatestFingerprint(): Promise<string> {
-  const res = await fetch('/index.html?_=' + Date.now(), {
+  // 直接 fetch /，避免 Cloudflare 把 /index.html 308 重定向到 / 时把 ?_= 随机参数带回去
+  // Cloudflare _headers 对 index.html 已设 Cache-Control: no-store，配合 cache:'no-store' 必然每次拿最新
+  const res = await fetch('/', {
     cache: 'no-store',
     headers: {
       'Cache-Control': 'no-cache, no-store, must-revalidate',
