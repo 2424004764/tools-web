@@ -44,6 +44,17 @@ Tools-Web 是一个基于 Vue 3 + TypeScript + Vite 的在线工具箱应用。�
 
 新增迁移后执行：`pnpm exec wrangler d1 execute yifang-tool --local --file=migrations/XXX.sql`（线上加 `--remote`）。
 
+### 不要为新工具自动生成 SVG logo
+
+**新增工具时如果用户没有提供 logo，就让 `logo` 字段为空字符串 `''`（tools.ts + tool_features 都留空）。不要自己生成 SVG 占位、不要复用他人 logo、不要复制现有 svg 改颜色充数。** logo 由用户自己找，自己放到 `public/images/logo/`。
+
+新增条目写法：
+```ts
+{ id: '<uuid>', title: 'XX', logo: '', desc: '…', url: '/xx/', cateId: 10, cate: 'AI工具' }
+```
+
+Migration SQL 里 `INSERT INTO tool_features (...) VALUES (..., '', ...)`，先空着，等 logo 文件就位后再 `UPDATE tool_features SET logo = '/images/logo/xx.png' WHERE url = '/xx/'`。
+
 ### 本地开发注意事项
 
 - `pnpm dev` 仅启动 Vite（端口 5173），**不加载 Cloudflare Functions**

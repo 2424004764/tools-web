@@ -17,7 +17,7 @@ INSERT INTO tool_features
   (id, title, url, category_id, category_name, description, logo, sort_order, is_enabled, created_at, updated_at)
 VALUES
   ('d7354ccf-b8b2-4f9c-856c-4000c8e6959a', 'AI 穿搭建议', '/ai-outfit/', 10, 'AI工具',
-   '上传人物照片，可选上传衣物照片，AI 自动设计穿搭或按衣物照替换：保持人物面部、姿态、背景不变', '/images/logo/ai_outfit.svg', 140, 1,
+   '上传人物照片，可选上传衣物照片，AI 自动设计穿搭或按衣物照替换：保持人物面部、姿态、背景不变', '/images/logo/ai_outfit.png', 140, 1,
    '2026-07-30 12:00:00', '2026-07-30 12:00:00')
 ON CONFLICT(url) DO UPDATE SET
   title = excluded.title,
