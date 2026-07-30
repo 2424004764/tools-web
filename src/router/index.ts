@@ -15,10 +15,6 @@ const RELOAD_COUNT_KEY = '__reload_count__'
 const MIN_RELOAD_INTERVAL = 5000
 const LAST_RELOAD_TIME_KEY = '__last_reload_ts__'
 
-// chunk 加载失败计数器（onError 兜底）
-const CHUNK_ERROR_KEY = '__chunk_error_count__'
-const MAX_CHUNK_ERRORS = 3
-
 //创建路由器
 const router = createRouter({
   history: createWebHistory(),
@@ -47,8 +43,6 @@ router.beforeEach((to, _from, next) => {
   // 版本过期：CF 已重新部署，但当前 SPA 还停在旧 chunk 上。
   // 直接硬刷到目标 URL —— 用户感受是"点完就到目标页"，无感知。
   // 受 MAX_RELOADS_PER_SESSION 上限保护，超过后停止硬刷（CDN 缓存异常场景下的死循环兜底）。
-  // 注意：index.html 有 Cache-Control: no-store，location.replace 即可获取最新版本，
-  // 不需要额外加 query 参数破坏缓存 —— 内联版本检查脚本（index.html）已处理 CDN 不一致场景。
   if (isAppStale()) {
     const reloadCount = parseInt(sessionStorage.getItem(RELOAD_COUNT_KEY) || '0', 10)
     const lastReload = parseInt(sessionStorage.getItem(LAST_RELOAD_TIME_KEY) || '0', 10)
@@ -98,35 +92,21 @@ router.beforeEach((to, _from, next) => {
   next()
 })
 
-// 兜底：chunk 404 导致页面无法渲染。
-// 首次错误带 _cb 参数硬刷新（绕过 Service Worker / CDN 缓存），
-// 超过上限后直接渲染静态错误提示，不依赖 SPA 路由（避免 404 组件也加载失败）。
+// 兜底：chunk 404（轮询窗口期内罕见发生）。硬刷到目标 URL。
+// sessionStorage 防循环：硬刷过一次仍失败就跳 404。
 router.onError((error) => {
-  console.warn('[router] chunk load failed:', error)
-  const errCount = parseInt(sessionStorage.getItem(CHUNK_ERROR_KEY) || '0', 10) + 1
-
-  if (errCount > MAX_CHUNK_ERRORS) {
-    // 多次重试仍失败：直接渲染静态 DOM，不走 vue-router（避免 404 chunk 也失败）
-    sessionStorage.removeItem(CHUNK_ERROR_KEY)
-    document.body.innerHTML =
-      '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#666">' +
-      '<div style="text-align:center"><h2 style="font-size:18px;margin-bottom:8px">页面加载失败</h2>' +
-      '<p style="font-size:14px">请检查网络后<a href="/" style="color:#409EFF">刷新重试</a></p></div></div>'
+  console.warn('[router] chunk load failed, hard reloading:', error)
+  if (sessionStorage.getItem(HARD_RELOAD_FLAG)) {
+    sessionStorage.removeItem(HARD_RELOAD_FLAG)
+    router.replace('/404')
     return
   }
-
-  sessionStorage.setItem(CHUNK_ERROR_KEY, String(errCount))
-  const target = router.currentRoute.value.fullPath || '/'
-  const sep = target.includes('?') ? '&' : '?'
-  window.location.replace(target + sep + '_cb=' + Date.now())
+  sessionStorage.setItem(HARD_RELOAD_FLAG, '1')
+  window.location.replace(router.currentRoute.value.fullPath || '/')
 })
 
 // 路由后置：仅更新 document.title（SPA 内部导航的用户体验优化）
-// 同时清除 chunk 错误计数器（导航成功说明一切正常）
 router.afterEach((to) => {
-  if (sessionStorage.getItem(CHUNK_ERROR_KEY)) {
-    sessionStorage.removeItem(CHUNK_ERROR_KEY)
-  }
   document.title = to.meta.title
     ? `${to.meta.title as string}-${APP_TITLE}`
     : `${APP_TITLE}-${APP_DESC}`
