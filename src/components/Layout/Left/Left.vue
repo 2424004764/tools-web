@@ -84,8 +84,11 @@ const updateActive = async () => {
   const rawPath = route.path;
   const path = rawPath === "/" ? "/" : rtrim(rawPath, "/");
 
-  // 先清除activeCategory状态，避免干扰
-  componentStore.setActiveCategory('');
+  // 仅在离开首页时清除 activeCategory，避免首页 handleScroll 每次都因空值
+  // 触发"activeCategory !== ''"为 true 的不必要比对（进而产生多余的 router.replace）
+  if (path !== "/") {
+    componentStore.setActiveCategory('');
+  }
 
   if (path === "/about") {
     defaultActive.value = "about";
