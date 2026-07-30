@@ -16,6 +16,7 @@ const info = reactive({ title: 'AI 媒体作品' })
 // ============ 状态 ============
 const loading = ref(false)
 const list = ref<AiMediaWork[]>([])
+const loadedCoverIds = reactive(new Set<number>())
 const categories = ref<AiMediaCategory[]>([])
 
 // 当前筛选：null = 全部
@@ -73,6 +74,7 @@ const loadList = async () => {
       category: activeCategory.value || undefined,
       type: activeType.value || undefined,
     })
+    loadedCoverIds.clear()
     list.value = result.list
     pagination.value = result.pagination
   } catch (e) {
@@ -123,11 +125,16 @@ const formatDuration = (sec: number | null) => {
   return s > 0 ? `${m}m${s}s` : `${m}m`
 }
 
+const markCoverLoaded = (id: number) => {
+  loadedCoverIds.add(id)
+}
+
 // 给图片做兜底（外链失效时显示占位）
-const onImageError = (e: Event) => {
+const onImageError = (e: Event, coverId?: number) => {
   const img = e.target as HTMLImageElement
   if (img.dataset.fallback) return
   img.dataset.fallback = '1'
+  if (coverId) markCoverLoaded(coverId)
   img.src =
     'data:image/svg+xml;utf8,' +
     encodeURIComponent(
@@ -288,17 +295,22 @@ function openOriginal(item: any) {
                 :src="item.thumbnail_url || item.media_url"
                 :alt="item.prompt"
                 loading="lazy"
-                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                @error="onImageError"
+                class="w-full h-full object-cover group-hover:scale-105 transition-[transform,opacity] duration-300"
+                :class="loadedCoverIds.has(item.id) ? 'opacity-100' : 'opacity-0'"
+                @load="markCoverLoaded(item.id)"
+                @error="onImageError($event, item.id)"
               />
               <template v-else>
                 <video
                   :src="item.media_url"
                   :poster="item.thumbnail_url || undefined"
-                  class="w-full h-full object-cover"
+                  class="w-full h-full object-cover transition-opacity duration-300"
+                  :class="loadedCoverIds.has(item.id) ? 'opacity-100' : 'opacity-0'"
                   muted
                   playsinline
                   preload="metadata"
+                  @loadedmetadata="markCoverLoaded(item.id)"
+                  @error="markCoverLoaded(item.id)"
                   @mouseenter="(e) => (e.target as HTMLVideoElement).play().catch(() => {})"
                   @mouseleave="(e) => {
                     const v = e.target as HTMLVideoElement
@@ -307,6 +319,14 @@ function openOriginal(item: any) {
                   }"
                 />
               </template>
+              <div
+                v-if="!loadedCoverIds.has(item.id)"
+                class="cover-skeleton absolute inset-0 flex items-center justify-center"
+                aria-hidden="true"
+              >
+                <span class="cover-loading-dot"></span>
+                <span class="ml-2 text-xs font-medium text-gray-400">封面加载中</span>
+              </div>
               <!-- 视频角标 -->
               <div
                 v-if="item.media_type === 'video'"
@@ -463,5 +483,39 @@ function openOriginal(item: any) {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.cover-skeleton {
+  background: linear-gradient(110deg, #f3f4f6 25%, #e5e7eb 42%, #f3f4f6 58%);
+  background-size: 200% 100%;
+  animation: cover-shimmer 1.4s ease-in-out infinite;
+}
+
+.cover-loading-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background-color: #a5b4fc;
+  animation: cover-pulse 1s ease-in-out infinite;
+}
+
+@keyframes cover-shimmer {
+  to {
+    background-position-x: -200%;
+  }
+}
+
+@keyframes cover-pulse {
+  50% {
+    transform: scale(1.35);
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cover-skeleton,
+  .cover-loading-dot {
+    animation: none;
+  }
 }
 </style>
