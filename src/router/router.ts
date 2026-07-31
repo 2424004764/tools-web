@@ -1597,6 +1597,16 @@ export const constantRoute = [
         },
       },
       {
+        path: 'redeem-code-batches',
+        component: () => import('@/components/Admin/AdminRedeemCodeBatches.vue'),
+        name: 'adminRedeemCodeBatches',
+        meta: {
+          title: '兑换码批次',
+          keywords: '后台兑换码批次,兑换码批次管理',
+          description: '按批次管理兑换码：复制全部、编辑备注、查看总量与已兑换',
+        },
+      },
+      {
         path: 'tools',
         component: () => import('@/components/Admin/AdminTools.vue'),
         name: 'adminTools',
