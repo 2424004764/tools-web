@@ -16,7 +16,7 @@ export interface CreditTransaction {
   balance_after: number
   reason: string | null
   /** 流水来源：迁移前的老数据为 null（前端展示为"未知"） */
-  source: 'system' | 'admin' | 'tool' | null
+  source: 'system' | 'admin' | 'tool' | 'recharge' | null
   related_tx_id: string | null
   created_at: string
   /** 后端通过 reason 前缀推断 + LEFT JOIN tool_features 得出 */
@@ -106,5 +106,22 @@ export async function fetchMyGenerationRecordImage(
     if (m) filename = m[1]
   }
   return { blob: res.data as Blob, filename }
+}
+
+/**
+ * 用户兑换积分码
+ * 后端要求登录；返回新余额等元数据
+ */
+export interface RedeemCodeResult {
+  code: string
+  credits_granted: number
+  balance_before: number
+  balance_after: number
+  tx_id: string
+}
+
+export async function redeemCode(code: string): Promise<RedeemCodeResult> {
+  const res = await functionsRequest.post('/api/me/redeem', { code })
+  return res.data.data
 }
 

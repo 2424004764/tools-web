@@ -40,7 +40,7 @@ const typeLabel = (t: string) => {
 }
 
 // 流水来源。迁移前的老数据为 null → 展示"未知"
-const sourceLabel = (s: 'system' | 'admin' | 'tool' | null | undefined) => {
+const sourceLabel = (s: 'system' | 'admin' | 'tool' | 'recharge' | null | undefined) => {
   switch (s) {
     case 'system':
       return '系统'
@@ -48,12 +48,14 @@ const sourceLabel = (s: 'system' | 'admin' | 'tool' | null | undefined) => {
       return '管理员'
     case 'tool':
       return '工具'
+    case 'recharge':
+      return '兑换码'
     default:
       return '未知'
   }
 }
 
-const sourceClass = (s: 'system' | 'admin' | 'tool' | null | undefined) => {
+const sourceClass = (s: 'system' | 'admin' | 'tool' | 'recharge' | null | undefined) => {
   switch (s) {
     case 'system':
       return 'bg-slate-100 text-slate-700'
@@ -61,6 +63,8 @@ const sourceClass = (s: 'system' | 'admin' | 'tool' | null | undefined) => {
       return 'bg-indigo-100 text-indigo-700'
     case 'tool':
       return 'bg-emerald-100 text-emerald-700'
+    case 'recharge':
+      return 'bg-amber-100 text-amber-700'
     default:
       return 'bg-gray-50 text-gray-400'
   }

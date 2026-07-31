@@ -15,6 +15,7 @@ const menus: MenuItem[] = [
   { index: '/admin', title: '仪表盘', icon: 'dashboard' },
   { index: '/admin/users', title: '用户管理', icon: 'user' },
   { index: '/admin/credits', title: '积分流水', icon: 'coin' },
+  { index: '/admin/redeem-codes', title: '兑换码管理', icon: 'redeem' },
   { index: '/admin/tools', title: '工具开关', icon: 'tools' },
   { index: '/admin/generation-records', title: '请求日志', icon: 'logs' },
   { index: '/admin/ai-media-works', title: 'AI 媒体作品', icon: 'media' },
