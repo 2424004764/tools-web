@@ -77,7 +77,7 @@ const gotoAnchor = async (anchor: string) => {
 };
 const gotoAbout = () => {
   componentStore.setleftComDrawerStatus(false);
-  router.push("about");
+  router.push("/about");
 };
 
 const updateActive = async () => {
