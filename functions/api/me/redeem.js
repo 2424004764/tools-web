@@ -9,11 +9,15 @@
 //   3) INSERT credit_transactions
 //   4) UPDATE user_credits (UPSERT)
 //
+// 防暴力枚举：
+//   - credit_redeem_attempts 表按 (uid, 北京时日期) 累计错误次数
+//   - 达 MAX_WRONG_PER_DAY 后当天返回 429，不再校验码
+//   - 第二天 0 点（北京时）新一天新行，计数器自动重置
+//
 // 失败场景：
 //   - 401 未登录
-//   - 400 code 空 / 不存在
-//   - 400 已兑换
-//   - 400 已过期
+//   - 429 当日错误次数已达上限
+//   - 400 code 空 / 不存在 / 已兑换 / 已过期 / 积分值不合法
 //   - 500 数据库错误（batch 任一步失败抛错）
 
 import { extractUidFromRequest } from '../_lib/model-resolver.js'
@@ -22,6 +26,8 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 }
+
+const MAX_WRONG_PER_DAY = 20
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -48,6 +54,11 @@ function isExpired(expiresAt) {
   return t.getTime() < Date.now()
 }
 
+/** 返回北京时 YYYY-MM-DD（用户期望"第二天 0 点"按本地理解） */
+function beijingDateString() {
+  return new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10)
+}
+
 export async function onRequest(context) {
   const { request, env } = context
   if (request.method === 'OPTIONS') {
@@ -64,7 +75,22 @@ export async function onRequest(context) {
   const uid = await extractUidFromRequest(request, env).catch(() => null)
   if (!uid) return jsonError('请先登录', 401)
 
-  // ============ 2. 解析 body ============
+  // ============ 2. 防暴力枚举：今日输错次数预检 ============
+  const today = beijingDateString()
+  const attempts = await db
+    .prepare(
+      `SELECT wrong_count FROM credit_redeem_attempts WHERE uid = ? AND attempt_date = ?`,
+    )
+    .bind(uid, today)
+    .first()
+  if (attempts && attempts.wrong_count >= MAX_WRONG_PER_DAY) {
+    return jsonError(
+      `今日兑换码输入错误次数已达 ${MAX_WRONG_PER_DAY} 次上限，请明天 0 点后再试`,
+      429,
+    )
+  }
+
+  // ============ 3. 解析 body ============
   let body
   try {
     body = await request.json()
@@ -79,7 +105,28 @@ export async function onRequest(context) {
     return jsonError('兑换码长度不合法', 400)
   }
 
-  // ============ 3. 查 code + 校验状态 ============
+  // ============ 4. 计数自增 helper：所有"兑换码错误"路径都调用 ============
+  const failWrong = async (msg, status = 400, extra = {}) => {
+    const now = nowSql()
+    await db
+      .prepare(
+        `INSERT INTO credit_redeem_attempts
+           (uid, attempt_date, wrong_count, first_wrong_at, last_wrong_at, blocked_at)
+         VALUES (?, ?, 1, ?, ?, NULL)
+         ON CONFLICT(uid, attempt_date) DO UPDATE SET
+           wrong_count = wrong_count + 1,
+           last_wrong_at = excluded.last_wrong_at,
+           blocked_at = CASE
+             WHEN wrong_count + 1 >= ? THEN excluded.last_wrong_at
+             ELSE blocked_at
+           END`,
+      )
+      .bind(uid, today, now, now, MAX_WRONG_PER_DAY)
+      .run()
+    return jsonError(msg, status, extra)
+  }
+
+  // ============ 5. 查 code + 校验状态 ============
   const row = await db
     .prepare(
       `SELECT id, credits, expires_at, used_by FROM credit_redeem_codes WHERE code = ?`,
@@ -88,15 +135,16 @@ export async function onRequest(context) {
     .first()
 
   if (!row) {
-    return jsonError('兑换码不存在', 400)
+    return await failWrong('兑换码不存在', 400)
   }
   if (row.used_by) {
-    return jsonError('该兑换码已被使用', 400)
+    return await failWrong('该兑换码已被使用', 400)
   }
   if (isExpired(row.expires_at)) {
-    return jsonError('该兑换码已过期', 400)
+    return await failWrong('该兑换码已过期', 400)
   }
   if (!Number.isInteger(row.credits) || row.credits <= 0) {
+    // 数据异常（不计入"用户输错"）
     return jsonError('兑换码积分值不合法', 500)
   }
 
@@ -104,7 +152,7 @@ export async function onRequest(context) {
   const now = nowSql()
   const txId = crypto.randomUUID()
 
-  // ============ 4. 查当前余额（用于派生 balance_after）============
+  // ============ 6. 查当前余额（用于派生 balance_after）============
   const cur = await db
     .prepare('SELECT balance FROM user_credits WHERE uid = ?')
     .bind(uid)
@@ -112,7 +160,7 @@ export async function onRequest(context) {
   const currentBalance = cur?.balance ?? 0
   const newBalance = currentBalance + credits
 
-  // ============ 5. 原子 batch：先标记 code，再 grant 积分 ============
+  // ============ 7. 原子 batch：先标记 code，再 grant 积分 ============
   try {
     const stmts = [
       // (a) 原子抢占：只有未使用的码才能 UPDATE 成功
@@ -155,10 +203,10 @@ export async function onRequest(context) {
     ]
     const results = await db.batch(stmts)
 
-    // (a) 抢占失败（并发场景）→ 视为已兑换
+    // (a) 抢占失败（并发场景）→ 视为已兑换，计入错误次数
     const changes = results[0]?.meta?.changes ?? results[0]?.changes ?? 0
     if (changes === 0) {
-      return jsonError('该兑换码已被使用', 400)
+      return await failWrong('该兑换码已被使用', 400)
     }
 
     return json({
