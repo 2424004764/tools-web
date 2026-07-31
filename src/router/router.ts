@@ -1171,6 +1171,17 @@ export const constantRoute = [
     }
   },
   {
+    // 积分充值中心：当前为占位页面，自助充值功能开发中
+    path: '/me/recharge',
+    component: () => import('@/components/User/RechargePage.vue'),
+    name: 'me-recharge',
+    meta: {
+      title: "积分充值",
+      keywords: '积分,充值,兑换码,套餐',
+      description: '账户积分充值中心：当前显示余额与兑换码入口，自助充值功能即将上线',
+    }
+  },
+  {
     path: '/mysql-to-go',
     component: () => import('@/components/Tools/MySQLToGo/MySQLToGo.vue'),
     name: 'mysql-to-go',
@@ -1573,6 +1584,16 @@ export const constantRoute = [
           title: '积分流水',
           keywords: '后台积分流水',
           description: '查看所有积分变动记录',
+        },
+      },
+      {
+        path: 'redeem-codes',
+        component: () => import('@/components/Admin/AdminRedeemCodes.vue'),
+        name: 'adminRedeemCodes',
+        meta: {
+          title: '兑换码管理',
+          keywords: '后台兑换码,积分兑换码,生成兑换码',
+          description: '生成积分兑换码批次，查看兑换状态、兑换人与兑换时间',
         },
       },
       {

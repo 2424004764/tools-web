@@ -66,8 +66,11 @@
     "/api/tools/models",
     "/api/admin/tool-models",
     "/api/admin/tool-models/*",
+    "/api/admin/redeem-codes",
+    "/api/admin/redeem-codes/*",
     "/api/me/credits",
     "/api/me/credits/transactions",
+    "/api/me/redeem",
     "/api/me/generation-records",
     "/api/me/generation-records/*"
   ],

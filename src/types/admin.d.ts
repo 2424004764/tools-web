@@ -54,7 +54,7 @@ export interface CreditTransaction {
   balance_after: number
   reason: string | null
   /** 流水来源：迁移前的老数据为 null（前端展示为"未知"） */
-  source: 'system' | 'admin' | 'tool' | null
+  source: 'system' | 'admin' | 'tool' | 'recharge' | null
   operator_uid: string
   operator_email?: string
   operator_name?: string | null
@@ -163,5 +163,57 @@ export interface GenerationRecord {
   raw_data: string
   /** 后端预解析后的对象（解析失败为 null） */
   raw_data_parsed: Record<string, unknown> | null
+  created_at: string
+}
+
+/** 兑换码（管理视图） */
+export interface RedeemCode {
+  id: string
+  code: string
+  credits: number
+  expires_at: string | null
+  used_by: string | null
+  used_at: string | null
+  batch_id: string
+  note: string | null
+  created_at: string
+  created_by: string | null
+  /** 兑换人邮箱（LEFT JOIN user 派生） */
+  user_email?: string | null
+  /** 兑换人昵称 */
+  user_name?: string | null
+  /** 派生状态：unused / used / expired */
+  status: 'unused' | 'used' | 'expired'
+}
+
+/** 兑换码批次摘要（管理后台顶部下拉） */
+export interface RedeemCodeBatch {
+  batch_id: string
+  note: string | null
+  total: number
+  used: number
+  created_at: string
+}
+
+/** 生成兑换码批次请求体 */
+export interface GenerateRedeemCodesPayload {
+  /** 每个码可兑换的积分（> 0） */
+  credits: number
+  /** 生成数量（1-1000） */
+  count: number
+  /** ISO 时间字符串，可选；空/缺省 = 永不过期 */
+  expires_at?: string | null
+  /** 批次备注，最多 200 字符 */
+  note?: string | null
+}
+
+/** 生成兑换码批次返回 */
+export interface GenerateRedeemCodesResult {
+  batch_id: string
+  count: number
+  credits: number
+  expires_at: string | null
+  note: string | null
+  codes: string[]
   created_at: string
 }
