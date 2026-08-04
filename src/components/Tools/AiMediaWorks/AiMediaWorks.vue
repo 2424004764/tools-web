@@ -460,65 +460,70 @@ function openOriginal(item: any) {
           />
         </div>
 
-        <!-- 信息区 -->
-        <div class="md:w-80 shrink-0 p-5 overflow-y-auto bg-white flex-1 min-h-0">
-          <div class="flex flex-wrap items-center gap-2 mb-3">
-            <el-tag size="small" type="primary" effect="plain">{{ selected.category }}</el-tag>
-            <el-tag v-if="selected.media_type === 'video'" size="small" type="warning" effect="plain">
-              🎬 视频
-            </el-tag>
-            <el-tag v-else size="small" type="success" effect="plain">🖼 图片</el-tag>
-          </div>
+        <!-- 信息区：拆成「可滚动正文 + 固定底部操作栏」，避免按钮被挤出可视区 -->
+        <div class="md:w-80 shrink-0 bg-white flex-1 min-h-0 flex flex-col">
+          <!-- 滚动正文 -->
+          <div class="flex-1 min-h-0 overflow-y-auto p-5">
+            <div class="flex flex-wrap items-center gap-2 mb-3">
+              <el-tag size="small" type="primary" effect="plain">{{ selected.category }}</el-tag>
+              <el-tag v-if="selected.media_type === 'video'" size="small" type="warning" effect="plain">
+                🎬 视频
+              </el-tag>
+              <el-tag v-else size="small" type="success" effect="plain">🖼 图片</el-tag>
+            </div>
 
-          <h3 class="text-sm font-semibold text-gray-800 mb-2">提示词（Prompt）</h3>
-          <div
-            class="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-lg p-3 mb-4 whitespace-pre-wrap break-words"
-          >
-            {{ selected.prompt }}
-          </div>
-
-          <el-descriptions :column="1" border size="small" class="mb-4">
-            <el-descriptions-item v-if="selected.model_name" label="模型">
-              {{ selected.model_name }}
-            </el-descriptions-item>
-            <el-descriptions-item label="分类">
-              {{ selected.category }}
-            </el-descriptions-item>
-            <el-descriptions-item v-if="selected.width && selected.height" label="尺寸">
-              {{ selected.width }} × {{ selected.height }}
-            </el-descriptions-item>
-            <el-descriptions-item v-if="selected.duration" label="时长">
-              {{ formatDuration(selected.duration) }}
-            </el-descriptions-item>
-            <el-descriptions-item label="浏览">
-              {{ selected.view_count }} 次
-            </el-descriptions-item>
-            <el-descriptions-item label="时间">
-              {{ formatTime(selected.created_at) }}
-            </el-descriptions-item>
-          </el-descriptions>
-
-          <div class="flex gap-2">
-            <el-button
-              type="primary"
-              size="small"
-              class="!flex-1"
-              @click="copyLink(selected)"
+            <h3 class="text-sm font-semibold text-gray-800 mb-2">提示词（Prompt）</h3>
+            <div
+              class="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-lg p-3 mb-4 whitespace-pre-wrap break-words"
             >
-              复制链接
-            </el-button>
-            <el-button
-              size="small"
-              class="!flex-1"
-              @click="openOriginal(selected)"
-            >
-              打开原图
-            </el-button>
+              {{ selected.prompt }}
+            </div>
+
+            <el-descriptions :column="1" border size="small" class="mb-4">
+              <el-descriptions-item v-if="selected.model_name" label="模型">
+                {{ selected.model_name }}
+              </el-descriptions-item>
+              <el-descriptions-item label="分类">
+                {{ selected.category }}
+              </el-descriptions-item>
+              <el-descriptions-item v-if="selected.width && selected.height" label="尺寸">
+                {{ selected.width }} × {{ selected.height }}
+              </el-descriptions-item>
+              <el-descriptions-item v-if="selected.duration" label="时长">
+                {{ formatDuration(selected.duration) }}
+              </el-descriptions-item>
+              <el-descriptions-item label="浏览">
+                {{ selected.view_count }} 次
+              </el-descriptions-item>
+              <el-descriptions-item label="时间">
+                {{ formatTime(selected.created_at) }}
+              </el-descriptions-item>
+            </el-descriptions>
           </div>
 
-          <el-button class="!w-full !ml-0 mt-2 md:!hidden" size="small" @click="closeDetail">
-            关闭
-          </el-button>
+          <!-- 固定操作栏：始终位于信息区底部，不随正文滚动 -->
+          <div class="shrink-0 border-t border-gray-100 p-5 bg-white">
+            <div class="flex gap-2">
+              <el-button
+                type="primary"
+                size="small"
+                class="!flex-1"
+                @click="copyLink(selected)"
+              >
+                复制链接
+              </el-button>
+              <el-button
+                size="small"
+                class="!flex-1"
+                @click="openOriginal(selected)"
+              >
+                打开原图
+              </el-button>
+            </div>
+            <el-button class="!w-full !ml-0 mt-2 md:!hidden" size="small" @click="closeDetail">
+              关闭
+            </el-button>
+          </div>
         </div>
       </div>
     </el-dialog>
