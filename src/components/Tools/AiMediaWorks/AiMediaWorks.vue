@@ -424,21 +424,21 @@ function openOriginal(item: any) {
         v-loading="detailLoading"
         class="relative flex flex-col md:flex-row max-h-[82vh] md:max-h-[86vh]"
       >
-        <!-- 关闭按钮（移动端必须一眼可见、可点） -->
-        <button type="button" class="aimw-close" aria-label="关闭" @click="closeDetail">
-          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-            <path
-              d="M6 6l12 12M18 6L6 18"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.2"
-              stroke-linecap="round"
-            />
-          </svg>
-        </button>
+        <!-- 媒体区：关闭按钮悬浮在自己右上角，避免在桌面布局下压住信息区的类型标签 -->
+        <div class="md:flex-1 bg-black flex items-center justify-center shrink-0 relative">
+          <!-- 关闭按钮（移动端必须一眼可见、可点） -->
+          <button type="button" class="aimw-close" aria-label="关闭" @click="closeDetail">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <path
+                d="M6 6l12 12M18 6L6 18"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.2"
+                stroke-linecap="round"
+              />
+            </svg>
+          </button>
 
-        <!-- 媒体区 -->
-        <div class="md:flex-1 bg-black flex items-center justify-center shrink-0">
           <img
             v-if="selected.media_type === 'image'"
             :src="selected.media_url"
@@ -462,7 +462,7 @@ function openOriginal(item: any) {
 
         <!-- 信息区 -->
         <div class="md:w-80 shrink-0 p-5 overflow-y-auto bg-white flex-1 min-h-0">
-          <div class="flex items-center justify-between mb-3">
+          <div class="flex flex-wrap items-center gap-2 mb-3">
             <el-tag size="small" type="primary" effect="plain">{{ selected.category }}</el-tag>
             <el-tag v-if="selected.media_type === 'video'" size="small" type="warning" effect="plain">
               🎬 视频
