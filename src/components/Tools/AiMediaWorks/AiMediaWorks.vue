@@ -129,6 +129,29 @@ const markCoverLoaded = (id: number) => {
   loadedCoverIds.add(id)
 }
 
+// 是否支持真实 hover（触屏设备为 false，避免移动端触发 hover 播放）
+const canHover = ref(true)
+
+// 视频没有 thumbnail_url 时，用媒体片段 #t=0.1 让浏览器直接渲染首帧当封面，
+// 否则 iOS Safari / 部分安卓浏览器在点击播放前只显示黑块。
+const videoCoverSrc = (item: AiMediaWork) => {
+  if (item.thumbnail_url) return item.media_url
+  if (!item.media_url || item.media_url.includes('#')) return item.media_url
+  return `${item.media_url}#t=0.1`
+}
+
+const handleVideoEnter = (e: Event) => {
+  if (!canHover.value) return
+  ;(e.target as HTMLVideoElement).play().catch(() => {})
+}
+
+const handleVideoLeave = (e: Event) => {
+  if (!canHover.value) return
+  const v = e.target as HTMLVideoElement
+  v.pause()
+  v.currentTime = 0
+}
+
 // 给图片做兜底（外链失效时显示占位）
 const onImageError = (e: Event, coverId?: number) => {
   const img = e.target as HTMLImageElement
@@ -162,6 +185,9 @@ watch(detailVisible, (v) => {
 })
 
 onMounted(() => {
+  if (typeof window.matchMedia === 'function') {
+    canHover.value = window.matchMedia('(hover: hover) and (pointer: fine)').matches
+  }
   loadCategories()
   loadList()
 })
@@ -302,21 +328,20 @@ function openOriginal(item: any) {
               />
               <template v-else>
                 <video
-                  :src="item.media_url"
+                  :src="videoCoverSrc(item)"
                   :poster="item.thumbnail_url || undefined"
                   class="w-full h-full object-cover transition-opacity duration-300"
                   :class="loadedCoverIds.has(item.id) ? 'opacity-100' : 'opacity-0'"
                   muted
                   playsinline
+                  webkit-playsinline
+                  disablepictureinpicture
                   preload="metadata"
                   @loadedmetadata="markCoverLoaded(item.id)"
+                  @loadeddata="markCoverLoaded(item.id)"
                   @error="markCoverLoaded(item.id)"
-                  @mouseenter="(e) => (e.target as HTMLVideoElement).play().catch(() => {})"
-                  @mouseleave="(e) => {
-                    const v = e.target as HTMLVideoElement
-                    v.pause()
-                    v.currentTime = 0
-                  }"
+                  @mouseenter="handleVideoEnter"
+                  @mouseleave="handleVideoLeave"
                 />
               </template>
               <div
@@ -379,20 +404,37 @@ function openOriginal(item: any) {
     <el-dialog
       v-model="detailVisible"
       :show-close="false"
-      width="min(960px, 96vw)"
+      width="min(960px, 92vw)"
       align-center
       destroy-on-close
-      class="!p-0"
+      class="aimw-dialog !p-0"
       @close="closeDetail"
     >
-      <div v-if="selected" v-loading="detailLoading" class="flex flex-col md:flex-row max-h-[88vh]">
+      <div
+        v-if="selected"
+        v-loading="detailLoading"
+        class="relative flex flex-col md:flex-row max-h-[82vh] md:max-h-[86vh]"
+      >
+        <!-- 关闭按钮（移动端必须一眼可见、可点） -->
+        <button type="button" class="aimw-close" aria-label="关闭" @click="closeDetail">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+            <path
+              d="M6 6l12 12M18 6L6 18"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.2"
+              stroke-linecap="round"
+            />
+          </svg>
+        </button>
+
         <!-- 媒体区 -->
-        <div class="md:flex-1 bg-black flex items-center justify-center min-h-[280px] md:min-h-[60vh]">
+        <div class="md:flex-1 bg-black flex items-center justify-center shrink-0">
           <img
             v-if="selected.media_type === 'image'"
             :src="selected.media_url"
             :alt="selected.prompt"
-            class="max-w-full max-h-[88vh] object-contain"
+            class="max-w-full max-h-[45vh] md:max-h-[86vh] object-contain"
             @error="onImageError"
           />
           <video
@@ -403,13 +445,14 @@ function openOriginal(item: any) {
             autoplay
             muted
             playsinline
+            webkit-playsinline
             loop
-            class="max-w-full max-h-[88vh]"
+            class="max-w-full max-h-[45vh] md:max-h-[86vh]"
           />
         </div>
 
         <!-- 信息区 -->
-        <div class="md:w-80 shrink-0 p-5 overflow-y-auto bg-white">
+        <div class="md:w-80 shrink-0 p-5 overflow-y-auto bg-white flex-1 min-h-0">
           <div class="flex items-center justify-between mb-3">
             <el-tag size="small" type="primary" effect="plain">{{ selected.category }}</el-tag>
             <el-tag v-if="selected.media_type === 'video'" size="small" type="warning" effect="plain">
@@ -463,6 +506,10 @@ function openOriginal(item: any) {
               打开原图
             </el-button>
           </div>
+
+          <el-button class="!w-full !ml-0 mt-2 md:!hidden" size="small" @click="closeDetail">
+            关闭
+          </el-button>
         </div>
       </div>
     </el-dialog>
@@ -491,6 +538,30 @@ function openOriginal(item: any) {
   animation: cover-shimmer 1.4s ease-in-out infinite;
 }
 
+/* 详情弹窗关闭按钮：悬浮在媒体区右上角，移动端也必然可见 */
+.aimw-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 20;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(4px);
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.aimw-close:hover {
+  background: rgba(0, 0, 0, 0.78);
+}
+
 .cover-loading-dot {
   width: 0.5rem;
   height: 0.5rem;
@@ -517,5 +588,22 @@ function openOriginal(item: any) {
   .cover-loading-dot {
     animation: none;
   }
+}
+</style>
+
+<!-- el-dialog 的根节点在 body 上，需要非 scoped 样式 -->
+<style>
+.aimw-dialog {
+  --el-dialog-padding-primary: 0;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.aimw-dialog .el-dialog__header {
+  display: none;
+}
+
+.aimw-dialog .el-dialog__body {
+  padding: 0;
 }
 </style>
