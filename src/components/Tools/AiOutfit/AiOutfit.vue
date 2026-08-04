@@ -2,6 +2,7 @@
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { ElImageViewer } from 'element-plus'
 import type { UploadProps } from 'element-plus'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import GenerationHistoryDialog from '@/components/Tools/AiImageEdit/GenerationHistoryDialog.vue'
@@ -152,6 +153,9 @@ const isLoading = ref(false)
 const resultImageUrl = ref('')
 const currentRecordId = ref('')
 const elapsedSeconds = ref(0)
+
+// 上传原图的全屏放大（点击预览图 → el-image-viewer 弹大图）
+const zoomImageUrl = ref<string | null>(null)
 let elapsedTimer: ReturnType<typeof setInterval> | null = null
 
 const loadingCanvas = ref<HTMLCanvasElement | null>(null)
@@ -542,9 +546,14 @@ const modeBadge = computed(() => clothingFile.value
                 <span class="text-caption text-gray-400 mt-0.5">要求人物清晰、姿态自然、面部可见；光线充足</span>
               </div>
               <div v-else class="relative w-full" @click.stop>
-                <img :src="personPreview" class="max-h-32 mx-auto rounded-lg object-contain" alt="人物预览" />
+                <img
+                  :src="personPreview"
+                  alt="人物预览"
+                  class="block mx-auto max-w-full max-h-64 rounded-lg object-contain cursor-zoom-in"
+                  @click.stop="zoomImageUrl = personPreview"
+                />
                 <span class="block text-center text-caption text-gray-500 mt-1">{{ personFileName }}</span>
-                <span class="block text-center text-caption text-gray-400 mt-0.5">点击周围空白、拖拽新图片 或 Ctrl+V 粘贴 即可替换</span>
+                <span class="block text-center text-caption text-gray-400 mt-0.5">点击图片可放大查看 · 点击周围空白、拖拽新图片 或 Ctrl+V 粘贴 即可替换</span>
               </div>
             </el-upload>
             <button
@@ -584,9 +593,14 @@ const modeBadge = computed(() => clothingFile.value
                 <span class="text-caption text-gray-400 mt-0.5">建议单品清晰、背景干净；多件单品（上下装+配饰）也能识别</span>
               </div>
               <div v-else class="relative w-full" @click.stop>
-                <img :src="clothingPreview" class="max-h-32 mx-auto rounded-lg object-contain" alt="衣物预览" />
+                <img
+                  :src="clothingPreview"
+                  alt="衣物预览"
+                  class="block mx-auto max-w-full max-h-64 rounded-lg object-contain cursor-zoom-in"
+                  @click.stop="zoomImageUrl = clothingPreview"
+                />
                 <span class="block text-center text-caption text-gray-500 mt-1">{{ clothingFileName }}</span>
-                <span class="block text-center text-caption text-gray-400 mt-0.5">点击周围空白、拖拽新图片 即可替换</span>
+                <span class="block text-center text-caption text-gray-400 mt-0.5">点击图片可放大查看 · 点击周围空白、拖拽新图片 即可替换</span>
               </div>
             </el-upload>
             <button
@@ -828,6 +842,14 @@ const modeBadge = computed(() => clothingFile.value
     </ToolDetail>
 
     <GenerationHistoryDialog ref="historyRef" />
+
+    <!-- 上传原图点击放大（人物照 / 衣物照 共用） -->
+    <el-image-viewer
+      v-if="zoomImageUrl"
+      :url-list="[zoomImageUrl]"
+      :initial-index="0"
+      @close="zoomImageUrl = null"
+    />
   </div>
 </template>
 
