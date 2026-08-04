@@ -422,7 +422,7 @@ function openOriginal(item: any) {
       <div
         v-if="selected"
         v-loading="detailLoading"
-        class="relative flex flex-col md:flex-row max-h-[82vh] md:max-h-[86vh]"
+        class="relative flex flex-col md:flex-row h-[82vh] md:h-[86vh] overflow-hidden"
       >
         <!-- 媒体区：关闭按钮悬浮在自己右上角，避免在桌面布局下压住信息区的类型标签 -->
         <div class="md:flex-1 bg-black flex items-center justify-center shrink-0 relative">
