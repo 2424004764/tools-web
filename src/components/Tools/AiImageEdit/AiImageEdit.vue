@@ -183,6 +183,15 @@ const currentRecordId = ref('')
 const elapsedSeconds = ref(0)
 let elapsedTimer: ReturnType<typeof setInterval> | null = null
 
+// 历史缩略图全屏预览：在页面根级统一渲染，避开与 dialog 的栈上下文冲突
+const previewUrl = ref<string | null>(null)
+const openPreview = (url: string) => {
+  previewUrl.value = url
+}
+const closePreview = () => {
+  previewUrl.value = null
+}
+
 // Canvas loading 动画
 const loadingCanvas = ref<HTMLCanvasElement | null>(null)
 let canvasAnimId = 0
@@ -853,7 +862,21 @@ const openInNewTab = () => {
     </ToolDetail>
 
     <!-- 用户生成历史弹窗 -->
-    <GenerationHistoryDialog ref="historyRef" />
+    <GenerationHistoryDialog ref="historyRef" :on-preview="openPreview" />
+
+    <!--
+      历史缩略图全屏预览：渲染在 AiImageEdit.vue 根级，跟历史弹窗在同一 DOM 树层级之外，
+      弹窗和预览图都在 body 下，由各自 nextZIndex()/显式 z-index 决定层叠，
+      不会发生"列表盖住图片"的情况。
+    -->
+    <el-image-viewer
+      v-if="previewUrl"
+      :url-list="[previewUrl]"
+      :initial-index="0"
+      teleported
+      :z-index="9999"
+      @close="closePreview"
+    />
   </div>
 </template>
 

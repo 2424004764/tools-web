@@ -2,6 +2,12 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 import GenerationHistoryView from './GenerationHistoryView.vue'
 
+// 父级（AiImageEdit.vue）会接管缩略图点击 → 在父组件根级渲染 el-image-viewer，
+// 彻底避开 dialog 栈上下文对预览图层的覆盖问题
+const props = defineProps<{
+  onPreview?: (url: string) => void
+}>()
+
 const visible = ref(false)
 const viewRef = ref<InstanceType<typeof GenerationHistoryView> | null>(null)
 
@@ -35,7 +41,8 @@ onUnmounted(() => {
     title="我的生成历史"
     :width="isDesktop ? '880px' : '92vw'"
     :close-on-click-modal="true"
+    append-to-body
   >
-    <GenerationHistoryView ref="viewRef" />
+    <GenerationHistoryView ref="viewRef" :on-preview="props.onPreview" />
   </el-dialog>
 </template>
