@@ -132,24 +132,20 @@ const markCoverLoaded = (id: number) => {
 // 是否支持真实 hover（触屏设备为 false，避免移动端触发 hover 播放）
 const canHover = ref(true)
 
-// 视频没有 thumbnail_url 时，用媒体片段 #t=0.1 让浏览器直接渲染首帧当封面，
-// 否则 iOS Safari / 部分安卓浏览器在点击播放前只显示黑块。
-const videoCoverSrc = (item: AiMediaWork) => {
-  if (item.thumbnail_url) return item.media_url
-  if (!item.media_url || item.media_url.includes('#')) return item.media_url
-  return `${item.media_url}#t=0.1`
+// hover 状态：仅在桌面端生效，控制预览视频的挂载
+const hoveredVideoIds = reactive(new Set<number>())
+
+// 视频无 thumbnail_url 时显示占位（用纯 CSS，不依赖 <video> 首帧）
+const needsVideoPlaceholder = (item: AiMediaWork) =>
+  item.media_type === 'video' && !item.thumbnail_url
+
+const onCardEnter = (item: AiMediaWork) => {
+  if (!canHover.value) return
+  if (item.media_type === 'video') hoveredVideoIds.add(item.id)
 }
 
-const handleVideoEnter = (e: Event) => {
-  if (!canHover.value) return
-  ;(e.target as HTMLVideoElement).play().catch(() => {})
-}
-
-const handleVideoLeave = (e: Event) => {
-  if (!canHover.value) return
-  const v = e.target as HTMLVideoElement
-  v.pause()
-  v.currentTime = 0
+const onCardLeave = (item: AiMediaWork) => {
+  hoveredVideoIds.delete(item.id)
 }
 
 // 给图片做兜底（外链失效时显示占位）
@@ -313,46 +309,59 @@ function openOriginal(item: any) {
             :key="item.id"
             class="group cursor-pointer rounded-xl overflow-hidden border border-gray-100 hover:border-indigo-300 hover:shadow-lg transition-all"
             @click="openDetail(item)"
+            @mouseenter="onCardEnter(item)"
+            @mouseleave="onCardLeave(item)"
           >
             <!-- 媒体预览 -->
             <div class="relative aspect-square bg-gray-100 overflow-hidden">
-              <img
-                v-if="item.media_type === 'image'"
-                :src="item.thumbnail_url || item.media_url"
-                :alt="item.prompt"
-                loading="lazy"
-                class="w-full h-full object-cover group-hover:scale-105 transition-[transform,opacity] duration-300"
-                :class="loadedCoverIds.has(item.id) ? 'opacity-100' : 'opacity-0'"
-                @load="markCoverLoaded(item.id)"
-                @error="onImageError($event, item.id)"
-              />
-              <template v-else>
-                <video
-                  :src="videoCoverSrc(item)"
-                  :poster="item.thumbnail_url || undefined"
-                  class="w-full h-full object-cover transition-opacity duration-300"
+              <!-- 图片 / 有封面视频：用 img 当封面（所有设备都能渲染） -->
+              <template v-if="!needsVideoPlaceholder(item)">
+                <img
+                  :src="item.thumbnail_url || item.media_url"
+                  :alt="item.prompt"
+                  loading="lazy"
+                  class="w-full h-full object-cover group-hover:scale-105 transition-[transform,opacity] duration-300"
                   :class="loadedCoverIds.has(item.id) ? 'opacity-100' : 'opacity-0'"
-                  muted
-                  playsinline
-                  webkit-playsinline
-                  disablepictureinpicture
-                  preload="metadata"
-                  @loadedmetadata="markCoverLoaded(item.id)"
-                  @loadeddata="markCoverLoaded(item.id)"
-                  @error="markCoverLoaded(item.id)"
-                  @mouseenter="handleVideoEnter"
-                  @mouseleave="handleVideoLeave"
+                  @load="markCoverLoaded(item.id)"
+                  @error="onImageError($event, item.id)"
                 />
+                <div
+                  v-if="!loadedCoverIds.has(item.id)"
+                  class="cover-skeleton absolute inset-0 flex items-center justify-center"
+                  aria-hidden="true"
+                >
+                  <span class="cover-loading-dot"></span>
+                  <span class="ml-2 text-xs font-medium text-gray-400">封面加载中</span>
+                </div>
               </template>
+
+              <!-- 视频无封面：纯 CSS 占位，避免 iOS 渲染 video 黑块 -->
               <div
-                v-if="!loadedCoverIds.has(item.id)"
-                class="cover-skeleton absolute inset-0 flex items-center justify-center"
-                aria-hidden="true"
+                v-else
+                class="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900"
               >
-                <span class="cover-loading-dot"></span>
-                <span class="ml-2 text-xs font-medium text-gray-400">封面加载中</span>
+                <div
+                  class="w-14 h-14 rounded-full bg-white/15 backdrop-blur flex items-center justify-center mb-2 shadow-lg ring-1 ring-white/10"
+                >
+                  <svg viewBox="0 0 24 24" width="28" height="28" fill="white" aria-hidden="true">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                </div>
+                <span class="text-[10px] tracking-[0.2em] text-white/60">VIDEO</span>
               </div>
-              <!-- 视频角标 -->
+
+              <!-- 桌面端 hover 预览：仅在 canHover 时挂载 -->
+              <video
+                v-if="item.media_type === 'video' && hoveredVideoIds.has(item.id) && canHover"
+                :src="item.media_url"
+                autoplay
+                muted
+                loop
+                playsinline
+                class="absolute inset-0 w-full h-full object-cover"
+              />
+
+              <!-- 视频时长角标 -->
               <div
                 v-if="item.media_type === 'video'"
                 class="absolute top-2 left-2 bg-black/60 text-white text-xs px-1.5 py-0.5 rounded"
