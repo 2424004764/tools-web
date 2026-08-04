@@ -1,5 +1,5 @@
 -- AI 媒体作品表
--- 外部脚本（如定时任务）调用 POST /api/ai-media-works 推送的作品数据。
+-- 外部脚本（如定时任务）调用 POST /api/ai-media-works/batch 批量推送的作品数据。
 -- 公开浏览：audit_status = 'approved' 的行。
 -- 默认 approved，可由管理员改为 pending / rejected 控制展示。
 --
