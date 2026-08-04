@@ -1,5 +1,4 @@
 // AI 媒体作品 API（所有路由统一走一个文件）
-//   POST /api/ai-media-works              推送单条（X-API-Key 鉴权）
 //   GET  /api/ai-media-works              公开列表（仅 approved）
 //   POST /api/ai-media-works/batch        批量推送（X-API-Key 鉴权）
 //   GET  /api/ai-media-works/categories   公开分类聚合（仅 approved）
@@ -165,17 +164,6 @@ export async function onRequest(context) {
 
   const db = env?.DB
   if (!db) return jsonError('数据库未配置', 500)
-
-  // ---------- POST /api/ai-media-works (单条) ----------
-  if (request.method === 'POST' && !path) {
-    if (!checkApiKey(request, env)) return jsonError('API Key 无效', 401)
-    const body = await request.json().catch(() => null)
-    if (!body) return jsonError('请求体需为 JSON', 400)
-    const row = normalizeWork(body)
-    const id = await insertWork(db, row)
-    console.log(`[ai-media-works] push OK id=${id} type=${row.media_type} cat=${row.category}`)
-    return json({ success: true, data: { id } })
-  }
 
   // ---------- GET /api/ai-media-works (列表) ----------
   if (request.method === 'GET' && !path) {
