@@ -5,6 +5,16 @@ import { fetchMyGenerationRecords, fetchMyGenerationRecordImage } from '@/api/me
 import type { GenerationRecord } from '@/types/admin'
 import { autoDown } from '@/utils/file'
 
+// 父组件（/ai-image-edit/ 桌面端弹窗、手机端独立页）传入的图片预览接管函数：
+// dialog 场景下父组件把 <el-image-viewer> 渲染在 AiImageEdit.vue 根级，避开 dialog 栈上下文，
+// 这样无论怎么点图都不会被 dialog 盖住。
+const props = defineProps<{
+  onPreview?: (url: string) => void
+}>()
+
+// 兜底：父组件没传 onPreview（如测试场景）就退回到本组件内的 el-image-viewer
+const fallbackPreviewUrl = ref<string | null>(null)
+
 interface Pagination {
   total: number
   page: number
@@ -173,6 +183,17 @@ const downloadResult = async (id: string, fallbackUrl: string | null) => {
     }
   }
 }
+
+// 缩略图点击：优先把 url 抛给父组件（弹窗场景下父级用根级 el-image-viewer 接管预览），
+// 没传回调时退回到本组件兜底的 el-image-viewer。
+const handleThumbClick = (row: GenerationRecord) => {
+  if (!row.result_url) return
+  if (props.onPreview) {
+    props.onPreview(row.result_url)
+  } else {
+    fallbackPreviewUrl.value = row.result_url
+  }
+}
 </script>
 
 <template>
@@ -214,11 +235,10 @@ const downloadResult = async (id: string, fallbackUrl: string | null) => {
         <el-image
           v-if="row.result_url"
           :src="row.result_url"
-          :preview-src-list="[row.result_url]"
-          :initial-index="0"
           fit="cover"
           class="w-12 h-12 rounded cursor-zoom-in"
           alt="缩略图"
+          @click="handleThumbClick(row)"
         />
         <span v-else class="text-xs text-ink-400">-</span>
       </template>
@@ -317,4 +337,17 @@ const downloadResult = async (id: string, fallbackUrl: string | null) => {
       @current-change="handlePageChange"
     />
   </div>
+
+  <!--
+    兜底预览：当父组件没传 onPreview 时使用本组件内的 el-image-viewer
+    父组件接管后这里 v-if 永远不会触发，不影响 DOM 结构。
+  -->
+  <el-image-viewer
+    v-if="!onPreview && fallbackPreviewUrl"
+    :url-list="[fallbackPreviewUrl]"
+    :initial-index="0"
+    teleported
+    :z-index="9999"
+    @close="fallbackPreviewUrl = null"
+  />
 </template>
