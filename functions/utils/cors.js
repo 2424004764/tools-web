@@ -27,6 +27,8 @@ export function getCORSHeaders(origin) {
     'Access-Control-Allow-Origin': allowedOrigin,
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, Idempotency-Key',
+    // Retry-After 等非安全列表响应头需显式暴露，前端才能读到（限流倒计时用）
+    'Access-Control-Expose-Headers': 'Retry-After, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset',
     'Access-Control-Max-Age': '86400'
   }
 }

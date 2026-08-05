@@ -643,16 +643,6 @@ export const constantRoute = [
     }
   },
   {
-    path: '/ai-text-to-image',
-    component: () => import('@/components/Tools/AiTextToImage/AiTextToImage.vue'),
-    name: 'AiTextToImage',
-    meta: {
-      title: "在线文生图",
-      keywords: '在线文生图,文生图,文生图工具,文生图服务',
-      description: '提供在线免费无限次数的文生图服务',
-    }
-  },
-  {
     path: '/ai-text-to-video',
     component: () => import('@/components/Tools/AiTextToVideo/AiTextToVideo.vue'),
     name: 'AiTextToVideo',
