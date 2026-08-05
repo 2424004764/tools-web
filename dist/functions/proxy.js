@@ -45,13 +45,10 @@ export async function onRequest(context) {
     // 获取 params 参数的值并解析为查询参数
     const paramsValue = url.searchParams.get('params');
     if (paramsValue) {
-        // 解析 params 参数的值作为查询字符串
-        const paramPairs = paramsValue.split('&');
-        paramPairs.forEach(pair => {
-            const [key, value] = pair.split('=');
-            if (key && value !== undefined) {
-                params.set(key, value);
-            }
+        // 用 URLSearchParams 解析，避免手动 split 造成的二次编码
+        // （例如 model=vendouple%2Fflux-2 会被再编码成 %252F 导致目标接口 404）
+        new URLSearchParams(paramsValue).forEach((value, key) => {
+            params.set(key, value);
         });
     }
 

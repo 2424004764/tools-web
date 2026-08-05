@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { UploadProps } from 'element-plus'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
@@ -43,6 +43,7 @@ const isLoading = ref(false)
 // 用户 store（右上角积分 badge 用）
 const userStore = useUserStore()
 const router = useRouter()
+const route = useRoute()
 
 // 历史弹窗 ref
 const historyRef = ref<InstanceType<typeof GenerationHistoryDialog> | null>(null)
@@ -128,6 +129,12 @@ onMounted(() => {
   window.addEventListener('resize', updateIsMobile)
   document.addEventListener('paste', handlePaste)
   fetchModelList()
+  // URL 带 prompt 参数时优先用它（从 AI 提示词工具跳转过来）
+  const urlPrompt = route.query.prompt
+  if (typeof urlPrompt === 'string' && urlPrompt.trim()) {
+    prompt.value = decodeURIComponent(urlPrompt)
+    return
+  }
   // 恢复上次提交的提示词
   try {
     const cached = localStorage.getItem(PROMPT_CACHE_KEY)

@@ -707,128 +707,122 @@
     "w": 80,
     "h": 80
   },
-  "/images/logo/ai_test_to_image.png": {
-    "x": 504,
-    "y": 1176,
-    "w": 80,
-    "h": 80
-  },
   "/images/logo/ai_tools.png": {
-    "x": 588,
+    "x": 504,
     "y": 1176,
     "w": 80,
     "h": 80
   },
   "/images/logo/ai_variable_name.png": {
-    "x": 0,
-    "y": 1260,
+    "x": 588,
+    "y": 1176,
     "w": 80,
     "h": 80
   },
   "/images/logo/ai_get_name.png": {
-    "x": 84,
+    "x": 0,
     "y": 1260,
     "w": 80,
     "h": 80
   },
   "/images/logo/ai_translate.png": {
-    "x": 168,
+    "x": 84,
     "y": 1260,
     "w": 80,
     "h": 80
   },
   "/images/logo/ai_elementary_essay.png": {
-    "x": 252,
+    "x": 168,
     "y": 1260,
     "w": 80,
     "h": 80
   },
   "/images/logo/ai_daily_motivation.png": {
-    "x": 336,
+    "x": 252,
     "y": 1260,
     "w": 80,
     "h": 80
   },
   "/images/logo/ai_chat.png": {
-    "x": 420,
+    "x": 336,
     "y": 1260,
     "w": 80,
     "h": 80
   },
   "/images/logo/ai_interview.png": {
-    "x": 504,
+    "x": 420,
     "y": 1260,
     "w": 80,
     "h": 80
   },
   "/images/logo/ai_prompt.png": {
-    "x": 588,
+    "x": 504,
     "y": 1260,
     "w": 80,
     "h": 80
   },
   "/images/logo/ai_text_to_speech.png": {
-    "x": 0,
-    "y": 1344,
+    "x": 588,
+    "y": 1260,
     "w": 80,
     "h": 80
   },
   "/images/logo/good_sites.png": {
-    "x": 84,
+    "x": 0,
     "y": 1344,
     "w": 80,
     "h": 80
   },
   "/images/logo/password_book.png": {
-    "x": 168,
+    "x": 84,
     "y": 1344,
     "w": 80,
     "h": 80
   },
   "/images/logo/todos.png": {
-    "x": 252,
+    "x": 168,
     "y": 1344,
     "w": 80,
     "h": 80
   },
   "/images/logo/resume.png": {
-    "x": 336,
+    "x": 252,
     "y": 1344,
     "w": 80,
     "h": 80
   },
   "/images/logo/notes.png": {
-    "x": 420,
+    "x": 336,
     "y": 1344,
     "w": 80,
     "h": 80
   },
   "/images/logo/qa.png": {
-    "x": 504,
+    "x": 420,
     "y": 1344,
     "w": 80,
     "h": 80
   },
   "/images/logo/weight_tracker.png": {
-    "x": 588,
+    "x": 504,
     "y": 1344,
     "w": 80,
     "h": 80
   },
   "/images/logo/bookmarks.png": {
+    "x": 588,
+    "y": 1344,
+    "w": 80,
+    "h": 80
+  },
+  "/images/logo/letter.png": {
     "x": 0,
     "y": 1428,
     "w": 80,
     "h": 80
   },
-  "/images/logo/letter.png": {
-    "x": 84,
-    "y": 1428,
-    "w": 80,
-    "h": 80
-  },
   "/images/logo/season-scenery.png": {
-    "x": 168,
+    "x": 84,
     "y": 1428,
     "w": 80,
     "h": 80

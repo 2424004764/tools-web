@@ -12,7 +12,7 @@ export async function generateImage(
 
   // 构造查询参数
   const params = {
-    model: options?.model || 'sdxl',
+    model: options?.model || 'flux',
     width: options?.width || 1024,
     height: options?.height || 1024,
     nologo: 'true',
@@ -33,7 +33,7 @@ export async function generateImage(
   const queryString = new URLSearchParams(filteredParams).toString()
   
   const response = await axios.get(
-    `${this.proxyUrl}?path=prompt/${encodeURIComponent(prompt)}&target=${this.imageUrl}&params=${queryString}`,
+    `${this.proxyUrl}?path=image/${encodeURIComponent(prompt)}&target=${this.imageUrl}&params=${queryString}`,
     {
       headers: {
         Authorization: 'Bearer ' + this.apiKey,
@@ -42,12 +42,14 @@ export async function generateImage(
     }
   )
 
-  const blob = new Blob([response.data], { type: 'image/png' })
+  const blob = new Blob([response.data], {
+    type: response.headers['content-type'] || 'image/jpeg',
+  })
   const url = URL.createObjectURL(blob)
 
   return {
     url,
-    model: options?.model || 'sdxl',
+    model: options?.model || 'flux',
     metadata: {
       width: options?.width || 1024,
       height: options?.height || 1024,

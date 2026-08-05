@@ -25,7 +25,6 @@ declare module 'vue' {
     AiName: typeof import('./../components/Tools/AiName/AiName.vue')['default']
     AiPrompt: typeof import('./../components/Tools/AiPrompt/AiPrompt.vue')['default']
     AiProviderSelector: typeof import('./../components/Common/AiProviderSelector.vue')['default']
-    AiTextToImage: typeof import('./../components/Tools/AiTextToImage/AiTextToImage.vue')['default']
     AiTextToSpeech: typeof import('./../components/Tools/AiTextToSpeech/AiTextToSpeech.vue')['default']
     AiTranslate: typeof import('./../components/Tools/AiTranslate/AiTranslate.vue')['default']
     AiVariableName: typeof import('./../components/Tools/AiVariableName/AiVariableName.vue')['default']

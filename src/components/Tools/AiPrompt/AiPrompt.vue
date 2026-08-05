@@ -533,7 +533,7 @@ const getDifficultyColor = (difficulty: string) => {
 // 跳转到AI生图页面并带上提示词（新页面打开）
 const generateImage = (prompt: string) => {
   const encodedPrompt = encodeURIComponent(prompt)
-  const url = `/ai-text-to-image?prompt=${encodedPrompt}`
+  const url = `/ai-image-edit/?prompt=${encodedPrompt}`
   window.open(url, '_blank')
 }
 

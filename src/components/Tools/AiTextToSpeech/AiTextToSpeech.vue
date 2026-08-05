@@ -549,7 +549,7 @@ const copyText = async (text: string) => {
 </template>
 
 <style scoped>
-/* 可参考AiTextToImage的样式，或根据需要自定义 */
+/* 可根据需要自定义 */
 .ai-text-to-speech {
   max-width: 1400px;
   margin: 0 auto;
