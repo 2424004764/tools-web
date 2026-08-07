@@ -6,6 +6,8 @@ import type {
   AdminUserDetail,
   BatchAdjustCreditPayload,
   BatchAdjustCreditResult,
+  CreateUserPayload,
+  CreateUserResult,
   CreditTransaction,
 } from '@/types/admin'
 
@@ -28,9 +30,22 @@ export async function fetchAdminUsers(
   return res.data.data
 }
 
+/** 手动创建用户 */
+export async function createAdminUser(
+  payload: CreateUserPayload,
+): Promise<CreateUserResult> {
+  const res = await functionsRequest.post('/api/admin/users', payload)
+  return res.data.data
+}
+
 export async function fetchAdminUser(uid: string): Promise<AdminUserDetail> {
   const res = await functionsRequest.get(`/api/admin/users/${uid}`)
   return res.data.data
+}
+
+/** 永久删除用户（不可恢复，会级联清理全部子表） */
+export async function deleteAdminUser(uid: string): Promise<void> {
+  await functionsRequest.delete(`/api/admin/users/${uid}`)
 }
 
 export async function updateAdminUser(

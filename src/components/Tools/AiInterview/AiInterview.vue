@@ -1,16 +1,13 @@
 <script setup lang="ts">
 import { reactive, ref, computed, nextTick } from "vue";
 import { useRoute } from 'vue-router';
-import axios from 'axios';
+import MarkdownIt from 'markdown-it';
 import DetailHeader from "@/components/Layout/DetailHeader/DetailHeader.vue";
 import ToolDetail from "@/components/Layout/ToolDetail/ToolDetail.vue";
 import { copy } from '@/utils/string';
+import { chat } from '@/components/Tools/AiTextToVideo/api';
 
 const route = useRoute();
-
-const pollinationsApiKey = ref(import.meta.env.VITE_POLLINATIONS_API_KEY || '');
-const pollinationsProxyUrl = ref(import.meta.env.VITE_POLLINATIONS_PROXY_URL);
-const pollinationsTextUrl = ref(import.meta.env.VITE_POLLINATIONS_TEXT_URL);
 
 const info = reactive({
   title: "AI面试",
@@ -165,28 +162,8 @@ const sendMessage = async (userInput?: string) => {
       ...messages.value.map(m => ({ role: m.type === 'user' ? 'user' : 'assistant', content: m.content }))
     ];
 
-    // 构建 OpenAI 格式请求
-    const requestBody = {
-      model: 'nova-fast',
-      messages: apiMessages
-    };
-
-    const resp = await axios.post(
-      pollinationsProxyUrl.value,
-      requestBody,
-      {
-        params: {
-          target: `${pollinationsTextUrl.value}/v1/chat/completions`
-        },
-        headers: {
-          'Authorization': `Bearer ${pollinationsApiKey.value}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
-
-    // 解析 OpenAI 格式响应
-    const assistantMessage = resp.data?.choices?.[0]?.message?.content || '抱歉，我暂时无法回复。';
+    // Agnes 免费对话（走 /api/ai-proxy 通用代理）
+    const assistantMessage = await chat('agnes/agnes-2.5-flash', apiMessages) || '抱歉，我暂时无法回复。';
     messages.value.push({ type: 'assistant', content: assistantMessage });
 
   } catch (e) {
@@ -229,6 +206,22 @@ const checkUrlParams = () => {
 };
 
 checkUrlParams();
+
+// Markdown 渲染器
+const md = new MarkdownIt({
+  html: true,
+  linkify: true,
+  typographer: true,
+  breaks: true
+});
+
+// 渲染消息内容（仅 AI 消息走 Markdown）
+const renderMessageContent = (msg: { type: 'user' | 'assistant', content: string }) => {
+  if (msg.type === 'assistant') {
+    return md.render(msg.content || '');
+  }
+  return msg.content;
+};
 </script>
 
 <template>
@@ -350,7 +343,12 @@ checkUrlParams();
                   : 'bg-white border text-gray-800'
               ]"
             >
-              <div class="whitespace-pre-wrap">{{ msg.content }}</div>
+              <div
+                v-if="msg.type === 'assistant'"
+                class="markdown-body"
+                v-html="renderMessageContent(msg)"
+              ></div>
+              <div v-else class="whitespace-pre-wrap">{{ msg.content }}</div>
               <button
                 v-if="msg.type === 'assistant'"
                 @click="copyMessage(msg.content)"
@@ -428,6 +426,119 @@ checkUrlParams();
 .button-pressed {
   transform: scale(0.95) !important;
   filter: brightness(0.9) !important;
+}
+
+/* Markdown 渲染样式 */
+.markdown-body {
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.markdown-body :deep(h1),
+.markdown-body :deep(h2),
+.markdown-body :deep(h3),
+.markdown-body :deep(h4),
+.markdown-body :deep(h5),
+.markdown-body :deep(h6) {
+  margin: 0.6em 0 0.4em 0;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.markdown-body :deep(h1) { font-size: 1.4em; }
+.markdown-body :deep(h2) { font-size: 1.25em; }
+.markdown-body :deep(h3) { font-size: 1.15em; }
+.markdown-body :deep(h4) { font-size: 1.05em; }
+.markdown-body :deep(h5) { font-size: 1em; }
+.markdown-body :deep(h6) { font-size: 0.9em; }
+
+.markdown-body :deep(p) {
+  margin: 0.5em 0;
+}
+
+.markdown-body :deep(ul),
+.markdown-body :deep(ol) {
+  margin: 0.5em 0;
+  padding-left: 1.5em;
+}
+
+.markdown-body :deep(li) {
+  margin: 0.2em 0;
+}
+
+.markdown-body :deep(blockquote) {
+  margin: 0.5em 0;
+  padding: 0.4em 0.9em;
+  border-left: 4px solid #e5e7eb;
+  background-color: #f9fafb;
+  color: #4b5563;
+}
+
+.markdown-body :deep(code) {
+  background-color: #f3f4f6;
+  padding: 0.1em 0.35em;
+  border-radius: 0.25em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9em;
+  color: #db2777;
+}
+
+.markdown-body :deep(pre) {
+  background-color: #1f2937;
+  color: #f9fafb;
+  padding: 0.8em 1em;
+  border-radius: 0.5em;
+  overflow-x: auto;
+  margin: 0.6em 0;
+}
+
+.markdown-body :deep(pre code) {
+  background-color: transparent;
+  padding: 0;
+  color: inherit;
+  font-size: 0.85em;
+}
+
+.markdown-body :deep(a) {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+.markdown-body :deep(a:hover) {
+  color: #1d4ed8;
+}
+
+.markdown-body :deep(strong) {
+  font-weight: 600;
+}
+
+.markdown-body :deep(em) {
+  font-style: italic;
+}
+
+.markdown-body :deep(table) {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.6em 0;
+  font-size: 0.9em;
+}
+
+.markdown-body :deep(th),
+.markdown-body :deep(td) {
+  border: 1px solid #e5e7eb;
+  padding: 0.4em 0.6em;
+  text-align: left;
+}
+
+.markdown-body :deep(th) {
+  background-color: #f9fafb;
+  font-weight: 600;
+}
+
+.markdown-body :deep(hr) {
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 1em 0;
 }
 
 /* 自定义滚动条样式 */

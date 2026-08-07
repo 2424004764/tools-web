@@ -149,7 +149,7 @@ const handleSubmit = async () => {
       }))
 
       result = await agnesApi.chatStream(
-        'agnes/agnes-2.0-flash',
+        'agnes/agnes-2.5-flash',
         messages,
         controller.signal,
         (content) => {
@@ -170,7 +170,7 @@ const handleSubmit = async () => {
       ]
 
       result = await agnesApi.chatStream(
-        'agnes/agnes-2.0-flash',
+        'agnes/agnes-2.5-flash',
         messages,
         controller.signal,
         (content) => {

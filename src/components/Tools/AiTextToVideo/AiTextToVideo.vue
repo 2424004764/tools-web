@@ -314,7 +314,7 @@ const imageToImageCount = ref(1)
 const imageToImageAspectRatio = ref('9:16')
 
 // AI对话相关
-const chatModel = ref<'agnes-2.0-flash' | 'agnes-2.0'>('agnes-2.0-flash')
+const chatModel = ref<'agnes-2.5-flash'>('agnes-2.5-flash')
 const chatInput = ref('')
 const chatSessions = ref<Array<{id: string, title: string, messages: Array<{role: 'user' | 'assistant', content: string}>}>>([])
 const currentSessionId = ref<string | null>(null)
@@ -521,7 +521,7 @@ const analyzeDream = async () => {
       result = await agnesApi.chatStream(
         {
           apiKey: '',
-          model: 'agnes-2.0-flash',
+          model: 'agnes-2.5-flash',
           messages
         },
         (content) => {
@@ -562,7 +562,7 @@ const analyzeDream = async () => {
       result = await agnesApi.sendChatMessageStream(
         '',
         prompt,
-        'agnes-2.0-flash',
+        'agnes-2.5-flash',
         (content) => {
           dreamStreamingContent.value = content
         }
@@ -634,7 +634,7 @@ const generateCityGuide = async () => {
       result = await agnesApi.chatStream(
         {
           apiKey: '',
-          model: 'agnes-2.0-flash',
+          model: 'agnes-2.5-flash',
           messages
         },
         (content) => {
@@ -691,7 +691,7 @@ const generateCityGuide = async () => {
       result = await agnesApi.sendChatMessageStream(
         '',
         prompt,
-        'agnes-2.0-flash',
+        'agnes-2.5-flash',
         (content) => {
           cityStreamingContent.value = content
         }
@@ -814,7 +814,7 @@ const generateBlessings = async () => {
       result = await agnesApi.chatStream(
         {
           apiKey: '',
-          model: 'agnes-2.0-flash',
+          model: 'agnes-2.5-flash',
           messages
         },
         (content) => {
@@ -869,7 +869,7 @@ const generateBlessings = async () => {
       result = await agnesApi.sendChatMessageStream(
         '',
         prompt,
-        'agnes-2.0-flash',
+        'agnes-2.5-flash',
         (content) => {
           blessingsStreamingContent.value = content
         }
@@ -941,7 +941,7 @@ const generateCopywriting = async () => {
       result = await agnesApi.chatStream(
         {
           apiKey: '',
-          model: 'agnes-2.0-flash',
+          model: 'agnes-2.5-flash',
           messages
         },
         (content) => {
@@ -988,7 +988,7 @@ ${copyPlatform.value === 'douyin' ? '注意：抖音文案要口语化，适合�
       result = await agnesApi.sendChatMessageStream(
         '',
         prompt,
-        'agnes-2.0-flash',
+        'agnes-2.5-flash',
         (content) => {
           copyStreamingContent.value = content
         }
@@ -1117,7 +1117,7 @@ const queryAdditiveHazard = async () => {
       result = await agnesApi.chatStream(
         {
           apiKey: '',
-          model: 'agnes-2.0-flash',
+          model: 'agnes-2.5-flash',
           messages
         },
         (content) => {
@@ -1194,7 +1194,7 @@ const queryAdditiveHazard = async () => {
       result = await agnesApi.sendChatMessageStream(
         '',
         prompt,
-        'agnes-2.0-flash',
+        'agnes-2.5-flash',
         (content) => {
           additiveStreamingContent.value = content
         }
@@ -1271,7 +1271,7 @@ const queryMedicineGuide = async () => {
       result = await agnesApi.chatStream(
         {
           apiKey: '',
-          model: 'agnes-2.0-flash',
+          model: 'agnes-2.5-flash',
           messages
         },
         (content) => {
@@ -1357,7 +1357,7 @@ const queryMedicineGuide = async () => {
           '',
           prompt,
           medicineUploadedImage.value,
-          'agnes-2.0-flash',
+          'agnes-2.5-flash',
           (content) => {
             medicineStreamingContent.value = content
           }
@@ -1436,7 +1436,7 @@ const queryMedicineGuide = async () => {
         result = await agnesApi.sendChatMessageStream(
           '',
           prompt,
-          'agnes-2.0-flash',
+          'agnes-2.5-flash',
           (content) => {
             medicineStreamingContent.value = content
           }
@@ -1516,7 +1516,7 @@ const analyzeContractRisk = async () => {
       result = await agnesApi.chatStream(
         {
           apiKey: '',
-          model: 'agnes-2.0-flash',
+          model: 'agnes-2.5-flash',
           messages
         },
         (content) => {
@@ -1606,7 +1606,7 @@ ${contractInput.value ? `\n补充说明：${contractInput.value}` : ''}
           '',
           prompt,
           contractUploadedImage.value,
-          'agnes-2.0-flash',
+          'agnes-2.5-flash',
           (content) => {
             contractStreamingContent.value = content
           }
@@ -1681,7 +1681,7 @@ ${contractInput.value}
         result = await agnesApi.sendChatMessageStream(
           '',
           prompt,
-          'agnes-2.0-flash',
+          'agnes-2.5-flash',
           (content) => {
             contractStreamingContent.value = content
           }
@@ -1759,7 +1759,7 @@ const queryFoodCalorie = async () => {
       result = await agnesApi.chatStream(
         {
           apiKey: '',
-          model: 'agnes-2.0-flash',
+          model: 'agnes-2.5-flash',
           messages
         },
         (content) => {
@@ -1859,7 +1859,7 @@ ${foodInput.value ? `\n补充说明：${foodInput.value}` : ''}
           '',
           prompt,
           foodUploadedImage.value,
-          'agnes-2.0-flash',
+          'agnes-2.5-flash',
           (content) => {
             foodStreamingContent.value = content
           }
@@ -1954,7 +1954,7 @@ ${foodInput.value ? `\n补充说明：${foodInput.value}` : ''}
         result = await agnesApi.sendChatMessageStream(
           '',
           prompt,
-          'agnes-2.0-flash',
+          'agnes-2.5-flash',
           (content) => {
             foodStreamingContent.value = content
           }
@@ -2069,7 +2069,7 @@ const sendChatMessage = async () => {
         'Authorization': `Bearer ${''}`
       },
       body: JSON.stringify({
-        model: chatModel.value,
+        model_key: `agnes/${chatModel.value}`,
         messages: currentSession.messages.slice(0, -1), // 不包含空的AI消息
         stream: true
       })

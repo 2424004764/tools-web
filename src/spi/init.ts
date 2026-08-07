@@ -1,10 +1,18 @@
 import { aiManager } from './index'
 import { createPollinationsProvider } from './providers/pollinations'
 import { createAiToolsProvider } from './providers/aitools'
+import { createAgnesProvider } from './providers/agnes'
 
 // 初始化AI提供者
 export function initializeAIProviders() {
-  // 注册Pollinations
+  // 注册 Agnes（免费，走站内代理，默认启用）
+  aiManager.registerProvider(
+    'agnes',
+    createAgnesProvider({ defaultModel: 'agnes-2.5-flash' })
+  )
+  console.log('Agnes AI提供者已注册')
+
+  // 注册Pollinations（仅当配置了 API Key 时）
   if (import.meta.env.VITE_POLLINATIONS_API_KEY) {
     const pollinations = createPollinationsProvider({
       apiKey: import.meta.env.VITE_POLLINATIONS_API_KEY,

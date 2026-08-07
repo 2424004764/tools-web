@@ -18,7 +18,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 }
 
-const DEFAULT_MODEL_KEY = 'agnes/agnes-2.0-flash'
+const DEFAULT_MODEL_KEY = 'agnes/agnes-2.5-flash'
 
 export async function onRequest(context) {
   const { request, env } = context
@@ -37,7 +37,16 @@ export async function onRequest(context) {
   let body
   try { body = await request.json() } catch { return json({ error: '无效的 JSON' }, 400) }
 
-  const modelKey = body.model_key || DEFAULT_MODEL_KEY
+  // 兼容多种调用方式：
+  // 1. 显式传 model_key（推荐）
+  // 2. 旧版传 model = "vendor_model_id"，自动补 "agnes/" 前缀
+  // 3. 都没有则用 DEFAULT_MODEL_KEY
+  let modelKey = body.model_key
+  if (!modelKey && body.model) {
+    modelKey = body.model.includes('/') ? body.model : `agnes/${body.model}`
+  }
+  if (!modelKey) modelKey = DEFAULT_MODEL_KEY
+
   const resolved = await resolveModel(db, modelKey, uid)
   if (!resolved) return json({ error: `模型不存在或无权访问: ${modelKey}` }, 404)
 

@@ -45,7 +45,7 @@ function toModelKey(modelId: string): string {
 export async function sendChatMessageStream(
   _apiKey: string,
   message: string,
-  model: string = 'agnes-2.0-flash',
+  model: string = 'agnes-2.5-flash',
   onChunk: (content: string) => void
 ): Promise<string> {
   return chatStream(toModelKey(model), [{ role: 'user', content: message }], undefined, onChunk)
@@ -58,7 +58,7 @@ export async function sendChatMessageWithImageStream(
   _apiKey: string,
   textMessage: string,
   imageBase64: string,
-  model: string = 'agnes-2.0-flash',
+  model: string = 'agnes-2.5-flash',
   onChunk: (content: string) => void
 ): Promise<string> {
   const response = await fetch('/api/ai-proxy', {
@@ -132,7 +132,7 @@ export async function generateImageToImage(
 
 /**
  * 从 modelKey 提取 provider slug
- * 例如 'agnes/agnes-2.0-flash' → 'agnes'
+ * 例如 'agnes/agnes-2.5-flash' → 'agnes'
  */
 function getProviderSlug(modelKey: string): string {
   const slash = modelKey.indexOf('/')
@@ -153,6 +153,13 @@ function getUserApiKey(modelKey: string): string {
   } catch {
     return ''
   }
+}
+
+/**
+ * 提示游客配置 API Key 的引导文案（ai-proxy 需要游客自己的 key）
+ */
+export function getApiKeyHint(): string {
+  return '请先点击页面顶部「🔑 我的 API Key」配置厂商 Key，才能使用 AI 功能'
 }
 
 /**
@@ -186,7 +193,7 @@ async function callProxy(
 
 /**
  * 流式聊天
- * @param modelKey 业务唯一键，如 'agnes/agnes-2.0-flash'
+ * @param modelKey 业务唯一键，如 'agnes/agnes-2.5-flash'
  * @param messages OpenAI 格式消息数组
  * @param signal 中止信号
  * @param onChunk 增量回调（每次收到新内容）
@@ -272,14 +279,20 @@ export async function chat(
 export async function generateImage(
   modelKey: string,
   prompt: string,
-  opts: { width: number; height: number; n?: number }
+  opts: { width: number; height: number; n?: number },
+  signal?: AbortSignal
 ): Promise<string[]> {
-  const data = await callProxy('image_generation', modelKey, {
-    prompt,
-    width: opts.width,
-    height: opts.height,
-    n: opts.n || 1,
-  })
+  const data = await callProxy(
+    'image_generation',
+    modelKey,
+    {
+      prompt,
+      width: opts.width,
+      height: opts.height,
+      n: opts.n || 1,
+    },
+    signal
+  )
   return data.url ? [data.url] : []
 }
 

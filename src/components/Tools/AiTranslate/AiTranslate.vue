@@ -1,17 +1,13 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
-import axios from 'axios'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
+import { chat } from '@/components/Tools/AiTextToVideo/api'
 
 const info = reactive({
   title: 'AI翻译',
   desc: '由AI大模型驱动，支持多语言互译，源语言可自动检测。'
 })
-
-const pollinationsApiKey = ref(import.meta.env.VITE_POLLINATIONS_API_KEY || '')
-const pollinationsProxyUrl = ref(import.meta.env.VITE_POLLINATIONS_PROXY_URL)
-const pollinationsTextUrl = ref(import.meta.env.VITE_POLLINATIONS_TEXT_URL)
 
 const langNameMap: Record<string, string> = {
   zh: 'Chinese', en: 'English', ja: 'Japanese', ko: 'Korean',
@@ -99,28 +95,10 @@ const translate = async () => {
   try {
     const prompt = buildPrompt()
 
-    // 构建 OpenAI 格式请求
-    const requestBody = {
-      model: 'nova-fast',
-      messages: [{ role: 'user', content: prompt }]
-    }
-
-    const resp = await axios.post(
-      pollinationsProxyUrl.value,
-      requestBody,
-      {
-        params: {
-          target: `${pollinationsTextUrl.value}/v1/chat/completions`
-        },
-        headers: {
-          'Authorization': `Bearer ${pollinationsApiKey.value}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    )
-
-    // 解析 OpenAI 格式响应
-    resultText.value = resp.data?.choices?.[0]?.message?.content || ''
+    // Agnes 免费对话（走 /api/ai-proxy 通用代理）
+    resultText.value = await chat('agnes/agnes-2.5-flash', [
+      { role: 'user', content: prompt }
+    ])
   } catch (e) {
     console.error(e)
     alert('翻译失败，请稍后重试')

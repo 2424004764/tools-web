@@ -1,11 +1,12 @@
-// Admin 用户详情 / 更新 API
-// GET   /api/admin/users/:uid  获取用户详情（含积分、最近积分流水 10 条）
-// PUT   /api/admin/users/:uid  更新 username、avatar（不允许改 email/is_admin/is_disabled）
+// Admin 用户详情 / 更新 / 删除 API
+// GET    /api/admin/users/:uid  获取用户详情（含积分、最近积分流水 10 条）
+// PUT    /api/admin/users/:uid  更新 username、avatar（不允许改 email/is_admin/is_disabled）
+// DELETE /api/admin/users/:uid  永久删除用户 + 级联清理全部子表（不可恢复）
 //
 // 鉴权已在 _middleware.js 完成。
 
 const corsHeaders = {
-  'Access-Control-Allow-Methods': 'GET, PUT, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 }
 
@@ -35,6 +36,9 @@ export async function onRequest(context) {
     }
     if (request.method === 'PUT') {
       return await handlePut(context, db, uid)
+    }
+    if (request.method === 'DELETE') {
+      return await handleDelete(context, db, uid)
     }
     return jsonError('不支持的请求方法', 405)
   } catch (error) {
@@ -118,4 +122,103 @@ async function handlePut(context, db, uid) {
   const changes = result.meta?.changes ?? result.changes ?? 0
   if (changes === 0) return jsonError('用户不存在', 404)
   return json({ updated: changes })
+}
+
+// ============ DELETE：永久删除用户 + 级联清理全部子表 ============
+// D1 / SQLite 不支持跨语句事务；用 db.batch([...]) 装全部语句，任一失败整体回滚。
+// 不使用软删除（项目无 deleted_at 先例），不做 ON DELETE CASCADE 补齐迁移。
+// 子表 uid 字段全部无 FOREIGN KEY 约束，因此必须手动清理，否则会留下孤儿行。
+async function handleDelete(context, db, uid) {
+  const adminUid = context.data?.adminUid
+
+  // 1) 自我保护
+  if (uid === adminUid) {
+    return jsonError('不能删除自己的账号', 400)
+  }
+
+  // 2) 存在性检查
+  const existing = await db
+    .prepare('SELECT id, email, username, is_admin FROM user WHERE id = ?')
+    .bind(uid)
+    .first()
+  if (!existing) return jsonError('用户不存在', 404)
+
+  // 3) 管理员保护
+  if (existing.is_admin === 1) {
+    return jsonError('不能删除其他管理员', 400)
+  }
+
+  // 4) 级联 SQL：先删叶子子表，最后 DELETE user；credit_redeem_codes.used_by 保留但置空
+  // 关键：生产 D1 上部分子表（resumes/notes/companies/qa_pages 等）可能尚未建表，
+  // 直接批量 DELETE 会因 SQLITE_ERROR 整体失败。执行前先查 sqlite_master 过滤存在表。
+  // 表名取自下方白名单常量，不接受外部输入 → 无 SQL 注入风险。
+  const CASCADE_TABLES = [
+    'credit_transactions',
+    'user_credits',
+    'generation_records',
+    'credit_redeem_attempts',
+    'todos',
+    'notes',
+    'resumes',
+    'companies',
+    'qa_pages',
+    'password_entries',
+    'password_groups',
+    'weight_records',
+    'weight_members',
+    'oss_credentials',
+    'mock_schemas',
+    'life_trajectories',
+    'user_season_scenery',
+    'user_favorite_apps',
+    'ai_providers',
+    'bookmarks',
+    'links',
+    'letters',
+  ]
+
+  const tablesResult = await db
+    .prepare("SELECT name FROM sqlite_master WHERE type='table'")
+    .all()
+  const existingTables = new Set((tablesResult.results || []).map((r) => r.name))
+
+  const stmts = []
+  const skippedTables = []
+  for (const tbl of CASCADE_TABLES) {
+    if (!existingTables.has(tbl)) {
+      skippedTables.push(tbl)
+      continue
+    }
+    stmts.push(db.prepare(`DELETE FROM ${tbl} WHERE uid = ?`).bind(uid))
+  }
+  // credit_redeem_codes：保留记录，置空 used_by（独立处理，不走通用分支）
+  if (existingTables.has('credit_redeem_codes')) {
+    stmts.push(
+      db.prepare('UPDATE credit_redeem_codes SET used_by = NULL WHERE used_by = ?').bind(uid),
+    )
+  } else {
+    skippedTables.push('credit_redeem_codes')
+  }
+  // user 行强制删除（始终存在）
+  stmts.push(db.prepare('DELETE FROM user WHERE id = ?').bind(uid))
+
+  // 5) 原子执行（任一失败整体回滚）
+  await db.batch(stmts)
+
+  // 6) 审计日志
+  console.log(
+    `[admin/users DELETE] uid=${uid} email=${existing.email} username=${existing.username} by adminUid=${adminUid}`,
+  )
+  if (skippedTables.length > 0) {
+    console.warn(
+      `[admin/users DELETE] skipped non-existent tables: ${skippedTables.join(', ')}`,
+    )
+  }
+
+  return json({
+    id: uid,
+    deleted: true,
+    email: existing.email,
+    username: existing.username,
+  })
 }

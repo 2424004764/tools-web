@@ -9,7 +9,7 @@ const STORAGE_KEY = 'tools_web_selected_models_v1'
 const LEGACY_API_KEY = 'agnes_api_key'
 
 interface SelectedModels {
-  chat?: string         // model_key, e.g. 'agnes/agnes-2.0-flash'
+  chat?: string         // model_key, e.g. 'agnes/agnes-2.5-flash'
   image?: string        // e.g. 'agnes/agnes-image-2.1-flash'
   image_edit?: string
   video?: string        // e.g. 'agnes/agnes-video-v2.0'
@@ -17,7 +17,7 @@ interface SelectedModels {
 
 // 默认模型（seed 配置的）
 const DEFAULTS: SelectedModels = {
-  chat: 'agnes/agnes-2.0-flash',
+  chat: 'agnes/agnes-2.5-flash',
   image: 'agnes/agnes-image-2.1-flash',
   video: 'agnes/agnes-video-v2.0',
 }
@@ -73,11 +73,35 @@ export function useUserModels() {
   }
 
   /**
-   * 按 capability 过滤可用模型
+   * 按 capability 过滤可用模型（兜底用，优先用 type 过滤）
    */
   async function loadModelsByCapability(capability: string): Promise<ModelConfig[]> {
     const all = await loadAvailableModels()
     return all.filter(m => m.capabilities?.includes(capability))
+  }
+
+  /**
+   * 按业务类型加载模型（text / image / video）
+   * 后端 ai-models?type=xxx 已经把模型按业务大类过滤了一遍
+   */
+  async function loadModelsByType(type: 'text' | 'image' | 'video'): Promise<ModelConfig[]> {
+    try {
+      const res = await fetch(`/api/ai-models?type=${encodeURIComponent(type)}`)
+      const json = await res.json()
+      if (json.success && Array.isArray(json.data)) {
+        return json.data.map((m: any) => ({
+          ...m,
+          capabilities: safeParseArr(m.capabilities),
+          endpoints: safeParseObj(m.endpoints),
+          input_template: safeParseObj(m.input_template),
+          output_paths: safeParseObj(m.output_paths),
+        }))
+      }
+      return []
+    } catch (err) {
+      console.error('loadModelsByType error:', err)
+      return []
+    }
   }
 
   /**
@@ -115,7 +139,7 @@ export function useUserModels() {
         {
           name: '我的 Chat 2.0 Flash',
           model_key: 'my-agnes/chat-flash',
-          model_id: 'agnes-2.0-flash',
+          model_id: 'agnes-2.5-flash',
           capabilities: ['chat', 'chat_stream'],
         },
         {
@@ -245,6 +269,7 @@ export function useUserModels() {
     setSelected,
     loadAvailableModels,
     loadModelsByCapability,
+    loadModelsByType,
     needsMigration: computed(() => state.needsMigration.value),
     legacyKey: computed(() => state.legacyKey.value),
     migrateLegacyKey,

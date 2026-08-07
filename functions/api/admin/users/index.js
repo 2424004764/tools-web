@@ -1,9 +1,11 @@
-// Admin 用户列表 API
-// GET /api/admin/users?page=1&pageSize=20&keyword=foo&disabled=0|1
-// 返回：用户列表（分页）+ 每条记录的积分余额
+// Admin 用户管理 API
+// GET  /api/admin/users?page=&pageSize=&keyword=&disabled=  用户分页列表
+// POST /api/admin/users    { email, username, password?, is_admin? }  手动创建用户
+//
+// 鉴权：上游 functions/api/admin/_middleware.js 已校验 Bearer JWT + is_admin=1
 
 const corsHeaders = {
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 }
 
@@ -21,9 +23,37 @@ function jsonError(message, status = 500) {
   })
 }
 
+// 与 email-register.js / reset-password.js 保持一致的密码哈希：SHA-256(password + salt) → 小写十六进制
+async function hashPassword(password, salt) {
+  const encoder = new TextEncoder()
+  const data = encoder.encode(password + salt)
+  const hashBuf = await crypto.subtle.digest('SHA-256', data)
+  return Array.from(new Uint8Array(hashBuf))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('')
+}
+
+// 生成 10 位 [a-z0-9] 随机密码（前端生成器字符集/长度必须与此处严格一致）
+function generatePassword(length = 10) {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
+  const bytes = new Uint8Array(length)
+  crypto.getRandomValues(bytes)
+  let pwd = ''
+  for (let i = 0; i < length; i++) pwd += chars[bytes[i] % chars.length]
+  return pwd
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
 export async function onRequest(context) {
+  const { request } = context
+  if (request.method === 'GET') return onRequestGet(context)
+  if (request.method === 'POST') return onRequestPost(context)
+  return jsonError('不支持的请求方法', 405)
+}
+
+async function onRequestGet(context) {
   const { request, env } = context
-  if (request.method !== 'GET') return jsonError('不支持的请求方法', 405)
 
   const db = env.DB
   const url = new URL(request.url)
@@ -87,6 +117,102 @@ export async function onRequest(context) {
     })
   } catch (error) {
     console.error('admin/users list error:', error)
+    return jsonError(error.message || '服务器错误', 500)
+  }
+}
+
+// ============ POST：手动创建用户 ============
+async function onRequestPost(context) {
+  const { request, env } = context
+  const db = env.DB
+
+  let body
+  try {
+    body = await request.json()
+  } catch {
+    return jsonError('请求体必须是合法 JSON', 400)
+  }
+
+  const { email, username, password, is_admin } = body || {}
+
+  // 1) 必填校验
+  if (!email || typeof email !== 'string' || !EMAIL_RE.test(email.trim())) {
+    return jsonError('邮箱格式不正确', 400)
+  }
+  if (!username || typeof username !== 'string' || !username.trim()) {
+    return jsonError('用户名不能为空', 400)
+  }
+
+  const normalizedEmail = email.trim().toLowerCase()
+  const normalizedUsername = username.trim()
+  const wantAdmin = is_admin === true || is_admin === 1 || is_admin === '1'
+
+  try {
+    // 2) 邮箱唯一性
+    const existing = await db
+      .prepare('SELECT id FROM user WHERE email = ? LIMIT 1')
+      .bind(normalizedEmail)
+      .first()
+    if (existing) {
+      return jsonError('该邮箱已被注册', 409)
+    }
+
+    // 3) 密码：可选 -> 留空时后端兜底生成 10 位 [a-z0-9]
+    let finalPassword = ''
+    let passwordGenerated = false
+    if (typeof password === 'string' && password.length > 0) {
+      if (password.length < 6) {
+        return jsonError('密码至少 6 位', 400)
+      }
+      finalPassword = password
+    } else {
+      finalPassword = generatePassword(10)
+      passwordGenerated = true
+    }
+
+    // 4) 哈希（与 email-register.js 等保持一致）
+    const salt = crypto.randomUUID()
+    const hashedPassword = await hashPassword(finalPassword, salt)
+
+    // 5) INSERT 全字段
+    const id = crypto.randomUUID()
+    const now = new Date().toISOString()
+    await db
+      .prepare(
+        `INSERT INTO user (
+          id, email, username, password, salt, avatar,
+          is_admin, is_disabled, user_level,
+          created_at, last_login
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(
+        id,
+        normalizedEmail,
+        normalizedUsername,
+        hashedPassword,
+        salt,
+        '',
+        wantAdmin ? 1 : 0,
+        0,
+        0,
+        now,
+        now,
+      )
+      .run()
+
+    // 6) 返回
+    const payload = {
+      id,
+      email: normalizedEmail,
+      username: normalizedUsername,
+      is_admin: wantAdmin,
+    }
+    if (passwordGenerated) {
+      payload.generated_password = finalPassword
+    }
+    return json(payload, 201)
+  } catch (error) {
+    console.error('admin/users create error:', error)
     return jsonError(error.message || '服务器错误', 500)
   }
 }

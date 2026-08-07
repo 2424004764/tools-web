@@ -83,11 +83,8 @@ export async function onRequest(context) {
     renderParams
   )
 
-  // 选 API Key：用户提供的 key 优先；登录用户还能用厂商配置的 key；游客必须自己提供
-  let apiKey = user_api_key || ''
-  if (!apiKey && uid) {
-    apiKey = resolved.apiKey  // 登录用户可使用系统配置的 key
-  }
+  // 选 API Key：用户提供的 key 优先；否则使用系统配置的 key（登录用户与游客都可用）
+  let apiKey = user_api_key || resolved.apiKey
 
   // 非管理员用 user_api_key 时，要求厂商 is_open=1（管理员不受限）
   if (user_api_key && uid) {
@@ -104,9 +101,7 @@ export async function onRequest(context) {
   if (!apiKey) {
     return json({
       ok: false,
-      error: uid
-        ? '未配置 API Key，请在厂商设置中填写'
-        : '游客必须配置自己的 API Key（点击页面顶部 🔑 我的 API Key）'
+      error: '未配置 API Key，请在厂商设置中填写'
     }, 400)
   }
 
@@ -129,23 +124,46 @@ export async function onRequest(context) {
       requestBody.size = `${params.width}x${params.height}`
     }
 
-    // 日志放在 prompt 注入之后，确保看到真正发出去的 requestBody
-    console.log('[ai-proxy] request', JSON.stringify({
-      capability,
-      model_key,
-      url,
-      requestBody
-    }, null, 2))
+    // 非流式 capability（chat）：强制 stream=false，
+    // 避免 input_template 里 "$const":true 导致上游返回 SSE 而下方却按 JSON 解析
+    if (!isStream) {
+      requestBody.stream = false
+    }
 
-    const upstreamResponse = await fetch(url, {
-      method: endpoint.method || 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-        ...(isStream ? { 'Accept': 'text/event-stream' } : {}),
-      },
-      body: isStream ? JSON.stringify({ ...requestBody, stream: true }) : JSON.stringify(requestBody),
-    })
+    // 日志：打印真正发出去的上游请求头（含 Authorization 完整掩码 + 全部 headers），便于排查
+    const maskedKey = apiKey ? `${apiKey.slice(0, 6)}...${apiKey.slice(-4)}` : '(空)'
+    console.log('[ai-proxy] >>> FULL UPSTREAM REQUEST')
+    console.log('[ai-proxy]   capability:', capability)
+    console.log('[ai-proxy]   model_key :', model_key)
+    console.log('[ai-proxy]   provider  :', resolved.provider.slug, '| base_url:', resolved.provider.base_url)
+    console.log('[ai-proxy]   url       :', url)
+    console.log('[ai-proxy]   method    :', endpoint.method || 'POST')
+    console.log('[ai-proxy]   apiKey    :', maskedKey)
+    console.log('[ai-proxy]   ---------- REQUEST HEADERS ----------')
+    console.log('[ai-proxy]   Content-Type:', 'application/json')
+    console.log('[ai-proxy]   Authorization:', `Bearer ${maskedKey}`)
+    console.log('[ai-proxy]   Accept:', isStream ? 'text/event-stream' : '(未设置)')
+    console.log('[ai-proxy]   ---------- REQUEST BODY ----------')
+    console.log('[ai-proxy]   body      :', JSON.stringify(isStream ? { ...requestBody, stream: true } : requestBody, null, 2))
+
+    const upstreamHeaders = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+      ...(isStream ? { 'Accept': 'text/event-stream' } : {}),
+    }
+    // GET / HEAD 不能带 body（否则 fetch 会抛 "Request with a GET or HEAD method cannot have a body"）
+    const upstreamMethod = (endpoint.method || 'POST').toUpperCase()
+    const hasBody = upstreamMethod !== 'GET' && upstreamMethod !== 'HEAD'
+    const fetchInit = {
+      method: upstreamMethod,
+      headers: upstreamHeaders,
+    }
+    if (hasBody) {
+      fetchInit.body = isStream
+        ? JSON.stringify({ ...requestBody, stream: true })
+        : JSON.stringify(requestBody)
+    }
+    const upstreamResponse = await fetch(url, fetchInit)
 
     if (!upstreamResponse.ok) {
       const errText = await upstreamResponse.text().catch(() => '')
