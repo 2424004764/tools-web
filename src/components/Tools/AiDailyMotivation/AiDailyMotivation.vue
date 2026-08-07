@@ -1,17 +1,13 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, onUnmounted } from "vue";
-import axios from "axios";
 import DetailHeader from "@/components/Layout/DetailHeader/DetailHeader.vue";
 import ToolDetail from "@/components/Layout/ToolDetail/ToolDetail.vue";
+import { chat, generateImage } from "@/components/Tools/AiTextToVideo/api";
 
 const info = reactive({
   title: "AI每日励志鸡汤文",
   desc: "AI智能生成每日励志鸡汤文，支持多种风格选择，定时刷新，为你的每一天注入正能量。",
 });
-
-const pollinationsApiKey = ref(import.meta.env.VITE_POLLINATIONS_API_KEY || "");
-const pollinationsProxyUrl = ref(import.meta.env.VITE_POLLINATIONS_PROXY_URL);
-const pollinationsTextUrl = ref(import.meta.env.VITE_POLLINATIONS_TEXT_URL);
 
 // 状态管理
 const loading = ref(false);
@@ -74,9 +70,6 @@ const generateMotivations = async (isAutoRefresh: boolean = false) => {
 
   while (retryCount < maxRetries) {
     try {
-      // 添加随机种子确保每次结果不同
-      const seed = Math.floor(Math.random() * 100000000);
-
       const prompt = `请生成${generateCount.value}条${selectedStyle.value}风格的励志鸡汤文，要求：
 1. 每条鸡汤文要简洁有力，字数控制在30-50字之间
 2. 内容要积极向上，富有哲理和启发性
@@ -84,29 +77,10 @@ const generateMotivations = async (isAutoRefresh: boolean = false) => {
 4. 每条鸡汤文单独一行，不要编号，不要标点符号结尾
 5. 只输出鸡汤文内容，不要其他解释文字`;
 
-      // 构建 OpenAI 格式请求
-      const requestBody = {
-        model: 'nova-fast',
-        messages: [{ role: 'user', content: prompt }],
-        seed: seed  // 添加随机种子
-      };
-
-      const resp = await axios.post(
-        pollinationsProxyUrl.value,
-        requestBody,
-        {
-          params: {
-            target: `${pollinationsTextUrl.value}/v1/chat/completions`,
-            _t: Date.now() // 添加时间戳避免缓存
-          },
-          headers: {
-            'Authorization': `Bearer ${pollinationsApiKey.value}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
-      let text = resp.data?.choices?.[0]?.message?.content || '';
+      // Agnes 免费对话（走 /api/ai-proxy 通用代理）
+      const text = await chat("agnes/agnes-2.5-flash", [
+        { role: "user", content: prompt }
+      ]);
 
       // 处理返回的文本，分割成多条鸡汤文
       const lines = text
@@ -269,31 +243,25 @@ const generateCover = async (motivation: string, motivationId: number) => {
     // 构造封面生成的提示词
     const coverPrompt = `励志鸡汤文封面背景：${motivation}，简约现代设计风格，渐变背景，适合作为文字封面，高清图片`;
 
-    // 使用 gen.pollinations.ai 的图片生成 API
-    const encodedPrompt = encodeURIComponent(coverPrompt);
-    const seed = Math.floor(Math.random() * 100000000);
-
-    const response = await axios.get(
-      `https://gen.pollinations.ai/image/${encodedPrompt}?model=flux&seed=${seed}&width=1024&height=1024&nologo=true`,
-      {
-        headers: {
-          'Authorization': `Bearer ${pollinationsApiKey.value}`
-        },
-        responseType: "blob",
-        signal: abortController.value.signal
-      }
+    // Agnes 免费生图（走 /api/ai-proxy 通用代理）
+    const images = await generateImage(
+      "agnes/agnes-image-2.1-flash",
+      coverPrompt,
+      { width: 1024, height: 1024, n: 1 },
+      abortController.value?.signal
     );
-
-    const blob = new Blob([response.data], { type: "image/png" });
-    const imageUrl = URL.createObjectURL(blob);
+    if (!images || images.length === 0) {
+      throw new Error("封面生成无结果");
+    }
+    const imageUrl = images[0];
 
     // 将文字叠加到图片上
     const finalImageUrl = await addTextToImage(imageUrl, motivation);
     generatedCoverUrl.value = finalImageUrl;
 
-  } catch (error) {
+  } catch (error: any) {
     // 如果是取消请求导致的错误，不显示错误提示，但需要重置状态
-    if (axios.isCancel(error)) {
+    if (error?.name === 'AbortError') {
       console.log('请求已取消');
       return;
     }

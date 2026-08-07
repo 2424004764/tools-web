@@ -27,6 +27,25 @@ export interface AdminUser {
   credits_spent?: number
 }
 
+/** 创建用户请求体（管理员手动创建） */
+export interface CreateUserPayload {
+  email: string
+  username: string
+  /** 可选；留空时后端兜底生成 10 位 [a-z0-9] */
+  password?: string
+  is_admin?: boolean
+}
+
+/** 创建用户返回结果 */
+export interface CreateUserResult {
+  id: string
+  email: string
+  username: string
+  is_admin: boolean
+  /** 仅当 password 留空由后端兜底生成时才存在；前端需提示管理员复制并告知用户 */
+  generated_password?: string
+}
+
 /** 用户详情（含积分） */
 export interface AdminUserDetail {
   user: AdminUser

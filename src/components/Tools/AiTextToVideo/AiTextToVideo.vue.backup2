@@ -50,7 +50,7 @@ const generatedImages = ref<string[]>([])
 const imageGenerateTime = ref(0)
 
 // AI对话相关
-const chatModel = ref<'agnes-2.0-flash' | 'agnes-2.0'>('agnes-2.0-flash')
+const chatModel = ref<'agnes-2.5-flash' | 'agnes-2.0'>('agnes-2.5-flash')
 const chatInput = ref('')
 const chatSessions = ref<Array<{id: string, title: string, messages: Array<{role: 'user' | 'assistant', content: string}>}>>([])
 const currentSessionId = ref<string | null>(null)
@@ -599,7 +599,7 @@ const generateScript = async (topicText: string): Promise<string> => {
       'Authorization': `Bearer ${apiKey.value.trim()}`
     },
     body: JSON.stringify({
-      model: 'agnes-2.0-flash',
+      model: 'agnes-2.5-flash',
       messages: [
         {
           role: 'user',
@@ -1295,7 +1295,7 @@ const generateImageToVideo = async () => {
                   class="w-full px-2 py-1.5 border rounded text-body-sm"
                   :disabled="isChatting"
                 >
-                  <option value="agnes-2.0-flash">Flash (快)</option>
+                  <option value="agnes-2.5-flash">Flash (快)</option>
                   <option value="agnes-2.0">Standard</option>
                 </select>
               </div>

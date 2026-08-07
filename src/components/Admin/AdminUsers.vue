@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, onUnmounted, reactive, ref } from 'vue'
 import {
   fetchAdminUsers,
   adjustUserCredits,
@@ -7,14 +7,23 @@ import {
   updateAdminUser,
   batchAdjustUserCredits,
   fetchUserCreditLogs,
+  createAdminUser,
+  deleteAdminUser,
 } from '@/api/admin/user'
 import type {
   AdminUser,
   AdminPagination,
   BatchAdjustCreditResult,
+  CreateUserResult,
   CreditTransaction,
 } from '@/types/admin'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import {
+  Refresh,
+  View,
+  Hide,
+  ArrowDown,
+} from '@element-plus/icons-vue'
 
 const loading = ref(false)
 const list = ref<AdminUser[]>([])
@@ -308,6 +317,31 @@ const handleToggleDisabled = async (user: AdminUser) => {
   }
 }
 
+// ============ 删除用户 ============
+const handleDeleteUser = async (user: AdminUser) => {
+  const label = user.username || user.email || user.id
+  try {
+    await ElMessageBox.confirm(
+      `确定永久删除用户「${label}」（${user.email || '-'}）吗？此操作不可恢复，会一并清理该用户的积分、流水、收藏、密码库等所有数据。`,
+      '⚠️ 删除用户',
+      {
+        confirmButtonText: '永久删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+      },
+    )
+  } catch {
+    return
+  }
+  try {
+    await deleteAdminUser(user.id)
+    ElMessage.success('已删除')
+    load()
+  } catch (err: any) {
+    ElMessage.error(err?.response?.data?.error || '删除失败')
+  }
+}
+
 // ============ 修改用户名 ============
 const editDialog = reactive({
   visible: false,
@@ -337,7 +371,101 @@ const submitEdit = async () => {
   }
 }
 
-onMounted(load)
+// ============ 创建用户弹窗 ============
+const createDialog = reactive({
+  visible: false,
+  submitting: false,
+  form: { email: '', username: '', password: '', is_admin: false },
+  showPassword: false,
+  result: null as CreateUserResult | null,
+})
+
+// 与 functions/api/admin/users/index.js::generatePassword 字符集/长度严格一致
+const generateLocalPassword = (len = 10): string => {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
+  let out = ''
+  for (let i = 0; i < len; i++) {
+    out += chars[Math.floor(Math.random() * chars.length)]
+  }
+  return out
+}
+
+const openCreateDialog = () => {
+  createDialog.form = { email: '', username: '', password: '', is_admin: false }
+  createDialog.showPassword = false
+  createDialog.result = null
+  createDialog.visible = true
+}
+
+const fillGeneratedPassword = () => {
+  createDialog.form.password = generateLocalPassword(10)
+  createDialog.showPassword = true
+}
+
+const submitCreate = async () => {
+  if (!createDialog.form.email.trim()) {
+    ElMessage.warning('请输入邮箱')
+    return
+  }
+  if (!createDialog.form.username.trim()) {
+    ElMessage.warning('请输入用户名')
+    return
+  }
+  // 管理员二次确认
+  if (createDialog.form.is_admin) {
+    try {
+      await ElMessageBox.confirm(
+        '确定将该用户创建为管理员？此操作后续可禁用但请谨慎。',
+        '二次确认',
+        { type: 'warning', confirmButtonText: '确认创建', cancelButtonText: '取消' },
+      )
+    } catch {
+      return
+    }
+  }
+  createDialog.submitting = true
+  try {
+    const result = await createAdminUser({
+      email: createDialog.form.email.trim(),
+      username: createDialog.form.username.trim(),
+      password: createDialog.form.password || undefined,
+      is_admin: createDialog.form.is_admin,
+    })
+    createDialog.result = result
+    ElMessage.success('用户创建成功')
+  } catch (err: any) {
+    ElMessage.error(err?.response?.data?.error || '创建失败')
+  } finally {
+    createDialog.submitting = false
+  }
+}
+
+const finishCreate = () => {
+  createDialog.visible = false
+  load()
+}
+
+const copyText = (text: string, label = '内容') => {
+  navigator.clipboard?.writeText(text).then(
+    () => ElMessage.success(`${label}已复制`),
+    () => ElMessage.warning('复制失败'),
+  )
+}
+
+onMounted(() => {
+  load()
+  updateIsMobile()
+  window.addEventListener('resize', updateIsMobile)
+})
+onUnmounted(() => {
+  window.removeEventListener('resize', updateIsMobile)
+})
+
+// 移动端检测（< 640px）：用于弹窗宽度自适应
+const isMobile = ref(false)
+const updateIsMobile = () => {
+  isMobile.value = window.innerWidth < 640
+}
 </script>
 
 <template>
@@ -374,6 +502,13 @@ onMounted(load)
     </div>
 
     <div class="flex flex-wrap items-center gap-3 mb-4">
+      <el-button
+        type="primary"
+        :disabled="batchCreditDialog.submitting || createDialog.submitting"
+        @click="openCreateDialog"
+      >
+        创建用户
+      </el-button>
       <el-button
         type="primary"
         :disabled="batchCreditDialog.submitting"
@@ -454,24 +589,40 @@ onMounted(load)
             <span class="text-xs text-ink-500">{{ formatTime(row.last_login) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="280" fixed="right">
+        <el-table-column label="操作" width="88" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button type="primary" link size="small" @click="openCreditDialog(row)">
-              调整积分
-            </el-button>
-            <el-button link size="small" @click="openLogsDialog(row)">
-              积分明细
-            </el-button>
-            <el-button link size="small" @click="openEditDialog(row)">改名</el-button>
-            <el-button
-              v-if="!row.is_admin"
-              :type="row.is_disabled ? 'success' : 'danger'"
-              link
-              size="small"
-              @click="handleToggleDisabled(row)"
-            >
-              {{ row.is_disabled ? '启用' : '禁用' }}
-            </el-button>
+            <el-dropdown trigger="click">
+              <el-button link size="small" type="primary">
+                操作<el-icon class="el-icon--right"><ArrowDown /></el-icon>
+              </el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item @click="openCreditDialog(row)">
+                    调整积分
+                  </el-dropdown-item>
+                  <el-dropdown-item @click="openLogsDialog(row)">
+                    积分明细
+                  </el-dropdown-item>
+                  <el-dropdown-item @click="openEditDialog(row)">
+                    改名
+                  </el-dropdown-item>
+                  <el-dropdown-item
+                    v-if="!row.is_admin"
+                    divided
+                    @click="handleToggleDisabled(row)"
+                  >
+                    {{ row.is_disabled ? '启用' : '禁用' }}
+                  </el-dropdown-item>
+                  <el-dropdown-item
+                    v-if="!row.is_admin"
+                    divided
+                    @click="handleDeleteUser(row)"
+                  >
+                    <span class="text-danger-600">删除</span>
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </template>
         </el-table-column>
       </el-table>
@@ -760,6 +911,170 @@ onMounted(load)
           @current-change="handleLogsPageChange"
         />
       </div>
+    </el-dialog>
+
+    <!-- 创建用户弹窗 -->
+    <el-dialog
+      v-model="createDialog.visible"
+      title="创建用户"
+      :width="isMobile ? '92vw' : '520px'"
+    >
+      <!-- 表单面板 -->
+      <template v-if="!createDialog.result">
+        <el-form :label-width="isMobile ? '64px' : '90px'" class="!mt-2">
+          <el-form-item label="邮箱" required>
+            <el-input
+              v-model="createDialog.form.email"
+              placeholder="例如：user@example.com"
+              maxlength="120"
+              clearable
+            />
+          </el-form-item>
+          <el-form-item label="用户名" required>
+            <el-input
+              v-model="createDialog.form.username"
+              placeholder="用户显示名"
+              maxlength="64"
+              clearable
+            />
+          </el-form-item>
+          <el-form-item label="初始密码">
+            <el-input
+              v-model="createDialog.form.password"
+              :type="createDialog.showPassword ? 'text' : 'password'"
+              placeholder="留空将自动生成 10 位随机密码"
+              maxlength="64"
+              clearable
+            >
+              <template #suffix>
+                <div class="flex items-center gap-1">
+                  <el-tooltip content="生成 10 位随机密码" placement="top">
+                    <el-button
+                      link
+                      size="small"
+                      :icon="Refresh"
+                      @click="fillGeneratedPassword"
+                    />
+                  </el-tooltip>
+                  <el-tooltip
+                    :content="createDialog.showPassword ? '隐藏密码' : '显示密码'"
+                    placement="top"
+                  >
+                    <el-button
+                      link
+                      size="small"
+                      :icon="createDialog.showPassword ? View : Hide"
+                      @click="createDialog.showPassword = !createDialog.showPassword"
+                    />
+                  </el-tooltip>
+                </div>
+              </template>
+            </el-input>
+            <div class="text-xs text-ink-500 mt-1">
+              留空时由后端生成 10 位小写字母 + 数字随机密码，并在成功面板中展示一次。
+            </div>
+          </el-form-item>
+          <el-form-item label="权限">
+            <el-checkbox v-model="createDialog.form.is_admin">
+              设为管理员
+            </el-checkbox>
+            <div class="text-xs text-ink-500 mt-1">
+              管理员可访问 /admin 后台。勾选后创建时会有二次确认。
+            </div>
+          </el-form-item>
+        </el-form>
+      </template>
+
+      <!-- 成功面板 -->
+      <template v-else>
+        <el-alert
+          type="success"
+          title="用户创建成功！请妥善保存以下信息并告知用户。"
+          :closable="false"
+          show-icon
+          class="!mb-4"
+        />
+        <el-descriptions :column="1" border size="default">
+          <el-descriptions-item label="UID">
+            <div class="flex items-center gap-2">
+              <code class="text-xs text-ink-700 break-all">{{ createDialog.result.id }}</code>
+              <el-button link size="small" @click="copyText(createDialog.result.id, 'UID')">
+                复制
+              </el-button>
+            </div>
+          </el-descriptions-item>
+          <el-descriptions-item label="邮箱">
+            <span class="text-ink-900">{{ createDialog.result.email }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="用户名">
+            <span class="text-ink-900">{{ createDialog.result.username }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="权限">
+            <el-tag
+              v-if="createDialog.result.is_admin"
+              type="warning"
+              effect="dark"
+              size="small"
+            >管理员</el-tag>
+            <el-tag v-else type="success" effect="plain" size="small">普通用户</el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="初始密码">
+            <div class="flex items-center gap-2 flex-wrap">
+              <code class="text-sm font-mono text-rose-600 select-all">
+                {{ createDialog.result.generated_password || createDialog.form.password }}
+              </code>
+              <el-tag
+                v-if="createDialog.result.generated_password"
+                size="small"
+                type="warning"
+                effect="plain"
+              >服务端生成</el-tag>
+              <el-tag
+                v-else
+                size="small"
+                type="info"
+                effect="plain"
+              >管理员设置</el-tag>
+              <el-button
+                link
+                size="small"
+                type="primary"
+                @click="copyText(createDialog.result.generated_password || createDialog.form.password, '初始密码')"
+              >
+                复制
+              </el-button>
+            </div>
+          </el-descriptions-item>
+        </el-descriptions>
+        <div
+          v-if="createDialog.result.generated_password"
+          class="text-xs text-danger-600 mt-3"
+        >
+          ⚠️ 此密码由服务端生成，仅展示一次，关闭弹窗后无法再次查看，请立即复制并告知用户。
+        </div>
+        <div
+          v-else
+          class="text-xs text-ink-500 mt-3"
+        >
+          此密码由您在表单中设置，关闭弹窗后如遗忘可通过「重置密码」流程处理。
+        </div>
+      </template>
+
+      <template #footer>
+        <template v-if="!createDialog.result">
+          <el-button @click="createDialog.visible = false">取消</el-button>
+          <el-button
+            type="primary"
+            :loading="createDialog.submitting"
+            @click="submitCreate"
+          >
+            创建
+          </el-button>
+        </template>
+        <template v-else>
+          <el-button type="primary" @click="finishCreate">完成</el-button>
+        </template>
+      </template>
     </el-dialog>
   </div>
 </template>

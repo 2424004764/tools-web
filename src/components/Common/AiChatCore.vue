@@ -436,10 +436,11 @@ defineExpose({
   <div class="ai-chat-core">
     <!-- AI供应商选择器 -->
     <div class="mb-4">
-      <AiProviderSelector 
+      <AiProviderSelector
         v-model="selectedProvider"
         @change="handleProviderChange"
         :storage-key="storageKey || 'ai-chat-provider-selection'"
+        model-type="text"
       />
     </div>
 

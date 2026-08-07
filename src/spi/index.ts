@@ -39,3 +39,4 @@ export const aiManager = new AIProviderManager()
 export * from './common/interfaces'
 export * from './providers/pollinations'
 export * from './providers/aitools'
+export * from './providers/agnes'

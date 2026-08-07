@@ -3,6 +3,7 @@
 // GET    /api/ai-models?provider_id=xxx       按厂商过滤
 // GET    /api/ai-models?model_key=xxx        按 model_key 精确查询
 // GET    /api/ai-models?capability=chat       按能力过滤
+// GET    /api/ai-models?type=text             按业务类型过滤（text/image/video）
 // POST   /api/ai-models                       body: { provider_id, name, model_key, model_id, capabilities, endpoints, input_template, output_paths, is_public, ... }
 // PUT    /api/ai-models?id=xxx                更新（管理员可改任何；用户只能改自己的 uid=自己 的）
 // DELETE /api/ai-models?id=xxx                删除（管理员可删任何；用户只能删自己的）
@@ -45,6 +46,7 @@ export async function onRequest(context) {
       const id = url.searchParams.get('id')
       const providerId = url.searchParams.get('provider_id')
       const modelKey = url.searchParams.get('model_key')
+      const type = url.searchParams.get('type')
 
       const vis = buildModelVisibilityClause(uid, isAdminUser)
 
@@ -72,7 +74,7 @@ export async function onRequest(context) {
       // 列表（支持过滤）
       let sql = `
         SELECT m.id, m.uid, m.provider_id, m.name, m.model_key, m.model_id,
-               m.capabilities, m.endpoints, m.input_template, m.output_paths,
+               m.type, m.capabilities, m.endpoints, m.input_template, m.output_paths,
                m.is_public, m.description, m.icon, m.sort_order, m.status,
                m.create_time, m.update_time,
                p.slug AS provider_slug, p.name AS provider_name, p.base_url, p.api_key,
@@ -86,6 +88,11 @@ export async function onRequest(context) {
       if (providerId) {
         sql += ` AND m.provider_id = ?`
         args.push(providerId)
+      }
+
+      if (type) {
+        sql += ` AND m.type = ?`
+        args.push(type)
       }
 
       sql += ` ORDER BY p.is_public DESC, m.sort_order ASC, m.id ASC`
@@ -104,6 +111,7 @@ export async function onRequest(context) {
       const body = await request.json().catch(() => ({}))
       const {
         provider_id, name, model_key, model_id,
+        type = 'text',
         capabilities, endpoints, input_template, output_paths,
         is_public = 0,
         description = '', icon = '', sort_order = 0, status = 1
@@ -114,6 +122,10 @@ export async function onRequest(context) {
       }
       if (!capabilities || !endpoints || !input_template || !output_paths) {
         return json({ success: false, error: 'capabilities、endpoints、input_template、output_paths 必填' }, 400)
+      }
+      const allowedTypes = ['text', 'image', 'video']
+      if (!allowedTypes.includes(type)) {
+        return json({ success: false, error: `type 必须是 ${allowedTypes.join('/')} 之一` }, 400)
       }
 
       // 校验 provider 所有权：仅管理员或在私有厂商下能建
@@ -143,10 +155,11 @@ export async function onRequest(context) {
       const ownerUid = isAdminUser && is_public ? '' : uid
       const result = await db.prepare(`
         INSERT INTO ai_models (uid, provider_id, name, model_key, model_id,
-          capabilities, endpoints, input_template, output_paths,
+          type, capabilities, endpoints, input_template, output_paths,
           is_public, description, icon, sort_order, status, create_time, update_time)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
       `).bind(ownerUid, provider_id, name, model_key, model_id,
+              type,
               JSON.stringify(capabilities), JSON.stringify(endpoints),
               JSON.stringify(input_template), JSON.stringify(output_paths),
               is_public ? 1 : 0, description, icon, sort_order, status).run()
@@ -184,6 +197,14 @@ export async function onRequest(context) {
           sets.push(`${field} = ?`)
           args.push(body[field])
         }
+      }
+      if (body.type !== undefined) {
+        const allowedTypes = ['text', 'image', 'video']
+        if (!allowedTypes.includes(body.type)) {
+          return json({ success: false, error: `type 必须是 ${allowedTypes.join('/')} 之一` }, 400)
+        }
+        sets.push('type = ?')
+        args.push(body.type)
       }
       for (const field of jsonFields) {
         if (body[field] !== undefined) {

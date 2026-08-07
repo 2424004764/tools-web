@@ -8,7 +8,7 @@
     <!-- 添加错误提示 -->
     <div v-if="modelsLoadError" class="error-indicator">
       <span>⚠️ {{ modelsLoadError }}</span>
-      <button @click="fetchPollinationsModels" class="retry-button">重试</button>
+      <button @click="fetchAllModels" class="retry-button">重试</button>
     </div>
 
     <div class="selector-row">
@@ -53,7 +53,7 @@
           </option>
         </select>
         <div class="selector-desc">
-          {{ isLoadingModels && selectedProvider === 'pollinations' ? '正在获取最新模型列表...' : getSelectedModelDesc() }}
+          {{ isLoadingModels ? '正在获取最新模型列表...' : getSelectedModelDesc() }}
         </div>
       </div>
     </div>
@@ -70,8 +70,6 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import axios from 'axios'
-const pollinationsTextUrl = ref(import.meta.env.VITE_POLLINATIONS_TEXT_URL);
 
 // 定义模型接口类型
 interface ModelData {
@@ -94,6 +92,8 @@ interface Props {
   }
   placeholder?: string
   storageKey?: string // 新增：存储键名，用于区分不同页面的选择
+  /** 业务类型过滤：text / image / video；不传则全部 */
+  modelType?: 'text' | 'image' | 'video'
 }
 
 interface Emits {
@@ -109,156 +109,90 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<Emits>()
 
-// 供应商数据
-const availableProviders = ref([
-  {
-    name: 'pollinations',
-    displayName: 'Pollinations',
-    description: '强大的AI图像生成和文本处理服务，支持多种模型'
-  }
-])
+// 供应商数据：从 /api/open-providers 动态加载（走站内库，无需前端 API Key）
+const availableProviders = ref<Array<{ id: number; name: string; displayName: string; icon?: string }>>([])
 
 // 添加加载状态
 const isLoadingModels = ref(false)
 const modelsLoadError = ref('')
 
-// Pollinations模型数据（改为响应式数据，支持动态更新）
-const pollinationsModels = ref<ModelData[]>([])
+// 模型数据（按供应商分组）
+const modelsByProvider = ref<Record<string, ModelData[]>>({})
 
 // 当前选择的供应商和模型
 const selectedProvider = ref('')
 const selectedModel = ref('')
 
-// 获取Pollinations模型列表
-const fetchPollinationsModels = async () => {
+// 获取公开供应商列表
+const fetchOpenProviders = async () => {
   try {
-    isLoadingModels.value = true
-    modelsLoadError.value = ''
-    
-    // 获取代理URL和目标URL
-    const proxyUrl = import.meta.env.VITE_POLLINATIONS_PROXY_URL || ''
-    const targetUrl = `${pollinationsTextUrl.value}/models`
-    
-    if (!proxyUrl) {
-      throw new Error('代理URL未配置，请检查环境变量 VITE_POLLINATIONS_PROXY_URL')
+    const res = await fetch('/api/open-providers')
+    const data = await res.json()
+    if (data.success && Array.isArray(data.data)) {
+      availableProviders.value = data.data.map((p: any) => ({
+        id: p.id,
+        name: p.slug,
+        displayName: p.name,
+        icon: p.icon || '',
+      }))
+      return true
     }
-    
-    // 使用代理请求模型列表
-    const response = await axios.get(
-      `${proxyUrl}?path=models&target=${targetUrl}&params=_t=${Date.now()}`,
-      { 
-        timeout: 30000,
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      }
-    )
-    
-    // 处理响应数据
-    let models: any[] = []
-    if (Array.isArray(response.data)) {
-      models = response.data
-    } else if (response.data && Array.isArray(response.data.models)) {
-      models = response.data.models
-    } else {
-      throw new Error('接口返回数据格式不正确')
+    return false
+  } catch (e) {
+    console.error('获取供应商列表失败:', e)
+    return false
+  }
+}
+
+// 获取指定供应商的模型列表（provider_id 用数字 id，slug 无法匹配）
+const fetchModelsForProvider = async (providerId: number): Promise<ModelData[]> => {
+  try {
+    const type = props.modelType
+    const url = type
+      ? `/api/ai-models?provider_id=${providerId}&type=${encodeURIComponent(type)}`
+      : `/api/ai-models?provider_id=${providerId}`
+    const res = await fetch(url)
+    const data = await res.json()
+    if (data.success && Array.isArray(data.data)) {
+      return data.data.map((m: any) => ({
+        name: m.model_key,
+        model: m.model_key,
+        description: m.description || '',
+      }))
     }
-    
-    // 转换数据格式，添加中文描述
-    pollinationsModels.value = models.map((model: any) => ({
-      ...model,
-      // 如果没有 description，根据模型名称生成描述
-      description: model.description || generateModelDescription(model)
-    }))
-    
-    console.log('成功获取Pollinations模型列表:', pollinationsModels.value.length, '个模型')
-    
+    return []
+  } catch (e) {
+    console.error(`获取 ${providerId} 模型列表失败:`, e)
+    return []
+  }
+}
+
+// 获取所有公开供应商的模型（合并到切换逻辑用）
+const fetchAllModels = async () => {
+  isLoadingModels.value = true
+  modelsLoadError.value = ''
+  try {
+    const ok = await fetchOpenProviders()
+    if (!ok) {
+      modelsLoadError.value = '获取供应商失败'
+      return
+    }
+    for (const p of availableProviders.value) {
+      const models = await fetchModelsForProvider(p.id)
+      modelsByProvider.value[p.name] = models
+    }
   } catch (error) {
-    console.error('获取Pollinations模型列表失败:', error)
+    console.error('获取模型列表失败:', error)
     modelsLoadError.value = (error as Error).message || '获取模型列表失败'
-    
-    // 自动切换到下一个供应商
-    await switchToNextProvider()
   } finally {
     isLoadingModels.value = false
   }
 }
 
-// 新增：自动切换到下一个供应商的方法
-const switchToNextProvider = async () => {
-  try {
-    console.log('Pollinations模型加载失败，自动切换到下一个供应商')
-    
-    // 找到当前供应商的索引
-    const currentIndex = availableProviders.value.findIndex(p => p.name === 'pollinations')
-    
-    // 如果当前是pollinations且不是最后一个供应商，切换到下一个
-    if (currentIndex >= 0 && currentIndex < availableProviders.value.length - 1) {
-      const nextProvider = availableProviders.value[currentIndex + 1]
-      console.log(`自动切换到供应商: ${nextProvider.displayName}`)
-      
-      // 更新选择
-      selectedProvider.value = nextProvider.name
-      
-      // 选择该供应商的第一个模型
-      const models = pollinationsModels.value
-      if (models.length > 0) {
-        selectedModel.value = models[0].name
-        console.log(`自动选择模型: ${models[0].name}`)
-      }
-      
-      // 触发选择事件
-      emitSelection()
-      
-      // 清除错误状态
-      modelsLoadError.value = ''
-      
-      console.log('✅ 自动切换完成')
-    } else {
-      console.log('没有可切换的供应商')
-    }
-  } catch (error) {
-    console.error('自动切换供应商失败:', error)
-  }
-}
-
-// 生成模型描述（根据模型信息）
-const generateModelDescription = (model: any): string => {
-  let description = model.name || '未知模型'
-  
-  if (model.provider) {
-    description += ` (${model.provider})`
-  }
-  
-  if (model.reasoning) {
-    description += ' - 专为推理任务优化'
-  }
-  
-  if (model.vision) {
-    description += ' - 支持图像理解'
-  }
-  
-  if (model.audio) {
-    description += ' - 支持音频处理'
-  }
-  
-  if (model.tools) {
-    description += ' - 支持工具调用'
-  }
-  
-  if (model.community) {
-    description += ' - 社区模型'
-  }
-  
-  return description
-}
-
-// 获取Pollinations模型列表
-
-// 计算属性
+// 计算属性：当前供应商的模型列表
 const availableModels = computed(() => {
   if (!selectedProvider.value) return []
-  return pollinationsModels.value
+  return modelsByProvider.value[selectedProvider.value] || []
 })
 
 // 扩展本地存储，为每个供应商保存选择的模型
@@ -293,7 +227,7 @@ const loadFromLocalStorage = (): { provider: string; model: string } => {
         const providerExists = availableProviders.value.some(p => p.name === parsed.provider)
         if (providerExists) {
           // 检查模型是否仍然可用
-          const models = pollinationsModels.value
+          const models = modelsByProvider.value[parsed.provider] || []
           const modelExists = models.some(m => m.name === parsed.model)
           if (modelExists) {
             return parsed
@@ -325,22 +259,22 @@ const getProviderModelHistory = (providerName: string): string => {
 // 方法
 const handleProviderChange = () => {
   const newProvider = selectedProvider.value
-  
+
   // 获取该供应商的模型选择历史
   const previousModel = getProviderModelHistory(newProvider)
-  
+
   if (previousModel) {
     // 如果之前选择过该供应商的模型，验证模型是否仍然可用
-    const models = pollinationsModels.value
+    const models = modelsByProvider.value[newProvider] || []
     const modelExists = models.some(m => m.name === previousModel)
-    
+
     if (modelExists) {
       // 使用之前选择的模型
       selectedModel.value = previousModel
       console.log(`使用之前选择的模型: ${previousModel}`)
     } else {
       // 模型不可用，选择第一个可用模型
-      const firstModel = pollinationsModels.value[0]
+      const firstModel = models[0]
       if (firstModel) {
         selectedModel.value = firstModel.name
         console.log(`模型不可用，选择第一个: ${firstModel.name}`)
@@ -348,13 +282,13 @@ const handleProviderChange = () => {
     }
   } else {
     // 如果之前没有选择过该供应商的模型，选择第一个
-    const firstModel = pollinationsModels.value[0]
+    const firstModel = (modelsByProvider.value[newProvider] || [])[0]
     if (firstModel) {
       selectedModel.value = firstModel.name
       console.log(`首次选择该供应商，使用第一个模型: ${firstModel.name}`)
     }
   }
-  
+
   emitSelection()
 }
 
@@ -384,14 +318,14 @@ const getProviderDisplayName = (providerName: string) => {
 const getSelectedProviderDesc = () => {
   if (!selectedProvider.value) return '请先选择AI供应商'
   const provider = availableProviders.value.find(p => p.name === selectedProvider.value)
-  return provider ? provider.description : ''
+  return provider ? (provider.icon || '') + (provider.displayName || '') : ''
 }
 
 const getSelectedModelDesc = () => {
   if (!selectedProvider.value) return '请先选择AI供应商'
   if (!selectedModel.value) return '请选择具体的AI模型'
 
-  const model = pollinationsModels.value.find(m => m.name === selectedModel.value)
+  const model = (modelsByProvider.value[selectedProvider.value] || []).find(m => m.name === selectedModel.value)
   return model ? model.description : ''
 }
 
@@ -422,37 +356,34 @@ const initializeSelection = () => {
       console.log('使用默认值');
       // 如果本地存储也没有数据，使用默认值（第一个供应商和第一个模型）
       const defaultProvider = availableProviders.value[0];
-      console.log('默认供应商:', defaultProvider);
-      console.log('pollinations模型数量:', pollinationsModels.value.length);
-      
-      const defaultModel = pollinationsModels.value[0]; // 默认使用pollinations的第一个模型
-      console.log('默认模型:', defaultModel);
+      const defaultModels = defaultProvider ? (modelsByProvider.value[defaultProvider.name] || []) : [];
+      const defaultModel = defaultModels[0]; // 默认使用第一个供应商的第一个模型
 
       if (defaultProvider && defaultModel) {
         console.log('设置默认选择');
         selectedProvider.value = defaultProvider.name;
         selectedModel.value = defaultModel.name;
-        
+
         const defaultSelection = {
           provider: defaultProvider.name,
           model: defaultModel.name
         };
-        
+
         console.log('默认选择:', defaultSelection);
-        
+
         // 触发emit，让父组件知道默认值
         emit('update:modelValue', defaultSelection);
         emit('change', defaultSelection);
-        
+
         // 保存默认选择到本地存储
         saveToLocalStorage(defaultSelection);
-        
+
         console.log('✅ 默认选择设置完成');
       } else {
         console.log('❌ 无法设置默认选择');
         console.log('defaultProvider存在:', !!defaultProvider);
         console.log('defaultModel存在:', !!defaultModel);
-        
+
         if (defaultProvider) {
           // 如果没有模型数据，至少设置供应商
           selectedProvider.value = defaultProvider.name;
@@ -461,7 +392,7 @@ const initializeSelection = () => {
       }
     }
   }
-  
+
   console.log('=== initializeSelection 结束 ===');
   console.log('最终选择:', { provider: selectedProvider.value, model: selectedModel.value });
 };
@@ -477,15 +408,15 @@ watch(() => props.modelValue, (newValue) => {
 // 组件挂载时初始化
 onMounted(async () => {
   console.log('AiProviderSelector onMounted 开始');
-  
-  // 先获取模型列表，再初始化选择
-  await fetchPollinationsModels();
-  
-  console.log('模型获取完成，pollinationsModels数量:', pollinationsModels.value.length);
+
+  // 先获取供应商和模型列表，再初始化选择
+  await fetchAllModels();
+
+  console.log('模型获取完成，供应商数量:', availableProviders.value.length);
   console.log('开始初始化选择...');
-  
+
   initializeSelection();
-  
+
   console.log('AiProviderSelector onMounted 完成');
 });
 </script>

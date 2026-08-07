@@ -1,18 +1,14 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch } from 'vue'
-import axios from 'axios'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { copy } from '@/utils/string'
 import { ElMessage } from 'element-plus'
+import { chat } from '@/components/Tools/AiTextToVideo/api'
 
 type Gender = '男' | '女'
 type SurnameUsage = '父姓' | '母姓'
 type GivenLen = '1' | '1-2' | '2'
-
-const pollinationsApiKey = ref(import.meta.env.VITE_POLLINATIONS_API_KEY || '')
-const pollinationsProxyUrl = ref(import.meta.env.VITE_POLLINATIONS_PROXY_URL)
-const pollinationsTextUrl = ref(import.meta.env.VITE_POLLINATIONS_TEXT_URL)
 
 const info = reactive({
   title: 'AI起名',
@@ -255,26 +251,11 @@ const generate = async () => {
       }
     }
 
-    // 构建 OpenAI 格式请求的辅助函数
+    // 构建 Agnes 对话请求
     const fetchOpenAI = async (prompt: string) => {
-      const requestBody = {
-        model: 'nova-fast',
-        messages: [{ role: 'user', content: prompt }]
-      }
-      const resp = await axios.post(
-        pollinationsProxyUrl.value,
-        requestBody,
-        {
-          params: {
-            target: `${pollinationsTextUrl.value}/v1/chat/completions`
-          },
-          headers: {
-            'Authorization': `Bearer ${pollinationsApiKey.value}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      )
-      return resp.data?.choices?.[0]?.message?.content || ''
+      return await chat('agnes/agnes-2.5-flash', [
+        { role: 'user', content: prompt }
+      ])
     }
 
     if (givenLen.value === '1-2') {
