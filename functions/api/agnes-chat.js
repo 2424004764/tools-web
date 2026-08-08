@@ -72,11 +72,16 @@ export async function onRequest(context) {
   }
 
   try {
+    // 兼容前端传 "Bearer "（空 token）的情况：取出 Bearer 后面的实际值，空则降级到系统 key
+    // 否则会把 "Bearer " 透传给上游，Agnes 会报 "无效的令牌"
+    const userToken = (authHeader && authHeader.startsWith('Bearer '))
+      ? authHeader.slice(7).trim()
+      : ''
     const upstream = await fetch(upstreamUrl, {
       method: endpoint.method || 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': authHeader || `Bearer ${resolved.apiKey}`,
+        'Authorization': userToken ? `Bearer ${userToken}` : `Bearer ${resolved.apiKey}`,
         ...(capability === 'chat_stream' ? { 'Accept': 'text/event-stream' } : {}),
       },
       body: JSON.stringify(requestBody),

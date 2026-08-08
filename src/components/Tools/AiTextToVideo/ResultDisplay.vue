@@ -74,10 +74,10 @@
             muted
             loop
             @click="$emit('show-video-modal')"
-            @loadedmetadata="$emit('video-loaded')"
-            @timeupdate="$emit('video-timeupdate')"
-            @mouseenter="$emit('video-mouseenter')"
-            @mouseleave="$emit('video-mouseleave')"
+            @loadedmetadata="$emit('video-loaded', $event)"
+            @timeupdate="$emit('video-timeupdate', $event)"
+            @mouseenter="$emit('video-mouseenter', $event)"
+            @mouseleave="$emit('video-mouseleave', $event)"
           />
           <!-- 时长标签 -->
           <div v-if="videoDuration > 0" class="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white text-caption px-2 py-1 rounded">
@@ -163,9 +163,9 @@ defineEmits<{
   'show-image-modal': [url: string, index: number]
   'download-video': []
   'show-video-modal': []
-  'video-loaded': []
-  'video-timeupdate': []
-  'video-mouseenter': []
-  'video-mouseleave': []
+  'video-loaded': [event: Event]
+  'video-timeupdate': [event: Event]
+  'video-mouseenter': [event: Event]
+  'video-mouseleave': [event: Event]
 }>()
 </script>

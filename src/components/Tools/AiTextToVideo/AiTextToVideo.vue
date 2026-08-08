@@ -2022,7 +2022,7 @@ const sendChatMessage = async () => {
     return // 发送中时不允许再次发送
   }
 
-  
+
   if (!chatInput.value.trim()) {
     ElMessage.warning('请输入消息')
     return
@@ -2062,65 +2062,28 @@ const sendChatMessage = async () => {
   isChatting.value = true
 
   try {
-    const response = await fetch('/api/agnes-chat', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${''}`
-      },
-      body: JSON.stringify({
-        model_key: `agnes/${chatModel.value}`,
-        messages: currentSession.messages.slice(0, -1), // 不包含空的AI消息
-        stream: true
-      })
-    })
+    // 走 /api/ai-proxy（api.ts 的 chatStream 已经处理 user_api_key / system key 切换，无需前端手填 Authorization）
+    // 与其他模块（视频/生图/翻译等）保持同一调用路径，避免再出现 "Bearer 空 token" 类问题
+    const messages = currentSession.messages.slice(0, -1).map(msg => ({
+      role: msg.role,
+      content: msg.content,
+    }))
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}))
-      throw new Error(error.error?.message || '对话失败')
-    }
+    await agnesApi.chatStream(
+      `agnes/${chatModel.value}`,
+      messages,
+      undefined,
+      (content) => {
+        currentSession.messages[aiMessageIndex].content = content
 
-    const reader = response.body?.getReader()
-    const decoder = new TextDecoder()
-
-    if (!reader) {
-      throw new Error('无法获取响应流')
-    }
-
-    let fullContent = ''
-
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-
-      const chunk = decoder.decode(value, { stream: true })
-      const lines = chunk.split('\n')
-
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const data = line.slice(6)
-          if (data === '[DONE]') continue
-
-          try {
-            const json = JSON.parse(data)
-            const content = json.choices[0]?.delta?.content || ''
-            if (content) {
-              fullContent += content
-              currentSession.messages[aiMessageIndex].content = fullContent
-
-              // 实时滚动到底部
-              setTimeout(() => {
-                if (chatContainerRef.value) {
-                  chatContainerRef.value.scrollTop = chatContainerRef.value.scrollHeight
-                }
-              }, 10)
-            }
-          } catch (e) {
-            // 忽略解析错误
+        // 实时滚动到底部
+        setTimeout(() => {
+          if (chatContainerRef.value) {
+            chatContainerRef.value.scrollTop = chatContainerRef.value.scrollHeight
           }
-        }
+        }, 10)
       }
-    }
+    )
 
     // 更新会话标题（用第一条用户消息）
     if (currentSession.messages.length === 2 && currentSession.title === '新对话') {
@@ -2500,7 +2463,8 @@ const downloadVideo = () => {
 }
 
 const handleVideoLoaded = (event: Event) => {
-  const video = event.target as HTMLVideoElement
+  const video = (event?.target as HTMLVideoElement) || videoRef.value
+  if (!video) return
   const duration = Math.round(video.duration)
 
   // 根据当前Tab更新对应的状态
@@ -2512,21 +2476,21 @@ const handleVideoLoaded = (event: Event) => {
 }
 
 const handleVideoTimeUpdate = (event: Event) => {
-  const video = event.target as HTMLVideoElement
-  if (video.duration > 0) {
-    const progress = (video.currentTime / video.duration) * 100
+  const video = (event?.target as HTMLVideoElement) || videoRef.value
+  if (!video || !video.duration) return
+  const progress = (video.currentTime / video.duration) * 100
 
-    // 根据当前Tab更新对应的状态
-    if (activeTab.value === 'text-to-video') {
-      videoProgressTextToVideo.value = progress
-    } else if (activeTab.value === 'image-to-video') {
-      videoProgressImageToVideo.value = progress
-    }
+  // 根据当前Tab更新对应的状态
+  if (activeTab.value === 'text-to-video') {
+    videoProgressTextToVideo.value = progress
+  } else if (activeTab.value === 'image-to-video') {
+    videoProgressImageToVideo.value = progress
   }
 }
 
 const handleVideoMouseEnter = (event: Event) => {
-  const video = event.target as HTMLVideoElement
+  const video = (event?.target as HTMLVideoElement) || videoRef.value
+  if (!video) return
 
   // 根据当前Tab更新对应的状态
   if (activeTab.value === 'text-to-video') {
@@ -2539,7 +2503,8 @@ const handleVideoMouseEnter = (event: Event) => {
 }
 
 const handleVideoMouseLeave = (event: Event) => {
-  const video = event.target as HTMLVideoElement
+  const video = (event?.target as HTMLVideoElement) || videoRef.value
+  if (!video) return
 
   // 根据当前Tab更新对应的状态
   if (activeTab.value === 'text-to-video') {

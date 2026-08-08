@@ -163,13 +163,26 @@ export async function onRequest(context) {
         ? JSON.stringify({ ...requestBody, stream: true })
         : JSON.stringify(requestBody)
     }
-    const upstreamResponse = await fetch(url, fetchInit)
+    // 视频接口专用：上游 503 video_queue_full 时自动退避重试
+    // 其他 capability / 其他错误直接透传，避免影响 chat / image 等低延迟接口
+    const upstreamResponse = await fetchUpstreamWithQueueRetry(
+      url,
+      fetchInit,
+      capability.startsWith('video_')
+    )
 
     if (!upstreamResponse.ok) {
       const errText = await upstreamResponse.text().catch(() => '')
+      let friendlyError = errText
+      try {
+        const errJson = JSON.parse(errText)
+        if (errJson?.code === 'video_queue_full') {
+          friendlyError = 'Agnes 视频队列繁忙，已自动重试 3 次仍无法提交，请过几分钟再试'
+        }
+      } catch {}
       return json({
         ok: false,
-        error: `上游错误 ${upstreamResponse.status}: ${errText.slice(0, 500)}`
+        error: `上游错误 ${upstreamResponse.status}: ${friendlyError.slice(0, 500)}`
       }, upstreamResponse.status)
     }
 
@@ -192,6 +205,47 @@ export async function onRequest(context) {
     console.error('ai-proxy error:', error)
     return json({ ok: false, error: error.message || '调用失败' }, 500)
   }
+}
+
+/**
+ * 调用上游并对 503 video_queue_full 做退避重试
+ * - 仅当 capability 为视频类（video_submit / video_poll）且上游返回 503 且 body.code === 'video_queue_full' 时重试
+ * - 其他能力 / 其他错误码 / 其他错误体一律不重试，立即返回
+ * - 默认最多 3 次尝试（首次 + 2 次重试），间隔 5s / 10s
+ * @returns {Promise<Response>} 最后一次上游响应
+ */
+async function fetchUpstreamWithQueueRetry(url, init, isVideoCapability) {
+  const MAX_ATTEMPTS = 3
+  const delays = [5000, 10000] // 第 1、2 次重试前的等待
+
+  let response = null
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    response = await fetch(url, init)
+
+    // 成功 / 非视频能力 / 非 503：直接返回
+    if (response.ok || !isVideoCapability || response.status !== 503) {
+      return response
+    }
+
+    // 解析 body 判断是否为 video_queue_full（503 也可能用于其他错误）
+    const text = await response.clone().text().catch(() => '')
+    let isQueueFull = false
+    try {
+      const json = JSON.parse(text)
+      isQueueFull = json?.code === 'video_queue_full'
+    } catch {}
+
+    // 不是 video_queue_full 或已是最后一次尝试：返回当前响应
+    if (!isQueueFull || attempt === MAX_ATTEMPTS) {
+      return response
+    }
+
+    // 退避后重试
+    const delayMs = delays[attempt - 1]
+    console.log(`[ai-proxy] video_queue_full，${delayMs}ms 后重试（第 ${attempt}/${MAX_ATTEMPTS - 1} 次重试）`)
+    await new Promise(r => setTimeout(r, delayMs))
+  }
+  return response
 }
 
 /**

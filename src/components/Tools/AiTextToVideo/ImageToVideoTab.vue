@@ -37,10 +37,10 @@
         :autoOptimizeImage="localAutoOptimize"
         @download-video="$emit('download-video')"
         @show-video-modal="$emit('show-video-modal')"
-        @video-loaded="$emit('video-loaded')"
-        @video-timeupdate="$emit('video-timeupdate')"
-        @video-mouseenter="$emit('video-mouseenter')"
-        @video-mouseleave="$emit('video-mouseleave')"
+        @video-loaded="$emit('video-loaded', $event)"
+        @video-timeupdate="$emit('video-timeupdate', $event)"
+        @video-mouseenter="$emit('video-mouseenter', $event)"
+        @video-mouseleave="$emit('video-mouseleave', $event)"
       />
     </div>
   </div>
@@ -84,10 +84,10 @@ const emit = defineEmits<{
   'generate': []
   'download-video': []
   'show-video-modal': []
-  'video-loaded': []
-  'video-timeupdate': []
-  'video-mouseenter': []
-  'video-mouseleave': []
+  'video-loaded': [event: Event]
+  'video-timeupdate': [event: Event]
+  'video-mouseenter': [event: Event]
+  'video-mouseleave': [event: Event]
 }>()
 
 const localImageMode = ref(props.imageMode)
