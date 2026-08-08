@@ -118,7 +118,8 @@ const updateIsMobile = () => {
 
 const openHistory = () => {
   if (isMobile.value) {
-    router.push('/ai-image-edit/history')
+    // 新标签页打开：留在当前页，正在生成的任务不会因路由跳转被中断
+    window.open(router.resolve('/ai-image-edit/history').href, '_blank', 'noopener,noreferrer')
   } else {
     historyRef.value?.open()
   }

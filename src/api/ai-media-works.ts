@@ -68,6 +68,17 @@ export async function fetchAiMediaCategories(): Promise<AiMediaCategory[]> {
   return res.data.data || []
 }
 
+// 公开总数聚合（按 media_type）
+export interface AiMediaCounts {
+  total: number
+  video: number
+  image: number
+}
+export async function fetchAiMediaCounts(): Promise<AiMediaCounts> {
+  const res = await functionsRequest.get('/api/ai-media-works/counts')
+  return res.data.data || { total: 0, video: 0, image: 0 }
+}
+
 // 管理员列表
 export async function fetchAdminAiMediaWorks(
   params: AdminListAiMediaParams = {},
