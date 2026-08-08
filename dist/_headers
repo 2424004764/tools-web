@@ -37,6 +37,15 @@
   Pragma: no-cache
   Expires: 0
 
+# 用户实际访问的是根路径 /，必须同样标记 no-store，
+# 否则 Cloudflare 默认的 max-age=0, must-revalidate 在多节点间存在毫秒级不一致，
+# 与 _headers 的 /index.html 规则命中的是不同响应。
+# 注意：CF Pages 资源规则按声明顺序匹配，根路径声明在前可避免被后续通配规则覆盖。
+/
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+  Pragma: no-cache
+  Expires: 0
+
 /*.woff2
   Cache-Control: public, max-age=31536000, immutable
   Content-Type: font/woff2

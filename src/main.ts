@@ -39,21 +39,58 @@ if (import.meta.env.PROD) {
 }
 
 /**
- * 反注册任何残留的 Service Worker。
+ * 清理残留的 Service Worker / Cache API（与 About.vue 的「清理缓存并刷新」同源逻辑）。
  *
  * 背景：项目历史上短暂启用过 vite-plugin-pwa（dev-dist/sw.js）做 PWA 测试，
  * 即使现在生产构建不再生成 SW，老用户浏览器里可能还驻留着 SW。
  * 残留的 SW 会无视 _headers 缓存控制，按自己的策略响应 fetch，
- * 导致"刷新页面但内容没变"。这里在每次应用启动时主动清理。
+ * 并用预缓存里的旧入口 HTML 干扰版本探测 → 触发 location.replace() 循环。
+ * 这里在每次应用启动时主动反注册 SW 并清理同源 Cache API。
+ *
+ * 仅在确认真清掉了东西时刷新一次（一次性标记防循环），正常用户无感知。
  */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.getRegistrations().then((regs) => {
-      regs.forEach((reg) => {
-        reg.unregister().then((ok) => {
-          if (ok) console.info('[main] 已清理残留 service worker:', reg.scope)
-        })
-      })
+    const markerKey = '__sw_cleaned__'
+    if (sessionStorage.getItem(markerKey)) return
+
+    const cleanupPromise = (async () => {
+      let clearedAny = false
+      try {
+        const regs = await navigator.serviceWorker.getRegistrations()
+        await Promise.all(
+          regs.map(async (reg) => {
+            const ok = await reg.unregister()
+            if (ok) {
+              clearedAny = true
+              console.info('[main] 已清理残留 service worker:', reg.scope)
+            }
+          }),
+        )
+      } catch (e) {
+        // 静默：注册信息读取失败不影响主流程
+      }
+      if ('caches' in window) {
+        try {
+          const keys = await caches.keys()
+          if (keys.length > 0) {
+            await Promise.all(keys.map((k) => caches.delete(k)))
+            clearedAny = true
+            console.info('[main] 已清理残留 Cache API:', keys.length, '个 cache')
+          }
+        } catch (e) {
+          // 静默
+        }
+      }
+      return clearedAny
+    })()
+
+    cleanupPromise.then((cleared) => {
+      if (cleared) {
+        sessionStorage.setItem(markerKey, '1')
+        // 用 replace 重新拉取入口，避免 bfcache 还原旧页面
+        window.location.replace(location.pathname + location.search + location.hash)
+      }
     })
   })
 }
