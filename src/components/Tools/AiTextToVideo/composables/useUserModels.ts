@@ -178,7 +178,7 @@ export function useUserModels() {
         chat: { content: '$.choices[0].message.content' },
         chat_stream: { delta: '$.choices[0].delta.content' },
         video_submit: { video_id: '$.video_id' },
-        video_poll: { status: '$.status', url: '$.video_url', remix_id: '$.remixed_from_video_id' },
+        video_poll: { status: '$.status', url: '$.url' },
         image_generation: { url: '$.data[0].url' },
         image_edit: { url: '$.data[0].url' },
       }

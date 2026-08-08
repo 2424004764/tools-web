@@ -335,27 +335,67 @@ export async function submitVideoTask(
 
 /**
  * 轮询视频状态
+ * - 上游返回 video_queue_full 时（队列繁忙），拉长间隔继续轮询，不立即失败
+ * - 持续 queue_full 超过 MAX_QUEUE_FULL_WAIT_MS 后才抛错（兜底）
  */
 export async function pollVideoStatus(
   modelKey: string,
   videoId: string,
   onProgress?: (status: string) => void
 ): Promise<string> {
+  const NORMAL_INTERVAL = 5000      // 正常轮询间隔
+  const QUEUE_FULL_INTERVAL = 15000 // 队列满时的拉长间隔
+  const MAX_QUEUE_FULL_WAIT_MS = 5 * 60 * 1000 // 最多等待 5 分钟
+  const queueFullStartRef = { value: 0 }
+
   while (true) {
-    await new Promise(resolve => setTimeout(resolve, 5000))
+    let data: any
+    try {
+      data = await callProxy('video_poll', modelKey, { video_id: videoId })
+    } catch (err: any) {
+      // 队列满：拉长间隔继续等（后端已经重试 3 次了，前端再兜底一段时间）
+      if (isQueueFullError(err)) {
+        if (queueFullStartRef.value === 0) {
+          queueFullStartRef.value = Date.now()
+          if (onProgress) onProgress('queue_full')
+        }
+        if (Date.now() - queueFullStartRef.value > MAX_QUEUE_FULL_WAIT_MS) {
+          throw new Error('Agnes 视频队列持续繁忙，请稍后再试')
+        }
+        await sleep(QUEUE_FULL_INTERVAL)
+        continue
+      }
+      // 其他错误直接抛
+      throw err
+    }
 
-    const data = await callProxy('video_poll', modelKey, { video_id: videoId })
+    // 拿到正常响应，重置队列满计时
+    queueFullStartRef.value = 0
+
     const status = data.status
-
     if (onProgress) onProgress(status)
 
     if (status === 'completed') {
-      return data.remix_id || data.url
+      const url = data.url
+      if (!url) {
+        throw new Error('视频生成完成但未返回视频地址，请联系管理员检查 output_paths 配置')
+      }
+      return url
     } else if (status === 'failed') {
-      throw new Error('视频生成失败')
+      throw new Error(data.error || '视频生成失败')
     }
-    // 其他状态继续轮询
+    // 其他状态：正常间隔继续轮询
+    await sleep(NORMAL_INTERVAL)
   }
+}
+
+function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+function isQueueFullError(err: any): boolean {
+  const msg = err?.message || ''
+  return msg.includes('video_queue_full') || msg.includes('视频队列')
 }
 
 /**
