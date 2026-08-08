@@ -7,6 +7,7 @@ import {
   fetchAiMediaWorks,
   fetchAiMediaCategories,
   fetchAiMediaWork,
+  fetchAiMediaCounts,
   type AiMediaWork,
   type AiMediaCategory,
 } from '@/api/ai-media-works'
@@ -18,6 +19,12 @@ const loading = ref(false)
 const list = ref<AiMediaWork[]>([])
 const loadedCoverIds = reactive(new Set<number>())
 const categories = ref<AiMediaCategory[]>([])
+// 全局视频/图片总数（与当前筛选无关，挂在 tab 行展示）
+const totalCounts = ref<{ total: number; video: number; image: number }>({
+  total: 0,
+  video: 0,
+  image: 0,
+})
 
 // 当前筛选：null = 全部
 const activeCategory = ref<string>('') // 空串 = 全部
@@ -62,6 +69,15 @@ const loadCategories = async () => {
     categories.value = await fetchAiMediaCategories()
   } catch (e) {
     // 失败不阻塞
+  }
+}
+
+// 拉取全局视频/图片总数（用于顶部 tab 旁的展示）
+const loadTotalCounts = async () => {
+  try {
+    totalCounts.value = await fetchAiMediaCounts()
+  } catch (e) {
+    // 失败不阻塞，保持 0
   }
 }
 
@@ -197,6 +213,7 @@ onMounted(() => {
     canHover.value = window.matchMedia('(hover: hover) and (pointer: fine)').matches
   }
   loadCategories()
+  loadTotalCounts()
   loadList()
 })
 
@@ -258,7 +275,10 @@ function openOriginal(item: any) {
           </button>
 
           <span class="ml-auto text-xs text-gray-400">
-            共 {{ pagination.total }} 个作品
+            共 {{ totalCounts.total }} 个作品 ·
+            <span class="text-indigo-500">🎬 视频 {{ totalCounts.video }}</span>
+            ·
+            <span class="text-emerald-500">🖼 图片 {{ totalCounts.image }}</span>
           </span>
         </div>
       </div>

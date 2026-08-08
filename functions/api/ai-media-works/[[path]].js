@@ -2,6 +2,7 @@
 //   GET  /api/ai-media-works              公开列表（仅 approved）
 //   POST /api/ai-media-works/batch        批量推送（X-API-Key 鉴权）
 //   GET  /api/ai-media-works/categories   公开分类聚合（仅 approved）
+//   GET  /api/ai-media-works/counts       公开按 media_type 聚合总数（仅 approved）
 //   GET  /api/ai-media-works/:id          公开详情（仅 approved，view_count+1）
 //
 // Cloudflare Pages Functions 路由：双中括号 [[path]] 匹配零或多段路径，
@@ -273,6 +274,32 @@ export async function onRequest(context) {
         name: r.category,
         count: r.count,
       })),
+    })
+  }
+
+  // ---------- GET /api/ai-media-works/counts ----------
+  // 按 media_type 聚合的总数（仅 approved），用于前端展示视频/图片总数
+  if (request.method === 'GET' && path === 'counts') {
+    const result = await db
+      .prepare(
+        `SELECT media_type, COUNT(*) AS count
+         FROM ai_media_works
+         WHERE audit_status = 'approved'
+         GROUP BY media_type`,
+      )
+      .all()
+    const byType = { image: 0, video: 0 }
+    let total = 0
+    for (const r of result.results || []) {
+      const c = Number(r.count) || 0
+      if (r.media_type === 'image' || r.media_type === 'video') {
+        byType[r.media_type] = c
+      }
+      total += c
+    }
+    return json({
+      success: true,
+      data: { total, video: byType.video, image: byType.image },
     })
   }
 
