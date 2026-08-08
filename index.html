@@ -26,46 +26,51 @@
       var RELOAD_KEY = '__inline_reload_count__';
       var MAX_RELOADS = 2;
 
-      // ① 版本对比：当前 SPA 跑的老 chunk vs 服务器最新 chunk
-      // 直接 fetch /，避免 Cloudflare 把 /index.html 308 重定向到 / 时把随机参数带回去触发 loop
-      // Cloudflare _headers 对 /index.html 是 Cache-Control: no-store，配合 cache:'no-store' 自然每次拿最新
+      // 1) 取当前页面真正在跑的入口 hash
+      function readCurrentHash() {
+        var scripts = document.querySelectorAll('script[src*="/js/index-"]');
+        for (var i = 0; i < scripts.length; i++) {
+          var sm = scripts[i].src.match(/\/js\/index-([a-f0-9]+)\.js/);
+          if (sm) return sm[1];
+        }
+        return '';
+      }
+
+      // 2) 带 cache-bust 查询参数拉取根 HTML。任意两边 hash 缺失时都放弃刷新，
+      //    避免 length 兜底 / 旧 SW 等场景下产生永久不一致比较。
       function checkAndReload() {
-        fetch('/', { cache: 'no-store', credentials: 'same-origin' })
+        var probeUrl = '/?__inline_v=' + Date.now();
+        var currentHash = readCurrentHash();
+        if (!currentHash) return;
+        fetch(probeUrl, { cache: 'no-store', credentials: 'same-origin' })
           .then(function(r) { return r.ok ? r.text() : '' })
           .then(function(html) {
             if (!html) return;
             var m = html.match(/\/js\/index-([a-f0-9]+)\.js/);
-            var serverHash = m ? m[1] : null;
-            var scripts = document.querySelectorAll('script[src*="/js/index-"]');
-            var currentHash = null;
-            for (var i = 0; i < scripts.length; i++) {
-              var sm = scripts[i].src.match(/\/js\/index-([a-f0-9]+)\.js/);
-              if (sm) { currentHash = sm[1]; break; }
-            }
-            if (serverHash && currentHash && serverHash !== currentHash) {
-              var count = parseInt(sessionStorage.getItem(RELOAD_KEY) || '0', 10);
-              if (count >= MAX_RELOADS) {
-                // 已重载多次仍不一致 → 可能是 CDN 多节点版本不同步，停止重载让 Vue 层兜底
-                sessionStorage.removeItem(RELOAD_KEY);
-                return;
-              }
-              sessionStorage.setItem(RELOAD_KEY, String(count + 1));
-              // 跳到纯路径（去掉 search/hash），避免随机参数污染下次 load
-              window.location.replace(location.pathname + location.hash);
-            } else {
-              // 版本一致，清除计数器
+            var serverHash = m ? m[1] : '';
+            if (!serverHash) return; // 服务端格式变化或被截断，宁可不刷
+            if (serverHash === currentHash) {
+              // 版本一致：清掉之前的累计计数
               sessionStorage.removeItem(RELOAD_KEY);
+              return;
             }
+            var count = parseInt(sessionStorage.getItem(RELOAD_KEY) || '0', 10);
+            if (count >= MAX_RELOADS) {
+              // 已达上限：保留计数用于跨标签页观察，停止重载让 Vue 兜底
+              return;
+            }
+            sessionStorage.setItem(RELOAD_KEY, String(count + 1));
+            // 保留 query（OAuth / 房间号 / 首页锚点） + hash
+            window.location.replace(location.pathname + location.search + location.hash);
           })
           .catch(function() { /* 网络/部署瞬时错误，静默 */ });
       }
       checkAndReload();
 
-      // ② bfcache 强制拦截：pageshow 的 e.persisted=true 表示页面从 bfcache 恢复
+      // 3) bfcache 恢复时复用同一套版本检查：只有服务侧真的领先了才刷，
+      //    否则让用户停留在 bfcache 中的页面，避免误刷新。
       window.addEventListener('pageshow', function(e) {
-        if (e.persisted) {
-          window.location.reload();
-        }
+        if (e.persisted) checkAndReload();
       });
     })();
     </script>

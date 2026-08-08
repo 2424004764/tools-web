@@ -4,15 +4,14 @@ import { constantRoute } from './router'
 import { isAppStale, isVersionCheckComplete } from '@/utils/version-guard'
 import { useUserStore } from '@/store/modules/user'
 
-// 硬刷防循环 flag：硬刷后落到新页面，beforeEach 检测到并清除
-const HARD_RELOAD_FLAG = '__hard_reload_guard__'
-
-// chunk 加载失败专用 flag，与版本守卫的 HARD_RELOAD_FLAG 分离，避免互相干扰
-const CHUNK_ERROR_FLAG = '__chunk_error_guard__'
 // 记录用户正在导航到的目标路径，供 onError 硬刷时使用
 const TARGET_PATH_KEY = '__nav_target_path__'
 
-// 同一会话最多硬刷 N 次，超出后停止硬刷避免死循环
+// chunk 加载失败硬刷防循环：会话内累计计数，到达上限后停止硬刷，
+// 避免 旧 SW / CDN 异常 / 旧 chunk 仍可访问 时反复 reload。
+const CHUNK_ERROR_KEY = '__chunk_error_count__'
+const MAX_CHUNK_ERRORS = 2
+// 同一会话最多硬刷 N 次版本不一致，超出后停止硬刷避免死循环
 // （典型场景：CDN 边缘缓存返回老 hash 导致 isAppStale() 永远 true）
 const MAX_RELOADS_PER_SESSION = 3
 const RELOAD_COUNT_KEY = '__reload_count__'
@@ -40,14 +39,6 @@ const APP_TITLE = import.meta.env.VITE_APP_TITLE as string
 const APP_DESC = import.meta.env.VITE_APP_DESC as string
 
 router.beforeEach((to, _from, next) => {
-  // 硬刷成功后第一次进入路由：清除 flag，避免误判
-  if (sessionStorage.getItem(HARD_RELOAD_FLAG)) {
-    sessionStorage.removeItem(HARD_RELOAD_FLAG)
-  }
-  // chunk 错误硬刷后清除专用 flag
-  if (sessionStorage.getItem(CHUNK_ERROR_FLAG)) {
-    sessionStorage.removeItem(CHUNK_ERROR_FLAG)
-  }
   // 记录目标路径，供 onError 硬刷时使用（避免 currentRoute 还指向旧路由）
   sessionStorage.setItem(TARGET_PATH_KEY, to.fullPath)
 
@@ -61,7 +52,6 @@ router.beforeEach((to, _from, next) => {
 
     // 两次硬刷之间最小间隔，防止 scroll → router.replace → 硬刷 的紧密循环
     if (reloadCount < MAX_RELOADS_PER_SESSION && (now - lastReload) > MIN_RELOAD_INTERVAL) {
-      sessionStorage.setItem(HARD_RELOAD_FLAG, '1')
       sessionStorage.setItem(RELOAD_COUNT_KEY, String(reloadCount + 1))
       sessionStorage.setItem(LAST_RELOAD_TIME_KEY, String(now))
       window.location.replace(to.fullPath || '/')
@@ -103,25 +93,35 @@ router.beforeEach((to, _from, next) => {
   next()
 })
 
-// 兜底：chunk 404（轮询窗口期内罕见发生）。硬刷到目标 URL。
-// 使用独立的 CHUNK_ERROR_FLAG，与版本守卫的 HARD_RELOAD_FLAG 分离，
-// 避免版本守卫设 flag → 硬刷 → chunk 再次失败 → 误判为"已硬刷过"直接跳 404。
-// 同时通过 TARGET_PATH_KEY 获取用户真正想去的路径，
-// 而非 router.currentRoute.value.fullPath（chunk 加载失败时可能还指向旧路由）。
+// 兜底：动态路由 chunk 加载失败。
+// 之前用单独的 flag 在 beforeEach 顶部清空，flag 永远抓不到 → 硬刷永远重来。
+// 改为在 afterEach 导航成功后才清零；onError 用累加计数限制重试次数，
+// 超过后渲染不依赖任何路由 chunk 的静态错误提示，避免 /404 组件也加载失败形成新循环。
 router.onError((error) => {
-  console.warn('[router] chunk load failed, hard reloading:', error)
-  if (sessionStorage.getItem(CHUNK_ERROR_FLAG)) {
-    sessionStorage.removeItem(CHUNK_ERROR_FLAG)
-    router.replace('/404')
+  console.warn('[router] chunk load failed:', error)
+  const errCount = parseInt(sessionStorage.getItem(CHUNK_ERROR_KEY) || '0', 10) + 1
+  sessionStorage.setItem(CHUNK_ERROR_KEY, String(errCount))
+  if (errCount > MAX_CHUNK_ERRORS) {
+    // 多次重试仍失败：直接渲染静态错误提示，不依赖 SPA 路由
+    sessionStorage.removeItem(CHUNK_ERROR_KEY)
+    document.body.innerHTML =
+      '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#666">' +
+      '<div style="text-align:center"><h2 style="font-size:18px;margin-bottom:8px">页面加载失败</h2>' +
+      '<p style="font-size:14px">请检查网络后<a href="/" style="color:#409EFF;margin:0 4px">刷新重试</a>' +
+      '，或在「关于」页点击「清理缓存并刷新」按钮</p></div></div>'
     return
   }
-  sessionStorage.setItem(CHUNK_ERROR_FLAG, '1')
+  // 第一次/第二次失败：硬刷到目标 URL（保留 query），由 afterEach 在成功后清零
   const targetPath = sessionStorage.getItem(TARGET_PATH_KEY) || router.currentRoute.value.fullPath || '/'
   window.location.replace(targetPath)
 })
 
 // 路由后置：仅更新 document.title（SPA 内部导航的用户体验优化）
+// 同时清除动态 chunk 错误计数（导航成功说明目标 chunk 已加载完毕）
 router.afterEach((to) => {
+  if (sessionStorage.getItem(CHUNK_ERROR_KEY)) {
+    sessionStorage.removeItem(CHUNK_ERROR_KEY)
+  }
   document.title = to.meta.title
     ? `${to.meta.title as string}-${APP_TITLE}`
     : `${APP_TITLE}-${APP_DESC}`
