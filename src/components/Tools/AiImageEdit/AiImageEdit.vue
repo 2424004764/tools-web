@@ -631,7 +631,7 @@ const openInNewTab = () => {
               <textarea
                 v-model="prompt"
                 placeholder="描述你想要的图片效果，例如：把图片中的天空变成日落、让人物戴上墨镜、生成一只坐在沙发上的猫..."
-                maxlength="1000"
+                maxlength="5000"
                 class="w-full p-4 pr-10 pb-7 border rounded-lg focus:ring-2 focus:ring-blue-500 min-h-[120px] resize-y"
                 :class="{ 'border-red-400': promptTouched && !prompt.trim() }"
                 :disabled="isLoading"
@@ -652,8 +652,8 @@ const openInNewTab = () => {
               <!-- 字符计数：右下角 -->
               <span
                 class="absolute bottom-2 right-3 text-caption pointer-events-none tabular-nums"
-                :class="prompt.length >= 1000 ? 'text-red-500 font-semibold' : prompt.length >= 800 ? 'text-amber-500' : 'text-gray-400'"
-              >{{ prompt.length }} / 1000</span>
+                :class="prompt.length >= 5000 ? 'text-red-500 font-semibold' : prompt.length >= 4000 ? 'text-amber-500' : 'text-gray-400'"
+              >{{ prompt.length }} / 5000</span>
             </div>
             <span v-if="promptTouched && !prompt.trim()" class="text-caption text-red-500 mt-1 block">
               请输入提示词
@@ -759,7 +759,7 @@ const openInNewTab = () => {
               <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
             </svg>
             <span>
-              <strong>请勿关闭浏览器或刷新页面</strong>，否则请求将提前终止，已扣积分会自动退还
+              <strong>请勿关闭浏览器或刷新页面</strong>，否则请求将提前终止，已扣积分不会返还
               <span v-if="currentModelCost === 0" class="text-amber-700">（当前为免费）</span>
             </span>
           </div>
@@ -810,7 +810,7 @@ const openInNewTab = () => {
                 <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
                 </svg>
-                <span>请勿关闭浏览器或刷新页面，否则请求将提前终止，已扣积分会自动退还</span>
+                <span>请勿关闭浏览器或刷新页面，否则请求将提前终止，已扣积分不会返还</span>
               </div>
             </div>
           </div>

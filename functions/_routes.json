@@ -72,7 +72,11 @@
     "/api/me/credits/transactions",
     "/api/me/redeem",
     "/api/me/generation-records",
-    "/api/me/generation-records/*"
+    "/api/me/generation-records/*",
+    "/api/travel-maps",
+    "/api/travel-maps/*",
+    "/api/travel-map-plaza",
+    "/api/travel-map/*"
   ],
   "exclude": []
 }

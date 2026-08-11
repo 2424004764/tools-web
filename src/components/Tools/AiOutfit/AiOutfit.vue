@@ -626,7 +626,7 @@ const modeBadge = computed(() => clothingFile.value
               <textarea
                 v-model="stylePrompt"
                 placeholder="例如：商务休闲 / 夏日海边 / 约会 / 街头潮流 / 学院风 / 晚宴礼服 / 居家舒适…"
-                maxlength="200"
+                maxlength="5000"
                 class="w-full p-4 pr-10 pb-7 border rounded-lg focus:ring-2 focus:ring-pink-500 min-h-[80px] resize-y"
                 :disabled="isLoading"
               ></textarea>
@@ -644,8 +644,8 @@ const modeBadge = computed(() => clothingFile.value
               </button>
               <span
                 class="absolute bottom-2 right-3 text-caption pointer-events-none tabular-nums"
-                :class="stylePrompt.length >= 200 ? 'text-red-500 font-semibold' : 'text-gray-400'"
-              >{{ stylePrompt.length }} / 200</span>
+                :class="stylePrompt.length >= 5000 ? 'text-red-500 font-semibold' : stylePrompt.length >= 4000 ? 'text-amber-500' : 'text-gray-400'"
+              >{{ stylePrompt.length }} / 5000</span>
             </div>
           </div>
 
@@ -737,7 +737,7 @@ const modeBadge = computed(() => clothingFile.value
               <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
             </svg>
             <span>
-              <strong>请勿关闭浏览器或刷新页面</strong>，否则请求将提前终止，已扣积分会自动退还
+              <strong>请勿关闭浏览器或刷新页面</strong>，否则请求将提前终止，已扣积分不会返还
               <span v-if="currentModelCost === 0" class="text-amber-700">（当前为免费）</span>
             </span>
           </div>
@@ -783,7 +783,7 @@ const modeBadge = computed(() => clothingFile.value
                 <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
                 </svg>
-                <span>请勿关闭浏览器或刷新页面，否则请求将提前终止，已扣积分会自动退还</span>
+                <span>请勿关闭浏览器或刷新页面，否则请求将提前终止，已扣积分不会返还</span>
               </div>
             </div>
           </div>

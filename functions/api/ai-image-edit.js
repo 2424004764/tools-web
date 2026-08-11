@@ -262,7 +262,7 @@ export async function onRequest(context) {
     return json({ ok: false, error: '请求格式错误，需要 multipart/form-data' }, 400)
   }
 
-  const prompt = (formData.get('prompt')?.toString() || '').trim().slice(0, 1000)
+  const prompt = (formData.get('prompt')?.toString() || '').trim().slice(0, 5000)
   const modelKey = (formData.get('model')?.toString() || '').trim() || 'gpt-image-2-1k'
   const size = formData.get('size')?.toString() || '1024x1024'
   const imageFile = formData.get('image')

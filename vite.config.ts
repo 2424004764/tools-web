@@ -356,6 +356,18 @@ export default defineConfig(({command, mode}) => {
           target: 'http://127.0.0.1:8788',
           changeOrigin: true,
         },
+        '/api/travel-maps': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
+        '/api/travel-map-plaza': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
+        '/api/travel-map': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
         '/api/send-verification-code': {
           target: 'http://127.0.0.1:8788',
           changeOrigin: true,
