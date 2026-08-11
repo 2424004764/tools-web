@@ -1242,6 +1242,36 @@ export const constantRoute = [
     }
   },
   {
+    path: '/travel-map/',
+    component: () => import('@/components/Tools/TravelMap/TravelMap.vue'),
+    name: 'travelMap',
+    meta: {
+      title: "旅游地图",
+      keywords: '旅游地图,路线规划,徒步路线,露营地标注,自驾游地图,天地图,海拔标注,户外地图',
+      description: '在线旅游地图规划工具：自由绘制徒步与自驾路线并自动计算里程，标注露营地、商店超市、水源、观景点等点位并记录海拔，支持创建多张地图并分享到地图广场',
+    }
+  },
+  {
+    path: '/travel-map/plaza',
+    component: () => import('@/components/Tools/TravelMap/TravelMapPlaza.vue'),
+    name: 'travelMapPlaza',
+    meta: {
+      title: "地图广场",
+      keywords: '地图广场,旅游路线分享,徒步路线推荐,露营地分享,自驾路线',
+      description: '浏览大家公开分享的旅游地图，查看规划好的徒步、自驾路线以及露营地、补给点等实用点位',
+    }
+  },
+  {
+    path: '/travel-map/share/:slug',
+    component: () => import('@/components/Tools/TravelMap/TravelMapShare.vue'),
+    name: 'travelMapShare',
+    meta: {
+      title: "查看旅游地图",
+      keywords: '旅游地图分享,路线分享,露营地,户外路线',
+      description: '查看分享的旅游地图，包含规划路线与露营地、商店超市、观景点等标注点位',
+    }
+  },
+  {
     path: '/qa',
     component: () => import('@/components/Tools/QA/QA.vue'),
     name: 'qa',

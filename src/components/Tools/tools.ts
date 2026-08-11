@@ -1230,6 +1230,15 @@ export function getToolsCate() {
           cateId: 7,
           cate: '其他工具',
         },
+        {
+          id: 'travel-map-2026-08-08',
+          title: '旅游地图',
+          logo: '/images/logo/travel-map.png',
+          desc: '基于天地图规划路线、标注露营地/商店超市/观景点并记录海拔，可创建多张地图并分享到地图广场',
+          url: '/travel-map/',
+          cateId: 7,
+          cate: '其他工具',
+        },
       ]
     },
     {

@@ -263,7 +263,7 @@ export async function onRequest(context) {
   const hasPersonImage = personImage && personImage instanceof File && personImage.size > 0
   const clothingImage = formData.get('clothingImage')
   const hasClothingImage = clothingImage && clothingImage instanceof File && clothingImage.size > 0
-  const style = (formData.get('style')?.toString() || '').trim().slice(0, 200)
+  const style = (formData.get('style')?.toString() || '').trim().slice(0, 5000)
   const modelKey = (formData.get('model')?.toString() || '').trim() || 'gpt-image-2-1k'
   const size = formData.get('size')?.toString() || '1024x1024'
 
