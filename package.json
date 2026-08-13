@@ -12,6 +12,7 @@
     "build": "vue-tsc --noEmit && vite build --mode development",
     "build:pro": "vue-tsc --noEmit && vite build --mode production && pnpm sync:functions",
     "sync:functions": "node scripts/sync-functions.mjs",
+    "deploy:cf": "pnpm build:pro && pnpm exec wrangler pages deploy dist --project-name tools-web",
     "preview": "vite preview",
     "generate:sitemap": "node scripts/generate-sitemap.js"
   },

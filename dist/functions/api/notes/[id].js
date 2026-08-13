@@ -1,1 +1,0 @@
-export { onRequest, onRequestOptions } from '../notes.js'

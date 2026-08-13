@@ -185,6 +185,40 @@ export interface GenerationRecord {
   created_at: string
 }
 
+/** 全局 API 错误日志（由 functions/_middleware.js 自动写入） */
+export interface ApiErrorLog {
+  id: string
+  path: string
+  method: string
+  /** 返回给客户端的 HTTP 状态码 */
+  status: number
+  error_message: string | null
+  /** 失败环节：validation/auth/db/kv/upstream/unknown */
+  error_stage: string | null
+  upstream_name: string | null
+  upstream_status: number | null
+  upstream_body: string | null
+  uid: string | null
+  client_ip: string | null
+  user_agent: string | null
+  duration_ms: number | null
+  /** 原始 JSON 字符串 */
+  extra: string | null
+  created_at: string
+}
+
+export interface ApiErrorLogParams {
+  page?: number
+  pageSize?: number
+  path?: string
+  status?: number
+  stage?: string
+  uid?: string
+  keyword?: string
+  startDate?: string
+  endDate?: string
+}
+
 /** 兑换码（管理视图） */
 export interface RedeemCode {
   id: string

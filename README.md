@@ -89,22 +89,22 @@ pnpm install
 pnpm dev
 ```
 
-打包
-```
-// 开发构建（带 source map）
+打包与部署
+```bash
+# 开发构建（带 source map）
 pnpm build
 
-// 生产构建（自动把 functions/、wrangler.toml、robots.txt、sitemap.xml 同步到 dist/）
+# 生产构建（自动把 functions/、wrangler.toml、robots.txt、sitemap.xml 同步到 dist/）
 pnpm build:pro
 
-// 仅同步 functions + 配置文件到 dist/（build 已经跑过、不想重新 build）
+# 仅同步 functions + 配置文件到 dist/（build 已经跑过、不想重新 build）
 pnpm sync:functions
+
+# 构建并通过 Wrangler 部署到 Cloudflare Pages 项目 tools-web
+pnpm deploy:cf
 ```
 
-打包seo静态页面:复制`.env.development`文件，并将文件名修改为`.env.production`,将里面的`NODE_ENV`的值改为`production`,然后运行下面打包命令
-```
-pnpm build:pro
-```
+> `dist/` 是本地构建产物，已加入 `.gitignore`，不提交到 Git。执行 `pnpm deploy:cf` 时会重新生成 `dist/` 并由 Wrangler 上传。
 
 git提交
 ```
@@ -118,13 +118,40 @@ git reset --hard HEAD && git clean -df
 
 ### Cloudflare部署
 
+Cloudflare Pages 项目名为 `tools-web`。本项目不在 Git 中提交 `dist/`，部署时由本地或 CI 重新构建并通过 Wrangler 上传。
+
+首次使用先登录 Cloudflare：
+
+```bash
+pnpm exec wrangler login
+```
+
+之后在项目根目录执行：
+
+```bash
+pnpm deploy:cf
+```
+
+该命令会依次执行：
+
+1. `pnpm build:pro`：生成生产环境的 `dist/`，并同步 Cloudflare Functions 与路由配置。
+2. `pnpm exec wrangler pages deploy dist --project-name tools-web`：将 `dist/` 部署到 Cloudflare Pages 的 `tools-web` 项目。
+
+也可以分步执行：
+
+```bash
+pnpm build:pro
+pnpm exec wrangler pages deploy dist --project-name tools-web
+```
+
+部署前请确认 `.env.production` 已正确配置，并已在 Cloudflare Pages 控制台配置 D1、KV、环境变量和密钥绑定。
+
 详见我的公众号文章：[https://mp.weixin.qq.com/s/kIrz2uAv0cmT3f2rPWbtdQ](https://mp.weixin.qq.com/s/RXWAGN6OpKw2qa1DKF_5-g)
 
 ## 本地调试functions
 根目录执行命令：
-```
-pnpm install wrangler
-wrangler pages dev .
+```bash
+pnpm exec wrangler pages dev .
 ```
 然后会启动一个服务，之后就可以像请求functions一样的方式调用的，只是把请求地址改成本地的
 

@@ -20,6 +20,7 @@ const menus: MenuItem[] = [
   { index: '/admin/tools', title: '工具开关', icon: 'tools' },
   { index: '/admin/generation-records', title: '请求日志', icon: 'logs' },
   { index: '/admin/ai-media-works', title: 'AI 媒体作品', icon: 'media' },
+  { index: '/admin/error-logs', title: '错误日志', icon: 'warning' },
 ]
 
 const activeIndex = (path: string) => {
