@@ -49,23 +49,17 @@ pages_build_output_dir = "dist"
 # 非敏感 / 可公开的 ID（如 OAuth client_id、回调地址）可继续放在此处
 # 站点名称（邮件标题、邮件正文等后端文案使用；前端请用 VITE_APP_TITLE）
 SITE_NAME = "一方工具箱"
-JWT_SECRET = "PLACEHOLDER_REPLACE_VIA_CF_DASHBOARD"           # TODO: 在 Cloudflare Pages Dashboard 绑定
-RESEND_API_KEY = "PLACEHOLDER_REPLACE_VIA_CF_DASHBOARD"        # TODO: 同上
 RESEND_FROM_EMAIL = "一方工具箱 <noreply@tool-helper.fologde.com>"
 LINUXDO_CLIENT_ID = "ndZjdtb3uuqsdQsLXVP9EryepP4g9p1C"          # OAuth client_id 公开安全
-LINUXDO_CLIENT_SECRET = "PLACEHOLDER_REPLACE_VIA_CF_DASHBOARD"  # TODO: 同上
 LINUXDO_REDIRECT_URI = "http://127.0.0.1:8788/linuxdo-auth"
 # QQ登录配置（已隐藏）
 QQ_CLIENT_ID = "102806259"
-QQ_CLIENT_SECRET = "PLACEHOLDER_REPLACE_VIA_CF_DASHBOARD"       # TODO: 同上
 QQ_REDIRECT_URI = "http://127.0.0.1:8788/qq-auth"
 # Gitee登录配置
 GITEE_CLIENT_ID = "a33bfc0232834f1fd309dc2c1696821bc821e5f746ef28869496d88fb7b4b104"
-GITEE_CLIENT_SECRET = "PLACEHOLDER_REPLACE_VIA_CF_DASHBOARD"     # TODO: 同上
 GITEE_REDIRECT_URI = "http://127.0.0.1:8788/gitee-auth"
 # Github登录配置
 GITHUB_CLIENT_ID = "Ov23lih4DozBgCiAwLWe"
-GITHUB_CLIENT_SECRET = "PLACEHOLDER_REPLACE_VIA_CF_DASHBOARD"   # TODO: 同上
 GITHUB_REDIRECT_URI = "http://127.0.0.1:8788/github-auth"
 
 # 验证码 KV 绑定（替代 send-verification-code.js 里的内存 Map）
@@ -83,7 +77,6 @@ AIMW_KEY = "dev-local-test-key-7f3a9b2c1e8d"
 # bafang.me（AI 图片编辑 / AI 穿搭建议 共用）
 # 重要：per [[memory:wrangler-dot-dev-vars-not-propagated]]，单独写在 .dev.vars 不够，
 # 必须也写在 wrangler.toml 的 [env.dev.vars] 里，wrangler 4.59.2 才会注入到函数运行时 env。
-BAFANG_API_KEY = "sk-UbQqE9Nd1gVznm5qLrjq6qH4J1Sbc4ncAJoYLXThCjGVWx7m"
 
 [env.production.vars]
 # 线上绑定时填入真实值（带引号保护特殊字符）

@@ -1656,6 +1656,16 @@ export const constantRoute = [
           description: '管理 AI 媒体作品：审核、通过、删除',
         },
       },
+      {
+        path: 'error-logs',
+        component: () => import('@/components/Admin/AdminErrorLogs.vue'),
+        name: 'adminErrorLogs',
+        meta: {
+          title: '错误日志',
+          keywords: '后台错误日志',
+          description: '查看 /api/* 失败请求，自动捕获 status>=400 的响应',
+        },
+      },
     ],
   },
 ]

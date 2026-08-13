@@ -9,6 +9,7 @@ lerna-debug.log*
 tmpclaude-*-cwd
 
 node_modules
+dist
 dist-ssr
 *.local
 .env.development

@@ -1,9 +1,15 @@
 import { ApiResponse } from '../utils/db.js'
+import { attachUpstreamError } from '../utils/error-log.js'
 
 // 生成6位数字验证码
 const generateCode = () => Math.floor(100000 + Math.random() * 900000).toString()
 
-// 发送邮件通过 Resend
+/**
+ * 发送邮件通过 Resend。
+ * 失败时返回 { ok:false, status, body } 而非仅 false，
+ * 方便调用方把上游真实状态码与响应体挂到 context.data.__upstreamError
+ * 上，由全局中间件落库到 api_error_logs。
+ */
 const sendEmail = async (to, subject, text, html, apiKey, fromEmail) => {
   try {
     const response = await fetch('https://api.resend.com/emails', {
@@ -23,12 +29,12 @@ const sendEmail = async (to, subject, text, html, apiKey, fromEmail) => {
     if (!response.ok) {
       const errBody = await response.text().catch(() => '')
       console.error('Resend failed:', response.status, errBody)
-      return false
+      return { ok: false, status: response.status, body: errBody }
     }
-    return true
+    return { ok: true }
   } catch (error) {
     console.error('Resend error:', error)
-    return false
+    return { ok: false, status: 0, body: String(error?.message || error) }
   }
 }
 
@@ -36,25 +42,26 @@ export async function onRequest(context) {
   const { request, env } = context
 
   if (request.method !== 'POST') {
-    return ApiResponse.error('仅支持 POST 请求', request.headers.get('Origin'))
+    return ApiResponse.error('仅支持 POST 请求', request.headers.get('Origin'), 405)
   }
 
   try {
     const { email, type } = await request.json() // type: register / login / reset
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return ApiResponse.error('邮箱格式不正确', request.headers.get('Origin'))
+      return ApiResponse.error('邮箱格式不正确', request.headers.get('Origin'), 400)
     }
 
     if (!['register', 'login', 'reset'].includes(type)) {
-      return ApiResponse.error('类型参数错误', request.headers.get('Origin'))
+      return ApiResponse.error('类型参数错误', request.headers.get('Origin'), 400)
     }
 
     // 检查邮箱是否已注册（仅注册时检查）
     if (type === 'register') {
       const existing = await env.DB.prepare('SELECT id FROM user WHERE email = ?').bind(email).first()
       if (existing) {
-        return ApiResponse.error('该邮箱已注册', request.headers.get('Origin'))
+        attachUpstreamError(context, { stage: 'validation', extra: { email, type, reason: 'email_registered' } })
+        return ApiResponse.error('该邮箱已注册', request.headers.get('Origin'), 409)
       }
     }
 
@@ -62,7 +69,8 @@ export async function onRequest(context) {
     if (type === 'login' || type === 'reset') {
       const existing = await env.DB.prepare('SELECT id FROM user WHERE email = ?').bind(email).first()
       if (!existing) {
-        return ApiResponse.error('该邮箱未注册', request.headers.get('Origin'))
+        attachUpstreamError(context, { stage: 'auth', extra: { email, type, reason: 'email_not_registered' } })
+        return ApiResponse.error('该邮箱未注册', request.headers.get('Origin'), 404)
       }
     }
 
@@ -72,6 +80,7 @@ export async function onRequest(context) {
 
     // 存储到 KV（5 分钟 TTL 由 KV 原生 expirationTtl 保证）
     if (!env.VERIFICATION_CODES) {
+      attachUpstreamError(context, { stage: 'kv', extra: { email, type, reason: 'kv_binding_missing' } })
       return ApiResponse.error('验证码服务未配置（缺少 VERIFICATION_CODES 绑定）', request.headers.get('Origin'), 500)
     }
     await env.VERIFICATION_CODES.put(
@@ -100,8 +109,15 @@ export async function onRequest(context) {
 
     const sent = await sendEmail(email, subject, text, html, env.RESEND_API_KEY, env.RESEND_FROM_EMAIL)
 
-    if (!sent) {
-      return ApiResponse.error('验证码发送失败，请稍后重试', request.headers.get('Origin'))
+    if (!sent.ok) {
+      attachUpstreamError(context, {
+        stage: 'upstream',
+        upstreamName: 'resend',
+        upstreamStatus: sent.status,
+        upstreamBody: sent.body,
+        extra: { email, type },
+      })
+      return ApiResponse.error('验证码发送失败，请稍后重试', request.headers.get('Origin'), 500)
     }
 
     return ApiResponse.success({ message: '验证码已发送，请查收邮件' }, request.headers.get('Origin'))
