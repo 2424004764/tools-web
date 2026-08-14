@@ -33,8 +33,3 @@ CREATE TABLE IF NOT EXISTS api_error_logs (
     extra           TEXT,               -- JSON 附加上下文
     created_at      TEXT NOT NULL       -- ISO 8601
 );
-
-CREATE INDEX IF NOT EXISTS idx_api_error_logs_created ON api_error_logs (created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_api_error_logs_path    ON api_error_logs (path);
-CREATE INDEX IF NOT EXISTS idx_api_error_logs_status  ON api_error_logs (status);
-CREATE INDEX IF NOT EXISTS idx_api_error_logs_stage   ON api_error_logs (error_stage);

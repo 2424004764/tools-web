@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ElImageViewer } from 'element-plus'
@@ -37,6 +37,39 @@ const selectedSize = ref(sizeOptions[0].value)
 
 // 风格 / 场景 prompt（可选）
 const stylePrompt = ref('')
+
+// 预设场景列表：随机按钮从这里抽一个填入。覆盖正式、休闲、约会、户外等常见场景
+const STYLE_PRESETS = [
+  '商务休闲',
+  '职场精英',
+  '夏日海边度假',
+  '约会甜美风',
+  '街头潮流',
+  '学院风',
+  '晚宴礼服',
+  '居家舒适',
+  '运动活力',
+  '复古港风',
+  '文艺小清新',
+  '极简主义',
+  '日系森系',
+  '工装机能',
+  '法式优雅',
+  '节日派对',
+  '暗黑哥特',
+  '中式国风',
+] as const
+
+// 随机一个场景：如果当前已有值，优先抽不同的，避免「点了一下没变化」的错觉
+const randomStyle = () => {
+  const current = stylePrompt.value.trim()
+  let pick = STYLE_PRESETS[Math.floor(Math.random() * STYLE_PRESETS.length)]
+  // 最多重试 3 次避开当前值（极端小列表场景的安全网）
+  for (let i = 0; i < 3 && pick === current; i++) {
+    pick = STYLE_PRESETS[Math.floor(Math.random() * STYLE_PRESETS.length)]
+  }
+  stylePrompt.value = pick
+}
 
 // ============ 用户 / 历史 ============
 const userStore = useUserStore()
@@ -331,6 +364,173 @@ const canGenerate = computed(() => {
 })
 
 // ============ 调后端 ============
+
+// ============ 拖拽支持：生成结果可直接拖回「人物照」位 ============
+// 自定义 MIME，dataTransfer 用它区分「来自本页结果」与「外部文件」。
+const RESULT_DRAG_MIME = 'application/x-ai-outfit-result'
+// 两个上传位各一套 drag 状态，避免互相干扰
+const isDragOverPerson = ref(false)
+const isDragOverClothing = ref(false)
+let dragCounterPerson = 0
+let dragCounterClothing = 0
+// 拖拽回填中：人物照 / 衣物照 各一个 state + JS rAF 自驱动 spinner
+const isRefillingPerson = ref(false)
+const isRefillingClothing = ref(false)
+const spinnerPersonRef = ref<HTMLDivElement | null>(null)
+const spinnerClothingRef = ref<HTMLDivElement | null>(null)
+let spinnerPersonRafId = 0
+let spinnerClothingRafId = 0
+let spinnerAngle = 0
+
+const startPersonSpinner = () => {
+  if (!spinnerPersonRef.value || spinnerPersonRafId) return
+  const tick = () => {
+    spinnerAngle = (spinnerAngle + 6) % 360
+    if (spinnerPersonRef.value) spinnerPersonRef.value.style.transform = `rotate(${spinnerAngle}deg)`
+    spinnerPersonRafId = requestAnimationFrame(tick)
+  }
+  tick()
+}
+const stopPersonSpinner = () => {
+  if (spinnerPersonRafId) { cancelAnimationFrame(spinnerPersonRafId); spinnerPersonRafId = 0 }
+}
+const startClothingSpinner = () => {
+  if (!spinnerClothingRef.value || spinnerClothingRafId) return
+  const tick = () => {
+    spinnerAngle = (spinnerAngle + 6) % 360
+    if (spinnerClothingRef.value) spinnerClothingRef.value.style.transform = `rotate(${spinnerAngle}deg)`
+    spinnerClothingRafId = requestAnimationFrame(tick)
+  }
+  tick()
+}
+const stopClothingSpinner = () => {
+  if (spinnerClothingRafId) { cancelAnimationFrame(spinnerClothingRafId); spinnerClothingRafId = 0 }
+}
+watch(isRefillingPerson, async (val) => {
+  if (val) { await nextTick(); startPersonSpinner() } else { stopPersonSpinner() }
+})
+watch(isRefillingClothing, async (val) => {
+  if (val) { await nextTick(); startClothingSpinner() } else { stopClothingSpinner() }
+})
+
+// 人物照 dropzone 回调
+const onPersonDragEnter = (e: DragEvent) => {
+  e.preventDefault()
+  dragCounterPerson++
+  const types = e.dataTransfer?.types
+  if (!types) return
+  if (types.includes('Files') || types.includes(RESULT_DRAG_MIME)) {
+    isDragOverPerson.value = true
+  }
+}
+const onPersonDragOver = (e: DragEvent) => {
+  e.preventDefault()
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'
+}
+const onPersonDragLeave = (e: DragEvent) => {
+  e.preventDefault()
+  dragCounterPerson = Math.max(0, dragCounterPerson - 1)
+  if (dragCounterPerson === 0) isDragOverPerson.value = false
+}
+// 衣物照 dropzone 回调
+const onClothingDragEnter = (e: DragEvent) => {
+  e.preventDefault()
+  dragCounterClothing++
+  const types = e.dataTransfer?.types
+  if (!types) return
+  if (types.includes('Files') || types.includes(RESULT_DRAG_MIME)) {
+    isDragOverClothing.value = true
+  }
+}
+const onClothingDragOver = (e: DragEvent) => {
+  e.preventDefault()
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'
+}
+const onClothingDragLeave = (e: DragEvent) => {
+  e.preventDefault()
+  dragCounterClothing = Math.max(0, dragCounterClothing - 1)
+  if (dragCounterClothing === 0) isDragOverClothing.value = false
+}
+
+// 统一的回填执行：从生成结果拿 blob → 包装成 File → 调用对应 processXxxFile
+async function refillFromResult(resultUrl: string, target: 'person' | 'clothing'): Promise<void> {
+  let blob: Blob
+  let filename = target === 'person' ? 'person-result.png' : 'clothing-result.png'
+  if (currentRecordId.value) {
+    const res = await fetchMyGenerationRecordImage(currentRecordId.value)
+    blob = res.blob
+    if (res.filename) filename = res.filename
+  } else {
+    const resp = await fetch(resultUrl)
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+    blob = await resp.blob()
+  }
+  const file = new File([blob], filename, { type: blob.type || 'image/png' })
+  if (target === 'person') {
+    processPersonFile(file)
+  } else {
+    processClothingFile(file)
+  }
+}
+
+// 人物照 drop：capture 阶段先于 el-upload-dragger，识别结果后拦截；文件放行
+const onPersonUploadDrop = async (e: DragEvent) => {
+  const resultUrl =
+    e.dataTransfer?.getData(RESULT_DRAG_MIME) ||
+    e.dataTransfer?.getData('text/uri-list')?.split('\n')[0] ||
+    ''
+  if (resultUrl) {
+    e.preventDefault()
+    e.stopPropagation()
+    dragCounterPerson = 0
+    isDragOverPerson.value = false
+    isRefillingPerson.value = true
+    try {
+      await refillFromResult(resultUrl, 'person')
+    } catch (err) {
+      ElMessage.error('读取生成结果失败：' + (err as Error)?.message)
+    } finally {
+      isRefillingPerson.value = false
+    }
+    return
+  }
+  dragCounterPerson = 0
+  isDragOverPerson.value = false
+}
+// 衣物照 drop 同上
+const onClothingUploadDrop = async (e: DragEvent) => {
+  const resultUrl =
+    e.dataTransfer?.getData(RESULT_DRAG_MIME) ||
+    e.dataTransfer?.getData('text/uri-list')?.split('\n')[0] ||
+    ''
+  if (resultUrl) {
+    e.preventDefault()
+    e.stopPropagation()
+    dragCounterClothing = 0
+    isDragOverClothing.value = false
+    isRefillingClothing.value = true
+    try {
+      await refillFromResult(resultUrl, 'clothing')
+    } catch (err) {
+      ElMessage.error('读取生成结果失败：' + (err as Error)?.message)
+    } finally {
+      isRefillingClothing.value = false
+    }
+    return
+  }
+  dragCounterClothing = 0
+  isDragOverClothing.value = false
+}
+
+// 拖拽起点：把生成结果 URL 写到 dataTransfer
+const onResultDragStart = (e: DragEvent) => {
+  if (!e.dataTransfer || !resultImageUrl.value) return
+  e.dataTransfer.setData(RESULT_DRAG_MIME, resultImageUrl.value)
+  e.dataTransfer.setData('text/uri-list', resultImageUrl.value)
+  e.dataTransfer.setData('text/plain', resultImageUrl.value)
+  e.dataTransfer.effectAllowed = 'copy'
+}
+
 const fetchModelList = async () => {
   try {
     const list = await fetchToolModels('/ai-outfit/')
@@ -359,6 +559,8 @@ onUnmounted(() => {
   stopCanvasLoading()
   stopBtnAnim()
   stopDotsAnim()
+  stopPersonSpinner()
+  stopClothingSpinner()
 })
 
 const generateImage = async () => {
@@ -528,35 +730,53 @@ const modeBadge = computed(() => clothingFile.value
               人物照 <span class="text-red-500">*</span>
               <span class="text-caption text-red-400 ml-1">必填</span>
             </label>
-            <el-upload
-              ref="personUploadRef"
-              class="w-full"
-              drag
-              :auto-upload="true"
-              :limit="1"
-              :on-exceed="handlePersonExceed"
-              :http-request="handlePersonUpload"
-              :show-file-list="false"
-              accept="image/png,image/jpeg,image/webp,image/gif"
+            <div
+              class="upload-dropzone"
+              :class="{ 'is-dragover': isDragOverPerson }"
+              @dragenter.prevent="onPersonDragEnter"
+              @dragover.prevent="onPersonDragOver"
+              @dragleave.prevent="onPersonDragLeave"
+              @drop.capture="onPersonUploadDrop"
             >
-              <div v-if="!personPreview" class="flex flex-col items-center justify-center py-3">
-                <svg class="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-                <span class="text-body-sm text-gray-500">上传人物正面照 或 Ctrl+V 粘贴</span>
-                <span class="text-caption text-gray-400 mt-0.5">要求人物清晰、姿态自然、面部可见；光线充足</span>
+              <el-upload
+                ref="personUploadRef"
+                class="w-full"
+                drag
+                :auto-upload="true"
+                :limit="1"
+                :on-exceed="handlePersonExceed"
+                :http-request="handlePersonUpload"
+                :show-file-list="false"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+              >
+                <div v-if="!personPreview" class="flex flex-col items-center justify-center py-3">
+                  <svg class="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  <span class="text-body-sm text-gray-500">上传人物正面照 或 Ctrl+V 粘贴</span>
+                  <span class="text-caption text-gray-400 mt-0.5">要求人物清晰、姿态自然、面部可见；光线充足</span>
+                  <span v-if="isDragOverPerson" class="text-caption text-pink-500 mt-1">松手即可替换为拖入的图片</span>
+                </div>
+                <div v-else class="relative w-full upload-preview-wrapper" @click.stop>
+                  <el-image
+                    :src="personPreview"
+                    :preview-src-list="[personPreview]"
+                    :initial-index="0"
+                    fit="contain"
+                    class="block mx-auto rounded-lg upload-preview-image"
+                    alt="人物预览"
+                  />
+                  <span class="block text-center text-caption text-gray-500 mt-1">{{ personFileName }}</span>
+                  <span class="block text-center text-caption text-gray-400 mt-0.5">点击图片放大 · 点击周围空白、拖拽新图片 或 Ctrl+V 粘贴 即可替换</span>
+                </div>
+              </el-upload>
+
+              <!-- 拖拽回填中 loading（JS rAF 自驱动） -->
+              <div v-if="isRefillingPerson" class="refill-overlay" role="status" aria-live="polite">
+                <div ref="spinnerPersonRef" class="refill-spinner" aria-hidden="true"></div>
+                <span class="refill-text">正在读取生成结果…</span>
               </div>
-              <div v-else class="relative w-full" @click.stop>
-                <img
-                  :src="personPreview"
-                  alt="人物预览"
-                  class="block mx-auto max-w-full max-h-64 rounded-lg object-contain cursor-zoom-in"
-                  @click.stop="zoomImageUrl = personPreview"
-                />
-                <span class="block text-center text-caption text-gray-500 mt-1">{{ personFileName }}</span>
-                <span class="block text-center text-caption text-gray-400 mt-0.5">点击图片可放大查看 · 点击周围空白、拖拽新图片 或 Ctrl+V 粘贴 即可替换</span>
-              </div>
-            </el-upload>
+            </div>
             <button
               v-if="personPreview"
               @click="removePersonImage"
@@ -575,35 +795,53 @@ const modeBadge = computed(() => clothingFile.value
               衣物照
               <span class="text-caption text-gray-400 ml-1">可选，不上传则 AI 自动设计穿搭</span>
             </label>
-            <el-upload
-              ref="clothingUploadRef"
-              class="w-full"
-              drag
-              :auto-upload="true"
-              :limit="1"
-              :on-exceed="handleClothingExceed"
-              :http-request="handleClothingUpload"
-              :show-file-list="false"
-              accept="image/png,image/jpeg,image/webp,image/gif"
+            <div
+              class="upload-dropzone"
+              :class="{ 'is-dragover': isDragOverClothing }"
+              @dragenter.prevent="onClothingDragEnter"
+              @dragover.prevent="onClothingDragOver"
+              @dragleave.prevent="onClothingDragLeave"
+              @drop.capture="onClothingUploadDrop"
             >
-              <div v-if="!clothingPreview" class="flex flex-col items-center justify-center py-3">
-                <svg class="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-                </svg>
-                <span class="text-body-sm text-gray-500">上传衣物照（可选）</span>
-                <span class="text-caption text-gray-400 mt-0.5">建议单品清晰、背景干净；多件单品（上下装+配饰）也能识别</span>
+              <el-upload
+                ref="clothingUploadRef"
+                class="w-full"
+                drag
+                :auto-upload="true"
+                :limit="1"
+                :on-exceed="handleClothingExceed"
+                :http-request="handleClothingUpload"
+                :show-file-list="false"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+              >
+                <div v-if="!clothingPreview" class="flex flex-col items-center justify-center py-3">
+                  <svg class="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                  </svg>
+                  <span class="text-body-sm text-gray-500">上传衣物照（可选）</span>
+                  <span class="text-caption text-gray-400 mt-0.5">建议单品清晰、背景干净；多件单品（上下装+配饰）也能识别</span>
+                  <span v-if="isDragOverClothing" class="text-caption text-pink-500 mt-1">松手即可替换为拖入的图片</span>
+                </div>
+                <div v-else class="relative w-full upload-preview-wrapper" @click.stop>
+                  <el-image
+                    :src="clothingPreview"
+                    :preview-src-list="[clothingPreview]"
+                    :initial-index="0"
+                    fit="contain"
+                    class="block mx-auto rounded-lg upload-preview-image"
+                    alt="衣物预览"
+                  />
+                  <span class="block text-center text-caption text-gray-500 mt-1">{{ clothingFileName }}</span>
+                  <span class="block text-center text-caption text-gray-400 mt-0.5">点击图片放大 · 点击周围空白、拖拽新图片 即可替换</span>
+                </div>
+              </el-upload>
+
+              <!-- 拖拽回填中 loading（JS rAF 自驱动） -->
+              <div v-if="isRefillingClothing" class="refill-overlay" role="status" aria-live="polite">
+                <div ref="spinnerClothingRef" class="refill-spinner" aria-hidden="true"></div>
+                <span class="refill-text">正在读取生成结果…</span>
               </div>
-              <div v-else class="relative w-full" @click.stop>
-                <img
-                  :src="clothingPreview"
-                  alt="衣物预览"
-                  class="block mx-auto max-w-full max-h-64 rounded-lg object-contain cursor-zoom-in"
-                  @click.stop="zoomImageUrl = clothingPreview"
-                />
-                <span class="block text-center text-caption text-gray-500 mt-1">{{ clothingFileName }}</span>
-                <span class="block text-center text-caption text-gray-400 mt-0.5">点击图片可放大查看 · 点击周围空白、拖拽新图片 即可替换</span>
-              </div>
-            </el-upload>
+            </div>
             <button
               v-if="clothingPreview"
               @click="removeClothingImage"
@@ -621,6 +859,18 @@ const modeBadge = computed(() => clothingFile.value
             <label class="block text-body-sm font-medium text-gray-700 mb-2">
               风格 / 场景
               <span class="text-caption text-gray-400 ml-1">（可选，留空走默认）</span>
+              <button
+                type="button"
+                @click="randomStyle"
+                :disabled="isLoading"
+                title="随机一个场景提示词"
+                class="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-caption font-medium border border-pink-300 text-pink-700 hover:bg-pink-50 active:bg-pink-100 active:rotate-180 transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M16 3h5v5M4 20l5-5M21 16v5h-5M15 15l6 6M4 4l5 5" />
+                </svg>
+                随机
+              </button>
             </label>
             <div class="relative">
               <textarea
@@ -789,16 +1039,24 @@ const modeBadge = computed(() => clothingFile.value
           </div>
 
           <div v-if="resultImageUrl && !isLoading" class="space-y-4">
-            <el-image
-              :src="resultImageUrl"
-              :preview-src-list="[resultImageUrl]"
-              :initial-index="0"
-              fit="contain"
-              class="block w-full"
-              style="cursor: zoom-in;"
-              draggable="false"
-              alt="生成结果"
-            />
+            <div
+              class="result-draggable"
+              draggable="true"
+              @dragstart="onResultDragStart"
+            >
+              <el-image
+                :src="resultImageUrl"
+                :preview-src-list="[resultImageUrl]"
+                :initial-index="0"
+                fit="contain"
+                class="block w-full"
+                style="cursor: zoom-in;"
+                alt="生成结果"
+              />
+              <p class="text-caption text-gray-400 text-center mt-1 select-none">
+                拖拽此图片到上方「人物照」或「衣物照」位即可继续编辑
+              </p>
+            </div>
             <div class="flex gap-3">
               <button
                 @click="downloadImage"
@@ -861,6 +1119,100 @@ const modeBadge = computed(() => clothingFile.value
 :deep(.el-upload-dragger) {
   width: 100%;
   border-radius: 12px;
+  /* 覆盖 EP 默认 overflow:hidden —— 不然长图会被裁掉只显示上半部分 */
+  overflow: visible;
+  padding: 12px;
+}
+
+/* 上传预览图：完整显示任意比例图片（fit="contain" + 合理 max-height 防止超高图撑爆布局）*/
+.upload-preview-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+:deep(.upload-preview-image) {
+  display: block;
+  max-width: 100%;
+  max-height: 480px;
+  width: auto;
+  height: auto;
+  margin: 0 auto;
+}
+:deep(.upload-preview-image img) {
+  display: block;
+  max-width: 100%;
+  max-height: 480px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  cursor: zoom-in;
+}
+
+/* ============ 拖拽视觉反馈（粉色主题，AiOutfit 配色）============ */
+.upload-dropzone {
+  position: relative;
+  border-radius: 12px;
+  transition: background-color .15s ease;
+}
+.upload-dropzone.is-dragover :deep(.el-upload-dragger) {
+  border-color: #ec4899;          /* pink-500 */
+  background-color: rgb(var(--accent-50, 253 242 248));
+  box-shadow: 0 0 0 3px rgba(236, 72, 153, .15) inset;
+}
+.upload-dropzone.is-dragover :deep(.el-upload-dragger) * {
+  pointer-events: none;
+}
+
+/* ============ 拖拽回填 loading 遮罩 + JS rAF 自驱动 spinner ============ */
+.refill-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  pointer-events: none;
+}
+.refill-spinner {
+  display: block;
+  width: 28px;
+  height: 28px;
+  border: 3px solid #fce7f3;          /* pink-100 */
+  border-top-color: #ec4899;          /* pink-500 */
+  border-radius: 50%;
+  will-change: transform;
+}
+.refill-text {
+  font-size: 13px;
+  color: #4b5563;
+  letter-spacing: 0.02em;
+}
+
+/* ============ 生成结果可拖区域 ============ */
+.result-draggable {
+  border-radius: 8px;
+  transition: outline-color .15s ease;
+  outline: 2px dashed transparent;
+  outline-offset: 4px;
+}
+.result-draggable:hover {
+  outline-color: #f9a8d4;          /* pink-300 */
+  cursor: grab;
+}
+.result-draggable:active {
+  cursor: grabbing;
+  outline-color: #ec4899;
+}
+/* 阻止 el-image 内部 img 在拖动时浏览器默认「拖出新标签」预览 */
+:deep(.result-draggable img) {
+  -webkit-user-drag: element;
+  user-drag: element;
 }
 </style>
 

@@ -55,11 +55,11 @@ const stageLabel = (s: string | null) => {
   return stageOptions.find((o) => o.value === s)?.label || s
 }
 
-const statusTagType = (s: number) => {
+const statusTagType = (s: number): 'danger' | 'warning' | 'info' | 'primary' | 'success' | undefined => {
   if (s >= 500) return 'danger'
   if (s === 429) return 'warning'
   if (s >= 400) return 'warning'
-  return ''
+  return undefined
 }
 
 const formatTime = (s: string | null) => {
@@ -121,9 +121,6 @@ const handleCleanup = async () => {
         confirmButtonText: '清理',
         cancelButtonText: '取消',
         type: 'warning',
-        input: 'input',
-        inputLabel: '保留天数',
-        inputValue: '30',
       },
     )
   } catch {
