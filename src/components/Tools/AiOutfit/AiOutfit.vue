@@ -6,6 +6,7 @@ import { ElImageViewer } from 'element-plus'
 import type { UploadProps } from 'element-plus'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import GenerationHistoryDialog from '@/components/Tools/AiImageEdit/GenerationHistoryDialog.vue'
+import UserPromptLibraryDialog from '@/components/Common/UserPromptLibraryDialog.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { autoDown } from '@/utils/file'
 import { functionsRequest } from '@/utils/functionsRequest'
@@ -681,6 +682,13 @@ const openInNewTab = () => {
 // 清空风格 prompt
 const clearStyle = () => { stylePrompt.value = '' }
 
+// 提示词库弹窗：从用户保存的风格列表里选一条直接回填到 stylePrompt
+const promptLibraryRef = ref<InstanceType<typeof UserPromptLibraryDialog> | null>(null)
+const onPromptSelect = (payload: { id: string; title: string; content: string }) => {
+  stylePrompt.value = payload.content
+  ElMessage.success(payload.title ? `已填入「${payload.title}」` : '已填入提示词')
+}
+
 // ============ 模板渲染辅助 ============
 const modeBadge = computed(() => clothingFile.value
   ? { icon: '🔁', label: '衣物替换', gradient: 'from-blue-500 to-cyan-500' }
@@ -870,6 +878,18 @@ const modeBadge = computed(() => clothingFile.value
                   <path stroke-linecap="round" stroke-linejoin="round" d="M16 3h5v5M4 20l5-5M21 16v5h-5M15 15l6 6M4 4l5 5" />
                 </svg>
                 随机
+              </button>
+              <button
+                type="button"
+                @click="promptLibraryRef?.open()"
+                :disabled="isLoading"
+                title="从提示词库选择（需要登录）"
+                class="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-caption font-medium border border-blue-300 text-blue-700 hover:bg-blue-50 active:bg-blue-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h10M4 18h10" />
+                </svg>
+                从提示词库选择
               </button>
             </label>
             <div class="relative">
@@ -1101,6 +1121,7 @@ const modeBadge = computed(() => clothingFile.value
     </ToolDetail>
 
     <GenerationHistoryDialog ref="historyRef" />
+    <UserPromptLibraryDialog ref="promptLibraryRef" scene="ai-outfit" @select="onPromptSelect" />
 
     <!-- 上传原图点击放大（人物照 / 衣物照 共用） -->
     <el-image-viewer
