@@ -55,6 +55,8 @@
 
     "/api/admin",
     "/api/admin/*",
+    "/api/user-tool-prompts",
+    "/api/user-tool-prompts/*",
     "/api/tools",
     "/api/ai-image-edit",
     "/api/ai-image-edit/*",

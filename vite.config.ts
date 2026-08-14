@@ -456,6 +456,10 @@ export default defineConfig(({command, mode}) => {
           target: 'http://127.0.0.1:8788',
           changeOrigin: true,
         },
+        '/api/user-tool-prompts': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
         '/api/me': {
           target: 'http://127.0.0.1:8788',
           changeOrigin: true,

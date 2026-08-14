@@ -5,6 +5,7 @@ import { ElMessage } from 'element-plus'
 import type { UploadProps } from 'element-plus'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import GenerationHistoryDialog from './GenerationHistoryDialog.vue'
+import UserPromptLibraryDialog from '@/components/Common/UserPromptLibraryDialog.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { autoDown } from '@/utils/file'
 import { functionsRequest } from '@/utils/functionsRequest'
@@ -47,6 +48,14 @@ const route = useRoute()
 
 // 历史弹窗 ref
 const historyRef = ref<InstanceType<typeof GenerationHistoryDialog> | null>(null)
+
+// 提示词库弹窗 ref（从提示词库选择）
+const promptLibraryRef = ref<InstanceType<typeof UserPromptLibraryDialog> | null>(null)
+// 选中提示词库里的某条后，回填到输入框（强制覆盖，保持和「点开 → 选中」的语义一致）
+const onPromptSelect = (payload: { id: string; title: string; content: string }) => {
+  prompt.value = payload.content
+  ElMessage.success(payload.title ? `已填入「${payload.title}」` : '已填入提示词')
+}
 
 // 图片上传 — 保存 File 对象，预览用 base64
 const uploadRef = ref<any>(null)
@@ -769,6 +778,18 @@ const openInNewTab = () => {
             <label class="block text-body-sm font-medium text-gray-700 mb-2">
               提示词<span class="text-red-500">*</span>
               <span class="text-caption text-gray-400 ml-1">（必填）</span>
+              <button
+                type="button"
+                @click="promptLibraryRef?.open()"
+                :disabled="isLoading"
+                title="从提示词库选择（需要登录）"
+                class="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-caption font-medium border border-blue-300 text-blue-700 hover:bg-blue-50 active:bg-blue-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h10M4 18h10" />
+                </svg>
+                从提示词库选择
+              </button>
             </label>
             <div class="relative">
               <textarea
@@ -1023,6 +1044,7 @@ const openInNewTab = () => {
 
     <!-- 用户生成历史弹窗 -->
     <GenerationHistoryDialog ref="historyRef" :on-preview="openPreview" />
+    <UserPromptLibraryDialog ref="promptLibraryRef" scene="ai-image-edit" @select="onPromptSelect" />
 
     <!--
       历史缩略图全屏预览：渲染在 AiImageEdit.vue 根级，跟历史弹窗在同一 DOM 树层级之外，
