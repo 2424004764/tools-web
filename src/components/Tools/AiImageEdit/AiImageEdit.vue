@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { UploadProps } from 'element-plus'
@@ -106,6 +106,125 @@ const handlePaste = (e: ClipboardEvent) => {
   }
 }
 
+// ============ 拖拽支持：生成结果可直接拖回上传区 ============
+// 自定义 MIME，dataTransfer 用它区分「来自本页结果」与「外部文件」。
+// 同时写 text/uri-list 与 text/plain，让拖到浏览器其他位置（标签页、外部编辑器）也能用。
+const RESULT_DRAG_MIME = 'application/x-ai-image-edit-result'
+const isDragOver = ref(false)
+// dragenter/dragleave 在子元素上会反复触发，用计数器在真正离开 dropzone 时才关闭高亮
+let dragCounter = 0
+// 拖拽结果回填中：后端代理拿 blob 通常几百毫秒～几秒，期间在上传区显示 loading 遮罩
+const isRefillingImage = ref(false)
+// 自驱动 spinner：用 requestAnimationFrame 直接改 transform 角度，
+// 绕开 CSS animation / prefers-reduced-motion / 第三方 CSS 注入缺失等问题。
+const spinnerRef = ref<HTMLDivElement | null>(null)
+let spinnerRafId = 0
+let spinnerAngle = 0
+const startSpinner = () => {
+  if (!spinnerRef.value || spinnerRafId) return
+  const tick = () => {
+    spinnerAngle = (spinnerAngle + 6) % 360
+    if (spinnerRef.value) spinnerRef.value.style.transform = `rotate(${spinnerAngle}deg)`
+    spinnerRafId = requestAnimationFrame(tick)
+  }
+  tick()
+}
+const stopSpinner = () => {
+  if (spinnerRafId) { cancelAnimationFrame(spinnerRafId); spinnerRafId = 0 }
+}
+// isRefillingImage 切换时同步启停 spinner；用 nextTick 等到 div 渲染完再取 ref
+watch(isRefillingImage, async (val) => {
+  if (val) {
+    await nextTick()
+    startSpinner()
+  } else {
+    stopSpinner()
+  }
+})
+
+const onDragEnter = (e: DragEvent) => {
+  e.preventDefault()
+  dragCounter++
+  const types = e.dataTransfer?.types
+  if (!types) return
+  if (types.includes('Files') || types.includes(RESULT_DRAG_MIME)) {
+    isDragOver.value = true
+  }
+}
+
+const onDragOver = (e: DragEvent) => {
+  // 必须 preventDefault，否则浏览器不会触发后续的 drop
+  e.preventDefault()
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'
+}
+
+const onDragLeave = (e: DragEvent) => {
+  e.preventDefault()
+  dragCounter = Math.max(0, dragCounter - 1)
+  if (dragCounter === 0) isDragOver.value = false
+}
+
+// 必须在「捕获阶段」监听：el-upload-dragger 内部 onDrop 会显式调用
+// e.stopPropagation()，导致冒泡阶段的外层 @drop 永远收不到事件。
+// capture 模式让我们在子元素处理前先拿到事件，自己决定是否拦截。
+const onUploadDrop = async (e: DragEvent) => {
+  // 路径 A：来自本页生成结果（URL → fetch → Blob → File）。
+  // dataTransfer 里只有自定义 MIME / text-uri-list，没有真实文件，
+  // el-upload 处理会空转，这里要 stopPropagation 抢在自己手里处理。
+  const resultUrl =
+    e.dataTransfer?.getData(RESULT_DRAG_MIME) ||
+    e.dataTransfer?.getData('text/uri-list')?.split('\n')[0] ||
+    ''
+  if (resultUrl) {
+    e.preventDefault()
+    e.stopPropagation()
+    dragCounter = 0
+    isDragOver.value = false
+    isRefillingImage.value = true
+    try {
+      // 第三方图床通常不带 CORS 头，前端 fetch 会失败。
+      // 有 recordId 时复用「下载图片」同款后端代理拿 blob，绕过 CORS。
+      let blob: Blob
+      let filename = 'generated-result.png'
+      if (currentRecordId.value) {
+        const res = await fetchMyGenerationRecordImage(currentRecordId.value)
+        blob = res.blob
+        if (res.filename) filename = res.filename
+      } else {
+        // 兜底：极少数情况下没有 recordId（比如上游异常未返回）。
+        // 这里有可能被 CORS 拦截，错误由 catch 统一提示。
+        const resp = await fetch(resultUrl)
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+        blob = await resp.blob()
+      }
+      const file = new File([blob], filename, {
+        type: blob.type || 'image/png',
+      })
+      processImageFile(file)
+    } catch (err) {
+      ElMessage.error('读取生成结果失败：' + (err as Error)?.message)
+    } finally {
+      isRefillingImage.value = false
+    }
+    return
+  }
+
+  // 路径 B：从操作系统拖入的真实文件 → 不拦，让 el-upload-dragger 走它
+  // 原生的 emit('file') → http-request → handleUpload → processImageFile，
+  // 避免我们在外层和 el-upload 内层各处理一遍导致重复 setBalance 等副作用。
+  // 这里只需重置高亮状态（el-upload-dragger 自己也会关掉它的 dragover）。
+  dragCounter = 0
+  isDragOver.value = false
+}
+
+const onResultDragStart = (e: DragEvent) => {
+  if (!e.dataTransfer || !resultImageUrl.value) return
+  e.dataTransfer.setData(RESULT_DRAG_MIME, resultImageUrl.value)
+  e.dataTransfer.setData('text/uri-list', resultImageUrl.value)
+  e.dataTransfer.setData('text/plain', resultImageUrl.value)
+  e.dataTransfer.effectAllowed = 'copy'
+}
+
 // 提示词缓存 key：刷新页面后自动恢复上次输入
 const PROMPT_CACHE_KEY = 'ai-image-edit:prompt'
 
@@ -183,6 +302,7 @@ onUnmounted(() => {
   stopCanvasLoading()
   stopBtnAnim()
   stopDotsAnim()
+  stopSpinner()
 })
 
 // 生成结果
@@ -582,33 +702,56 @@ const openInNewTab = () => {
           <!-- 图片上传 -->
           <div>
             <label class="block text-body-sm font-medium text-gray-700 mb-2">上传图片（可选）</label>
-            <el-upload
-              ref="uploadRef"
-              class="w-full"
-              drag
-              :auto-upload="true"
-              :limit="1"
-              :on-exceed="handleExceed"
-              :http-request="handleUpload"
-              :show-file-list="false"
-              accept="image/png,image/jpeg,image/webp,image/gif"
+            <div
+              class="upload-dropzone"
+              :class="{ 'is-dragover': isDragOver }"
+              @dragenter.prevent="onDragEnter"
+              @dragover.prevent="onDragOver"
+              @dragleave.prevent="onDragLeave"
+              @drop.capture="onUploadDrop"
             >
-              <div
-                v-if="!imagePreview"
-                class="flex flex-col items-center justify-center py-3"
+              <el-upload
+                ref="uploadRef"
+                class="w-full"
+                drag
+                :auto-upload="true"
+                :limit="1"
+                :on-exceed="handleExceed"
+                :http-request="handleUpload"
+                :show-file-list="false"
+                accept="image/png,image/jpeg,image/webp,image/gif"
               >
-                <svg class="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <span class="text-body-sm text-gray-500">拖拽图片、点击上传 或 Ctrl+V 粘贴</span>
-                <span class="text-caption text-gray-400 mt-0.5">支持 PNG / JPEG / WebP / GIF</span>
+                <div
+                  v-if="!imagePreview"
+                  class="flex flex-col items-center justify-center py-3"
+                >
+                  <svg class="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span class="text-body-sm text-gray-500">拖拽图片、点击上传 或 Ctrl+V 粘贴</span>
+                  <span class="text-caption text-gray-400 mt-0.5">支持 PNG / JPEG / WebP / GIF</span>
+                  <span v-if="isDragOver" class="text-caption text-blue-500 mt-1">松手即可替换为拖入的图片</span>
+                </div>
+                <div v-else class="relative w-full upload-preview-wrapper" @click.stop>
+                  <el-image
+                    :src="imagePreview"
+                    :preview-src-list="[imagePreview]"
+                    :initial-index="0"
+                    fit="contain"
+                    class="block mx-auto rounded-lg upload-preview-image"
+                    alt="上传预览"
+                  />
+                  <span class="block text-center text-caption text-gray-500 mt-1">{{ uploadedFileName }}</span>
+                  <span class="block text-center text-caption text-gray-400 mt-0.5">点击图片放大 · 点击周围空白、拖拽新图片 或 Ctrl+V 粘贴 即可替换</span>
+                </div>
+              </el-upload>
+
+              <!-- 回填中 loading：JS rAF 驱动的自转 spinner，不依赖任何 CSS 动画规则 -->
+              <div v-if="isRefillingImage" class="refill-overlay" role="status" aria-live="polite">
+                <div ref="spinnerRef" class="refill-spinner" aria-hidden="true"></div>
+                <span class="refill-text">正在读取生成结果…</span>
               </div>
-              <div v-else class="relative w-full" @click.stop>
-                <img :src="imagePreview" class="max-h-24 mx-auto rounded-lg object-contain" alt="上传预览" />
-                <span class="block text-center text-caption text-gray-500 mt-1">{{ uploadedFileName }}</span>
-                <span class="block text-center text-caption text-gray-400 mt-0.5">点击周围空白、拖拽新图片 或 Ctrl+V 粘贴 即可替换</span>
-              </div>
-            </el-upload>
+            </div>
             <button
               v-if="imagePreview"
               @click="removeImage"
@@ -817,16 +960,25 @@ const openInNewTab = () => {
 
           <!-- 结果展示：自然比例，点击放大（el-image 内置预览） -->
           <div v-if="resultImageUrl && !isLoading" class="space-y-4">
-            <el-image
-              :src="resultImageUrl"
-              :preview-src-list="[resultImageUrl]"
-              :initial-index="0"
-              fit="contain"
-              class="block w-full"
-              style="cursor: zoom-in;"
-              draggable="false"
-              alt="生成结果"
-            />
+            <div
+              class="result-draggable"
+              draggable="true"
+              @dragstart="onResultDragStart"
+            >
+              <el-image
+                :src="resultImageUrl"
+                :preview-src-list="[resultImageUrl]"
+                :initial-index="0"
+                fit="contain"
+                class="block w-full"
+                style="cursor: zoom-in;"
+                draggable="true"
+                alt="生成结果"
+              />
+              <p class="text-caption text-gray-400 text-center mt-1 select-none">
+                拖拽此图片到上方上传区即可继续编辑
+              </p>
+            </div>
             <div class="flex gap-3">
               <button
                 @click="downloadImage"
@@ -895,6 +1047,104 @@ const openInNewTab = () => {
 :deep(.el-upload-dragger) {
   width: 100%;
   border-radius: 12px;
+  /* 覆盖 EP 默认 overflow:hidden —— 不然长图会被裁掉只显示上半部分 */
+  overflow: visible;
+  padding: 12px;
+}
+
+/* 上传预览图：完整显示任意比例图片（fit="contain" + 合理 max-height 防止超高图撑爆布局）*/
+.upload-preview-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+:deep(.upload-preview-image) {
+  display: block;
+  max-width: 100%;
+  max-height: 480px;
+  width: auto;
+  height: auto;
+  margin: 0 auto;
+}
+:deep(.upload-preview-image img) {
+  display: block;
+  max-width: 100%;
+  max-height: 480px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  cursor: zoom-in;
+}
+
+/* ============ 拖拽视觉反馈 ============ */
+.upload-dropzone {
+  position: relative;
+  border-radius: 12px;
+  transition: background-color .15s ease;
+}
+.upload-dropzone.is-dragover :deep(.el-upload-dragger) {
+  border-color: #3b82f6;
+  background-color: rgb(var(--accent-50, 239 246 255));
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, .15) inset;
+}
+.upload-dropzone.is-dragover :deep(.el-upload-dragger) * {
+  pointer-events: none;
+}
+
+/* 生成结果可拖区域：鼠标拖动时显示 grab 光标 */
+.result-draggable {
+  border-radius: 8px;
+  transition: outline-color .15s ease;
+  outline: 2px dashed transparent;
+  outline-offset: 4px;
+}
+.result-draggable:hover {
+  outline-color: #93c5fd;
+  cursor: grab;
+}
+.result-draggable:active {
+  cursor: grabbing;
+  outline-color: #3b82f6;
+}
+/* 阻止 el-image 内部 img 在拖动时浏览器默认「拖出新标签」预览 */
+:deep(.result-draggable img) {
+  -webkit-user-drag: element;
+  user-drag: element;
+}
+
+/* ============ 拖拽回填 loading 遮罩 + 自驱动 spinner ============
+   spinner 用 JS requestAnimationFrame 改 transform，
+   完全不依赖 CSS 动画 / @keyframes / SVG SMIL，
+   避免 prefers-reduced-motion、scoped keyframes、第三方 CSS 注入失败等问题。 */
+.refill-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  pointer-events: none;
+}
+.refill-spinner {
+  display: block;
+  width: 28px;
+  height: 28px;
+  border: 3px solid #e0e7ff;          /* 浅灰蓝底圈 */
+  border-top-color: #6366f1;          /* 顶部亮色 = 转的那一段 */
+  border-radius: 50%;
+  /* 关键：不写 animation；旋转由 JS rAF 直接改 style.transform */
+  will-change: transform;
+}
+.refill-text {
+  font-size: 13px;
+  color: #4b5563;
+  letter-spacing: 0.02em;
 }
 </style>
 
