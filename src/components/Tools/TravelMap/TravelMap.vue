@@ -15,6 +15,7 @@ import {
   POINT_CATEGORIES, BASE_LAYERS, ROUTE_COLORS, OSRM_PROFILES, LIMITS,
   DEFAULT_CENTER, DEFAULT_ZOOM,
   getCategory, pathDistance, formatDistance, formatElevation, simplifyPath,
+  countSharpTurns, SHARP_TURN_DEFAULTS,
 } from './constants'
 import type { MapPoint, MapRoute, BaseLayer, LngLat, PointCategory, RouteProfile } from './types'
 
@@ -85,6 +86,30 @@ const filteredPoints = computed(() =>
 const totalDistance = computed(() =>
   routes.value.reduce((sum, r) => sum + r.distance, 0)
 )
+
+// 每条路线的急弯数 —— 用 Map 缓存，path 不变就不重算。
+// 路线长度 ≤ 500 节点，单条计算很轻；但模板里每个卡片每帧都可能被重渲染，
+// 不缓存的话改一下其他东西也会顺带全量重算一遍，没必要。
+const sharpTurnsCache = computed(() => {
+  const map = new Map<string, number>()
+  for (const r of routes.value) {
+    map.set(r.id, countSharpTurns(r.path))
+  }
+  return map
+})
+function getSharpTurns(routeId: string): number {
+  return sharpTurnsCache.value.get(routeId) ?? 0
+}
+// 删除路线时清掉缓存里对应的 id,避免 Map 无限增长。
+// 这里用 watch 而不是把清理写在 deleteRoute 里,是因为 applyDetail 回填
+// 时 routes 整体被替换（id 全换一遍）,缓存自然会被 computed 重新算,不需要
+// 在那里手动清。
+watch(routes, (next) => {
+  const liveIds = new Set(next.map((r) => r.id))
+  for (const id of sharpTurnsCache.value.keys()) {
+    if (!liveIds.has(id)) sharpTurnsCache.value.delete(id)
+  }
+})
 
 const draftDistance = computed(() => pathDistance(draftPath.value))
 
@@ -1167,7 +1192,16 @@ function goPlaza() {
                 >📍 定位</button>
               </div>
               <div class="mt-1 flex items-center justify-between text-xs text-ink-500">
-                <span>{{ r.path.length }} 节点 · {{ formatDistance(r.distance) }}</span>
+                <span class="flex items-center gap-1.5 flex-wrap">
+                  <span>{{ r.path.length }} 节点 · {{ formatDistance(r.distance) }}</span>
+                  <!-- 急弯数：只有沿道路路线（OSRM 算出来的）才有意义，
+                       直线路线节点少算出来不靠谱，直接不显示。 -->
+                  <span
+                    v-if="r.kind === 'road'"
+                    class="inline-flex items-center gap-0.5 px-1.5 rounded-md bg-amber-50 border border-amber-200 text-amber-700"
+                    :title="`累积转向角 ≥ ${SHARP_TURN_DEFAULTS.thresholdDeg}° 的急弯数（${SHARP_TURN_DEFAULTS.windowMeters}m 窗口 + ${SHARP_TURN_DEFAULTS.cooldownMeters}m 冷却）`"
+                  >↩️ 急弯 {{ getSharpTurns(r.id) }}</span>
+                </span>
                 <button class="text-red-600 hover:underline" @click="deleteRoute(r.id)">删除</button>
               </div>
             </div>

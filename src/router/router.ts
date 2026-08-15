@@ -702,6 +702,36 @@ export const constantRoute = [
       description: '查看 AI 穿搭建议的生成历史记录',
     }
   },
+  {
+    path: '/flashcards',
+    component: () => import('@/components/Tools/Flashcards/Flashcards.vue'),
+    name: 'flashcards',
+    meta: {
+      title: '闪卡复习',
+      keywords: '闪卡,间隔重复,SRS,SM-2,记忆,认知,Anki,复习,卡片',
+      description: 'Anki 风格间隔重复闪卡复习系统，自录入卡片、按 SM-2 算法调度到期复习，提升长期记忆效率。',
+    }
+  },
+  {
+    path: '/flashcards/deck/:id',
+    component: () => import('@/components/Tools/Flashcards/DeckDetail.vue'),
+    name: 'flashcards-deck',
+    meta: {
+      title: '卡组详情',
+      keywords: '闪卡,卡组,卡片管理,学习统计',
+      description: '管理卡组下的闪卡，查看复习统计与最近 30 天活动。',
+    }
+  },
+  {
+    path: '/flashcards/deck/:id/study',
+    component: () => import('@/components/Tools/Flashcards/Study.vue'),
+    name: 'flashcards-study',
+    meta: {
+      title: '闪卡复习 - 学习模式',
+      keywords: '闪卡复习,间隔重复,SRS,记忆训练',
+      description: '进入学习模式复习到期卡片，支持空格翻转、1-4 评级快捷键。',
+    }
+  },
   // {
   //   path: '/ai-text-to-speech',
   //   component: () => import('@/components/Tools/AiTextToSpeech/AiTextToSpeech.vue'),

@@ -684,7 +684,16 @@ export function getToolsCate() {
           url: '/mao-quotes/',
           cateId: 4,
           cate: '教育学术'
-        }
+        },
+        {
+          id: 'flashcards-2026-08-15',
+          title: '闪卡复习',
+          logo: '/images/logo/flashcards.png',
+          desc: 'Anki 风格间隔重复闪卡复习系统，自录入卡片、按 SM-2 调度到期复习，提升长期记忆效率',
+          url: '/flashcards/',
+          cateId: 10,
+          cate: 'AI工具'
+        },
       ]
     },
     {
