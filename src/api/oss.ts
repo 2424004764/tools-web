@@ -47,8 +47,17 @@ export const ossApi = {
     return functionsRequest.delete(`/api/oss-configs/${id}`) as any
   },
   // 交换 STS 临时凭证
-  sts(configId: string) {
-    return functionsRequest.post('/api/oss-sts', { config_id: configId }) as any
+  async sts(configId: string) {
+    try {
+      return await functionsRequest.post('/api/oss-sts', { config_id: configId }) as any
+    } catch (e: any) {
+      // 4xx/5xx 时拦截器已提示；这里再把后端具体错误转成 Error，让调用方能拿到可读信息
+      const backendError = e?.response?.data?.error
+      if (typeof backendError === 'string' && backendError) {
+        throw new Error(backendError)
+      }
+      throw e
+    }
   }
 }
 

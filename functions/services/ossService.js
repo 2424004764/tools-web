@@ -36,10 +36,19 @@ export class OssService {
       new QueryBuilder().where('id', '=', id).where('uid', '=', uid)
     )
     if (!row) return { success: false, error: '配置不存在或无权限' }
-    const [ak, sk] = await Promise.all([
-      decryptSecret(row.accessKeyIdEnc, this.jwtSecret),
-      decryptSecret(row.accessKeySecretEnc, this.jwtSecret)
-    ])
+    let ak, sk
+    try {
+      ;[ak, sk] = await Promise.all([
+        decryptSecret(row.accessKeyIdEnc, this.jwtSecret),
+        decryptSecret(row.accessKeySecretEnc, this.jwtSecret)
+      ])
+    } catch (e) {
+      console.error('OssService.getRawById 解密失败（可能 JWT_SECRET 已变更）:', e)
+      return {
+        success: false,
+        error: '该配置的密钥无法解密（可能加密密钥已变更），请删除该配置后重新添加'
+      }
+    }
     return {
       success: true,
       data: {
