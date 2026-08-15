@@ -39,8 +39,11 @@ class FunctionsRequest {
       },
       (error) => {
         let message = '请求失败'
-        
-        if (error.response) {
+        // 优先展示后端返回的具体错误信息（各 API 均以 { success, error } 形式返回）
+        const backendError = error.response?.data?.error
+        if (typeof backendError === 'string' && backendError) {
+          message = backendError
+        } else if (error.response) {
           const status = error.response.status
           switch (status) {
             case 401:
