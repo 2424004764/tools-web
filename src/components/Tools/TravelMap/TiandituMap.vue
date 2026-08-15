@@ -7,7 +7,7 @@
  */
 import { ref, shallowRef, watch, onMounted, onBeforeUnmount, computed } from 'vue'
 import { loadTianditu, hasTiandituKey } from '@/utils/tianditu'
-import { getCategory, DEFAULT_CENTER, DEFAULT_ZOOM, haversine, formatDistance, pathDistance, simplifyPath } from './constants'
+import { getCategory, DEFAULT_CENTER, DEFAULT_ZOOM, haversine, formatDistance, pathDistance, simplifyPath, detectSharpTurns } from './constants'
 import type { MapPoint, MapRoute, BaseLayer, LngLat } from './types'
 
 const props = withDefaults(defineProps<{
@@ -62,6 +62,20 @@ const T = shallowRef<any>(null)
 const pointOverlays = shallowRef<any[]>([])
 const routeOverlays = shallowRef<any[]>([])
 const draftOverlays = shallowRef<any[]>([])
+// 急弯高亮：单独存一份 ref,跟主路线一起被 routes 变化驱动重画，
+// 独立 ref 是为了让 unmount/clear 时一次清掉（不混入主路线数组）。
+const sharpTurnOverlays = shallowRef<any[]>([])
+
+// 急弯高亮配色：在任意底图/路线颜色上都跳出来。
+// 之前用 halo(11px 描边) + main(7px 实色) 两层 polyline 叠出来 —— 视觉更精细,
+// 但覆盖物数翻倍,缩放/平移时天地图要重绘的对象多一倍,在 polyline 总量大
+// (多条路线 + 每条路几十个急弯) 的情况下会肉眼可见地掉帧。改成单根粗 polyline,
+// 视觉损失有限 (描边与主线之间那点光晕),覆盖物数砍半。
+const SHARP_TURN_HIGHLIGHT = {
+  color: '#dc2626', // 红
+  weight: 9,        // 比主线 4px 粗一倍多,远看一眼能看到
+  opacity: 1.0,
+}
 // 缓存当前视野边界，POI 搜索用到。坐标系是 WGS-84（天地图用此坐标系）。
 const currentBounds = shallowRef<{ minLng: number; minLat: number; maxLng: number; maxLat: number } | null>(null)
 
@@ -73,6 +87,13 @@ const cursorClass = computed(() =>
 
 // 拖动 / 缩放过程中的 view-change 去抖 timer，需要在 unmount 时清掉
 let syncTimer: ReturnType<typeof setTimeout> | null = null
+
+// 地图交互进行中（缩放 / 平移）—— 给容器加 .travel-map--animating 类，
+// CSS 隐藏所有 T.Label。SDK 在 zoomend/moveend 重投影 Label 时 DOM 会跳,
+// 这就是用户感觉"路线跐跐跐跳"的主要来源。Label 是唯一受影响的 —— Polyline
+// (SVG) 天地图自己处理得很好,不需要隐藏。
+const isAnimating = ref(false)
+let animTimer: ReturnType<typeof setTimeout> | null = null
 
 // ---------- 底图 ----------
 
@@ -205,15 +226,18 @@ function drawRoutes() {
   if (!map || !t) return
 
   clearOverlays(routeOverlays)
+  clearOverlays(sharpTurnOverlays)
   const created: any[] = []
+  const sharpCreated: any[] = []
 
   props.routes.forEach((r) => {
     if (!r.path || r.path.length < 2) return
     // 和 drawDraft 保持一致的视觉策略：一条干净的线 + 一个总距离标签。
     // OSRM 路线就算入站时已经 30m 抽稀，8m 容差再二次简化还是会让 polyline
-    // 看起来"密密麻麻"——拐点全保留，远看一堆小段。100m 容差只保留主拐点，
-    // 视觉上是平滑曲线。
-    const simplified = simplifyPath(r.path as [number, number][], 100)
+    // 看起来"密密麻麻"——拐点全保留，远看一堆小段。150m 容差只保留主拐点，
+    // 视觉上仍是一条平滑曲线，但节点数比 100m 再少 30~40%，缩放/平移时天地图
+    // 重绘开销明显降低。急弯高亮用 30m 单独抽稀切片,150m 容差不影响那段精度。
+    const simplified = simplifyPath(r.path as [number, number][], 150)
     // 选中态：线变粗 + 完全不透明 + 略微饱和，作为「当前选中的路线」的视觉强调。
     // 未选中保持原样。
     const isSelected = props.selectedRouteId === r.id
@@ -232,6 +256,38 @@ function drawRoutes() {
     })
     map.addOverLay(line)
     created.push(line)
+
+    // 急弯高亮：只对沿道路路线画,直线路线节点稀疏、统计意义不大。
+    // 单根粗 polyline —— 之前 halo+main 两层在覆盖物多时会显著拖慢缩放/平移,
+    // 砍掉 halo 后视觉损失不大(就少了一圈模糊描边),缩放/平移帧率明显回升。
+    // 急弯 span 切片后再用 simplifyPath(30m) 二次抽稀 —— span 段通常 100~150m,
+    // 原始 OSRM 节点在这段里可能有 30~50 个,9px 粗线上根本看不出 30 个和 8 个
+    // 节点的区别,但 SVG path 节点数砍 70%,缩放/平移时天地图重绘开销降一档。
+    if (r.kind === 'road') {
+      const spans = detectSharpTurns(r.path)
+      for (const span of spans) {
+        if (span.endIdx <= span.startIdx) continue
+        const slice = simplifyPath(
+          r.path.slice(span.startIdx, span.endIdx + 1) as [number, number][],
+          30
+        )
+        if (slice.length < 2) continue
+        const slicePts = slice.map(([lng, lat]) => new t.LngLat(lng, lat))
+        const main = new t.Polyline(slicePts, {
+          color: SHARP_TURN_HIGHLIGHT.color,
+          weight: SHARP_TURN_HIGHLIGHT.weight,
+          opacity: SHARP_TURN_HIGHLIGHT.opacity,
+          lineJoin: 'round',
+          lineCap: 'round',
+        })
+        // 点中急弯高亮也触发选中对应路线 —— 用户能放大查看
+        main.addEventListener('click', () => {
+          emit('route-click', r.id)
+        })
+        map.addOverLay(main)
+        sharpCreated.push(main)
+      }
+    }
 
     // 每条路线只画一个总距离标签，位置在距起点半程的点（按累计距离插值）。
     // 用户视角：「一条路多长」就够了，不需要每 200/500m 看一次"已走 X 米"。
@@ -277,6 +333,7 @@ function drawRoutes() {
   })
 
   routeOverlays.value = created
+  sharpTurnOverlays.value = sharpCreated
 }
 
 function drawDraft() {
@@ -291,9 +348,9 @@ function drawDraft() {
   // 用户视角：「沿道路画路线」就是两个点位之间一条干净的路。
   // OSRM 真实返回几百个节点表达道路曲率，但视觉上太"密密麻麻"——
   // 8m 容差虽然抽稀了，polyline 拐点还是太多，远看像一堆小段堆在一起。
-  // 改用 100m 容差 → 几个主要拐点保留，polyline 视觉上几乎是一条平滑曲线。
+  // 改用 150m 容差 → 几个主要拐点保留，polyline 视觉上几乎是一条平滑曲线。
   // 注意：抽稀只影响视觉显示，pathDistance 计算用的是原始 path，距离仍然准确。
-  const simplified = simplifyPath(path, 100)
+  const simplified = simplifyPath(path, 150)
 
   const created: any[] = []
   const lnglats = simplified.map(([lng, lat]) => new t.LngLat(lng, lat))
@@ -504,6 +561,27 @@ async function initMap() {
     map.addEventListener('moveend', syncView)
     map.addEventListener('zoomend', syncView)
 
+    // 动画期间隐藏 Label —— 在 start 设 true,end 设 false。
+    // 不监听 move/zoom 中间态:中间态设的话还没进入缩放就会闪一帧。
+    // 设置 80ms 缓冲:zoomend 后 80ms 再恢复,让 SDK 的重投影彻底完成,
+    // 否则用户会看到"路线出现一瞬间 → 跐跐跐一下 → 稳定"。
+    const startAnim = () => {
+      if (animTimer) clearTimeout(animTimer)
+      animTimer = null
+      isAnimating.value = true
+    }
+    const endAnim = () => {
+      if (animTimer) clearTimeout(animTimer)
+      animTimer = setTimeout(() => {
+        isAnimating.value = false
+        animTimer = null
+      }, 80)
+    }
+    map.addEventListener('movestart', startAnim)
+    map.addEventListener('zoomstart', startAnim)
+    map.addEventListener('moveend', endAnim)
+    map.addEventListener('zoomend', endAnim)
+
     drawRoutes()
     drawPoints()
     drawDraft()
@@ -538,6 +616,7 @@ onMounted(initMap)
 onBeforeUnmount(() => {
   if (resizeTimer) clearTimeout(resizeTimer)
   if (syncTimer) clearTimeout(syncTimer)
+  if (animTimer) clearTimeout(animTimer)
   if (drawPointsRaf) cancelAnimationFrame(drawPointsRaf)
   if (drawRoutesRaf) cancelAnimationFrame(drawRoutesRaf)
   if (drawDraftRaf) cancelAnimationFrame(drawDraftRaf)
@@ -547,6 +626,7 @@ onBeforeUnmount(() => {
   document.removeEventListener('click', onGlobalClickForHit, true)
   clearOverlays(pointOverlays)
   clearOverlays(routeOverlays)
+  clearOverlays(sharpTurnOverlays)
   clearOverlays(draftOverlays)
   mapInstance.value = null
 })
@@ -626,7 +706,7 @@ defineExpose({ panTo, fitAll, refreshSize, getBounds: () => currentBounds.value,
 <template>
   <div
     class="relative w-full h-full rounded-xl overflow-hidden bg-gray-100"
-    :class="cursorClass"
+    :class="[cursorClass, { 'travel-map--animating': isAnimating }]"
   >
     <!--
       注意：这个 div 是天地图的挂载点，绝对不要在它上面绑任何动态 class/style。
@@ -686,6 +766,16 @@ defineExpose({ panTo, fitAll, refreshSize, getBounds: () => currentBounds.value,
 .travel-map--crosshair :deep(.tdt-container),
 .travel-map--crosshair :deep(.tdt-container *) {
   cursor: crosshair !important;
+}
+
+/* 缩放/拖动动画进行中：临时隐藏所有 T.Label DOM，避免 SDK 在 zoomend/moveend
+   时重投影 Label 造成跐跐跐跐跐跐跐跐跳。Polyline (SVG) 不受影响,路线本身依然可见。
+   visibility 而非 display —— display 会触发 reflow,visibility 只触发 composite,
+   跳过成本最低。 */
+.travel-map--animating :deep(.tdt-container label),
+.travel-map--animating :deep(.tdt-container .tdt-label),
+.travel-map--animating :deep(.tdt-container [class*="label"]) {
+  visibility: hidden !important;
 }
 </style>
 

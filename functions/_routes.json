@@ -78,7 +78,9 @@
     "/api/travel-maps",
     "/api/travel-maps/*",
     "/api/travel-map-plaza",
-    "/api/travel-map/*"
+    "/api/travel-map/*",
+    "/api/flashcards",
+    "/api/flashcards/*"
   ],
   "exclude": []
 }

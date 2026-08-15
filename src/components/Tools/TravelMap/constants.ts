@@ -161,6 +161,177 @@ function pointToSegmentDeg(
   return cross / len
 }
 
+// ---------- 急弯识别 ----------
+
+export interface SharpTurnOptions {
+  /** 窗口内累积转向角达到该角度（度）即计为一个急弯 */
+  thresholdDeg?: number
+  /** 累积转向角的计算窗口（米），超过仍未到阈值就清零 */
+  windowMeters?: number
+  /** 计完一个急弯后的冷却距离（米），避免同一个大弯被数两次 */
+  cooldownMeters?: number
+  /** 高亮折线前后各延伸多少米（沿路径往两头走）。0=仅顶点一个点 */
+  highlightExtendMeters?: number
+}
+
+/** 急弯判定默认参数 —— 想调整灵敏度直接改这里 */
+export const SHARP_TURN_DEFAULTS: Required<SharpTurnOptions> = {
+  thresholdDeg: 90,
+  windowMeters: 200,
+  cooldownMeters: 60,
+  highlightExtendMeters: 80,
+}
+
+/**
+ * 一个急弯的位置信息 —— 用来在地图上画高亮折线。
+ *   centerIdx：触发判定的那个顶点（path 中的下标）
+ *   startIdx / endIdx：往前/后各 extendMeters 米后定位到的下标；含头尾
+ *   turnDeg：触发时该急弯已累积的角度（不一定精确等于 thresholdDeg，可能略大）
+ */
+export interface SharpTurnSpan {
+  centerIdx: number
+  startIdx: number
+  endIdx: number
+  turnDeg: number
+}
+
+/**
+ * 一条路线里识别出的所有急弯。
+ *
+ * 原理：沿路线逐段算方位角变化，把小转角累积起来；在 windowMeters 米的窗口内
+ * 累积转向角 ≥ thresholdDeg 就计一个急弯。用「累积窗口」而非单个顶点夹角，是因为
+ * OSRM 节点保存前被 simplifyPath 按 30m 容差抽稀，一个急弯的顶点可能只剩 2~3 个
+ * 节点，单点夹角会明显偏小、漏数。
+ *
+ * 计完一个弯后设置 cooldownMeters 冷却距离，避免同一个大弯（或紧挨的两个 90°）
+ * 被数成两次。
+ *
+ * 只对沿道路路线（kind='road'）有意义；手点直线路线的节点就是直线，结果基本为空。
+ */
+export function detectSharpTurns(
+  path: [number, number][],
+  options: SharpTurnOptions = {}
+): SharpTurnSpan[] {
+  const {
+    thresholdDeg = SHARP_TURN_DEFAULTS.thresholdDeg,
+    windowMeters = SHARP_TURN_DEFAULTS.windowMeters,
+    cooldownMeters = SHARP_TURN_DEFAULTS.cooldownMeters,
+    highlightExtendMeters = SHARP_TURN_DEFAULTS.highlightExtendMeters,
+  } = options
+  const spans: SharpTurnSpan[] = []
+  if (path.length < 3) return spans
+
+  let accumulatedTurn = 0
+  let accumulatedDist = 0
+  let cooldown = 0
+  let lastTriggerIdx = -Infinity
+
+  // 段 i 从 path[i] 指向 path[i+1]，转角发生在节点 path[i]
+  for (let i = 1; i < path.length - 1; i++) {
+    const segLen = haversine(path[i][0], path[i][1], path[i + 1][0], path[i + 1][1])
+    if (cooldown > 0) {
+      cooldown -= segLen
+      continue
+    }
+    const turn = headingDiffDeg(
+      bearingDeg(path[i - 1][0], path[i - 1][1], path[i][0], path[i][1]),
+      bearingDeg(path[i][0], path[i][1], path[i + 1][0], path[i + 1][1])
+    )
+    accumulatedTurn += turn
+    accumulatedDist += segLen
+    if (accumulatedTurn >= thresholdDeg) {
+      spans.push({
+        centerIdx: i,
+        startIdx: walkAlongPath(path, i, 'back', highlightExtendMeters),
+        endIdx: walkAlongPath(path, i, 'forward', highlightExtendMeters),
+        turnDeg: Math.round(accumulatedTurn),
+      })
+      lastTriggerIdx = i
+      accumulatedTurn = 0
+      accumulatedDist = 0
+      cooldown = cooldownMeters
+    } else if (accumulatedDist >= windowMeters) {
+      accumulatedTurn = 0
+      accumulatedDist = 0
+    }
+  }
+  // 合并：相邻急弯高亮区间重叠时合并成一个，避免画两条几乎重合的红线。
+  // 「相邻」用高亮区间是否相交判断（endIdx >= next.startIdx）。
+  if (spans.length < 2) return spans
+  const merged: SharpTurnSpan[] = [spans[0]]
+  for (let k = 1; k < spans.length; k++) {
+    const prev = merged[merged.length - 1]
+    const cur = spans[k]
+    if (cur.startIdx <= prev.endIdx) {
+      prev.endIdx = Math.max(prev.endIdx, cur.endIdx)
+      prev.centerIdx = cur.turnDeg > prev.turnDeg ? cur.centerIdx : prev.centerIdx
+      prev.turnDeg = Math.max(prev.turnDeg, cur.turnDeg)
+    } else {
+      merged.push(cur)
+    }
+  }
+  void lastTriggerIdx
+  return merged
+}
+
+/**
+ * 沿 path 从中心点向某方向走 targetMeters 米，返回落点的下标。
+ * 边界情况：到起点/终点位置直接 clamp，不会越过数组。
+ */
+function walkAlongPath(
+  path: [number, number][],
+  centerIdx: number,
+  direction: 'back' | 'forward',
+  targetMeters: number
+): number {
+  if (targetMeters <= 0) return centerIdx
+  let walked = 0
+  if (direction === 'back') {
+    for (let i = centerIdx; i > 0; i--) {
+      const d = haversine(path[i - 1][0], path[i - 1][1], path[i][0], path[i][1])
+      walked += d
+      if (walked >= targetMeters) return i - 1
+    }
+    return 0
+  } else {
+    for (let i = centerIdx; i < path.length - 1; i++) {
+      const d = haversine(path[i][0], path[i][1], path[i + 1][0], path[i + 1][1])
+      walked += d
+      if (walked >= targetMeters) return i + 1
+    }
+    return path.length - 1
+  }
+}
+
+/** 仅返回急弯数 —— 给纯数字 UI 用（如卡片徽标） */
+export function countSharpTurns(
+  path: [number, number][],
+  options: SharpTurnOptions = {}
+): number {
+  return detectSharpTurns(path, options).length
+}
+
+/** 两点间方位角（度，0°=正北，顺时针）。小范围内用平面 atan2 近似即可 */
+function bearingDeg(lng1: number, lat1: number, lng2: number, lat2: number): number {
+  const toRad = (d: number) => (d * Math.PI) / 180
+  const dLng = toRad(lng2 - lng1)
+  const lat1r = toRad(lat1)
+  const lat2r = toRad(lat2)
+  const y = Math.sin(dLng) * Math.cos(lat2r)
+  const x =
+    Math.cos(lat1r) * Math.sin(lat2r) -
+    Math.sin(lat1r) * Math.cos(lat2r) * Math.cos(dLng)
+  const deg = (Math.atan2(y, x) * 180) / Math.PI
+  return (deg + 360) % 360
+}
+
+/** 两个方位角的夹角（0~180 度） */
+function headingDiffDeg(a: number, b: number): number {
+  let diff = Math.abs(a - b) % 360
+  if (diff > 180) diff = 360 - diff
+  return diff
+}
+
 /** 米 → 友好文案 */
 export function formatDistance(meters: number): string {
   if (!Number.isFinite(meters) || meters <= 0) return '0 m'
