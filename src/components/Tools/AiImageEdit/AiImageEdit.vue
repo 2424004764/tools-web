@@ -57,47 +57,82 @@ const onPromptSelect = (payload: { id: string; title: string; content: string })
   ElMessage.success(payload.title ? `已填入「${payload.title}」` : '已填入提示词')
 }
 
-// 图片上传 — 保存 File 对象，预览用 base64
+// 图片上传 — 多张图片，最多 MAX_IMAGES 张
+// 保存 File 对象数组，预览用 base64 数组
+const MAX_IMAGES = 16
 const uploadRef = ref<any>(null)
-const imageFile = ref<File | null>(null)
-const imagePreview = ref('')
-const uploadedFileName = ref('')
+const imageFiles = ref<File[]>([])
+const imagePreviews = ref<string[]>([])
+const uploadedFileNames = ref<string[]>([])
 
-const handleExceed: UploadProps['onExceed'] = (files) => {
-  // 已有图片时再选新图：清空 el-upload 内部列表后，直接交给 processImageFile 处理。
-  // 不再走 handleStart -> http-request 链路，避免 auto-upload 在 clearFiles 紧接 handleStart
-  // 的时序下不触发导致预览不刷新。
-  uploadRef.value!.clearFiles()
-  const file = files[0] as File
-  processImageFile(file)
-}
+const canAddMore = computed(() => imageFiles.value.length < MAX_IMAGES)
+const remainingSlots = computed(() => MAX_IMAGES - imageFiles.value.length)
 
-const handleUpload = (options: any): Promise<void> => {
-  return new Promise((resolve) => {
-    processImageFile(options.file as File)
-    resolve()
-  })
-}
-
-const removeImage = () => {
-  imageFile.value = null
-  imagePreview.value = ''
-  uploadedFileName.value = ''
+// el-upload onChange：每次新增/移除文件都会触发，仅处理新增。
+// auto-upload=false 时 status='ready' 即代表「刚被加入内部列表」。
+const handleChange: UploadProps['onChange'] = (uploadFile) => {
+  if (uploadFile.status === 'ready' && uploadFile.raw) {
+    addImageFiles([uploadFile.raw])
+  }
+  // 立刻清空 el-upload 内部列表，避免内部累积导致下次选择时 onExceed 误判
   uploadRef.value?.clearFiles()
 }
 
-// 粘贴图片支持
-const processImageFile = (file: File) => {
-  imageFile.value = file
-  uploadedFileName.value = file.name || 'clipboard.png'
-  const reader = new FileReader()
-  reader.onload = (e) => {
-    imagePreview.value = e.target?.result as string
-  }
-  reader.readAsDataURL(file)
-  ElMessage.success('图片已就绪')
+// onExceed：超过 MAX_IMAGES 触发。直接提示，由用户自己处理。
+const handleExceed: UploadProps['onExceed'] = () => {
+  ElMessage.warning(`最多上传 ${MAX_IMAGES} 张图片`)
 }
 
+// 关闭 auto-upload 之后 http-request 不会再被调到，留个空实现兜底
+const handleUpload = (_options: any): Promise<void> => {
+  return Promise.resolve()
+}
+
+// 追加图片：超过上限的部分静默丢弃并提示
+const addImageFiles = (files: File[]) => {
+  let added = 0
+  for (const file of files) {
+    if (!canAddMore.value) {
+      ElMessage.warning(`已达上限 ${MAX_IMAGES} 张`)
+      break
+    }
+    if (!file.type.startsWith('image/')) {
+      ElMessage.error(`已跳过非图片文件：${file.name || '未知'}`)
+      continue
+    }
+    imageFiles.value.push(file)
+    uploadedFileNames.value.push(file.name || 'image.png')
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      // 同步追加到预览数组，保持索引一致
+      imagePreviews.value.push(e.target?.result as string)
+    }
+    reader.readAsDataURL(file)
+    added++
+  }
+  if (added > 0) {
+    ElMessage.success(added === 1 ? '图片已就绪' : `已添加 ${added} 张图片（共 ${imageFiles.value.length}/${MAX_IMAGES}）`)
+  }
+}
+
+// 移除指定索引的图片
+const removeImage = (idx: number) => {
+  if (isLoading.value) return
+  imageFiles.value.splice(idx, 1)
+  imagePreviews.value.splice(idx, 1)
+  uploadedFileNames.value.splice(idx, 1)
+}
+
+// 清空全部图片
+const clearAllImages = () => {
+  if (isLoading.value) return
+  imageFiles.value = []
+  imagePreviews.value = []
+  uploadedFileNames.value = []
+  uploadRef.value?.clearFiles()
+}
+
+// 粘贴图片支持：追加到列表（已有图时继续往后加）
 const handlePaste = (e: ClipboardEvent) => {
   if (isLoading.value) return
   const items = e.clipboardData?.items
@@ -107,8 +142,8 @@ const handlePaste = (e: ClipboardEvent) => {
       e.preventDefault()
       const blob = item.getAsFile()
       if (blob) {
-        const file = new File([blob], 'clipboard.png', { type: blob.type })
-        processImageFile(file)
+        const file = new File([blob], `clipboard-${Date.now()}.png`, { type: blob.type })
+        addImageFiles([file])
       }
       return
     }
@@ -153,6 +188,7 @@ watch(isRefillingImage, async (val) => {
 
 const onDragEnter = (e: DragEvent) => {
   e.preventDefault()
+  if (isLoading.value) return
   dragCounter++
   const types = e.dataTransfer?.types
   if (!types) return
@@ -177,6 +213,14 @@ const onDragLeave = (e: DragEvent) => {
 // e.stopPropagation()，导致冒泡阶段的外层 @drop 永远收不到事件。
 // capture 模式让我们在子元素处理前先拿到事件，自己决定是否拦截。
 const onUploadDrop = async (e: DragEvent) => {
+  // 生成中：所有上传通道（拖入、生成结果回填、点击 picker）都已禁用
+  if (isLoading.value) {
+    e.preventDefault()
+    e.stopPropagation()
+    dragCounter = 0
+    isDragOver.value = false
+    return
+  }
   // 路径 A：来自本页生成结果（URL → fetch → Blob → File）。
   // dataTransfer 里只有自定义 MIME / text-uri-list，没有真实文件，
   // el-upload 处理会空转，这里要 stopPropagation 抢在自己手里处理。
@@ -209,7 +253,8 @@ const onUploadDrop = async (e: DragEvent) => {
       const file = new File([blob], filename, {
         type: blob.type || 'image/png',
       })
-      processImageFile(file)
+      // 把生成结果作为新图片追加（多图场景下插到末尾，不替换已有图）
+      addImageFiles([file])
     } catch (err) {
       ElMessage.error('读取生成结果失败：' + (err as Error)?.message)
     } finally {
@@ -218,10 +263,14 @@ const onUploadDrop = async (e: DragEvent) => {
     return
   }
 
-  // 路径 B：从操作系统拖入的真实文件 → 不拦，让 el-upload-dragger 走它
-  // 原生的 emit('file') → http-request → handleUpload → processImageFile，
-  // 避免我们在外层和 el-upload 内层各处理一遍导致重复 setBalance 等副作用。
-  // 这里只需重置高亮状态（el-upload-dragger 自己也会关掉它的 dragover）。
+  // 路径 B：从操作系统拖入的真实文件 → 自己处理（el-upload-dragger 默认只取第一个 file，多图 drop 需要拦截）
+  // 注意：addImageFiles 会自动跳过非图片文件 + 超出 MAX_IMAGES 的部分
+  const droppedFiles = Array.from(e.dataTransfer?.files || [])
+  if (droppedFiles.length > 0) {
+    e.preventDefault()
+    e.stopPropagation()
+    addImageFiles(droppedFiles)
+  }
   dragCounter = 0
   isDragOver.value = false
 }
@@ -591,8 +640,9 @@ const generateImage = async () => {
     if (prompt.value.trim()) {
       fd.append('prompt', prompt.value.trim())
     }
-    if (imageFile.value) {
-      fd.append('image', imageFile.value)
+    // 多图：每张都用同一个字段名 'images'，后端用 formData.getAll('images') 读取
+    for (const file of imageFiles.value) {
+      fd.append('images', file)
     }
 
     // AI 生图偶尔跑到 3-5 分钟，覆盖默认 30s 超时到 11 分钟（后端 10 分钟 + 1 分钟缓冲）
@@ -710,7 +760,12 @@ const openInNewTab = () => {
         <div class="space-y-6">
           <!-- 图片上传 -->
           <div>
-            <label class="block text-body-sm font-medium text-gray-700 mb-2">上传图片（可选）</label>
+            <label class="block text-body-sm font-medium text-gray-700 mb-2 flex items-center justify-between">
+              <span>上传图片（可选）</span>
+              <span v-if="imageFiles.length > 0" class="text-caption text-gray-500 tabular-nums">
+                已选 {{ imageFiles.length }} / {{ MAX_IMAGES }}
+              </span>
+            </label>
             <div
               class="upload-dropzone"
               :class="{ 'is-dragover': isDragOver }"
@@ -723,35 +778,70 @@ const openInNewTab = () => {
                 ref="uploadRef"
                 class="w-full"
                 drag
-                :auto-upload="true"
-                :limit="1"
+                :disabled="isLoading"
+                :auto-upload="false"
+                :multiple="true"
+                :limit="MAX_IMAGES"
+                :on-change="handleChange"
                 :on-exceed="handleExceed"
                 :http-request="handleUpload"
                 :show-file-list="false"
                 accept="image/png,image/jpeg,image/webp,image/gif"
               >
+                <!-- 空状态：上传提示 -->
                 <div
-                  v-if="!imagePreview"
+                  v-if="imageFiles.length === 0"
                   class="flex flex-col items-center justify-center py-3"
                 >
                   <svg class="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                   <span class="text-body-sm text-gray-500">拖拽图片、点击上传 或 Ctrl+V 粘贴</span>
-                  <span class="text-caption text-gray-400 mt-0.5">支持 PNG / JPEG / WebP / GIF</span>
-                  <span v-if="isDragOver" class="text-caption text-blue-500 mt-1">松手即可替换为拖入的图片</span>
+                  <span class="text-caption text-gray-400 mt-0.5">支持 PNG / JPEG / WebP / GIF · 最多 {{ MAX_IMAGES }} 张</span>
+                  <span v-if="isDragOver" class="text-caption text-blue-500 mt-1">松手即可添加</span>
                 </div>
-                <div v-else class="relative w-full upload-preview-wrapper" @click.stop>
-                  <el-image
-                    :src="imagePreview"
-                    :preview-src-list="[imagePreview]"
-                    :initial-index="0"
-                    fit="contain"
-                    class="block mx-auto rounded-lg upload-preview-image"
-                    alt="上传预览"
-                  />
-                  <span class="block text-center text-caption text-gray-500 mt-1">{{ uploadedFileName }}</span>
-                  <span class="block text-center text-caption text-gray-400 mt-0.5">点击图片放大 · 点击周围空白、拖拽新图片 或 Ctrl+V 粘贴 即可替换</span>
+                <!-- 有图状态：缩略图网格 + 末尾「继续添加」位 -->
+                <div v-else class="upload-grid-wrapper">
+                  <div class="upload-grid">
+                    <div
+                      v-for="(preview, idx) in imagePreviews"
+                      :key="idx"
+                      class="upload-thumb"
+                      @click.stop
+                    >
+                      <el-image
+                        :src="preview"
+                        :preview-src-list="imagePreviews"
+                        :initial-index="idx"
+                        fit="cover"
+                        class="upload-thumb-img"
+                        alt="上传预览"
+                      />
+                      <button
+                        type="button"
+                        @click.stop="removeImage(idx)"
+                        class="upload-thumb-remove"
+                        :disabled="isLoading"
+                        :title="`移除 ${uploadedFileNames[idx] || ''}`"
+                        aria-label="移除图片"
+                      >
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                      <span class="upload-thumb-name">{{ uploadedFileNames[idx] }}</span>
+                    </div>
+                    <!-- 末尾「继续添加」占位 -->
+                    <div v-if="canAddMore && !isLoading" class="upload-add-tile" :title="`还可添加 ${remainingSlots} 张`">
+                      <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4" />
+                      </svg>
+                      <span class="text-caption text-gray-400 mt-0.5">还可添加 {{ remainingSlots }} 张</span>
+                    </div>
+                  </div>
+                  <p class="text-caption text-gray-400 mt-2 text-center">
+                    点击缩略图放大 · 点击 ✕ 移除单张 · 拖拽新图 或 Ctrl+V 粘贴继续添加
+                  </p>
                 </div>
               </el-upload>
 
@@ -762,14 +852,15 @@ const openInNewTab = () => {
               </div>
             </div>
             <button
-              v-if="imagePreview"
-              @click="removeImage"
-              class="mt-2 text-body-sm text-red-500 hover:text-red-700 flex items-center"
+              v-if="imageFiles.length > 0"
+              @click="clearAllImages"
+              :disabled="isLoading"
+              class="mt-2 text-body-sm text-red-500 hover:text-red-700 flex items-center disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-red-500"
             >
               <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                 <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
               </svg>
-              移除图片
+              清空全部图片
             </button>
           </div>
 
@@ -823,7 +914,7 @@ const openInNewTab = () => {
               请输入提示词
             </span>
             <span v-else class="text-caption text-gray-400 mt-1 block">
-              {{ imageFile ? '上传了参考图 + 描述修改效果 = 图生图；仅描述不传图 = 文生图' : '输入文字描述，AI为你生成图片' }}
+              {{ imageFiles.length > 0 ? `已上传 ${imageFiles.length} 张参考图 + 描述修改效果 = 图生图；仅描述不传图 = 文生图` : '输入文字描述，AI为你生成图片' }}
             </span>
           </div>
 
@@ -858,23 +949,23 @@ const openInNewTab = () => {
             <!-- 模式徽章：悬浮在按钮左上角 + 呼吸光晕 + hover 摆动 -->
             <div
               class="absolute -top-3 -left-2 z-20 pointer-events-none select-none transition-transform duration-300 group-hover/btn:scale-110"
-              :class="imageFile ? 'rotate-[-6deg] group-hover/btn:rotate-[-10deg]' : 'rotate-[6deg] group-hover/btn:rotate-[10deg]'"
+              :class="imageFiles.length > 0 ? 'rotate-[-6deg] group-hover/btn:rotate-[-10deg]' : 'rotate-[6deg] group-hover/btn:rotate-[10deg]'"
             >
               <!-- 呼吸光晕（box-shadow 脉冲） -->
               <div
                 class="absolute inset-0 rounded-full mode-badge-aura pointer-events-none"
-                :class="imageFile
+                :class="imageFiles.length > 0
                   ? 'bg-gradient-to-r from-blue-500 to-cyan-500'
                   : 'bg-gradient-to-r from-emerald-500 to-teal-500'"
               ></div>
               <div
                 class="relative px-3 py-1 rounded-full text-xs font-semibold shadow-lg ring-2 ring-white/40 backdrop-blur-sm flex items-center gap-1.5"
-                :class="imageFile
+                :class="imageFiles.length > 0
                   ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
                   : 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white'"
               >
-                <span class="inline-block animate-pulse">{{ imageFile ? '🖼️' : '✨' }}</span>
-                <span>{{ imageFile ? 'AI 图片编辑' : '文生图' }}</span>
+                <span class="inline-block animate-pulse">{{ imageFiles.length > 0 ? '🖼️' : '✨' }}</span>
+                <span>{{ imageFiles.length > 0 ? 'AI 图片编辑' : '文生图' }}</span>
               </div>
             </div>
 
@@ -1096,6 +1187,108 @@ const openInNewTab = () => {
   height: auto;
   object-fit: contain;
   cursor: zoom-in;
+}
+
+/* ============ 多图上传：缩略图网格 ============ */
+.upload-grid-wrapper {
+  width: 100%;
+  padding: 4px;
+}
+.upload-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+}
+.upload-thumb {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  cursor: zoom-in;
+  transition: border-color .15s ease, transform .15s ease;
+}
+.upload-thumb:hover {
+  border-color: #93c5fd;
+}
+:deep(.upload-thumb-img) {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+:deep(.upload-thumb-img img) {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.upload-thumb-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity .15s ease, background-color .15s ease, transform .15s ease;
+  z-index: 2;
+  cursor: pointer;
+}
+.upload-thumb:hover .upload-thumb-remove,
+.upload-thumb-remove:focus-visible {
+  opacity: 1;
+}
+.upload-thumb-remove:hover {
+  background: #ef4444;
+  transform: scale(1.08);
+}
+.upload-thumb-remove:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+  transform: none;
+  background: rgba(0, 0, 0, 0.55);
+}
+/* 移动端 / 触屏：移除按钮始终可见，避免 hover 才能点 */
+@media (hover: none) {
+  .upload-thumb-remove {
+    opacity: 1;
+  }
+}
+.upload-thumb-name {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 2px 6px;
+  font-size: 11px;
+  color: #fff;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+.upload-add-tile {
+  aspect-ratio: 1 / 1;
+  border: 1.5px dashed #d1d5db;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #fafafa;
+  cursor: pointer;
+  transition: border-color .15s ease, background-color .15s ease;
+}
+.upload-add-tile:hover {
+  border-color: #3b82f6;
+  background: #eff6ff;
 }
 
 /* ============ 拖拽视觉反馈 ============ */

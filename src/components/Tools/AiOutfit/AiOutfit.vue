@@ -16,7 +16,7 @@ import { useUserStore } from '@/store/modules/user'
 
 const info = reactive({
   title: 'AI 穿搭建议',
-  desc: '上传一张人物照片，再选择是否上传衣物照片，即可一键生成穿搭建议图：未传衣物时 AI 自动设计穿搭，传了衣物时把人物身上衣物替换为指定衣物。',
+  desc: '上传一张或多张人物照片（必填），再选择是否上传衣物照片（可多件），即可一键生成穿搭建议图：未传衣物时 AI 自动设计穿搭，传了衣物时把人物身上衣物替换为指定衣物。',
 })
 
 // ============ 模型 + 尺寸 ============
@@ -92,77 +92,126 @@ const openHistory = () => {
   }
 }
 
-// ============ 人物照（必填）============
+// ============ 人物照（必填，≥1 张）============
+// ============ 衣物照（可选）============
+// 两人 + 衣物 共用一个 MAX_TOTAL_IMAGES 上限（默认 16）
+const MAX_TOTAL_IMAGES = 16
 const personUploadRef = ref<any>(null)
-const personFile = ref<File | null>(null)
-const personPreview = ref('')
-const personFileName = ref('')
+const personFiles = ref<File[]>([])
+const personPreviews = ref<string[]>([])
+const personFileNames = ref<string[]>([])
 
-const handlePersonExceed: UploadProps['onExceed'] = (files) => {
-  personUploadRef.value!.clearFiles()
-  processPersonFile(files[0] as File)
-}
-const handlePersonUpload = (options: any): Promise<void> => {
-  return new Promise((resolve) => {
-    processPersonFile(options.file as File)
-    resolve()
-  })
-}
-const removePersonImage = () => {
-  personFile.value = null
-  personPreview.value = ''
-  personFileName.value = ''
+const clothingUploadRef = ref<any>(null)
+const clothingFiles = ref<File[]>([])
+const clothingPreviews = ref<string[]>([])
+const clothingFileNames = ref<string[]>([])
+
+const totalImageCount = computed(() => personFiles.value.length + clothingFiles.value.length)
+const remainingSlots = computed(() => MAX_TOTAL_IMAGES - totalImageCount.value)
+const personCanAddMore = computed(() => remainingSlots.value > 0)
+const clothingCanAddMore = computed(() => remainingSlots.value > 0)
+
+// 人物照 onChange：每次新增/移除文件都会触发，仅处理新增
+const handlePersonChange: UploadProps['onChange'] = (uploadFile) => {
+  if (uploadFile.status === 'ready' && uploadFile.raw) {
+    addPersonFiles([uploadFile.raw])
+  }
   personUploadRef.value?.clearFiles()
 }
-const processPersonFile = (file: File) => {
-  if (!file.type.startsWith('image/')) {
-    ElMessage.error('请选择图片文件')
-    return
+const handlePersonExceed: UploadProps['onExceed'] = () => {
+  ElMessage.warning(`人物照已达 ${MAX_TOTAL_IMAGES} 张上限`)
+}
+const handlePersonUpload = (_options: any): Promise<void> => Promise.resolve()
+
+const addPersonFiles = (files: File[]) => {
+  let added = 0
+  for (const file of files) {
+    if (!personCanAddMore.value) {
+      ElMessage.warning(`人物照已达上限（共 ${MAX_TOTAL_IMAGES} 张）`)
+      break
+    }
+    if (!file.type.startsWith('image/')) {
+      ElMessage.error(`已跳过非图片文件：${file.name || '未知'}`)
+      continue
+    }
+    personFiles.value.push(file)
+    personFileNames.value.push(file.name || 'person.png')
+    const reader = new FileReader()
+    reader.onload = (e) => { personPreviews.value.push(e.target?.result as string) }
+    reader.readAsDataURL(file)
+    added++
   }
-  personFile.value = file
-  personFileName.value = file.name || 'person.png'
-  const reader = new FileReader()
-  reader.onload = (e) => { personPreview.value = e.target?.result as string }
-  reader.readAsDataURL(file)
-  ElMessage.success('人物照已就绪')
+  if (added > 0) {
+    ElMessage.success(added === 1 ? '人物照已就绪' : `已添加 ${added} 张人物照（${totalImageCount.value}/${MAX_TOTAL_IMAGES}）`)
+  }
 }
 
-// ============ 衣物照（可选）============
-const clothingUploadRef = ref<any>(null)
-const clothingFile = ref<File | null>(null)
-const clothingPreview = ref('')
-const clothingFileName = ref('')
+const removePersonImage = (idx: number) => {
+  if (isLoading.value) return
+  personFiles.value.splice(idx, 1)
+  personPreviews.value.splice(idx, 1)
+  personFileNames.value.splice(idx, 1)
+}
 
-const handleClothingExceed: UploadProps['onExceed'] = (files) => {
-  clothingUploadRef.value!.clearFiles()
-  processClothingFile(files[0] as File)
-}
-const handleClothingUpload = (options: any): Promise<void> => {
-  return new Promise((resolve) => {
-    processClothingFile(options.file as File)
-    resolve()
-  })
-}
-const removeClothingImage = () => {
-  clothingFile.value = null
-  clothingPreview.value = ''
-  clothingFileName.value = ''
+// 衣物照 onChange
+const handleClothingChange: UploadProps['onChange'] = (uploadFile) => {
+  if (uploadFile.status === 'ready' && uploadFile.raw) {
+    addClothingFiles([uploadFile.raw])
+  }
   clothingUploadRef.value?.clearFiles()
 }
-const processClothingFile = (file: File) => {
-  if (!file.type.startsWith('image/')) {
-    ElMessage.error('请选择图片文件')
-    return
+const handleClothingExceed: UploadProps['onExceed'] = () => {
+  ElMessage.warning(`衣物照已达 ${MAX_TOTAL_IMAGES} 张上限`)
+}
+const handleClothingUpload = (_options: any): Promise<void> => Promise.resolve()
+
+const addClothingFiles = (files: File[]) => {
+  let added = 0
+  for (const file of files) {
+    if (!clothingCanAddMore.value) {
+      ElMessage.warning(`衣物照已达上限（共 ${MAX_TOTAL_IMAGES} 张）`)
+      break
+    }
+    if (!file.type.startsWith('image/')) {
+      ElMessage.error(`已跳过非图片文件：${file.name || '未知'}`)
+      continue
+    }
+    clothingFiles.value.push(file)
+    clothingFileNames.value.push(file.name || 'clothing.png')
+    const reader = new FileReader()
+    reader.onload = (e) => { clothingPreviews.value.push(e.target?.result as string) }
+    reader.readAsDataURL(file)
+    added++
   }
-  clothingFile.value = file
-  clothingFileName.value = file.name || 'clothing.png'
-  const reader = new FileReader()
-  reader.onload = (e) => { clothingPreview.value = e.target?.result as string }
-  reader.readAsDataURL(file)
-  ElMessage.success('衣物照已就绪')
+  if (added > 0) {
+    ElMessage.success(added === 1 ? '衣物照已就绪' : `已添加 ${added} 张衣物照（${totalImageCount.value}/${MAX_TOTAL_IMAGES}）`)
+  }
 }
 
-// 粘贴图片：优先人物照位，已有人物照则填衣物照
+const removeClothingImage = (idx: number) => {
+  if (isLoading.value) return
+  clothingFiles.value.splice(idx, 1)
+  clothingPreviews.value.splice(idx, 1)
+  clothingFileNames.value.splice(idx, 1)
+}
+
+// 清空（按钮触发）
+const clearAllPersonImages = () => {
+  if (isLoading.value) return
+  personFiles.value = []
+  personPreviews.value = []
+  personFileNames.value = []
+  personUploadRef.value?.clearFiles()
+}
+const clearAllClothingImages = () => {
+  if (isLoading.value) return
+  clothingFiles.value = []
+  clothingPreviews.value = []
+  clothingFileNames.value = []
+  clothingUploadRef.value?.clearFiles()
+}
+
+// 粘贴图片：优先人物照位；人物照填满后填衣物照
 const handlePaste = (e: ClipboardEvent) => {
   if (isLoading.value) return
   const items = e.clipboardData?.items
@@ -172,11 +221,16 @@ const handlePaste = (e: ClipboardEvent) => {
       e.preventDefault()
       const blob = item.getAsFile()
       if (!blob) return
-      const file = new File([blob], personFile.value ? 'clothing.png' : 'person.png', { type: blob.type })
-      if (personFile.value) {
-        processClothingFile(file)
+      const file = new File([blob], `clipboard-${Date.now()}.png`, { type: blob.type })
+      // 优先人物照；人物照已满时填衣物照
+      if (personFiles.value.length === 0) {
+        addPersonFiles([file])
+      } else if (personCanAddMore.value) {
+        addPersonFiles([file])
+      } else if (clothingCanAddMore.value) {
+        addClothingFiles([file])
       } else {
-        processPersonFile(file)
+        ElMessage.warning(`已达 ${MAX_TOTAL_IMAGES} 张上限`)
       }
       return
     }
@@ -355,13 +409,13 @@ const formatElapsed = (s: number) => {
   return m > 0 ? `${m}分${sec}秒` : `${sec}秒`
 }
 
-// 必填校验：人物照必须有；衣物照可选
+// 必填校验：人物照必须有（≥1 张）；衣物照可选
 const canGenerate = computed(() => {
   return !isLoading.value
     && modelLoaded.value
     && modelList.value.length > 0
     && !!selectedModel.value
-    && !!personFile.value
+    && personFiles.value.length > 0
 })
 
 // ============ 调后端 ============
@@ -417,6 +471,7 @@ watch(isRefillingClothing, async (val) => {
 // 人物照 dropzone 回调
 const onPersonDragEnter = (e: DragEvent) => {
   e.preventDefault()
+  if (isLoading.value) return
   dragCounterPerson++
   const types = e.dataTransfer?.types
   if (!types) return
@@ -436,6 +491,7 @@ const onPersonDragLeave = (e: DragEvent) => {
 // 衣物照 dropzone 回调
 const onClothingDragEnter = (e: DragEvent) => {
   e.preventDefault()
+  if (isLoading.value) return
   dragCounterClothing++
   const types = e.dataTransfer?.types
   if (!types) return
@@ -453,7 +509,7 @@ const onClothingDragLeave = (e: DragEvent) => {
   if (dragCounterClothing === 0) isDragOverClothing.value = false
 }
 
-// 统一的回填执行：从生成结果拿 blob → 包装成 File → 调用对应 processXxxFile
+// 统一的回填执行：从生成结果拿 blob → 包装成 File → 调用对应 addXxxFiles
 async function refillFromResult(resultUrl: string, target: 'person' | 'clothing'): Promise<void> {
   let blob: Blob
   let filename = target === 'person' ? 'person-result.png' : 'clothing-result.png'
@@ -467,15 +523,24 @@ async function refillFromResult(resultUrl: string, target: 'person' | 'clothing'
     blob = await resp.blob()
   }
   const file = new File([blob], filename, { type: blob.type || 'image/png' })
+  // 追加为新图片（不替换已有），addXxxFiles 内部自动校验上限和非图片
   if (target === 'person') {
-    processPersonFile(file)
+    addPersonFiles([file])
   } else {
-    processClothingFile(file)
+    addClothingFiles([file])
   }
 }
 
-// 人物照 drop：capture 阶段先于 el-upload-dragger，识别结果后拦截；文件放行
+// 人物照 drop：capture 阶段先于 el-upload-dragger，识别结果后拦截；文件也自己处理（多图）
 const onPersonUploadDrop = async (e: DragEvent) => {
+  // 生成中：直接吞掉事件，dropzone 不接收新文件
+  if (isLoading.value) {
+    e.preventDefault()
+    e.stopPropagation()
+    dragCounterPerson = 0
+    isDragOverPerson.value = false
+    return
+  }
   const resultUrl =
     e.dataTransfer?.getData(RESULT_DRAG_MIME) ||
     e.dataTransfer?.getData('text/uri-list')?.split('\n')[0] ||
@@ -495,11 +560,26 @@ const onPersonUploadDrop = async (e: DragEvent) => {
     }
     return
   }
+  // 多文件拖拽：自己处理（el-upload-dragger 默认只取第一个 file）
+  const droppedFiles = Array.from(e.dataTransfer?.files || [])
+  if (droppedFiles.length > 0) {
+    e.preventDefault()
+    e.stopPropagation()
+    addPersonFiles(droppedFiles)
+  }
   dragCounterPerson = 0
   isDragOverPerson.value = false
 }
 // 衣物照 drop 同上
 const onClothingUploadDrop = async (e: DragEvent) => {
+  // 生成中：直接吞掉事件
+  if (isLoading.value) {
+    e.preventDefault()
+    e.stopPropagation()
+    dragCounterClothing = 0
+    isDragOverClothing.value = false
+    return
+  }
   const resultUrl =
     e.dataTransfer?.getData(RESULT_DRAG_MIME) ||
     e.dataTransfer?.getData('text/uri-list')?.split('\n')[0] ||
@@ -518,6 +598,12 @@ const onClothingUploadDrop = async (e: DragEvent) => {
       isRefillingClothing.value = false
     }
     return
+  }
+  const droppedFiles = Array.from(e.dataTransfer?.files || [])
+  if (droppedFiles.length > 0) {
+    e.preventDefault()
+    e.stopPropagation()
+    addClothingFiles(droppedFiles)
   }
   dragCounterClothing = 0
   isDragOverClothing.value = false
@@ -570,7 +656,7 @@ const generateImage = async () => {
       ElMessage.warning('模型列表加载中，请稍候')
     } else if (modelList.value.length === 0 || !selectedModel.value) {
       ElMessage.error('暂无可用模型，请联系管理员配置')
-    } else if (!personFile.value) {
+    } else if (personFiles.value.length === 0) {
       ElMessage.warning('请先上传人物照')
     } else {
       ElMessage.warning('请检查输入后重试')
@@ -596,9 +682,13 @@ const generateImage = async () => {
     const fd = new FormData()
     fd.append('model', selectedModel.value)
     fd.append('size', selectedSize.value)
-    fd.append('personImage', personFile.value!)
-    if (clothingFile.value) {
-      fd.append('clothingImage', clothingFile.value)
+    // 多张人物照
+    for (const file of personFiles.value) {
+      fd.append('personImages', file)
+    }
+    // 多张衣物照（可选）
+    for (const file of clothingFiles.value) {
+      fd.append('clothingImages', file)
     }
     if (stylePrompt.value.trim()) {
       fd.append('style', stylePrompt.value.trim())
@@ -690,7 +780,7 @@ const onPromptSelect = (payload: { id: string; title: string; content: string })
 }
 
 // ============ 模板渲染辅助 ============
-const modeBadge = computed(() => clothingFile.value
+const modeBadge = computed(() => clothingFiles.value.length > 0
   ? { icon: '🔁', label: '衣物替换', gradient: 'from-blue-500 to-cyan-500' }
   : { icon: '✨', label: 'AI 自动穿搭', gradient: 'from-pink-500 to-rose-500' })
 </script>
@@ -734,9 +824,12 @@ const modeBadge = computed(() => clothingFile.value
 
           <!-- 人物照（必填） -->
           <div>
-            <label class="block text-body-sm font-medium text-gray-700 mb-2">
-              人物照 <span class="text-red-500">*</span>
-              <span class="text-caption text-red-400 ml-1">必填</span>
+            <label class="block text-body-sm font-medium text-gray-700 mb-2 flex items-center justify-between">
+              <span>
+                人物照 <span class="text-red-500">*</span>
+                <span class="text-caption text-red-400 ml-1">必填 · 可上传多张</span>
+              </span>
+              <span class="text-caption text-gray-500 tabular-nums">{{ personFiles.length }} 张</span>
             </label>
             <div
               class="upload-dropzone"
@@ -750,32 +843,64 @@ const modeBadge = computed(() => clothingFile.value
                 ref="personUploadRef"
                 class="w-full"
                 drag
-                :auto-upload="true"
-                :limit="1"
+                :disabled="isLoading"
+                :auto-upload="false"
+                :multiple="true"
+                :limit="MAX_TOTAL_IMAGES"
+                :on-change="handlePersonChange"
                 :on-exceed="handlePersonExceed"
                 :http-request="handlePersonUpload"
                 :show-file-list="false"
                 accept="image/png,image/jpeg,image/webp,image/gif"
               >
-                <div v-if="!personPreview" class="flex flex-col items-center justify-center py-3">
+                <div v-if="personFiles.length === 0" class="flex flex-col items-center justify-center py-3">
                   <svg class="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
                   <span class="text-body-sm text-gray-500">上传人物正面照 或 Ctrl+V 粘贴</span>
                   <span class="text-caption text-gray-400 mt-0.5">要求人物清晰、姿态自然、面部可见；光线充足</span>
-                  <span v-if="isDragOverPerson" class="text-caption text-pink-500 mt-1">松手即可替换为拖入的图片</span>
+                  <span v-if="isDragOverPerson" class="text-caption text-pink-500 mt-1">松手即可添加</span>
                 </div>
-                <div v-else class="relative w-full upload-preview-wrapper" @click.stop>
-                  <el-image
-                    :src="personPreview"
-                    :preview-src-list="[personPreview]"
-                    :initial-index="0"
-                    fit="contain"
-                    class="block mx-auto rounded-lg upload-preview-image"
-                    alt="人物预览"
-                  />
-                  <span class="block text-center text-caption text-gray-500 mt-1">{{ personFileName }}</span>
-                  <span class="block text-center text-caption text-gray-400 mt-0.5">点击图片放大 · 点击周围空白、拖拽新图片 或 Ctrl+V 粘贴 即可替换</span>
+                <div v-else class="upload-grid-wrapper">
+                  <div class="upload-grid">
+                    <div
+                      v-for="(preview, idx) in personPreviews"
+                      :key="idx"
+                      class="upload-thumb"
+                      @click.stop
+                    >
+                      <el-image
+                        :src="preview"
+                        :preview-src-list="personPreviews"
+                        :initial-index="idx"
+                        fit="cover"
+                        class="upload-thumb-img"
+                        alt="人物预览"
+                      />
+                      <button
+                        type="button"
+                        @click.stop="removePersonImage(idx)"
+                        class="upload-thumb-remove"
+                        :disabled="isLoading"
+                        :title="`移除 ${personFileNames[idx] || ''}`"
+                        aria-label="移除人物照"
+                      >
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                      <span class="upload-thumb-name">{{ personFileNames[idx] }}</span>
+                    </div>
+                    <div v-if="personCanAddMore && !isLoading" class="upload-add-tile" :title="`还可添加 ${remainingSlots} 张`">
+                      <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4" />
+                      </svg>
+                      <span class="text-caption text-gray-400 mt-0.5">还可添加 {{ remainingSlots }} 张</span>
+                    </div>
+                  </div>
+                  <p class="text-caption text-gray-400 mt-2 text-center">
+                    点击缩略图放大 · 点击 ✕ 移除单张 · 拖拽新图 或 Ctrl+V 粘贴继续添加
+                  </p>
                 </div>
               </el-upload>
 
@@ -786,22 +911,26 @@ const modeBadge = computed(() => clothingFile.value
               </div>
             </div>
             <button
-              v-if="personPreview"
-              @click="removePersonImage"
-              class="mt-2 text-body-sm text-red-500 hover:text-red-700 flex items-center"
+              v-if="personFiles.length > 0"
+              @click="clearAllPersonImages"
+              :disabled="isLoading"
+              class="mt-2 text-body-sm text-red-500 hover:text-red-700 flex items-center disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-red-500"
             >
               <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                 <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a2 2 0 00-2-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
               </svg>
-              移除人物照
+              清空人物照
             </button>
           </div>
 
-          <!-- 衣物照（可选） -->
+          <!-- 衣物照（可选，可多张） -->
           <div>
-            <label class="block text-body-sm font-medium text-gray-700 mb-2">
-              衣物照
-              <span class="text-caption text-gray-400 ml-1">可选，不上传则 AI 自动设计穿搭</span>
+            <label class="block text-body-sm font-medium text-gray-700 mb-2 flex items-center justify-between">
+              <span>
+                衣物照
+                <span class="text-caption text-gray-400 ml-1">可选 · 多件单品一起传</span>
+              </span>
+              <span class="text-caption text-gray-500 tabular-nums">{{ clothingFiles.length }} 张</span>
             </label>
             <div
               class="upload-dropzone"
@@ -815,32 +944,64 @@ const modeBadge = computed(() => clothingFile.value
                 ref="clothingUploadRef"
                 class="w-full"
                 drag
-                :auto-upload="true"
-                :limit="1"
+                :disabled="isLoading"
+                :auto-upload="false"
+                :multiple="true"
+                :limit="MAX_TOTAL_IMAGES"
+                :on-change="handleClothingChange"
                 :on-exceed="handleClothingExceed"
                 :http-request="handleClothingUpload"
                 :show-file-list="false"
                 accept="image/png,image/jpeg,image/webp,image/gif"
               >
-                <div v-if="!clothingPreview" class="flex flex-col items-center justify-center py-3">
+                <div v-if="clothingFiles.length === 0" class="flex flex-col items-center justify-center py-3">
                   <svg class="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
                   </svg>
-                  <span class="text-body-sm text-gray-500">上传衣物照（可选）</span>
+                  <span class="text-body-sm text-gray-500">上传衣物照（可选，可多张）</span>
                   <span class="text-caption text-gray-400 mt-0.5">建议单品清晰、背景干净；多件单品（上下装+配饰）也能识别</span>
-                  <span v-if="isDragOverClothing" class="text-caption text-pink-500 mt-1">松手即可替换为拖入的图片</span>
+                  <span v-if="isDragOverClothing" class="text-caption text-pink-500 mt-1">松手即可添加</span>
                 </div>
-                <div v-else class="relative w-full upload-preview-wrapper" @click.stop>
-                  <el-image
-                    :src="clothingPreview"
-                    :preview-src-list="[clothingPreview]"
-                    :initial-index="0"
-                    fit="contain"
-                    class="block mx-auto rounded-lg upload-preview-image"
-                    alt="衣物预览"
-                  />
-                  <span class="block text-center text-caption text-gray-500 mt-1">{{ clothingFileName }}</span>
-                  <span class="block text-center text-caption text-gray-400 mt-0.5">点击图片放大 · 点击周围空白、拖拽新图片 即可替换</span>
+                <div v-else class="upload-grid-wrapper">
+                  <div class="upload-grid">
+                    <div
+                      v-for="(preview, idx) in clothingPreviews"
+                      :key="idx"
+                      class="upload-thumb"
+                      @click.stop
+                    >
+                      <el-image
+                        :src="preview"
+                        :preview-src-list="clothingPreviews"
+                        :initial-index="idx"
+                        fit="cover"
+                        class="upload-thumb-img"
+                        alt="衣物预览"
+                      />
+                      <button
+                        type="button"
+                        @click.stop="removeClothingImage(idx)"
+                        class="upload-thumb-remove"
+                        :disabled="isLoading"
+                        :title="`移除 ${clothingFileNames[idx] || ''}`"
+                        aria-label="移除衣物照"
+                      >
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                      <span class="upload-thumb-name">{{ clothingFileNames[idx] }}</span>
+                    </div>
+                    <div v-if="clothingCanAddMore && !isLoading" class="upload-add-tile" :title="`还可添加 ${remainingSlots} 张`">
+                      <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4" />
+                      </svg>
+                      <span class="text-caption text-gray-400 mt-0.5">还可添加 {{ remainingSlots }} 张</span>
+                    </div>
+                  </div>
+                  <p class="text-caption text-gray-400 mt-2 text-center">
+                    点击缩略图放大 · 点击 ✕ 移除单张 · 拖拽新图 继续添加
+                  </p>
                 </div>
               </el-upload>
 
@@ -851,14 +1012,15 @@ const modeBadge = computed(() => clothingFile.value
               </div>
             </div>
             <button
-              v-if="clothingPreview"
-              @click="removeClothingImage"
-              class="mt-2 text-body-sm text-red-500 hover:text-red-700 flex items-center"
+              v-if="clothingFiles.length > 0"
+              @click="clearAllClothingImages"
+              :disabled="isLoading"
+              class="mt-2 text-body-sm text-red-500 hover:text-red-700 flex items-center disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-red-500"
             >
               <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                 <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a2 2 0 00-2-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
               </svg>
-              移除衣物照（退回「自动设计穿搭」模式）
+              清空衣物照（退回「自动设计穿搭」模式）
             </button>
           </div>
 
@@ -949,7 +1111,7 @@ const modeBadge = computed(() => clothingFile.value
           <div class="relative group/btn">
             <div
               class="absolute -top-3 -left-2 z-20 pointer-events-none select-none transition-transform duration-300 group-hover/btn:scale-110"
-              :class="clothingFile ? 'rotate-[-6deg] group-hover/btn:rotate-[-10deg]' : 'rotate-[6deg] group-hover/btn:rotate-[10deg]'"
+              :class="clothingFiles.length > 0 ? 'rotate-[-6deg] group-hover/btn:rotate-[-10deg]' : 'rotate-[6deg] group-hover/btn:rotate-[10deg]'"
             >
               <div
                 class="absolute inset-0 rounded-full mode-badge-aura pointer-events-none bg-gradient-to-r"
@@ -987,7 +1149,7 @@ const modeBadge = computed(() => clothingFile.value
                     <span class="w-2.5 h-2.5 rounded-full bg-white" />
                     <span class="w-2.5 h-2.5 rounded-full bg-white" />
                   </span>
-                  <span class="text-body-lg tracking-wider">{{ clothingFile ? '替换衣物中' : '设计穿搭中' }}</span>
+                  <span class="text-body-lg tracking-wider">{{ clothingFiles.length > 0 ? '替换衣物中' : '设计穿搭中' }}</span>
                 </span>
               </template>
               <template v-else>
@@ -1040,7 +1202,7 @@ const modeBadge = computed(() => clothingFile.value
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
                 </svg>
               </div>
-              <span class="text-white/90 font-semibold text-h4 tracking-wide">{{ clothingFile ? '衣物替换中' : '设计穿搭中' }}</span>
+              <span class="text-white/90 font-semibold text-h4 tracking-wide">{{ clothingFiles.length > 0 ? '衣物替换中' : '设计穿搭中' }}</span>
               <div class="flex items-center gap-2 text-pink-300/80 text-body-sm">
                 <span class="font-mono tabular-nums min-w-[3ch] text-right">{{ formatElapsed(elapsedSeconds) }}</span>
                 <span>·</span>
@@ -1167,6 +1329,107 @@ const modeBadge = computed(() => clothingFile.value
   height: auto;
   object-fit: contain;
   cursor: zoom-in;
+}
+
+/* ============ 多图上传：缩略图网格 ============ */
+.upload-grid-wrapper {
+  width: 100%;
+  padding: 4px;
+}
+.upload-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+}
+.upload-thumb {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  cursor: zoom-in;
+  transition: border-color .15s ease, transform .15s ease;
+}
+.upload-thumb:hover {
+  border-color: #f9a8d4;          /* pink-300，与穿搭主题呼应 */
+}
+:deep(.upload-thumb-img) {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+:deep(.upload-thumb-img img) {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.upload-thumb-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity .15s ease, background-color .15s ease, transform .15s ease;
+  z-index: 2;
+  cursor: pointer;
+}
+.upload-thumb:hover .upload-thumb-remove,
+.upload-thumb-remove:focus-visible {
+  opacity: 1;
+}
+.upload-thumb-remove:hover {
+  background: #ec4899;             /* pink-500 */
+  transform: scale(1.08);
+}
+.upload-thumb-remove:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+  transform: none;
+  background: rgba(0, 0, 0, 0.55);
+}
+@media (hover: none) {
+  .upload-thumb-remove {
+    opacity: 1;
+  }
+}
+.upload-thumb-name {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 2px 6px;
+  font-size: 11px;
+  color: #fff;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+.upload-add-tile {
+  aspect-ratio: 1 / 1;
+  border: 1.5px dashed #d1d5db;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #fafafa;
+  cursor: pointer;
+  transition: border-color .15s ease, background-color .15s ease;
+}
+.upload-add-tile:hover {
+  border-color: #ec4899;
+  background: #fdf2f8;
 }
 
 /* ============ 拖拽视觉反馈（粉色主题，AiOutfit 配色）============ */

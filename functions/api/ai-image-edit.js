@@ -1,7 +1,7 @@
 // AI 图片编辑代理端点
 // POST /api/ai-image-edit
 // Content-Type: multipart/form-data
-// Fields: prompt, model, size, image (file)
+// Fields: prompt, model, size, images (file[])  — 最多 16 张，不传则走文生图
 //
 // 路由分支（按 model_key 决定走哪条上游路径）：
 //   - gemini-*（Google Gemini 图片模型）→ bafang.me/v1beta/models/{model}:generateContent
@@ -191,16 +191,17 @@ async function fileToBase64(file) {
 /**
  * 构造 Gemini generateContent 请求体
  * - 文生图：parts = [{ text: prompt }]
- * - 图生图：parts = [{ text: prompt }, { inline_data: { mime_type, data } }]
+ * - 图生图：parts = [{ text: prompt }, { inline_data }, { inline_data }, ...]
+ *   多张图片按用户上传顺序追加，每张一张 inline_data。
  * 固定 responseModalities: ['IMAGE']，imageSize 默认 '1K'（生成速度快、积分低）
  */
-async function buildGeminiRequestBody({ prompt, hasImage, imageFile, aspectRatio, imageSize = '1K' }) {
+async function buildGeminiRequestBody({ prompt, imageFiles, aspectRatio, imageSize = '1K' }) {
   const parts = [{ text: prompt }]
-  if (hasImage && imageFile) {
-    const b64 = await fileToBase64(imageFile)
+  for (const file of imageFiles) {
+    const b64 = await fileToBase64(file)
     parts.push({
       inline_data: {
-        mime_type: imageFile.type || 'image/png',
+        mime_type: file.type || 'image/png',
         data: b64,
       },
     })
@@ -265,8 +266,19 @@ export async function onRequest(context) {
   const prompt = (formData.get('prompt')?.toString() || '').trim().slice(0, 5000)
   const modelKey = (formData.get('model')?.toString() || '').trim() || 'gpt-image-2-1k'
   const size = formData.get('size')?.toString() || '1024x1024'
-  const imageFile = formData.get('image')
-  const hasImage = imageFile && imageFile instanceof File && imageFile.size > 0
+  // 多图：同一字段名重复提交，formData.getAll 取数组。
+  // 兼容旧版单图字段 'image'，无 'images' 时降级到 'image'（保证向后兼容）
+  let imageFiles = formData.getAll('images').filter(f => f && f instanceof File && f.size > 0)
+  if (imageFiles.length === 0) {
+    const legacy = formData.get('image')
+    if (legacy && legacy instanceof File && legacy.size > 0) imageFiles = [legacy]
+  }
+  // 上限 16 张（与前端 MAX_IMAGES 对齐）；超出截断并提示
+  const MAX_INPUT_IMAGES = 16
+  if (imageFiles.length > MAX_INPUT_IMAGES) {
+    imageFiles = imageFiles.slice(0, MAX_INPUT_IMAGES)
+  }
+  const hasImage = imageFiles.length > 0
 
   // 尽早初始化 db 和 uid，让所有错误路径都能带上 balance
   const db = env.DB
@@ -408,8 +420,7 @@ export async function onRequest(context) {
     // 请求体用 contents/parts/generationConfig 格式，鉴权用 x-goog-api-key
     const geminiBody = await buildGeminiRequestBody({
       prompt,
-      hasImage,
-      imageFile,
+      imageFiles: hasImage ? imageFiles : [],
       aspectRatio: mapSizeToAspectRatio(size),
     })
     upstreamPath = `/v1beta/models/${modelKey}:generateContent`
@@ -423,11 +434,14 @@ export async function onRequest(context) {
     }
   } else if (hasImage) {
     // OpenAI 风格图生图：POST /v1/images/edits（form-data）
+    // 多张图都按 'image' 字段提交，OpenAI 兼容端点会按位置顺序处理
     const upstreamForm = new FormData()
     upstreamForm.append('model', modelKey)
     upstreamForm.append('size', size)
     upstreamForm.append('prompt', prompt)
-    upstreamForm.append('image', imageFile)
+    for (const file of imageFiles) {
+      upstreamForm.append('image', file)
+    }
     upstreamPath = '/v1/images/edits'
     upstreamInit = {
       method: 'POST',
@@ -455,7 +469,7 @@ export async function onRequest(context) {
     path: upstreamPath,
     model: modelKey,
     size,
-    hasImage,
+    imageCount: imageFiles.length,
     promptLen: prompt.length,
   }))
 
@@ -498,7 +512,7 @@ export async function onRequest(context) {
     rawData: {
       prompt,
       size,
-      has_input_image: hasImage ? 1 : 0,
+      has_input_image: hasImage ? imageFiles.length : 0,
       client_ip: clientIp,
       user_agent: userAgent,
       request: isGeminiModel(modelKey)
@@ -508,11 +522,11 @@ export async function onRequest(context) {
             aspectRatio: mapSizeToAspectRatio(size),
             imageSize: '1K',
             prompt,
-            image_mime: hasImage ? imageFile.type : null,
-            image_size: hasImage ? imageFile.size : 0,
+            image_mimes: hasImage ? imageFiles.map(f => f.type) : [],
+            image_sizes: hasImage ? imageFiles.map(f => f.size) : [],
           }
         : hasImage
-          ? { endpoint: '/v1/images/edits', model: modelKey, size, prompt, image_size: imageFile.size, image_type: imageFile.type }
+          ? { endpoint: '/v1/images/edits', model: modelKey, size, prompt, image_count: imageFiles.length, image_sizes: imageFiles.map(f => f.size), image_types: imageFiles.map(f => f.type) }
           : { endpoint: '/v1/images/generations', model: modelKey, size, prompt },
     },
   }
