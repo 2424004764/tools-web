@@ -95,6 +95,18 @@ const optionClick = (item: any) => {
   } else {
     router.push(item.url)
   }
+  // 跳转后清空搜索框与候选项，方便下一次搜索
+  searchParam.title = ''
+  options.value = []
+}
+
+// 兼容鼠标点击与键盘上下键+回车：el-select 在两种选中方式下都会触发 @change。
+// 之前仅在 el-option 上挂 @click，键盘选中不会触发 DOM click 事件，因此回车无反应。
+const handleSelectChange = (selectedId: string | number | undefined | null) => {
+  if (selectedId === undefined || selectedId === '' || selectedId === null) return
+  const item = options.value.find((opt) => String(opt.id) === String(selectedId))
+  if (!item) return
+  optionClick(item)
 }
 
 // 处理退出登录
@@ -256,13 +268,13 @@ onUnmounted(() => {
           :loading="loading"
           class="ml-3 w-full"
           size="large"
+          @change="handleSelectChange"
         >
           <el-option
             v-for="item in options"
             :key="item.id"
             :label="item.title + ' - ' + item.desc"
             :value="item.id"
-            @click="optionClick(item)"
           >
           </el-option>
         </el-select>
