@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { fetchMyGenerationRecords, fetchMyGenerationRecordImage } from '@/api/me'
 import type { GenerationRecord } from '@/types/admin'
@@ -98,6 +98,27 @@ const handlePageChange = (p: number) => {
   pagination.value.page = p
   load()
 }
+
+// 直接跳到首页 / 末页。
+// el-pagination 默认只显示当前 ±3 的页码 + 折叠点，总页数多时看不到首页按钮；
+// 单独提供这两个按钮让用户在任意页都能一键回到首页/末页（手机端尤其需要）。
+const goFirstPage = () => {
+  if (pagination.value.page === 1) return
+  pagination.value.page = 1
+  load()
+}
+const goLastPage = () => {
+  const last = pagination.value.totalPages
+  if (!last || pagination.value.page === last) return
+  pagination.value.page = last
+  load()
+}
+
+// 分页 layout：手机端去掉 jumper（输入框太挤）和 total（节省空间），只保留 prev/pager/next；
+// 桌面端保持完整 layout 含 jumper 和 total。
+const paginationLayout = computed(() => isMobile.value
+  ? 'prev, pager, next'
+  : 'total, prev, pager, next, jumper')
 
 onMounted(() => {
   updateIsMobile()
@@ -326,16 +347,78 @@ const handleThumbClick = (row: GenerationRecord) => {
   </div>
 
   <!-- 分页 -->
-  <div v-if="list.length > 0" class="flex justify-end mt-4">
-    <el-pagination
-      :current-page="pagination.page"
-      :page-size="pagination.pageSize"
-      :total="pagination.total"
-      :page-count="pagination.totalPages"
-      layout="total, prev, pager, next, jumper"
-      :background="true"
-      @current-change="handlePageChange"
-    />
+  <div
+    v-if="list.length > 0"
+    class="pagination-wrapper mt-4"
+    :class="{ 'pagination-mobile': isMobile }"
+  >
+    <!-- 桌面端：单行展示（首页 · el-pagination · 末页） -->
+    <template v-if="!isMobile">
+      <button
+        type="button"
+        class="pagination-edge-btn"
+        :disabled="pagination.page <= 1"
+        @click="goFirstPage"
+        aria-label="跳到首页"
+      >首页</button>
+      <el-pagination
+        :current-page="pagination.page"
+        :page-size="pagination.pageSize"
+        :total="pagination.total"
+        :page-count="pagination.totalPages"
+        :layout="paginationLayout"
+        :background="true"
+        @current-change="handlePageChange"
+      />
+      <button
+        type="button"
+        class="pagination-edge-btn"
+        :disabled="pagination.page >= pagination.totalPages"
+        @click="goLastPage"
+        aria-label="跳到末页"
+      >末页</button>
+    </template>
+
+    <!-- 手机端：上下两行布局
+         第 1 行：页码 pager（独占一行，永远不会被挤压）
+         第 2 行：首页 · 上一页 · 下一页 · 末页 -->
+    <template v-else>
+      <el-pagination
+        class="mobile-pager"
+        :current-page="pagination.page"
+        :page-count="pagination.totalPages"
+        :pager-count="5"
+        layout="pager"
+        :small="true"
+        :background="true"
+        @current-change="handlePageChange"
+      />
+      <div class="mobile-nav-row">
+        <button
+          type="button"
+          class="pagination-edge-btn"
+          :disabled="pagination.page <= 1"
+          @click="goFirstPage"
+          aria-label="跳到首页"
+        >首页</button>
+        <el-pagination
+          class="mobile-prev-next"
+          :current-page="pagination.page"
+          :page-count="pagination.totalPages"
+          layout="prev, next"
+          :small="true"
+          :background="true"
+          @current-change="handlePageChange"
+        />
+        <button
+          type="button"
+          class="pagination-edge-btn"
+          :disabled="pagination.page >= pagination.totalPages"
+          @click="goLastPage"
+          aria-label="跳到末页"
+        >末页</button>
+      </div>
+    </template>
   </div>
 
   <!--
@@ -351,3 +434,72 @@ const handleThumbClick = (row: GenerationRecord) => {
     @close="fallbackPreviewUrl = null"
   />
 </template>
+
+<style scoped>
+.pagination-wrapper {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+.pagination-mobile {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 8px;
+}
+/* 手机端：第 1 行 pager 占满宽度 */
+.pagination-mobile :deep(.mobile-pager) {
+  display: flex;
+  justify-content: center;
+}
+.pagination-mobile :deep(.mobile-pager .el-pagination) {
+  flex-wrap: wrap;
+  justify-content: center;
+}
+/* 手机端：第 2 行导航按钮 + 上下页 */
+.pagination-mobile .mobile-nav-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.pagination-mobile :deep(.mobile-prev-next) {
+  display: inline-flex;
+}
+.pagination-mobile :deep(.mobile-prev-next .el-pagination) {
+  display: inline-flex;
+}
+/* 首页/末页 跳转按钮（桌面端样式）*/
+.pagination-edge-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 12px;
+  margin: 0 4px;
+  border: 1px solid #d4d4d8;
+  border-radius: 4px;
+  background: #fff;
+  color: #4b5563;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color .15s ease, color .15s ease, background-color .15s ease;
+  white-space: nowrap;
+}
+.pagination-edge-btn:hover:not(:disabled) {
+  border-color: #6366f1;
+  color: #6366f1;
+}
+.pagination-edge-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  background: #f9fafb;
+}
+/* 手机端更紧凑 */
+.pagination-mobile .pagination-edge-btn {
+  height: 24px;
+  padding: 0 8px;
+  font-size: 12px;
+  margin: 0;
+}
+</style>
