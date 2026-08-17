@@ -2,23 +2,23 @@
 // POST /api/ai-outfit
 // Content-Type: multipart/form-data
 // Fields:
-//   - personImage      (file, required)   人物照
-//   - clothingImage    (file, optional)   衣物照；未上传时由 AI 自动设计穿搭
-//   - style            (string, optional) 用户的「风格 / 场景」提示词
-//   - model            (string)           模型 key（默认 gpt-image-2-1k）
-//   - size             (string)           输出尺寸：auto / 1024x1024 / 1024x1792 / 1792x1024
+//   - personImages      (file[], required)   人物照，1~16 张；兼容旧字段 personImage
+//   - clothingImages    (file[], optional)   衣物照，0~N 张；兼容旧字段 clothingImage
+//   - style             (string, optional)   用户的「风格 / 场景」提示词
+//   - model             (string)             模型 key（默认 gpt-image-2-1k）
+//   - size              (string)             输出尺寸：auto / 1024x1024 / 1024x1792 / 1792x1024
 //
-// 模式分支（按 clothingImage 是否上传）：
-//   1. 未传 clothingImage（outfit-generate）：单图生图，让 AI 自动设计一套完整穿搭
-//   2. 上传了 clothingImage（outfit-replace）：双图生图，把人物身上的衣物替换为上传的衣物
+// 模式分支（按 clothingImages 是否非空）：
+//   1. 未传 clothingImages（outfit-generate）：仅人物照，让 AI 自动设计一套完整穿搭
+//   2. 上传了 clothingImages（outfit-replace）：人物照 + 衣物照，把人物身上的衣物替换为上传的衣物
 //
 // 鉴权：CF 环境变量 BAFANG_API_KEY
 // 扣费：与 ai-image-edit 一致（按 model 查 tool_models.cost）
 //
 // 上游分支（按 model_key）：
 //   - gemini-*：POST bafang.me/v1beta/models/{model}:generateContent
-//     多 parts：第一段 text 为穿搭场景提示词，第二/三段 inline_data 为图片
-//   - 其他：POST bafang.me/v1/images/edits（form-data, image[] 多 file）
+//     parts 顺序：第一段 text 为穿搭场景提示词；之后按上传顺序拼接 personImages → clothingImages，每张一个 inline_data
+//   - 其他：POST bafang.me/v1/images/edits（form-data, image[] 多 file，按相同顺序）
 
 import { extractUidFromRequest } from './_lib/model-resolver.js'
 import { startGeneration, finalizeGeneration } from './_lib/record-generation.js'
@@ -164,6 +164,7 @@ function buildGeneratePrompt(styleText) {
     '请为照片中的人物设计一套完整、时尚、风格协调的穿搭。',
     '要求：',
     '- 保持人物的面部特征、五官、表情、发型、姿态、肤色完全不变；',
+    '- 如果提供了多张人物照，请综合考虑每张图里人物的姿态、角度、可见的身体部位（不要因为多张图就误判为多个人）；',
     '- 保持背景完全不变；',
     '- 只替换 / 添加衣物，包括上衣、下装、鞋子、外套、配饰（帽子、包、首饰等）；',
     `- 整体风格遵循用户指示：${userStyle}；`,
@@ -176,11 +177,13 @@ function buildReplacePrompt(styleText) {
     ? `\n- 用户风格偏好：${styleText.trim()}；`
     : ''
   return [
-    '请把第一张图片（人物照）中人物的衣物替换为第二张图片（衣物照）里展示的衣物。',
+    '请把人物照中人物的衣物替换为衣物照里展示的衣物。',
+    '说明：',
+    '- 可能有多张人物照，它们展示的是同一个人（不同角度 / 姿态 / 部位）；综合考虑所有人物照，保持人物的面部特征、五官、表情、发型、肤色、姿态、背景完全不变；',
+    '- 可能有多张衣物照，它们是要被穿上的若干单品（上下装、鞋子、配饰等）；',
     '要求：',
-    '- 保持人物的面部特征、五官、表情、发型、肤色、姿态、背景完全不变；',
-    '- 把衣物照中的衣物「穿到」人物身上，自动适配人物的身材和姿态，包含合理的褶皱、光影、贴合度；',
-    '- 如果衣物照里包含多件单品（上下装、鞋子、配饰），就替换对应部位，原衣物照里没有覆盖到的部位保留人物原有穿着或按风格补全；' +
+    '- 把衣物照中的每件衣物「穿到」人物身上，自动适配人物的身材和姿态，包含合理的褶皱、光影、贴合度；',
+    '- 衣物照中已覆盖到的部位用对应衣物替换；衣物照里没有覆盖到的部位保留人物原有穿着或按风格补全；' +
       userStyle,
     '- 输出照片级真实感的高清人像。',
   ].join('\n')
@@ -188,23 +191,26 @@ function buildReplacePrompt(styleText) {
 
 /**
  * 构造 Gemini generateContent 请求体。
- * parts 顺序：[{ text: prompt }, { inline_data: personImage }, ...clothingImage]
+ * parts 顺序：[{ text: prompt }, ...personImages（按上传顺序）, ...clothingImages（按上传顺序）]
+ * 每张图片一段 inline_data。空数组直接跳过对应分组。
  */
-async function buildGeminiRequestBody({ prompt, personFile, clothingFile, aspectRatio, imageSize = '1K' }) {
+async function buildGeminiRequestBody({ prompt, personFiles, clothingFiles, aspectRatio, imageSize = '1K' }) {
   const parts = [{ text: prompt }]
-  const personB64 = await fileToBase64(personFile)
-  parts.push({
-    inline_data: {
-      mime_type: personFile.type || 'image/png',
-      data: personB64,
-    },
-  })
-  if (clothingFile) {
-    const clothingB64 = await fileToBase64(clothingFile)
+  for (const file of personFiles) {
+    const b64 = await fileToBase64(file)
     parts.push({
       inline_data: {
-        mime_type: clothingFile.type || 'image/png',
-        data: clothingB64,
+        mime_type: file.type || 'image/png',
+        data: b64,
+      },
+    })
+  }
+  for (const file of clothingFiles) {
+    const b64 = await fileToBase64(file)
+    parts.push({
+      inline_data: {
+        mime_type: file.type || 'image/png',
+        data: b64,
       },
     })
   }
@@ -259,19 +265,44 @@ export async function onRequest(context) {
     return json({ ok: false, error: '请求格式错误，需要 multipart/form-data' }, 400)
   }
 
-  const personImage = formData.get('personImage')
-  const hasPersonImage = personImage && personImage instanceof File && personImage.size > 0
-  const clothingImage = formData.get('clothingImage')
-  const hasClothingImage = clothingImage && clothingImage instanceof File && clothingImage.size > 0
+  // 多图：同一字段名重复提交，formData.getAll 取数组。
+  // 兼容旧版单图字段 'personImage' / 'clothingImage'（降级到数组 [single]）
+  let personFiles = formData.getAll('personImages').filter(f => f && f instanceof File && f.size > 0)
+  if (personFiles.length === 0) {
+    const legacy = formData.get('personImage')
+    if (legacy && legacy instanceof File && legacy.size > 0) personFiles = [legacy]
+  }
+  let clothingFiles = formData.getAll('clothingImages').filter(f => f && f instanceof File && f.size > 0)
+  if (clothingFiles.length === 0) {
+    const legacy = formData.get('clothingImage')
+    if (legacy && legacy instanceof File && legacy.size > 0) clothingFiles = [legacy]
+  }
+  const hasPersonImage = personFiles.length > 0
+  const hasClothingImage = clothingFiles.length > 0
   const style = (formData.get('style')?.toString() || '').trim().slice(0, 5000)
   const modelKey = (formData.get('model')?.toString() || '').trim() || 'gpt-image-2-1k'
   const size = formData.get('size')?.toString() || '1024x1024'
 
+  // 上限：人物 + 衣物合计 ≤ 16（与前端 MAX_TOTAL_IMAGES 对齐）；超出截断
+  const MAX_INPUT_IMAGES = 16
+  const total = personFiles.length + clothingFiles.length
+  if (total > MAX_INPUT_IMAGES) {
+    // 优先保住人物照；衣物照被截断
+    const overflow = total - MAX_INPUT_IMAGES
+    if (clothingFiles.length >= overflow) {
+      clothingFiles = clothingFiles.slice(0, Math.max(0, clothingFiles.length - overflow))
+    } else {
+      const personOverflow = overflow - clothingFiles.length
+      personFiles = personFiles.slice(0, Math.max(0, personFiles.length - personOverflow))
+      clothingFiles = []
+    }
+  }
+
   const db = env.DB
   const uid = await extractUidFromRequest(request, env).catch(() => null)
 
-  // ============ 2. personImage 必填 ============
-  if (!hasPersonImage) {
+  // ============ 2. personImages 必填（≥1 张）============
+  if (!hasPersonImage || personFiles.length === 0) {
     return await errorJson(db, uid, '请上传人物照', 400)
   }
 
@@ -399,8 +430,8 @@ export async function onRequest(context) {
   if (isGeminiModel(modelKey)) {
     const geminiBody = await buildGeminiRequestBody({
       prompt,
-      personFile: personImage,
-      clothingFile: hasClothingImage ? clothingImage : null,
+      personFiles,
+      clothingFiles: hasClothingImage ? clothingFiles : [],
       aspectRatio: mapSizeToAspectRatio(size),
     })
     upstreamPath = `/v1beta/models/${modelKey}:generateContent`
@@ -418,10 +449,13 @@ export async function onRequest(context) {
     upstreamForm.append('model', modelKey)
     upstreamForm.append('size', size)
     upstreamForm.append('prompt', prompt)
-    // 两个图都叫 image，按 OpenAI 多 file 约定顺序传：人物照先，衣物照后
-    upstreamForm.append('image', personImage)
-    if (hasClothingImage) {
-      upstreamForm.append('image', clothingImage)
+    // 多张图都按 'image' 字段提交，OpenAI 兼容端点按位置顺序处理：
+    // 先人物照（≥1），后衣物照（0~N）
+    for (const file of personFiles) {
+      upstreamForm.append('image', file)
+    }
+    for (const file of clothingFiles) {
+      upstreamForm.append('image', file)
     }
     upstreamPath = '/v1/images/edits'
     upstreamInit = {
@@ -436,7 +470,8 @@ export async function onRequest(context) {
     model: modelKey,
     size,
     mode,
-    hasClothingImage,
+    personCount: personFiles.length,
+    clothingCount: clothingFiles.length,
     promptLen: prompt.length,
   }))
 
@@ -468,8 +503,8 @@ export async function onRequest(context) {
       prompt,
       size,
       mode,
-      has_person_image: 1,
-      has_clothing_image: hasClothingImage ? 1 : 0,
+      person_count: personFiles.length,
+      clothing_count: clothingFiles.length,
       style,
       client_ip: clientIp,
       user_agent: userAgent,
@@ -480,20 +515,22 @@ export async function onRequest(context) {
             aspectRatio: mapSizeToAspectRatio(size),
             imageSize: '1K',
             prompt,
-            person_mime: personImage.type,
-            person_size: personImage.size,
-            clothing_mime: hasClothingImage ? clothingImage.type : null,
-            clothing_size: hasClothingImage ? clothingImage.size : 0,
+            person_mimes: personFiles.map(f => f.type),
+            person_sizes: personFiles.map(f => f.size),
+            clothing_mimes: hasClothingImage ? clothingFiles.map(f => f.type) : [],
+            clothing_sizes: hasClothingImage ? clothingFiles.map(f => f.size) : [],
           }
         : {
             endpoint: '/v1/images/edits',
             model: modelKey,
             size,
             prompt,
-            person_size: personImage.size,
-            person_type: personImage.type,
-            clothing_size: hasClothingImage ? clothingImage.size : 0,
-            clothing_type: hasClothingImage ? clothingImage.type : null,
+            person_count: personFiles.length,
+            person_sizes: personFiles.map(f => f.size),
+            person_types: personFiles.map(f => f.type),
+            clothing_count: clothingFiles.length,
+            clothing_sizes: hasClothingImage ? clothingFiles.map(f => f.size) : [],
+            clothing_types: hasClothingImage ? clothingFiles.map(f => f.type) : [],
           },
     },
   }
