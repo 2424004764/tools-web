@@ -8,6 +8,7 @@ import { useComponentStore } from '@/store/modules/component'
 import { useRoute, useRouter } from "vue-router"
 import Top from '~icons/ep/top'
 import { useSpriteLogo } from '@/components/Tools/useSpriteLogo'
+import HotList from './HotList.vue'
 //store
 const toolsStore = useToolsStore()
 const componentStore = useComponentStore()
@@ -244,6 +245,9 @@ watch(() => toolsStore.cates.length, () => {
 
 <template>
   <div class="md:mr-6 c-xs:mr-0">
+    <!-- 全球与全国热门信息 -->
+    <HotList />
+
     <!-- list -->
     <div v-for="(cate, index) in toolsStore.cates" :key="index">
       <!-- cate title -->
