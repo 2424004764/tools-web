@@ -80,7 +80,9 @@
     "/api/travel-map-plaza",
     "/api/travel-map/*",
     "/api/flashcards",
-    "/api/flashcards/*"
+    "/api/flashcards/*",
+    "/api/hotlist",
+    "/api/hotlist/*"
   ],
   "exclude": []
 }
