@@ -2,10 +2,11 @@
 // GET /api/hotlist              -> 返回所有源（合并概览）
 // GET /api/hotlist/:type        -> 返回单个源
 //
-// 支持的 type: toutiao | bilibili | sspai | github | hn
+// 支持的 type: toutiao | sspai | github | hn
 //
-// 数据源历史：v1 用过 vvhan 聚合 API，但该域名在 Worker 网络下频繁超时/失败，
-// 已改为各平台官方/可靠公开 API。
+// 数据源历史：
+//   v1 用过 vvhan 聚合 API，但当时该域名在 Worker 网络下频繁超时/失败。
+//   v2 改为各平台官方/可靠公开 API。
 //
 // 设计要点：
 // 1. 所有第三方源在 Worker 内 fetch，统一加 CORS 头，前端无需处理跨域。
@@ -24,7 +25,6 @@ const corsHeaders = {
 import { readCache, readAllCache, upsertCache } from './_cache.js'
 const SOURCES = {
   toutiao: { title: '头条热榜', fetcher: fetchToutiao },
-  bilibili: { title: 'B站热门', fetcher: fetchBilibili },
   sspai: { title: '少数派', fetcher: fetchSspai },
   github: { title: 'GitHub Trending', fetcher: fetchGithub },
   hn: { title: 'Hacker News', fetcher: fetchHackerNews },
@@ -83,60 +83,6 @@ function formatHotNumber(n) {
   if (num >= 100_000_000) return `${(num / 100_000_000).toFixed(1)}亿`
   if (num >= 10_000) return `${(num / 10_000).toFixed(1)}万`
   return String(num)
-}
-
-// ---------- B 站热门 ----------
-// B 站反爬要点：必须带 Referer + UA；直连可能被 412/403/返回非 JSON。
-// 准备两个端点：popular（综合热门）和 ranking（全站排行），任一成功即可。
-const BILI_HEADERS = {
-  ...COMMON_HEADERS,
-  Referer: 'https://www.bilibili.com/',
-  Origin: 'https://www.bilibili.com',
-}
-
-async function fetchBilibiliOnce(url) {
-  const resp = await safeFetch(url, { headers: BILI_HEADERS })
-  const text = await resp.text()
-  if (!resp.ok) {
-    throw new Error(`bilibili ${resp.status}: ${text.slice(0, 120)}`)
-  }
-  let json
-  try {
-    json = JSON.parse(text)
-  } catch {
-    throw new Error(`bilibili non-json: ${text.slice(0, 120)}`)
-  }
-  if (json?.code !== 0) {
-    throw new Error(`bilibili code=${json?.code}: ${json?.message || ''}`)
-  }
-  const list = Array.isArray(json?.data?.list) ? json.data.list : []
-  if (list.length === 0) throw new Error('bilibili empty list')
-  return list
-}
-
-async function fetchBilibili() {
-  // popular 失败时 fallback 到 ranking。任意一个成功即可。
-  const endpoints = [
-    'https://api.bilibili.com/x/web-interface/popular',
-    'https://api.bilibili.com/x/web-interface/ranking/v2?rid=0&type=all',
-  ]
-  let lastErr
-  for (const url of endpoints) {
-    try {
-      const list = await fetchBilibiliOnce(url)
-      return {
-        items: list.slice(0, 20).map((it) => ({
-          title: it.title || '',
-          url: it.short_link_v2 || `https://www.bilibili.com/video/${it.bvid || it.aid}`,
-          hot:
-            formatHotNumber(it.stat?.view ?? 0) + (it.stat?.view ? ' 播放' : ''),
-        })),
-      }
-    } catch (err) {
-      lastErr = err
-    }
-  }
-  throw lastErr || new Error('bilibili all endpoints failed')
 }
 
 // ---------- 少数派（sspai）----------
