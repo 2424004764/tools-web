@@ -21,7 +21,6 @@ interface SourceState {
 const SOURCES = [
   { key: 'toutiao', label: '头条热榜', icon: '📰' },
   { key: 'sspai', label: '少数派', icon: '✏️' },
-  { key: 'bilibili', label: 'B站热门', icon: '📺' },
   { key: 'github', label: 'GitHub', icon: '⭐' },
   { key: 'hn', label: 'Hacker News', icon: '🌐' },
 ]
