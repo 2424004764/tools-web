@@ -1601,6 +1601,16 @@ export const constantRoute = [
       description: '在线统计一张图片中出现了多少种不同的颜色，支持采样步长与颜色量化（每通道 bit），按出现次数展示 Top N 调色板，可导出 JSON / CSV，全部在浏览器本地完成。'
     }
   },
+  {
+    path: '/world-records/',
+    component: () => import('@/components/Tools/WorldRecords/WorldRecords.vue'),
+    name: 'worldRecords',
+    meta: {
+      title: '世界之最 - 自然、地理、科技、文化世界纪录大全',
+      keywords: '世界之最,世界纪录,吉尼斯,世界之最大全,地理之最,动物之最,科技之最,文化之最,自然之最',
+      description: '在线世界之最大全工具，收录自然地理、国家、建筑、动物、植物、人体、科技、文化八大类的世界纪录数据，每条记录包含具体数值、所在地与背景介绍，支持关键词搜索与分类筛选。'
+    }
+  },
 
   // ===== 管理后台 =====
   // 由 AdminLayout 统一承载，自带侧栏与顶栏，绕过默认 App.vue 的 Header/Footer/Left。
