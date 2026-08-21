@@ -686,6 +686,15 @@ export function getToolsCate() {
           cate: '教育学术'
         },
         {
+          id: 'world-records-2026-08-21',
+          title: '世界之最',
+          logo: '',
+          desc: '收录自然地理、国家、建筑、动物、植物、人体、科技、文化八大类世界纪录数据，支持关键词搜索与分类筛选',
+          url: '/world-records/',
+          cateId: 4,
+          cate: '教育学术'
+        },
+        {
           id: 'flashcards-2026-08-15',
           title: '闪卡复习',
           logo: '/images/logo/flashcards.png',
