@@ -57,6 +57,14 @@ const scrollToAnchor = async () => {
   pendingScrollAnchor.value = anchor
 
   await nextTick()
+  // 等待目标锚点元素渲染：cates 是异步加载的，刷新场景下首次调用时元素可能尚未挂载。
+  // 最多等 2s，期间每 50ms 重试一次；若标志位被新调用重置（cates 加载完成后的强制重试），主动让出。
+  const waitStart = Date.now()
+  while (!document.getElementById(anchor) && Date.now() - waitStart < 2000) {
+    if (!isScrollingToAnchor.value) return
+    await new Promise(resolve => setTimeout(resolve, 50))
+  }
+
   requestAnimationFrame(() => {
     document?.getElementById(anchor)?.scrollIntoView({
       behavior: 'smooth',
@@ -238,8 +246,14 @@ watch(() => route.query.value, () => {
   scrollToAnchor()
 })
 
-watch(() => toolsStore.cates.length, () => {
-  scrollToAnchor()
+watch(() => toolsStore.cates.length, (newLen, oldLen) => {
+  // cates 从无到有首次加载：onMounted 中的 scrollToAnchor 调用时锚点元素可能尚未渲染，
+  // 会导致 scrollIntoView 失败；此时需重置标志位强制重新触发滚动，避免被同锚点拦截吞掉。
+  if (oldLen === 0 && newLen > 0 && route.query.value) {
+    isScrollingToAnchor.value = false
+    pendingScrollAnchor.value = ''
+    scrollToAnchor()
+  }
 })
 </script>
 

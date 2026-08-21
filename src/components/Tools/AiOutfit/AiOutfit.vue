@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ElImageViewer } from 'element-plus'
 import type { UploadProps } from 'element-plus'
+import Sortable from 'sortablejs'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import GenerationHistoryDialog from '@/components/Tools/AiImageEdit/GenerationHistoryDialog.vue'
 import UserPromptLibraryDialog from '@/components/Common/UserPromptLibraryDialog.vue'
@@ -100,11 +101,19 @@ const personUploadRef = ref<any>(null)
 const personFiles = ref<File[]>([])
 const personPreviews = ref<string[]>([])
 const personFileNames = ref<string[]>([])
+// 与上面三个数组严格对齐的唯一 id。拖拽排序后 Vue 用 :key 跟踪 DOM，
+// 用下标 idx 作为 key 在 reorder 时会让 Vue 误判为「元素被替换」而闪烁，
+// 改用与文件一一绑定的稳定 id 才能让 Vue 正确复用 DOM
+const personIds = ref<string[]>([])
+// 人物照 / 衣物照 缩略图网格 ref：分别挂 Sortable
+const personGridRef = ref<HTMLElement | null>(null)
 
 const clothingUploadRef = ref<any>(null)
 const clothingFiles = ref<File[]>([])
 const clothingPreviews = ref<string[]>([])
 const clothingFileNames = ref<string[]>([])
+const clothingIds = ref<string[]>([])
+const clothingGridRef = ref<HTMLElement | null>(null)
 
 const totalImageCount = computed(() => personFiles.value.length + clothingFiles.value.length)
 const remainingSlots = computed(() => MAX_TOTAL_IMAGES - totalImageCount.value)
@@ -136,6 +145,7 @@ const addPersonFiles = (files: File[]) => {
     }
     personFiles.value.push(file)
     personFileNames.value.push(file.name || 'person.png')
+    personIds.value.push(crypto.randomUUID())
     const reader = new FileReader()
     reader.onload = (e) => { personPreviews.value.push(e.target?.result as string) }
     reader.readAsDataURL(file)
@@ -143,6 +153,8 @@ const addPersonFiles = (files: File[]) => {
   }
   if (added > 0) {
     ElMessage.success(added === 1 ? '人物照已就绪' : `已添加 ${added} 张人物照（${totalImageCount.value}/${MAX_TOTAL_IMAGES}）`)
+    // 缩略图数量变化后重新挂 Sortable
+    nextTick(() => initPersonSortable())
   }
 }
 
@@ -151,6 +163,7 @@ const removePersonImage = (idx: number) => {
   personFiles.value.splice(idx, 1)
   personPreviews.value.splice(idx, 1)
   personFileNames.value.splice(idx, 1)
+  personIds.value.splice(idx, 1)
 }
 
 // 衣物照 onChange
@@ -178,6 +191,7 @@ const addClothingFiles = (files: File[]) => {
     }
     clothingFiles.value.push(file)
     clothingFileNames.value.push(file.name || 'clothing.png')
+    clothingIds.value.push(crypto.randomUUID())
     const reader = new FileReader()
     reader.onload = (e) => { clothingPreviews.value.push(e.target?.result as string) }
     reader.readAsDataURL(file)
@@ -185,6 +199,7 @@ const addClothingFiles = (files: File[]) => {
   }
   if (added > 0) {
     ElMessage.success(added === 1 ? '衣物照已就绪' : `已添加 ${added} 张衣物照（${totalImageCount.value}/${MAX_TOTAL_IMAGES}）`)
+    nextTick(() => initClothingSortable())
   }
 }
 
@@ -193,6 +208,7 @@ const removeClothingImage = (idx: number) => {
   clothingFiles.value.splice(idx, 1)
   clothingPreviews.value.splice(idx, 1)
   clothingFileNames.value.splice(idx, 1)
+  clothingIds.value.splice(idx, 1)
 }
 
 // 清空（按钮触发）
@@ -201,14 +217,18 @@ const clearAllPersonImages = () => {
   personFiles.value = []
   personPreviews.value = []
   personFileNames.value = []
+  personIds.value = []
   personUploadRef.value?.clearFiles()
+  nextTick(() => destroyPersonSortable())
 }
 const clearAllClothingImages = () => {
   if (isLoading.value) return
   clothingFiles.value = []
   clothingPreviews.value = []
   clothingFileNames.value = []
+  clothingIds.value = []
   clothingUploadRef.value?.clearFiles()
+  nextTick(() => destroyClothingSortable())
 }
 
 // 粘贴图片：优先人物照位；人物照填满后填衣物照
@@ -618,6 +638,92 @@ const onResultDragStart = (e: DragEvent) => {
   e.dataTransfer.effectAllowed = 'copy'
 }
 
+// ============ 缩略图拖拽排序（HTML5 原生 / Sortable.js）============
+// 人物照 / 衣物照 各一个 Sortable 实例，互不影响
+let personSortable: Sortable | null = null
+let clothingSortable: Sortable | null = null
+
+const destroyPersonSortable = () => {
+  if (personSortable) {
+    personSortable.destroy()
+    personSortable = null
+  }
+}
+const destroyClothingSortable = () => {
+  if (clothingSortable) {
+    clothingSortable.destroy()
+    clothingSortable = null
+  }
+}
+
+// 「外部文件拖入」由父级 upload-dropzone 的 @drop.capture 处理，
+// Sortable 仅负责在容器内重排 DOM，不会拦截文件类型 dataTransfer
+const initPersonSortable = () => {
+  destroyPersonSortable()
+  const el = personGridRef.value
+  if (!el) return
+  if (personIds.value.length < 2) return  // 0/1 张时挂上也没意义
+  personSortable = Sortable.create(el, {
+    animation: 150,
+    ghostClass: 'upload-thumb-ghost',
+    chosenClass: 'upload-thumb-chosen',
+    dragClass: 'upload-thumb-dragging',
+    delay: 80,
+    delayOnTouchOnly: true,
+    disabled: isLoading.value,
+    onEnd: handlePersonSortEnd,
+  })
+}
+const initClothingSortable = () => {
+  destroyClothingSortable()
+  const el = clothingGridRef.value
+  if (!el) return
+  if (clothingIds.value.length < 2) return
+  clothingSortable = Sortable.create(el, {
+    animation: 150,
+    ghostClass: 'upload-thumb-ghost',
+    chosenClass: 'upload-thumb-chosen',
+    dragClass: 'upload-thumb-dragging',
+    delay: 80,
+    delayOnTouchOnly: true,
+    disabled: isLoading.value,
+    onEnd: handleClothingSortEnd,
+  })
+}
+
+// 拖拽结束：同步重排 4 个并行数组（id / file / preview / name）
+// 排序后图片发送给 AI 的顺序与新顺序一致
+const handlePersonSortEnd = (evt: Sortable.SortableEvent) => {
+  const { oldIndex, newIndex } = evt
+  if (oldIndex == null || newIndex == null || oldIndex === newIndex) return
+  const id = personIds.value.splice(oldIndex, 1)[0]
+  const file = personFiles.value.splice(oldIndex, 1)[0]
+  const preview = personPreviews.value.splice(oldIndex, 1)[0]
+  const name = personFileNames.value.splice(oldIndex, 1)[0]
+  personIds.value.splice(newIndex, 0, id)
+  personFiles.value.splice(newIndex, 0, file)
+  personPreviews.value.splice(newIndex, 0, preview)
+  personFileNames.value.splice(newIndex, 0, name)
+}
+const handleClothingSortEnd = (evt: Sortable.SortableEvent) => {
+  const { oldIndex, newIndex } = evt
+  if (oldIndex == null || newIndex == null || oldIndex === newIndex) return
+  const id = clothingIds.value.splice(oldIndex, 1)[0]
+  const file = clothingFiles.value.splice(oldIndex, 1)[0]
+  const preview = clothingPreviews.value.splice(oldIndex, 1)[0]
+  const name = clothingFileNames.value.splice(oldIndex, 1)[0]
+  clothingIds.value.splice(newIndex, 0, id)
+  clothingFiles.value.splice(newIndex, 0, file)
+  clothingPreviews.value.splice(newIndex, 0, preview)
+  clothingFileNames.value.splice(newIndex, 0, name)
+}
+
+// isLoading 变化时切换两个 Sortable 实例的 disabled 状态
+watch(isLoading, (val) => {
+  if (personSortable) personSortable.option('disabled', val)
+  if (clothingSortable) clothingSortable.option('disabled', val)
+})
+
 const fetchModelList = async () => {
   try {
     const list = await fetchToolModels('/ai-outfit/')
@@ -648,6 +754,8 @@ onUnmounted(() => {
   stopDotsAnim()
   stopPersonSpinner()
   stopClothingSpinner()
+  destroyPersonSortable()
+  destroyClothingSortable()
 })
 
 const generateImage = async () => {
@@ -862,10 +970,10 @@ const modeBadge = computed(() => clothingFiles.value.length > 0
                   <span v-if="isDragOverPerson" class="text-caption text-pink-500 mt-1">松手即可添加</span>
                 </div>
                 <div v-else class="upload-grid-wrapper">
-                  <div class="upload-grid">
+                  <div ref="personGridRef" class="upload-grid">
                     <div
                       v-for="(preview, idx) in personPreviews"
-                      :key="idx"
+                      :key="personIds[idx]"
                       class="upload-thumb"
                       @click.stop
                     >
@@ -899,7 +1007,7 @@ const modeBadge = computed(() => clothingFiles.value.length > 0
                     </div>
                   </div>
                   <p class="text-caption text-gray-400 mt-2 text-center">
-                    点击缩略图放大 · 点击 ✕ 移除单张 · 拖拽新图 或 Ctrl+V 粘贴继续添加
+                    点击缩略图放大 · 点击 ✕ 移除单张 · 拖拽缩略图调整顺序 · 拖拽新图 或 Ctrl+V 粘贴继续添加
                   </p>
                 </div>
               </el-upload>
@@ -963,10 +1071,10 @@ const modeBadge = computed(() => clothingFiles.value.length > 0
                   <span v-if="isDragOverClothing" class="text-caption text-pink-500 mt-1">松手即可添加</span>
                 </div>
                 <div v-else class="upload-grid-wrapper">
-                  <div class="upload-grid">
+                  <div ref="clothingGridRef" class="upload-grid">
                     <div
                       v-for="(preview, idx) in clothingPreviews"
-                      :key="idx"
+                      :key="clothingIds[idx]"
                       class="upload-thumb"
                       @click.stop
                     >
@@ -1000,7 +1108,7 @@ const modeBadge = computed(() => clothingFiles.value.length > 0
                     </div>
                   </div>
                   <p class="text-caption text-gray-400 mt-2 text-center">
-                    点击缩略图放大 · 点击 ✕ 移除单张 · 拖拽新图 继续添加
+                    点击缩略图放大 · 点击 ✕ 移除单张 · 拖拽缩略图调整顺序 · 拖拽新图 继续添加
                   </p>
                 </div>
               </el-upload>
@@ -1348,11 +1456,36 @@ const modeBadge = computed(() => clothingFiles.value.length > 0
   overflow: hidden;
   border: 1px solid #e5e7eb;
   background: #f9fafb;
-  cursor: zoom-in;
+  cursor: grab;        /* 可拖拽排序（Sortable 延迟 80ms 触发，不与点击放大冲突）*/
   transition: border-color .15s ease, transform .15s ease;
 }
 .upload-thumb:hover {
   border-color: #f9a8d4;          /* pink-300，与穿搭主题呼应 */
+}
+.upload-thumb:active {
+  cursor: grabbing;
+}
+/* Sortable.js 拖拽反馈：原位置虚化 + 目标位置高亮（pink 主题）*/
+:deep(.upload-thumb-ghost) {
+  opacity: 0.35;
+  border-style: dashed;
+  border-color: #ec4899;
+  background: #fdf2f8;
+}
+:deep(.upload-thumb-chosen) {
+  border-color: #ec4899;
+  box-shadow: 0 4px 12px rgba(236, 72, 153, 0.25);
+}
+:deep(.upload-thumb-dragging) {
+  cursor: grabbing;
+  transform: scale(1.04);
+}
+/* 阻止 el-image 内部 img 在拖拽时被浏览器当成图片拖出（会盖过父 div 的 dragstart）*/
+:deep(.upload-thumb-img img),
+:deep(.upload-thumb img) {
+  -webkit-user-drag: none;
+  user-drag: none;
+  pointer-events: auto;
 }
 :deep(.upload-thumb-img) {
   display: block;
