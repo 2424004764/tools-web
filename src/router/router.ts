@@ -483,6 +483,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/img-puzzle',
+    component: () => import('@/components/Tools/ImgPuzzle/ImgPuzzle.vue'),
+    name: 'img-puzzle',
+    meta: {
+      title: "图片拼图",
+      keywords: '图片拼图,拼图模板,九宫格拼图,长图海报,电影海报,心形拼图,圆形拼图,阶梯拼图',
+      description: '在线图片拼图工具，支持宫格、长条、阶梯、电影海报、大图居中、心形/圆形等多种模板，一键合成多图排版',
+    }
+  },
+  {
     path: '/httpstatuscode',
     component: () => import('@/components/Tools/HttpStatusCode/HttpStatusCode.vue'),
     name: 'HttpStatusCode',
