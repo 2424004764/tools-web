@@ -960,6 +960,50 @@ export class WeightRecordModel extends Model {
   }
 }
 
+// HeightMember 模型 - 身高记录成员模型
+export class HeightMemberModel extends Model {
+  constructor(db) {
+    super(db)
+    this.config = {
+      tableName: 'height_members',
+      fields: {
+        id: { type: 'string', primaryKey: true },
+        uid: { type: 'string' },
+        name: { type: 'string' },
+        birthDate: { type: 'string', dbField: 'birth_date' },
+        sex: { type: 'string' },
+        goalHeight: { type: 'real', dbField: 'goal_height' },
+        avatarColor: { type: 'string', dbField: 'avatar_color' },
+        avatarEmoji: { type: 'string', dbField: 'avatar_emoji' },
+        isDefault: { type: 'integer', dbField: 'is_default' },
+        createTime: { type: 'datetime', dbField: 'create_time' },
+        updateTime: { type: 'datetime', dbField: 'update_time' }
+      }
+    }
+  }
+}
+
+// HeightRecord 模型 - 身高记录模型
+export class HeightRecordModel extends Model {
+  constructor(db) {
+    super(db)
+    this.config = {
+      tableName: 'height_records',
+      fields: {
+        id: { type: 'string', primaryKey: true },
+        uid: { type: 'string' },
+        memberId: { type: 'string', dbField: 'member_id' },
+        height: { type: 'real' },
+        note: { type: 'text' },
+        recordDate: { type: 'string', dbField: 'record_date' },
+        recordTime: { type: 'string', dbField: 'record_time' },
+        createTime: { type: 'datetime', dbField: 'create_time' },
+        updateTime: { type: 'datetime', dbField: 'update_time' }
+      }
+    }
+  }
+}
+
 // MockSchema 模型 - Mock 数据生成器配方
 export class MockSchemaModel extends Model {
   constructor(db) {
