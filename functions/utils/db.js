@@ -1004,6 +1004,47 @@ export class HeightRecordModel extends Model {
   }
 }
 
+// SalaryMember 模型 - 工资记录成员模型
+export class SalaryMemberModel extends Model {
+  constructor(db) {
+    super(db)
+    this.config = {
+      tableName: 'salary_members',
+      fields: {
+        id: { type: 'string', primaryKey: true },
+        uid: { type: 'string' },
+        name: { type: 'string' },
+        avatarColor: { type: 'string', dbField: 'avatar_color' },
+        avatarEmoji: { type: 'string', dbField: 'avatar_emoji' },
+        isDefault: { type: 'integer', dbField: 'is_default' },
+        createTime: { type: 'datetime', dbField: 'create_time' },
+        updateTime: { type: 'datetime', dbField: 'update_time' }
+      }
+    }
+  }
+}
+
+// SalaryRecord 模型 - 工资记录模型
+export class SalaryRecordModel extends Model {
+  constructor(db) {
+    super(db)
+    this.config = {
+      tableName: 'salary_records',
+      fields: {
+        id: { type: 'string', primaryKey: true },
+        uid: { type: 'string' },
+        memberId: { type: 'string', dbField: 'member_id' },
+        monthlyIncome: { type: 'real', dbField: 'monthly_income' },
+        effectiveDate: { type: 'string', dbField: 'effective_date' },
+        source: { type: 'string' },
+        note: { type: 'text' },
+        createTime: { type: 'datetime', dbField: 'create_time' },
+        updateTime: { type: 'datetime', dbField: 'update_time' }
+      }
+    }
+  }
+}
+
 // MockSchema 模型 - Mock 数据生成器配方
 export class MockSchemaModel extends Model {
   constructor(db) {

@@ -1492,6 +1492,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/salary-tracker',
+    component: () => import('@/components/Tools/SalaryTracker/SalaryTracker.vue'),
+    name: 'salary-tracker',
+    meta: {
+      title: "工资变化记录",
+      keywords: '工资记录,薪资追踪,涨薪记录,薪资变化,跳槽薪资,工资曲线,薪资成长,年化增长',
+      description: '在线工资变化记录工具，支持生效日期记录、调薪幅度分析、年化增长率计算、薪资成长曲线展示、里程碑成就解锁，帮助您量化每一次职业进阶'
+    }
+  },
+  {
     path: '/logic-training',
     component: () => import('@/components/Tools/LogicTraining/LogicTraining.vue'),
     name: 'logic-training',

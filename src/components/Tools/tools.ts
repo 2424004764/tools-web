@@ -1512,6 +1512,15 @@ export function getToolsCate() {
           cateId: 13,
           cate: '内容管理',
         },
+        {
+          id: 137,
+          title: '工资变化记录',
+          logo: '',
+          desc: '追踪每次薪资变动，绘制薪资成长曲线，自动计算涨幅、年化增长与里程碑成就',
+          url: '/salary-tracker/',
+          cateId: 13,
+          cate: '内容管理',
+        },
       ]
     }
   ]

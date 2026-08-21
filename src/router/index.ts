@@ -103,12 +103,109 @@ router.onError((error) => {
   sessionStorage.setItem(CHUNK_ERROR_KEY, String(errCount))
   if (errCount > MAX_CHUNK_ERRORS) {
     // 多次重试仍失败：直接渲染静态错误提示，不依赖 SPA 路由
+    // 提供两个按钮：
+    //   ① 「强制刷新」：带 cache-bust 参数跳回原路径，绕开任何 SW / 内存缓存
+    //   ② 「清理缓存」：反注册 SW + 清 Cache API + 清 sessionStorage
+    //
+    // 注意：不要把 JS 字符串拼接进 onclick="" 属性 —— JSON.stringify 路径里的双引号会
+    // 提前闭合属性，HTML 解析器会把按钮元素本身吃掉（只剩标题/正文，按钮消失）。
+    // 这里改用 createElement + addEventListener，绕开转义问题。
     sessionStorage.removeItem(CHUNK_ERROR_KEY)
-    document.body.innerHTML =
-      '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#666">' +
-      '<div style="text-align:center"><h2 style="font-size:18px;margin-bottom:8px">页面加载失败</h2>' +
-      '<p style="font-size:14px">请检查网络后<a href="/" style="color:#409EFF;margin:0 4px">刷新重试</a>' +
-      '，或在「关于」页点击「清理缓存并刷新」按钮</p></div></div>'
+    const currentPath = (sessionStorage.getItem(TARGET_PATH_KEY) || router.currentRoute.value.fullPath || '/')
+    const search = location.search || ''
+
+    /**
+     * 构造带 cache-bust 的同源 URL。
+     *
+     * 修复背景：之前直接 `currentPath + search + '&_cb=...'` 拼接会出 bug：
+     *   - 当 currentPath 不含 query 时 → `/path&_cb=...`（少了 ?，路由 404）
+     *   - 当 currentPath 含 query 时（如 /foo?id=1）→ 同时又有 search (?id=1)
+     *     → 拼成 `/foo?id=1?id=1&_cb=...`（query 重复，404）
+     *
+     * currentPath 来自 sessionStorage / router.currentRoute.value.fullPath，
+     * Vue Router 的 fullPath 已经带上了 query 和 hash，这里统一剥掉，
+     * 再合并 location.search（去掉重复），最后用 URLSearchParams 加 _cb。
+     */
+    const buildReloadUrl = (): string => {
+      const pathOnly = currentPath.split('?')[0].split('#')[0] || '/'
+      const params = new URLSearchParams(search) // 自动忽略前面的 ?、处理 & 拼接
+      params.set('_cb', String(Date.now()))
+      return pathOnly + (params.toString() ? '?' + params.toString() : '')
+    }
+
+    const wrap = document.createElement('div')
+    wrap.style.cssText =
+      'display:flex;align-items:center;justify-content:center;min-height:100vh;' +
+      'font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:#666;padding:24px'
+
+    const card = document.createElement('div')
+    card.style.cssText = 'text-align:center;max-width:420px'
+
+    const icon = document.createElement('div')
+    icon.style.cssText = 'font-size:48px;margin-bottom:12px'
+    icon.textContent = '⚠️'
+
+    const title = document.createElement('h2')
+    title.style.cssText = 'font-size:18px;margin:0 0 8px;color:#18181b'
+    title.textContent = '页面加载失败'
+
+    const desc = document.createElement('p')
+    desc.style.cssText = 'font-size:14px;margin:0 0 20px;line-height:1.6'
+    desc.textContent = '资源加载多次失败，可能是浏览器缓存了过期的 JS。请点击下方按钮一键恢复：'
+
+    const btnRow = document.createElement('div')
+    btnRow.style.cssText = 'display:flex;gap:8px;justify-content:center;flex-wrap:wrap'
+
+    const reloadBtn = document.createElement('button')
+    reloadBtn.style.cssText =
+      'padding:10px 20px;border-radius:8px;border:none;background:#409EFF;color:#fff;' +
+      'font-size:14px;cursor:pointer;font-weight:500'
+    reloadBtn.textContent = '🔄 强制刷新'
+    reloadBtn.addEventListener('click', () => {
+      location.replace(buildReloadUrl())
+    })
+
+    const cleanBtn = document.createElement('button')
+    cleanBtn.style.cssText =
+      'padding:10px 20px;border-radius:8px;border:1px solid #dcdfe6;background:#fff;color:#409EFF;' +
+      'font-size:14px;cursor:pointer;font-weight:500'
+    cleanBtn.textContent = '🧹 清理缓存并刷新'
+    cleanBtn.addEventListener('click', () => {
+      try {
+        if (navigator.serviceWorker) {
+          navigator.serviceWorker.getRegistrations().then((rs) =>
+            Promise.all(rs.map((r) => r.unregister())),
+          )
+        }
+        if (window.caches) {
+          caches.keys().then((ks) => Promise.all(ks.map((k) => caches.delete(k))))
+        }
+        try {
+          sessionStorage.clear()
+        } catch (e) {
+          // 忽略
+        }
+      } finally {
+        location.replace(buildReloadUrl())
+      }
+    })
+
+    const tip = document.createElement('p')
+    tip.style.cssText = 'font-size:12px;margin:16px 0 0;color:#999'
+    tip.textContent = '如果都试过仍然不行，请检查网络或换个网络环境'
+
+    btnRow.appendChild(reloadBtn)
+    btnRow.appendChild(cleanBtn)
+    card.appendChild(icon)
+    card.appendChild(title)
+    card.appendChild(desc)
+    card.appendChild(btnRow)
+    card.appendChild(tip)
+    wrap.appendChild(card)
+
+    // 整体替换 body，绕开 SPA 的 #app 节点
+    document.body.innerHTML = ''
+    document.body.appendChild(wrap)
     return
   }
   // 第一次/第二次失败：硬刷到目标 URL（保留 query），由 afterEach 在成功后清零
