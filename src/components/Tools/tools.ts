@@ -1503,6 +1503,15 @@ export function getToolsCate() {
           cateId: 13,
           cate: '内容管理',
         },
+        {
+          id: 136,
+          title: '身高记录',
+          logo: '/images/logo/height-tracker.png',
+          desc: '家庭成员身高追踪记录，支持趋势图表展示、增长速率分析、目标身高对比与里程碑成就',
+          url: '/height-tracker/',
+          cateId: 13,
+          cate: '内容管理',
+        },
       ]
     }
   ]

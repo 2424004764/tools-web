@@ -1482,6 +1482,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/height-tracker',
+    component: () => import('@/components/Tools/HeightTracker/HeightTracker.vue'),
+    name: 'height-tracker',
+    meta: {
+      title: "身高记录",
+      keywords: '身高记录,身高追踪,身高管理,身高曲线,儿童身高,生长曲线,家庭成员身高,身高预测',
+      description: '在线身高记录工具，支持家庭成员管理、身高趋势折线图展示、年增长速率分析、目标身高对比、里程碑成就解锁，帮助您科学追踪身高变化'
+    }
+  },
+  {
     path: '/logic-training',
     component: () => import('@/components/Tools/LogicTraining/LogicTraining.vue'),
     name: 'logic-training',
