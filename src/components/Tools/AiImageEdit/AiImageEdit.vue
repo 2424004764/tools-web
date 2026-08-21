@@ -3,6 +3,7 @@ import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { UploadProps } from 'element-plus'
+import Sortable from 'sortablejs'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import GenerationHistoryDialog from './GenerationHistoryDialog.vue'
 import UserPromptLibraryDialog from '@/components/Common/UserPromptLibraryDialog.vue'
@@ -64,6 +65,12 @@ const uploadRef = ref<any>(null)
 const imageFiles = ref<File[]>([])
 const imagePreviews = ref<string[]>([])
 const uploadedFileNames = ref<string[]>([])
+// 与上面三个数组严格对齐的唯一 id。拖拽排序后 Vue 用 :key 跟踪 DOM，
+// 用下标 idx 作为 key 在 reorder 时会让 Vue 误判为「元素被替换」而闪烁，
+// 改用与文件一一绑定的稳定 id 才能让 Vue 正确复用 DOM
+const imageIds = ref<string[]>([])
+// 缩略图网格 ref：用于挂载 Sortable
+const imageGridRef = ref<HTMLElement | null>(null)
 
 const canAddMore = computed(() => imageFiles.value.length < MAX_IMAGES)
 const remainingSlots = computed(() => MAX_IMAGES - imageFiles.value.length)
@@ -102,6 +109,7 @@ const addImageFiles = (files: File[]) => {
     }
     imageFiles.value.push(file)
     uploadedFileNames.value.push(file.name || 'image.png')
+    imageIds.value.push(crypto.randomUUID())
     const reader = new FileReader()
     reader.onload = (e) => {
       // 同步追加到预览数组，保持索引一致
@@ -112,6 +120,8 @@ const addImageFiles = (files: File[]) => {
   }
   if (added > 0) {
     ElMessage.success(added === 1 ? '图片已就绪' : `已添加 ${added} 张图片（共 ${imageFiles.value.length}/${MAX_IMAGES}）`)
+    // 缩略图数量变化后重新挂 Sortable（addImageFiles 也用于拖拽回填，DOM 在那里被替换）
+    nextTick(() => initImageSortable())
   }
 }
 
@@ -121,6 +131,7 @@ const removeImage = (idx: number) => {
   imageFiles.value.splice(idx, 1)
   imagePreviews.value.splice(idx, 1)
   uploadedFileNames.value.splice(idx, 1)
+  imageIds.value.splice(idx, 1)
 }
 
 // 清空全部图片
@@ -129,7 +140,9 @@ const clearAllImages = () => {
   imageFiles.value = []
   imagePreviews.value = []
   uploadedFileNames.value = []
+  imageIds.value = []
   uploadRef.value?.clearFiles()
+  nextTick(() => destroyImageSortable())
 }
 
 // 粘贴图片支持：追加到列表（已有图时继续往后加）
@@ -283,6 +296,66 @@ const onResultDragStart = (e: DragEvent) => {
   e.dataTransfer.effectAllowed = 'copy'
 }
 
+// ============ 缩略图拖拽排序（HTML5 原生 / Sortable.js）============
+// Sortable 实例：单个网格，挂在 imageGridRef 上
+let imageSortable: Sortable | null = null
+
+const destroyImageSortable = () => {
+  if (imageSortable) {
+    imageSortable.destroy()
+    imageSortable = null
+  }
+}
+
+// 初始化 / 重建 Sortable
+// - 必须在 thumb DOM 渲染出来后挂载，所以统一用 nextTick 包一层
+// - 「外部文件拖入」由父级 upload-dropzone 的 @drop.capture 处理，
+//   Sortable 仅负责在容器内重排 DOM，不会拦截文件类型 dataTransfer
+const initImageSortable = () => {
+  destroyImageSortable()
+  const el = imageGridRef.value
+  if (!el) return
+  if (imageIds.value.length < 2) return  // 只有 0/1 张时挂上也没意义
+  imageSortable = Sortable.create(el, {
+    animation: 150,
+    ghostClass: 'upload-thumb-ghost',
+    chosenClass: 'upload-thumb-chosen',
+    dragClass: 'upload-thumb-dragging',
+    // 延迟 80ms 才进入拖拽，避免和「点击放大」冲突（区分不动 vs 移动）
+    delay: 80,
+    delayOnTouchOnly: true,
+    disabled: isLoading.value,
+    onEnd: handleImageSortEnd,
+  })
+}
+
+// 拖拽结束：同步重排 4 个并行数组（id / file / preview / name）
+// 排序后图片发送给 AI 的顺序与新顺序一致（FormData 按数组顺序写入）
+const handleImageSortEnd = (evt: Sortable.SortableEvent) => {
+  const { oldIndex, newIndex } = evt
+  if (
+    oldIndex == null ||
+    newIndex == null ||
+    oldIndex === newIndex
+  ) return
+
+  const id = imageIds.value.splice(oldIndex, 1)[0]
+  const file = imageFiles.value.splice(oldIndex, 1)[0]
+  const preview = imagePreviews.value.splice(oldIndex, 1)[0]
+  const name = uploadedFileNames.value.splice(oldIndex, 1)[0]
+  imageIds.value.splice(newIndex, 0, id)
+  imageFiles.value.splice(newIndex, 0, file)
+  imagePreviews.value.splice(newIndex, 0, preview)
+  uploadedFileNames.value.splice(newIndex, 0, name)
+}
+
+// isLoading 变化时切换 Sortable 的 disabled 状态
+watch(isLoading, (val) => {
+  if (imageSortable) {
+    imageSortable.option('disabled', val)
+  }
+})
+
 // 提示词缓存 key：刷新页面后自动恢复上次输入
 const PROMPT_CACHE_KEY = 'ai-image-edit:prompt'
 
@@ -361,6 +434,7 @@ onUnmounted(() => {
   stopBtnAnim()
   stopDotsAnim()
   stopSpinner()
+  destroyImageSortable()
 })
 
 // 生成结果
@@ -802,10 +876,10 @@ const openInNewTab = () => {
                 </div>
                 <!-- 有图状态：缩略图网格 + 末尾「继续添加」位 -->
                 <div v-else class="upload-grid-wrapper">
-                  <div class="upload-grid">
+                  <div ref="imageGridRef" class="upload-grid">
                     <div
                       v-for="(preview, idx) in imagePreviews"
-                      :key="idx"
+                      :key="imageIds[idx]"
                       class="upload-thumb"
                       @click.stop
                     >
@@ -840,7 +914,7 @@ const openInNewTab = () => {
                     </div>
                   </div>
                   <p class="text-caption text-gray-400 mt-2 text-center">
-                    点击缩略图放大 · 点击 ✕ 移除单张 · 拖拽新图 或 Ctrl+V 粘贴继续添加
+                    点击缩略图放大 · 点击 ✕ 移除单张 · 拖拽缩略图调整顺序 · 拖拽新图 或 Ctrl+V 粘贴继续添加
                   </p>
                 </div>
               </el-upload>
@@ -1206,11 +1280,38 @@ const openInNewTab = () => {
   overflow: hidden;
   border: 1px solid #e5e7eb;
   background: #f9fafb;
-  cursor: zoom-in;
+  cursor: grab;        /* 可拖拽排序（Sortable 延迟 80ms 触发，不与点击放大冲突）*/
   transition: border-color .15s ease, transform .15s ease;
 }
 .upload-thumb:hover {
   border-color: #93c5fd;
+}
+.upload-thumb:active {
+  cursor: grabbing;
+}
+/* Sortable.js 拖拽反馈：原位置虚化 + 目标位置高亮 */
+:deep(.upload-thumb-ghost) {
+  opacity: 0.35;
+  border-style: dashed;
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+:deep(.upload-thumb-chosen) {
+  border-color: #3b82f6;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+}
+:deep(.upload-thumb-dragging) {
+  cursor: grabbing;
+  transform: scale(1.04);
+}
+/* 阻止 el-image 内部 img 在拖拽时被浏览器当成图片拖出（会盖过父 div 的 dragstart）
+   注意：不要同时写 pointer-events: none，否则点击缩略图放大也会失效 */
+:deep(.upload-thumb-img img),
+:deep(.upload-thumb img) {
+  -webkit-user-drag: none;
+  user-drag: none;
+  /* Firefox：draggable=false 也能阻止 img 原生拖拽 */
+  pointer-events: auto;
 }
 :deep(.upload-thumb-img) {
   display: block;
