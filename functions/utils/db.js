@@ -1045,6 +1045,30 @@ export class SalaryRecordModel extends Model {
   }
 }
 
+// FixedExpense 模型 - 每月固定开销模型（单用户）
+export class FixedExpenseModel extends Model {
+  constructor(db) {
+    super(db)
+    this.config = {
+      tableName: 'fixed_expenses',
+      fields: {
+        id: { type: 'string', primaryKey: true },
+        uid: { type: 'string' },
+        name: { type: 'string' },
+        amount: { type: 'real' },
+        category: { type: 'string' },
+        billingDay: { type: 'integer', dbField: 'billing_day' },
+        startDate: { type: 'string', dbField: 'start_date' },
+        endDate: { type: 'string', dbField: 'end_date' },
+        note: { type: 'text' },
+        isActive: { type: 'integer', dbField: 'is_active' },
+        createTime: { type: 'datetime', dbField: 'create_time' },
+        updateTime: { type: 'datetime', dbField: 'update_time' }
+      }
+    }
+  }
+}
+
 // MockSchema 模型 - Mock 数据生成器配方
 export class MockSchemaModel extends Model {
   constructor(db) {

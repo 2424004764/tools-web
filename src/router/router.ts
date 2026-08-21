@@ -1502,6 +1502,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/fixed-expenses',
+    component: () => import('@/components/Tools/FixedExpenses/FixedExpenses.vue'),
+    name: 'fixed-expenses',
+    meta: {
+      title: "每月固定开销",
+      keywords: '固定开销,每月开销,订阅管理,扣款日,房租,贷款,保险,预算管理,刚性支出',
+      description: '在线每月固定开销记录工具，支持房租/订阅/贷款/保险等周期性开销管理、扣款日提醒、分类汇总、月度与年度开销统计，帮助你清晰掌控每月刚性支出'
+    }
+  },
+  {
     path: '/logic-training',
     component: () => import('@/components/Tools/LogicTraining/LogicTraining.vue'),
     name: 'logic-training',
