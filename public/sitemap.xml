@@ -57,6 +57,7 @@
   <!-- 其余工具 -->
   <url><loc>https://tool.fologde.com/textremoveduplicate</loc><changefreq>monthly</changefreq><priority>0.4</priority><lastmod>2026-01-18T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/imgcut</loc><changefreq>monthly</changefreq><priority>0.4</priority><lastmod>2026-01-18T00:00:00+00:00</lastmod></url>
+  <url><loc>https://tool.fologde.com/img-puzzle</loc><changefreq>monthly</changefreq><priority>0.4</priority><lastmod>2026-08-19T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/httpstatuscode</loc><changefreq>monthly</changefreq><priority>0.4</priority><lastmod>2026-01-18T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/jwt</loc><changefreq>monthly</changefreq><priority>0.4</priority><lastmod>2026-01-18T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/htmlentity</loc><changefreq>monthly</changefreq><priority>0.4</priority><lastmod>2026-01-18T00:00:00+00:00</lastmod></url>

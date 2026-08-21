@@ -747,6 +747,15 @@ export function getToolsCate() {
           cate: '图片处理',
         },
         {
+          id: 'img-puzzle-2026-08-19',
+          title: '图片拼图',
+          logo: '/images/logo/img-puzzle.png',
+          desc: '支持宫格、长条、阶梯、电影海报、大图居中、心形/圆形等多种模板，一键合成多图排版',
+          url: '/img-puzzle/',
+          cateId: 5,
+          cate: '图片处理',
+        },
+        {
           id: 69,
           title: '图片、Base64互转',
           logo: '/images/logo/img.png',
