@@ -1521,6 +1521,15 @@ export function getToolsCate() {
           cateId: 13,
           cate: '内容管理',
         },
+        {
+          id: 138,
+          title: '每月固定开销',
+          logo: '',
+          desc: '记录每月固定开销项目（房租、订阅、保险、贷款等），自动按月汇总、按分类可视化、按扣款日提醒，帮助你清晰掌控刚性支出',
+          url: '/fixed-expenses/',
+          cateId: 13,
+          cate: '内容管理',
+        },
       ]
     }
   ]

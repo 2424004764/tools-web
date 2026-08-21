@@ -30,6 +30,8 @@
     "/api/salary/members/*",
     "/api/salary/records",
     "/api/salary/records/*",
+    "/api/fixed-expenses",
+    "/api/fixed-expenses/*",
     "/linuxdo-auth",
     "/gitee-auth",
     "/github-auth",
