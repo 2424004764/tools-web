@@ -22,6 +22,16 @@ export async function onRequest(context) {
     const user = authResult.user
     const id = url.pathname.split('/').pop()
 
+    // 嗅探子路径：statistics / export 是集合级别的接口，不应作为 item id 处理
+    // （Pages Functions 路由在同目录 [id].js 与 statistics/index.js 同时存在时，
+    //   会优先匹配 [id].js，所以这里需要显式分流）
+    if (id === 'statistics' && request.method === 'GET') {
+      return await controller.getStatistics(user, origin)
+    }
+    if (id === 'export' && request.method === 'GET') {
+      return await controller.exportData(user, origin)
+    }
+
     switch (request.method) {
       case 'GET':
         return await controller.getItem(id, user, origin)

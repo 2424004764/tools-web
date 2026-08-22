@@ -1515,7 +1515,7 @@ export function getToolsCate() {
         {
           id: 137,
           title: '工资变化记录',
-          logo: '',
+          logo: '/images/logo/salary-tracker.png',
           desc: '追踪每次薪资变动，绘制薪资成长曲线，自动计算涨幅、年化增长与里程碑成就',
           url: '/salary-tracker/',
           cateId: 13,
@@ -1524,7 +1524,7 @@ export function getToolsCate() {
         {
           id: 138,
           title: '每月固定开销',
-          logo: '',
+          logo: '/images/logo/fixed-expenses.png',
           desc: '记录每月固定开销项目（房租、订阅、保险、贷款等），自动按月汇总、按分类可视化、按扣款日提醒，帮助你清晰掌控刚性支出',
           url: '/fixed-expenses/',
           cateId: 13,

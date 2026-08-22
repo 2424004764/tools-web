@@ -149,6 +149,14 @@ const markCoverLoaded = (id: number) => {
 // 是否支持真实 hover（触屏设备为 false，避免移动端触发 hover 播放）
 const canHover = ref(true)
 
+// 响应式：< 640px 视为手机端。手机端分页要简化（去掉 jumper、缩小按钮、限制页码按钮数），
+// 否则页码太长会撑破容器出现整页横向滚动条。
+const isMobile = ref(false)
+const MOBILE_BREAKPOINT = 640
+const updateIsMobile = () => {
+  isMobile.value = typeof window !== 'undefined' && window.innerWidth < MOBILE_BREAKPOINT
+}
+
 // 视频封面 src：加 #t=0.1 让浏览器直接渲染视频首帧作为静态封面，
 // 这样没有 thumbnail_url 的视频也能正常显示画面（而不是 CSS 占位）。
 const videoCoverSrc = (item: AiMediaWork) => {
@@ -212,12 +220,15 @@ onMounted(() => {
   if (typeof window.matchMedia === 'function') {
     canHover.value = window.matchMedia('(hover: hover) and (pointer: fine)').matches
   }
+  updateIsMobile()
+  window.addEventListener('resize', updateIsMobile)
   loadCategories()
   loadTotalCounts()
   loadList()
 })
 
 onUnmounted(() => {
+  window.removeEventListener('resize', updateIsMobile)
   if (typeof window.document !== 'undefined') {
     window.document.body.style.overflow = ''
   }
@@ -434,17 +445,22 @@ function openOriginal(item: any) {
           </div>
         </div>
 
-        <!-- 分页 -->
-        <div v-if="pagination.totalPages > 1" class="flex justify-center mt-6">
-          <el-pagination
-            :current-page="pagination.page"
-            :page-size="pagination.pageSize"
-            :total="pagination.total"
-            :page-count="pagination.totalPages"
-            layout="prev, pager, next, jumper"
-            :background="true"
-            @current-change="handlePageChange"
-          />
+        <!-- 分页：移动端简化布局（去掉 jumper、缩小按钮、限制页码按钮数到 5），
+             并用 overflow-x-auto 兜底，避免页码过多时把整个页面撑出横向滚动条 -->
+        <div v-if="pagination.totalPages > 1" class="mt-6 px-1 overflow-x-auto">
+          <div class="flex justify-center min-w-fit">
+            <el-pagination
+              :current-page="pagination.page"
+              :page-size="pagination.pageSize"
+              :total="pagination.total"
+              :page-count="pagination.totalPages"
+              :pager-count="5"
+              :layout="isMobile ? 'prev, pager, next' : 'prev, pager, next, jumper'"
+              :small="isMobile"
+              :background="true"
+              @current-change="handlePageChange"
+            />
+          </div>
         </div>
       </div>
     </div>
