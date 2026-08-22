@@ -14,14 +14,17 @@ const toolsStore = useToolsStore()
 const componentStore = useComponentStore()
 const route = useRoute()
 const router = useRouter()
-// const getToolsCate = async () => {
-//   try {
-//     await toolsStore.getToolCate()
-//   } catch (error: any) {
-//     ElMessage.error(error.message)
-//   }
-// }
 
+// 首页直接消费的 toolsStore.cates 必须自己保证已加载，不依赖 Left.vue 的副作用 onMounted
+// （Left 是 defineAsyncComponent + v-show 隐藏的，移动端在抽屉里才挂载，首次加载顺序不稳定会导致首页空白）
+const ensureCatesLoaded = async () => {
+  if (toolsStore.cates.length > 0) return
+  try {
+    await toolsStore.getToolCate()
+  } catch (error: any) {
+    console.warn('[Home] 工具列表加载失败：', error?.message || error)
+  }
+}
 
 const showBackTop = ref(false)
 
@@ -203,6 +206,9 @@ const gotoAnchor = async (anchor: string) => {
 
 onMounted(async () => {
   await nextTick()
+
+  // 主动加载工具列表（避免依赖 Left.vue 的副作用）
+  ensureCatesLoaded()
 
   // 预先添加滚动监听器；handleScroll 通过 isScrollListenerActive / isScrollingToAnchor 双重门控
   window.addEventListener('scroll', throttledHandleScroll)
