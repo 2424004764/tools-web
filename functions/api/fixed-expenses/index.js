@@ -21,15 +21,8 @@ export async function onRequest(context) {
     const controller = new FixedExpenseController(dbInit.db)
     const user = authResult.user
     const queryParams = Object.fromEntries(url.searchParams)
-    const path = url.pathname.replace('/api/fixed-expenses', '')
-
-    // 子路径：statistics / export
-    if (path === '/statistics' || path === '/statistics/') {
-      return await controller.getStatistics(user, origin)
-    }
-    if (path === '/export' || path === '/export/') {
-      return await controller.exportData(user, origin)
-    }
+    // 注：/api/fixed-expenses/statistics 与 /api/fixed-expenses/export 由各自子目录中的 index.js 处理，
+    // 因为同级的 [id].js 在 Cloudflare Pages 路由中会优先匹配单段路径。
 
     switch (request.method) {
       case 'GET':

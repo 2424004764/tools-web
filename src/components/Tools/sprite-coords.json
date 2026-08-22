@@ -832,5 +832,17 @@
     "y": 1428,
     "w": 80,
     "h": 80
+  },
+  "/images/logo/salary-tracker.png": {
+    "x": 252,
+    "y": 1428,
+    "w": 80,
+    "h": 80
+  },
+  "/images/logo/fixed-expenses.png": {
+    "x": 336,
+    "y": 1428,
+    "w": 80,
+    "h": 80
   }
 }
