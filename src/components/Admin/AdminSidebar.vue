@@ -18,6 +18,7 @@ const menus: MenuItem[] = [
   { index: '/admin/redeem-codes', title: '兑换码管理', icon: 'redeem' },
   { index: '/admin/redeem-code-batches', title: '兑换码批次', icon: 'batch' },
   { index: '/admin/tools', title: '工具开关', icon: 'tools' },
+  { index: '/admin/tool-usage', title: '工具使用记录', icon: 'usage' },
   { index: '/admin/generation-records', title: '请求日志', icon: 'logs' },
   { index: '/admin/ai-media-works', title: 'AI 媒体作品', icon: 'media' },
   { index: '/admin/error-logs', title: '错误日志', icon: 'warning' },
