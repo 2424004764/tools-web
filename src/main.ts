@@ -21,6 +21,19 @@ import { startVersionGuard } from './utils/version-guard'
 const app = createApp(App)
 app.use(pinia)
 app.use(router)
+
+// v-md-editor 懒加载：仅在 /markdown/ 页面首次访问时动态 import 并注册，
+// 避免首屏就把 v-md-editor + prism + vuepress 主题一起打包进来。
+// Notes.vue 已不用 v-md-editor（改用自建 textarea + markdown-it 预览），
+// 所以绝大多数用户根本不会触发这段加载。
+let mdEditorRegistered = false
+router.beforeEach(async (to) => {
+  if (!mdEditorRegistered && to.path.startsWith('/markdown')) {
+    mdEditorRegistered = true
+    const { setupMdEditor } = await import('./plugins/v-md-editor')
+    setupMdEditor(app)
+  }
+})
 // 全局初始化登录态：刷新后从 localStorage 还原 isLoggedIn / user，
 // 否则未在 onMounted 显式 initUserState() 的页面守卫会误判未登录，导致死循环
 useUserStore().initUserState()

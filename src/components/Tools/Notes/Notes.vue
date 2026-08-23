@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref, onMounted, computed } from 'vue'
+import { reactive, ref, onMounted, computed, nextTick } from 'vue'
 import functionsRequest from '@/utils/functionsRequest'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
@@ -11,6 +11,34 @@ import Delete from '~icons/ep/delete'
 import View from '~icons/ep/view'
 import Document from '~icons/ep/document'
 import CopyDocument from '~icons/ep/copyDocument'
+// Markdown 渲染（详情页 + 编辑器实时预览共用同一份实例）
+import MarkdownIt from 'markdown-it'
+import 'highlight.js/styles/github.css'
+
+const md = new MarkdownIt({
+  html: true,
+  linkify: true,
+  typographer: true,
+  breaks: true,
+})
+
+// 列表卡片用：把 Markdown 语法剥离成可读纯文本，避免在卡片里显示 #、* 等符号
+const stripMarkdown = (text: string): string => {
+  if (!text) return ''
+  return text
+    .replace(/```[\s\S]*?```/g, ' [代码] ')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/!\[([^\]]*)\]\([^\)]*\)/g, ' [图片] ')
+    .replace(/\[([^\]]+)\]\([^\)]*\)/g, '$1')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/^>\s?/gm, '')
+    .replace(/^[*\-+]\s+/gm, '')
+    .replace(/^\d+\.\s+/gm, '')
+    .replace(/[*_~]{1,3}([^*_~]+)[*_~]{1,3}/g, '$1')
+    .replace(/---+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
 
 interface Note {
   id: string
@@ -263,11 +291,105 @@ const formatTime = (timeStr: string) => {
 }
 
 // 添加计算属性
-const showNoteDetail = computed(() => 
-  currentNote.value !== null && 
-  !showForm.value && 
+const showNoteDetail = computed(() =>
+  currentNote.value !== null &&
+  !showForm.value &&
   !isEditing.value
 )
+
+// 详情页 Markdown 渲染结果
+const renderedDetailContent = computed(() =>
+  currentNote.value ? md.render(currentNote.value.content || '') : ''
+)
+
+// 编辑器实时预览：用同一份 markdown-it 实例渲染
+const renderedFormPreview = computed(() => md.render(formData.content || ''))
+
+// 工具栏：在 textarea 光标处插入 Markdown 语法
+// 选中文字 → 把语法包在选区两端；未选中 → 用占位符插入新语法
+const textareaRef = ref<HTMLTextAreaElement | null>(null)
+
+const insertAtCursor = (before: string, after = '', placeholder = '') => {
+  const ta = textareaRef.value
+  if (!ta) {
+    formData.content += before + placeholder + after
+    return
+  }
+  const start = ta.selectionStart
+  const end = ta.selectionEnd
+  const selected = ta.value.substring(start, end) || placeholder
+  const next =
+    ta.value.substring(0, start) +
+    before +
+    selected +
+    after +
+    ta.value.substring(end)
+  formData.content = next
+  // 恢复光标：放在被插入内容之后（如果是占位符则选中占位符便于用户直接覆盖）
+  nextTick(() => {
+    ta.focus()
+    const insertedLen = before.length + selected.length + after.length
+    const cursorPos = start + insertedLen
+    if (!ta.value.substring(start, end) && placeholder) {
+      // 用户没选文本：选中占位符便于直接覆盖
+      ta.setSelectionRange(start + before.length, start + before.length + placeholder.length)
+    } else {
+      ta.setSelectionRange(cursorPos, cursorPos)
+    }
+  })
+}
+
+// 在行首插入前缀（标题 #、引用 >、列表 - 1.）：自动换行保证从新行开始
+const insertLinePrefix = (prefix: string, placeholder = '') => {
+  const ta = textareaRef.value
+  if (!ta) {
+    formData.content = prefix + placeholder + '\n' + formData.content
+    return
+  }
+  const start = ta.selectionStart
+  const value = ta.value
+  // 找到当前行的起始位置
+  const lineStart = value.lastIndexOf('\n', start - 1) + 1
+  // 当前行已有前缀则不重复加（避免 ## ## 这种）
+  const currentLine = value.substring(lineStart)
+  const used = currentLine.startsWith(prefix)
+  const realPrefix = used ? '' : prefix
+  const inserted = realPrefix + placeholder
+  formData.content =
+    value.substring(0, lineStart) +
+    inserted +
+    value.substring(lineStart)
+  nextTick(() => {
+    ta.focus()
+    const selStart = lineStart + realPrefix.length
+    const selEnd = selStart + placeholder.length
+    ta.setSelectionRange(selStart, selEnd)
+  })
+}
+
+const insertH1 = () => insertLinePrefix('# ', '一级标题')
+const insertH2 = () => insertLinePrefix('## ', '二级标题')
+const insertH3 = () => insertLinePrefix('### ', '三级标题')
+const insertH4 = () => insertLinePrefix('#### ', '四级标题')
+const insertBold = () => insertAtCursor('**', '**', '加粗文字')
+const insertItalic = () => insertAtCursor('*', '*', '斜体文字')
+const insertStrike = () => insertAtCursor('~~', '~~', '删除线')
+const insertUnderline = () => insertAtCursor('<u>', '</u>', '下划线')
+const insertInlineCode = () => insertAtCursor('`', '`', 'code')
+const insertCodeBlock = () => insertAtCursor('\n```\n', '\n```\n', '// code')
+const insertQuote = () => insertLinePrefix('> ', '引用文字')
+const insertUl = () => insertLinePrefix('- ', '列表项')
+const insertOl = () => insertLinePrefix('1. ', '列表项')
+const insertHr = () => insertAtCursor('\n---\n', '', '')
+const insertLink = () => insertAtCursor('[', '](https://)', '链接文字')
+const insertImage = () => insertAtCursor('![', '](https://)', '图片描述')
+const insertTable = () => {
+  insertAtCursor(
+    '\n| 列1 | 列2 | 列3 |\n| --- | --- | --- |\n| ',
+    ' | 内容 | 内容 |\n',
+    '内容'
+  )
+}
 
 onMounted(() => {
   fetchNotes()
@@ -372,7 +494,7 @@ onMounted(() => {
           </div>
           
           <div class="note-content">
-            <p class="note-text">{{ note.content }}</p>
+            <p class="note-text">{{ stripMarkdown(note.content) }}</p>
           </div>
           
           <div class="note-footer">
@@ -403,8 +525,8 @@ onMounted(() => {
       <el-dialog
         v-model="showForm"
         :title="isEditing ? '编辑笔记' : '新建笔记'"
-        width="90%"
-        max-width="600px"
+        width="95%"
+        max-width="960px"
         class="note-dialog"
         @close="isEditing = false"
         destroy-on-close
@@ -412,22 +534,67 @@ onMounted(() => {
         <div class="form-container">
           <el-form :model="formData" label-position="top">
             <el-form-item label="笔记标题" required class="form-item">
-              <el-input 
-                v-model="formData.title" 
-                placeholder="请输入笔记标题" 
+              <el-input
+                v-model="formData.title"
+                placeholder="请输入笔记标题"
                 size="large"
                 class="title-input"
               />
             </el-form-item>
-            <el-form-item label="笔记内容" required class="form-item">
-              <el-input
-                v-model="formData.content"
-                type="textarea"
-                :rows="12"
-                placeholder="在这里记录你的想法..."
-                class="content-textarea"
-                resize="vertical"
-              />
+            <el-form-item label="笔记内容（支持 Markdown）" required class="form-item">
+              <div class="content-editor">
+                <div class="editor-split">
+                  <div class="editor-pane editor-pane-input">
+                    <div class="pane-label">Markdown 源码</div>
+                    <div class="editor-toolbar">
+                      <el-button-group class="toolbar-group">
+                        <el-button size="small" plain @click="insertH1" title="一级标题">H1</el-button>
+                        <el-button size="small" plain @click="insertH2" title="二级标题">H2</el-button>
+                        <el-button size="small" plain @click="insertH3" title="三级标题">H3</el-button>
+                        <el-button size="small" plain @click="insertH4" title="四级标题">H4</el-button>
+                      </el-button-group>
+                      <el-button-group class="toolbar-group">
+                        <el-button size="small" plain @click="insertBold" title="加粗"><strong>B</strong></el-button>
+                        <el-button size="small" plain @click="insertItalic" title="斜体"><em>I</em></el-button>
+                        <el-button size="small" plain @click="insertStrike" title="删除线"><s>S</s></el-button>
+                        <el-button size="small" plain @click="insertUnderline" title="下划线"><u>U</u></el-button>
+                      </el-button-group>
+                      <el-button-group class="toolbar-group">
+                        <el-button size="small" plain @click="insertLink" title="链接">🔗 链接</el-button>
+                        <el-button size="small" plain @click="insertImage" title="图片">🖼 图片</el-button>
+                      </el-button-group>
+                      <el-button-group class="toolbar-group">
+                        <el-button size="small" plain @click="insertInlineCode" title="行内代码">`code`</el-button>
+                        <el-button size="small" plain @click="insertCodeBlock" title="代码块">{ } 代码块</el-button>
+                        <el-button size="small" plain @click="insertQuote" title="引用">❝ 引用</el-button>
+                      </el-button-group>
+                      <el-button-group class="toolbar-group">
+                        <el-button size="small" plain @click="insertUl" title="无序列表">• 列表</el-button>
+                        <el-button size="small" plain @click="insertOl" title="有序列表">1. 列表</el-button>
+                        <el-button size="small" plain @click="insertHr" title="分割线">— 分割线</el-button>
+                        <el-button size="small" plain @click="insertTable" title="表格">⊞ 表格</el-button>
+                      </el-button-group>
+                    </div>
+                    <textarea
+                      ref="textareaRef"
+                      v-model="formData.content"
+                      class="editor-textarea"
+                      placeholder="在此输入 Markdown 内容…&#10;&#10;# 标题&#10;**加粗** *斜体*&#10;- 列表项&#10;&gt; 引用&#10;```js&#10;console.log('code')&#10;```"
+                      spellcheck="false"
+                    />
+                  </div>
+                  <div class="editor-pane editor-pane-preview">
+                    <div class="pane-label">实时预览</div>
+                    <div class="editor-preview markdown-body">
+                      <div v-if="!formData.content" class="preview-empty-hint">
+                        在左侧输入 Markdown 内容，右侧会实时渲染…<br />
+                        示例：<code># 标题</code> <code>**加粗**</code> <code>- 列表</code> <code>&gt; 引用</code>
+                      </div>
+                      <div v-else v-html="renderedFormPreview"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </el-form-item>
           </el-form>
         </div>
@@ -503,7 +670,7 @@ onMounted(() => {
           
           <div class="detail-content">
             <div class="content-wrapper">
-              <pre class="content-text">{{ currentNote.content }}</pre>
+              <div class="markdown-body" v-html="renderedDetailContent"></div>
             </div>
           </div>
         </div>
@@ -526,8 +693,8 @@ onMounted(() => {
     <!-- desc -->
     <ToolDetail title="描述">
       <el-text>
-        在线笔记记录工具，支持创建、编辑、删除笔记，数据安全存储在云端。您可以随时记录想法、待办事项、学习笔记等，支持富文本编辑，数据实时同步。
-      </el-text> 
+        在线笔记记录工具，支持 Markdown 格式：可使用标题、列表、引用、代码块、表格、加粗、斜体、链接等元素排版。数据安全存储在云端，随时记录想法、待办事项、学习笔记等，所见即所得编辑，实时同步。
+      </el-text>
     </ToolDetail>
   </div>
 </template>
@@ -884,6 +1051,165 @@ onMounted(() => {
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
+/* Markdown 编辑器：左 textarea + 右实时预览，左右分栏 */
+.content-editor {
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 2px solid #e2e8f0;
+  transition: border-color 0.3s ease;
+}
+
+.content-editor:hover,
+.content-editor:focus-within {
+  border-color: #667eea;
+}
+
+.editor-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 480px;
+}
+
+.editor-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 480px;
+  min-width: 0;
+}
+
+.editor-pane-input {
+  background: #fafbfc;
+  border-right: 1px solid #e2e8f0;
+}
+
+.editor-pane-preview {
+  background: #ffffff;
+}
+
+.pane-label {
+  flex-shrink: 0;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #667eea;
+  background: rgba(102, 126, 234, 0.06);
+  border-bottom: 1px solid #e2e8f0;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.editor-pane-preview .pane-label {
+  background: rgba(118, 75, 162, 0.06);
+  color: #764ba2;
+}
+
+/* Markdown 快捷插入工具栏 */
+.editor-toolbar {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.6);
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.toolbar-group {
+  display: inline-flex !important;
+}
+
+/* 工具栏按钮：小巧、紧凑、悬停态用紫色提示 */
+:deep(.editor-toolbar .el-button) {
+  padding: 4px 10px !important;
+  min-height: 28px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  border-color: rgba(102, 126, 234, 0.2) !important;
+  color: #4a5568 !important;
+  background: #ffffff !important;
+  transition: all 0.2s ease !important;
+}
+
+:deep(.editor-toolbar .el-button:hover) {
+  border-color: #667eea !important;
+  color: #667eea !important;
+  background: rgba(102, 126, 234, 0.06) !important;
+  transform: translateY(-1px);
+}
+
+:deep(.editor-toolbar .el-button + .el-button) {
+  margin-left: -1px !important;
+}
+
+:deep(.editor-toolbar .el-button:first-child) {
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+}
+
+:deep(.editor-toolbar .el-button:last-child) {
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+}
+
+:deep(.editor-toolbar .toolbar-group + .toolbar-group .el-button:first-child) {
+  border-top-left-radius: 6px !important;
+  border-bottom-left-radius: 6px !important;
+}
+
+.editor-textarea {
+  flex: 1;
+  width: 100%;
+  border: none;
+  outline: none;
+  resize: none;
+  padding: 16px;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #1a202c;
+  background: transparent;
+  box-sizing: border-box;
+  min-height: 0;
+}
+
+.editor-textarea:focus {
+  background: #ffffff;
+}
+
+.editor-preview {
+  flex: 1;
+  padding: 16px 20px;
+  overflow-y: auto;
+  font-size: 14px;
+  line-height: 1.7;
+  min-height: 0;
+}
+
+.editor-preview.is-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.preview-empty-hint {
+  color: #a0aec0;
+  font-size: 13px;
+  text-align: center;
+  font-style: italic;
+  line-height: 1.8;
+}
+
+.preview-empty-hint code {
+  background: rgba(102, 126, 234, 0.08);
+  color: #667eea;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-style: normal;
+  font-family: 'SFMono-Regular', Consolas, monospace;
+  font-size: 12px;
+}
+
 .dialog-footer {
   display: flex;
   justify-content: flex-end;
@@ -989,14 +1315,145 @@ onMounted(() => {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
 }
 
-.content-text {
+/* Markdown 详情渲染样式（基于 markdown-it 输出 + github.css 代码高亮） */
+.markdown-body {
   color: #2d3748;
   font-size: 15px;
   line-height: 1.7;
-  margin: 0;
-  white-space: pre-wrap;
   word-break: break-word;
-  font-family: inherit;
+}
+
+.markdown-body :deep(h1),
+.markdown-body :deep(h2),
+.markdown-body :deep(h3),
+.markdown-body :deep(h4),
+.markdown-body :deep(h5),
+.markdown-body :deep(h6) {
+  margin: 1em 0 0.6em;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #1a202c;
+}
+
+.markdown-body :deep(h1) { font-size: 1.8em; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.3em; }
+.markdown-body :deep(h2) { font-size: 1.5em; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.3em; }
+.markdown-body :deep(h3) { font-size: 1.25em; }
+.markdown-body :deep(h4) { font-size: 1.1em; }
+.markdown-body :deep(h5) { font-size: 1em; }
+.markdown-body :deep(h6) { font-size: 0.9em; color: #4a5568; }
+
+.markdown-body :deep(p) {
+  margin: 0.6em 0;
+}
+
+.markdown-body :deep(ul),
+.markdown-body :deep(ol) {
+  margin: 0.6em 0;
+  padding-left: 1.8em;
+}
+
+.markdown-body :deep(li) {
+  margin: 0.25em 0;
+}
+
+.markdown-body :deep(blockquote) {
+  margin: 0.8em 0;
+  padding: 0.4em 1em;
+  border-left: 4px solid #667eea;
+  background: #f7fafc;
+  color: #4a5568;
+  border-radius: 0 6px 6px 0;
+}
+
+.markdown-body :deep(blockquote > :first-child) { margin-top: 0; }
+.markdown-body :deep(blockquote > :last-child) { margin-bottom: 0; }
+
+.markdown-body :deep(code) {
+  background-color: #f3f4f6;
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 0.9em;
+  color: #db2777;
+}
+
+.markdown-body :deep(pre) {
+  background-color: #f6f8fa;
+  padding: 16px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 0.8em 0;
+  border: 1px solid #e2e8f0;
+  line-height: 1.5;
+}
+
+.markdown-body :deep(pre code) {
+  background-color: transparent;
+  padding: 0;
+  color: inherit;
+  font-size: 0.875em;
+}
+
+.markdown-body :deep(a) {
+  color: #667eea;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+  transition: all 0.2s ease;
+}
+
+.markdown-body :deep(a:hover) {
+  color: #5a67d8;
+  border-bottom-color: #5a67d8;
+}
+
+.markdown-body :deep(strong) {
+  font-weight: 700;
+  color: #1a202c;
+}
+
+.markdown-body :deep(em) {
+  font-style: italic;
+}
+
+.markdown-body :deep(del) {
+  color: #a0aec0;
+}
+
+.markdown-body :deep(table) {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.8em 0;
+  font-size: 0.95em;
+  overflow: auto;
+  display: block;
+}
+
+.markdown-body :deep(th),
+.markdown-body :deep(td) {
+  border: 1px solid #e2e8f0;
+  padding: 8px 14px;
+  text-align: left;
+}
+
+.markdown-body :deep(th) {
+  background-color: #f7fafc;
+  font-weight: 600;
+}
+
+.markdown-body :deep(tr:nth-child(even)) {
+  background-color: #fafbfc;
+}
+
+.markdown-body :deep(hr) {
+  border: none;
+  border-top: 2px solid #e2e8f0;
+  margin: 1.5em 0;
+}
+
+.markdown-body :deep(img) {
+  max-width: 100%;
+  border-radius: 6px;
+  margin: 0.5em 0;
 }
 
 /* 分页组件样式 */
@@ -1143,16 +1600,40 @@ onMounted(() => {
     font-size: 13px;
   }
 
+  /* 响应式：Markdown 编辑器在窄屏下改为上下排布 */
+  .editor-split {
+    grid-template-columns: 1fr;
+  }
+
+  .editor-pane {
+    min-height: 220px;
+  }
+
+  .editor-pane-input {
+    border-right: none;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .editor-toolbar {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: thin;
+  }
+
+  .editor-preview {
+    max-height: 240px;
+  }
+
   /* 响应式分页 */
   .pagination-wrapper {
     padding: 16px;
     margin-top: 16px;
   }
-  
+
   :deep(.custom-pagination) {
     justify-content: center;
   }
-  
+
   :deep(.custom-pagination .el-pagination__sizes),
   :deep(.custom-pagination .el-pagination__jump) {
     display: none;
