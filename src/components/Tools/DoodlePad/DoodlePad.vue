@@ -88,13 +88,6 @@ const SIZE_PRESETS = [
 // ============================================================
 const canUndo = computed(() => history.value.length > 0)
 const canRedo = computed(() => redoStack.value.length > 0)
-const canClear = computed(() => history.value.length > 0 || hasDrawing())
-
-// 是否已有绘制内容（用于清空按钮）
-function hasDrawing(): boolean {
-  // 简单检查：canvas 是否有任何非背景色像素——这里保守地总是允许清空
-  return true
-}
 
 // ============================================================
 // 初始化画布
