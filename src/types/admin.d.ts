@@ -156,6 +156,63 @@ export interface AdminDashboard {
   creditUsers: number
   recentTransactions: CreditTransaction[]
   tools: { total: number; enabled: number }
+  /** 工具使用（依赖 tool_usage_records 表；老版本迁移前为 0） */
+  todayToolUsage?: number
+  weekToolUsage?: number
+  topTools?: TopToolSummary[]
+}
+
+/** TOP 工具条目（仪表盘 / 后台统计共用） */
+export interface TopToolSummary {
+  tool_url: string
+  tool_title: string
+  /** 仪表盘用 count，后台统计用 use_count——后端字段不一致，前端用别名兼容 */
+  count?: number
+  use_count?: number
+  last_used_at?: number
+}
+
+/** TOP 用户条目（后台统计） */
+export interface TopUserSummary {
+  uid: string
+  use_count: number
+  last_used_at: number
+  user_email: string | null
+  user_name: string | null
+}
+
+/** 工具使用记录明细 */
+export interface ToolUsageRecord {
+  id: number
+  uid: string
+  /** 客户端 IP（CF-Connecting-IP）；匿名用户靠这个标识，登录用户也存便于审计 */
+  ip: string | null
+  tool_url: string
+  tool_title: string
+  used_at: number
+  user_email: string | null
+  user_name: string | null
+}
+
+/** 工具使用记录列表查询参数 */
+export interface ToolUsageListParams {
+  page?: number
+  pageSize?: number
+  uid?: string
+  tool_url?: string
+  /** YYYY-MM-DD（本地 UTC+8 当天 00:00 起算，含当天） */
+  startDate?: string
+  endDate?: string
+}
+
+/** 工具使用聚合统计 */
+export interface ToolUsageStats {
+  todayCount: number
+  weekCount: number
+  totalCount: number
+  activeUsers30d: number
+  topTools: TopToolSummary[]
+  topUsers: TopUserSummary[]
 }
 
 /** 生成记录（AI 工具调用日志） */

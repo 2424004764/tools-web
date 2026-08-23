@@ -1512,6 +1512,36 @@ export const constantRoute = [
     }
   },
   {
+    path: '/calculator',
+    component: () => import('@/components/Tools/Calculator/Calculator.vue'),
+    name: 'calculator',
+    meta: {
+      title: "在线计算器",
+      keywords: "在线计算器,科学计算器,科学计算,三角函数,对数,阶乘,进制转换,二进制,八进制,十进制,十六进制,DEG,RAD,角度",
+      description: "在线计算器：支持科学计算（sin/cos/tan/ln/log/sqrt/n!/^ 幂等）与 2/8/10/16 进制互转，含度/弧度切换、历史记录与记忆功能，纯前端运算保护隐私。",
+    }
+  },
+  {
+    path: '/code-image/',
+    component: () => import('@/components/Tools/CodeImage/CodeImage.vue'),
+    name: 'codeImage',
+    meta: {
+      title: "高亮代码生成图片",
+      keywords: "代码高亮,代码截图,代码转图片,语法高亮,highlight.js,代码分享,代码海报,代码长图,代码图片,代码主题,代码字体,代码png",
+      description: "在线代码高亮生成图片工具，支持 JS/TS/Python/Go/Java/Rust/C++ 等 190+ 语言，可选 GitHub/Night/Monokai/Atom One Dark 等 8 套主题，自定义字体、字号、内边距、圆角与水印，纯前端 html2canvas 截图，保护隐私。",
+    }
+  },
+  {
+    path: '/doodle-pad/',
+    component: () => import('@/components/Tools/DoodlePad/DoodlePad.vue'),
+    name: 'doodlePad',
+    meta: {
+      title: "在线涂鸦画板",
+      keywords: "在线涂鸦画板,在线画板,网页画板,涂鸦,画图,白板,画笔,橡皮,撤销,重做,下载PNG,透明背景",
+      description: "在线涂鸦画板工具，支持画笔/橡皮切换、10 种预设颜色+拾色器、可调画笔与橡皮粗细、撤销/重做最多 30 步、画布尺寸与背景色可设置（含透明背景）、一键下载 PNG 或复制到剪贴板，纯前端 HTML5 Canvas 实现，鼠标 / 触摸均可，隐私安全。",
+    }
+  },
+  {
     path: '/logic-training',
     component: () => import('@/components/Tools/LogicTraining/LogicTraining.vue'),
     name: 'logic-training',
@@ -1714,6 +1744,16 @@ export const constantRoute = [
           title: '工具开关',
           keywords: '后台工具开关',
           description: '启用/禁用前台工具',
+        },
+      },
+      {
+        path: 'tool-usage',
+        component: () => import('@/components/Admin/AdminToolUsage.vue'),
+        name: 'adminToolUsage',
+        meta: {
+          title: '工具使用记录',
+          keywords: '后台工具使用记录,用户工具行为',
+          description: '查看用户工具使用明细、TOP 工具与 TOP 用户',
         },
       },
       {

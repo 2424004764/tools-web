@@ -70,6 +70,56 @@ export async function onRequest(context) {
       .prepare('SELECT COUNT(*) AS total, SUM(CASE WHEN is_enabled = 1 THEN 1 ELSE 0 END) AS enabled FROM tool_features')
       .first()
 
+    // 工具使用：今日 / 本周 / TOP 5（依赖 tool_usage_records，可能因迁移未执行而抛错 → 兜底 0）
+    let todayToolUsage = 0
+    let weekToolUsage = 0
+    let topTools = []
+    try {
+      const now = Date.now()
+      const todayStartUTC8 = (() => {
+        const utc8 = new Date(now + 8 * 3600 * 1000)
+        const start = new Date(
+          Date.UTC(utc8.getUTCFullYear(), utc8.getUTCMonth(), utc8.getUTCDate(), 0, 0, 0),
+        )
+        return Math.floor((start.getTime() - 8 * 3600 * 1000) / 1000)
+      })()
+      const weekStartUTC8 = (() => {
+        const utc8 = new Date(now + 8 * 3600 * 1000)
+        const dow = utc8.getUTCDay()
+        const daysSinceMonday = (dow + 6) % 7
+        utc8.setUTCDate(utc8.getUTCDate() - daysSinceMonday)
+        utc8.setUTCHours(0, 0, 0, 0)
+        return Math.floor((utc8.getTime() - 8 * 3600 * 1000) / 1000)
+      })()
+      const todayRow2 = await db
+        .prepare('SELECT COUNT(*) AS c FROM tool_usage_records WHERE used_at >= ?')
+        .bind(todayStartUTC8)
+        .first()
+      todayToolUsage = todayRow2?.c || 0
+      const weekRow2 = await db
+        .prepare('SELECT COUNT(*) AS c FROM tool_usage_records WHERE used_at >= ?')
+        .bind(weekStartUTC8)
+        .first()
+      weekToolUsage = weekRow2?.c || 0
+      const topToolsResult = await db
+        .prepare(
+          `SELECT tool_url, tool_title, COUNT(*) AS count
+           FROM tool_usage_records
+           GROUP BY tool_url
+           ORDER BY count DESC
+           LIMIT 5`,
+        )
+        .all()
+      topTools = (topToolsResult.results || []).map((r) => ({
+        tool_url: r.tool_url,
+        tool_title: r.tool_title,
+        count: r.count,
+      }))
+    } catch (e) {
+      // 迁移未执行等场景：兜底为 0，绝不阻塞仪表盘
+      console.warn('[admin/dashboard] tool_usage 聚合失败（可能表未创建）:', e?.message || e)
+    }
+
     return json({
       totalUsers,
       todayNew,
@@ -82,6 +132,9 @@ export async function onRequest(context) {
         total: toolStatsRow?.total || 0,
         enabled: toolStatsRow?.enabled || 0,
       },
+      todayToolUsage,
+      weekToolUsage,
+      topTools,
     })
   } catch (error) {
     console.error('dashboard API error:', error)

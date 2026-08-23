@@ -338,6 +338,15 @@ export function getToolsCate() {
           cateId: 2,
           cate: '开发运维',
         },
+        {
+          id: 'code-image-2026-08-23',
+          title: '高亮代码生成图片',
+          logo: '/images/logo/code-image.png',
+          desc: '输入代码、选择语言与主题，一键生成带语法高亮的代码截图，支持 190+ 语言与 8 套主题，可调字体、字号、内边距、圆角与水印，纯前端 html2canvas 截图保护隐私',
+          url: '/code-image/',
+          cateId: 2,
+          cate: '开发运维',
+        },
       ]
     },
     {
@@ -703,6 +712,15 @@ export function getToolsCate() {
           cateId: 10,
           cate: 'AI工具'
         },
+        {
+          id: 'calculator-2026-08-23',
+          title: '在线计算器',
+          logo: '/images/logo/calculator.png',
+          desc: '集成科学计算（三角函数、对数、指数、阶乘、幂、常量、度弧度切换、历史记录、记忆）与 2/8/10/16 进制互转，纯前端运算',
+          url: '/calculator/',
+          cateId: 4,
+          cate: '教育学术',
+        },
       ]
     },
     {
@@ -851,6 +869,15 @@ export function getToolsCate() {
           logo: '/images/logo/image-color-count.png',
           desc: '统计一张图片中出现了多少种不同的颜色，支持采样步长与颜色量化，按出现次数展示 Top N 调色板，可导出 JSON / CSV',
           url: '/image-color-count/',
+          cateId: 5,
+          cate: '图片处理',
+        },
+        {
+          id: 'doodle-pad-2026-08-23',
+          title: '在线涂鸦画板',
+          logo: '/images/logo/doodle-pad.png',
+          desc: '在线网页涂鸦画板，支持画笔/橡皮切换、10 种预设颜色+拾色器、可调画笔粗细与橡皮大小、撤销/重做、画布尺寸与背景色可设置、一键下载 PNG 或复制到剪贴板',
+          url: '/doodle-pad/',
           cateId: 5,
           cate: '图片处理',
         },

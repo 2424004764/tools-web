@@ -100,6 +100,44 @@ onMounted(load)
       </el-card>
     </div>
 
+    <!-- 工具使用统计（来自 tool_usage_records；老版本迁移前为 0） -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <el-card shadow="never" class="!rounded-xl">
+        <div class="text-sm text-ink-500">今日工具使用</div>
+        <div class="mt-1 text-2xl font-semibold text-accent-700">
+          {{ data?.todayToolUsage ?? 0 }}
+        </div>
+        <div class="text-xs text-ink-400 mt-1">登录用户进入工具页次数</div>
+      </el-card>
+      <el-card shadow="never" class="!rounded-xl">
+        <div class="text-sm text-ink-500">本周工具使用</div>
+        <div class="mt-1 text-2xl font-semibold text-ink-900">
+          {{ data?.weekToolUsage ?? 0 }}
+        </div>
+        <div class="text-xs text-ink-400 mt-1">本周一至今累计</div>
+      </el-card>
+      <el-card shadow="never" class="!rounded-xl">
+        <div class="text-sm text-ink-500 mb-2">TOP 5 工具</div>
+        <div v-if="data?.topTools?.length" class="space-y-1.5">
+          <div
+            v-for="(t, i) in data.topTools"
+            :key="t.tool_url"
+            class="flex items-center gap-2 text-sm"
+          >
+            <span class="text-ink-400 w-4 text-right">{{ i + 1 }}.</span>
+            <span class="text-ink-900 truncate flex-1">{{ t.tool_title }}</span>
+            <span class="text-accent-700 font-medium tabular-nums">{{ t.count }}</span>
+          </div>
+        </div>
+        <div v-else class="text-xs text-ink-400">暂无数据</div>
+        <div class="text-xs text-ink-400 mt-2">
+          <router-link to="/admin/tool-usage" class="text-accent-600 hover:text-accent-700">
+            查看全部 TOP →
+          </router-link>
+        </div>
+      </el-card>
+    </div>
+
     <!-- 最近流水 -->
     <el-card shadow="never" class="!rounded-xl">
       <template #header>

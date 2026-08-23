@@ -4,14 +4,18 @@ import { RouterLink } from "vue-router"
 // import { Star } from '@element-plus/icons-vue'
 import { useToolsStore } from '@/store/modules/tools'
 import { useComponentStore } from '@/store/modules/component'
+import { useUserStore } from '@/store/modules/user'
 // import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from "vue-router"
 import Top from '~icons/ep/top'
 import { useSpriteLogo } from '@/components/Tools/useSpriteLogo'
 import HotList from './HotList.vue'
+import { fetchRecentUsedTools } from '@/utils/tool-usage'
+import type { RecentTool } from '@/utils/tool-usage'
 //store
 const toolsStore = useToolsStore()
 const componentStore = useComponentStore()
+const userStore = useUserStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -27,6 +31,52 @@ const ensureCatesLoaded = async () => {
 }
 
 const showBackTop = ref(false)
+
+// 「最近使用」：仅登录用户可见，最多展示 8 个去重工具
+// 独立 fetch，不阻塞首页工具列表加载
+const recentTools = ref<RecentTool[]>([])
+const recentLoading = ref(false)
+
+const ensureRecentLoaded = async () => {
+  if (!userStore.getLoginStatus) {
+    recentTools.value = []
+    return
+  }
+  // 仅短路正在进行的请求；不缓存结果，方便每次回首页拉最新
+  if (recentLoading.value) return
+  recentLoading.value = true
+  try {
+    recentTools.value = await fetchRecentUsedTools()
+  } catch (err: any) {
+    console.warn('[Home] 最近使用加载失败：', err?.message || err)
+    recentTools.value = []
+  } finally {
+    recentLoading.value = false
+  }
+}
+
+// 把秒级时间戳格式化为「xx 分钟前 / xx 小时前 / xx 天前」
+const formatRelativeTime = (sec: number): string => {
+  if (!sec || Number.isNaN(sec)) return ''
+  const diff = Math.floor(Date.now() / 1000 - sec)
+  if (diff < 60) return '刚刚'
+  if (diff < 3600) return `${Math.floor(diff / 60)} 分钟前`
+  if (diff < 86400) return `${Math.floor(diff / 3600)} 小时前`
+  if (diff < 86400 * 30) return `${Math.floor(diff / 86400)} 天前`
+  // 超过 30 天显示具体日期
+  const d = new Date(sec * 1000)
+  return `${d.getMonth() + 1} 月 ${d.getDate()} 日`
+}
+
+// 把 recentTools 的 tool_url 投影到 toolsStore.cates 上对应的工具条目（用于渲染 logo）
+const lookupToolInfo = (toolUrl: string) => {
+  for (const cate of toolsStore.cates) {
+    for (const tool of cate.list || []) {
+      if (tool.url === toolUrl) return tool
+    }
+  }
+  return null
+}
 
 const scrollToTop = () => {
   history.replaceState(null, '', '/')
@@ -210,6 +260,9 @@ onMounted(async () => {
   // 主动加载工具列表（避免依赖 Left.vue 的副作用）
   ensureCatesLoaded()
 
+  // 「最近使用」独立加载，与 cates 解耦；登录态变化或路由回首页时也会触发
+  ensureRecentLoaded()
+
   // 预先添加滚动监听器；handleScroll 通过 isScrollListenerActive / isScrollingToAnchor 双重门控
   window.addEventListener('scroll', throttledHandleScroll)
 
@@ -243,10 +296,26 @@ watch(() => route.path, (newPath) => {
     if (!isScrollingToAnchor.value) {
       isScrollListenerActive.value = true
     }
+    // 回首页时重新拉取最近使用（用户在工具页点了别处回来的场景）
+    ensureRecentLoaded()
   } else {
     isScrollListenerActive.value = false
   }
 })
+
+// 登录态变化：登出清空，登录后立即拉取
+watch(
+  () => userStore.getLoginStatus,
+  (logged) => {
+    if (!logged) {
+      recentTools.value = []
+    } else {
+      // 重新登录时强制刷新一次（onMounted 里的幂等保护允许重置）
+      recentTools.value = []
+      ensureRecentLoaded()
+    }
+  },
+)
 
 watch(() => route.query.value, () => {
   scrollToAnchor()
@@ -267,6 +336,63 @@ watch(() => toolsStore.cates.length, (newLen, oldLen) => {
   <div class="md:mr-6 c-xs:mr-0">
     <!-- 全球与全国热门信息 -->
     <HotList />
+
+    <!-- 最近使用（仅登录用户） -->
+    <section
+      v-if="userStore.getLoginStatus && recentTools.length > 0"
+      class="mt-6"
+      aria-label="最近使用的工具"
+    >
+      <div class="flex items-baseline justify-between mb-3">
+        <h2 class="text-h3 font-bold m-0 text-ink-900">最近使用</h2>
+        <span class="text-xs text-ink-400">最近 {{ recentTools.length }} 个</span>
+      </div>
+      <div class="flex overflow-x-auto gap-3 pb-2 -mx-1 px-1 snap-x recent-scroll">
+        <router-link
+          v-for="item in recentTools"
+          :key="item.tool_url"
+          :to="item.tool_url"
+          class="snap-start shrink-0 w-44 sm:w-48 group block border border-border-default rounded-2xl bg-white p-3 hover:bg-accent-50 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+          :aria-label="`跳转到 ${item.tool_title}`"
+        >
+          <div class="flex items-center gap-2 min-h-[2.5rem]">
+            <template v-if="lookupToolInfo(item.tool_url)">
+              <img
+                v-if="!useSpriteLogo(lookupToolInfo(item.tool_url)!).style"
+                :src="lookupToolInfo(item.tool_url)!.logo"
+                loading="lazy"
+                class="w-9 h-9 min-h-[2.25rem] min-w-[2.25rem] object-contain"
+                :alt="item.tool_title"
+              >
+              <div
+                v-else
+                class="w-9 h-9 min-h-[2.25rem] min-w-[2.25rem]"
+                :style="useSpriteLogo(lookupToolInfo(item.tool_url)!).style"
+                role="img"
+                :aria-label="item.tool_title"
+              ></div>
+            </template>
+            <div
+              v-else
+              class="w-9 h-9 rounded-md bg-accent-50 flex items-center justify-center text-accent-700 text-sm font-semibold"
+              aria-hidden="true"
+            >
+              {{ (item.tool_title || '?').charAt(0) }}
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium text-ink-900 truncate">{{ item.tool_title }}</div>
+              <div class="text-[11px] text-ink-400 mt-0.5 flex items-center gap-1">
+                <span>{{ formatRelativeTime(item.last_used_at) }}</span>
+                <template v-if="item.use_count > 1">
+                  <span aria-hidden="true">·</span>
+                  <span class="text-accent-600">使用 {{ item.use_count }} 次</span>
+                </template>
+              </div>
+            </div>
+          </div>
+        </router-link>
+      </div>
+    </section>
 
     <!-- list -->
     <div v-for="(cate, index) in toolsStore.cates" :key="index">
@@ -347,5 +473,16 @@ watch(() => toolsStore.cates.length, (newLen, oldLen) => {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+/* 「最近使用」横滑条：隐藏滚动条但保留滚动能力 */
+.recent-scroll {
+  scrollbar-width: thin;
+}
+.recent-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+.recent-scroll::-webkit-scrollbar-thumb {
+  background: rgb(var(--border-subtle, 226 232 240));
+  border-radius: 4px;
 }
 </style>

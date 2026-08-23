@@ -464,6 +464,14 @@ export default defineConfig(({command, mode}) => {
           target: 'http://127.0.0.1:8788',
           changeOrigin: true,
         },
+        '/api/me/tool-usage': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
+        '/api/admin/tool-usage': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
         '/api/ai-image-edit': {
           target: 'http://127.0.0.1:8788',
           changeOrigin: true,

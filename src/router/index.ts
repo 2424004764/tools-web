@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { constantRoute } from './router'
 import { isAppStale, isVersionCheckComplete } from '@/utils/version-guard'
 import { useUserStore } from '@/store/modules/user'
+import { matchToolByPath, recordToolUsage } from '@/utils/tool-usage'
 
 // 记录用户正在导航到的目标路径，供 onError 硬刷时使用
 const TARGET_PATH_KEY = '__nav_target_path__'
@@ -114,6 +115,14 @@ router.onError((error) => {
     const currentPath = (sessionStorage.getItem(TARGET_PATH_KEY) || router.currentRoute.value.fullPath || '/')
     const search = location.search || ''
 
+    // 把错误对象的关键信息提取出来（name / message / 部分 stack），
+    // 直接渲染到错误卡片上方便本地排查。dev 环境有 vite 错误页兜底；
+    // 本兜底只是补充 — 至少让用户知道 chunk 为何拒绝加载。
+    const errName: string = (error && (error as any).name) || 'ChunkLoadError'
+    const errMsg: string =
+      (error && (error as any).message) || String(error || '未知错误')
+    const isDev = !!import.meta.env.DEV
+
     /**
      * 构造带 cache-bust 的同源 URL。
      *
@@ -196,10 +205,53 @@ router.onError((error) => {
 
     btnRow.appendChild(reloadBtn)
     btnRow.appendChild(cleanBtn)
+
+    // ===== 错误详情块 =====
+    // dev 环境把具体错误信息高亮展示，方便本地直接看到语法错误 / import 解析失败等真实原因
+    const detailWrap = document.createElement('div')
+    detailWrap.style.cssText =
+      'margin:20px 0 0;text-align:left;background:' +
+      (isDev ? '#fef2f2' : '#f8fafc') +
+      ';border:1px solid ' + (isDev ? '#fecaca' : '#e2e8f0') +
+      ';border-radius:8px;padding:12px 14px;max-width:560px'
+
+    const detailTitle = document.createElement('div')
+    detailTitle.style.cssText =
+      'font-size:12px;font-weight:600;color:' + (isDev ? '#b91c1c' : '#475569') +
+      ';margin-bottom:6px;letter-spacing:0.04em;text-transform:uppercase'
+    detailTitle.textContent = isDev ? '⚠ 本地错误详情（dev）' : '错误详情'
+    detailWrap.appendChild(detailTitle)
+
+    const detailName = document.createElement('div')
+    detailName.style.cssText =
+      'font-size:12px;color:#0f172a;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;' +
+      'font-weight:600;margin-bottom:4px;word-break:break-all'
+    detailName.textContent = errName
+    detailWrap.appendChild(detailName)
+
+    const detailMsg = document.createElement('div')
+    detailMsg.style.cssText =
+      'font-size:12px;color:#334155;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;' +
+      'line-height:1.55;white-space:pre-wrap;word-break:break-word;max-height:240px;overflow:auto'
+    detailMsg.textContent = errMsg
+    detailWrap.appendChild(detailMsg)
+
+    // dev 环境再补一段 stack，方便调试
+    if (isDev && (error as any)?.stack) {
+      const stackEl = document.createElement('pre')
+      stackEl.style.cssText =
+        'margin:8px 0 0;padding:8px;background:#fff;border-radius:4px;' +
+        'font-size:11px;color:#64748b;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;' +
+        'line-height:1.5;max-height:160px;overflow:auto;border:1px solid #e2e8f0'
+      stackEl.textContent = String((error as any).stack).slice(0, 1500)
+      detailWrap.appendChild(stackEl)
+    }
+
     card.appendChild(icon)
     card.appendChild(title)
     card.appendChild(desc)
     card.appendChild(btnRow)
+    card.appendChild(detailWrap)
     card.appendChild(tip)
     wrap.appendChild(card)
 
@@ -222,6 +274,17 @@ router.afterEach((to) => {
   document.title = to.meta.title
     ? `${to.meta.title as string}-${APP_TITLE}`
     : `${APP_TITLE}-${APP_DESC}`
+
+  // 工具使用埋点：所有用户进入工具页都打点（登录用户带 uid，未登录 uid 留空）
+  // 排除 /admin（后台不算工具使用）和 /login（登录页本身不是工具）
+  try {
+    if (!to.path.startsWith('/admin') && to.path !== '/login') {
+      const tool = matchToolByPath(to.path)
+      if (tool) recordToolUsage(tool.url, tool.title)
+    }
+  } catch (err) {
+    console.warn('[router] tool-usage tracking failed:', (err as Error)?.message || err)
+  }
 })
 
 export default router
