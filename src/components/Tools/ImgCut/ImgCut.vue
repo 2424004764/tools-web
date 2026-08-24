@@ -15,6 +15,7 @@ const lineNum = ref(3)
 const image = ref({} as any)
 const cutImg = ref([] as string[])
 const dataFileRef = ref()
+const splitMode = ref<'grid' | 'horizontal' | 'vertical'>('grid')
 
 //上传
 const updateDataFile = async (params) => {
@@ -46,6 +47,7 @@ const handleExceed: UploadProps['onExceed'] = (files) => {
 
 //切割
 const cut = () => {
+  if (!image.value.src) return;
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   const img = image.value;
@@ -74,10 +76,71 @@ const cut = () => {
       }
   }
   cutImg.value = results;
+  splitMode.value = 'grid';
+}
+
+//水平拆分 - 上下两半（横向切割，从中间分割）
+const splitHorizontal = () => {
+  if (!image.value.src) return;
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  const img = image.value;
+
+  const wpiece = img.naturalWidth;
+  const hpiece = Math.floor(img.naturalHeight / 2);
+  const results = [] as string[];
+
+  canvas.width = wpiece;
+  canvas.height = hpiece;
+
+  // 上半部分
+  ctx?.drawImage(img, 0, 0, wpiece, hpiece, 0, 0, wpiece, hpiece);
+  results.push(canvas.toDataURL());
+
+  // 下半部分
+  ctx?.drawImage(img, 0, hpiece, wpiece, hpiece, 0, 0, wpiece, hpiece);
+  results.push(canvas.toDataURL());
+
+  cutImg.value = results;
+  splitMode.value = 'horizontal';
+}
+
+//垂直拆分 - 左右两半（竖向切割，从中间分割）
+const splitVertical = () => {
+  if (!image.value.src) return;
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  const img = image.value;
+
+  const wpiece = Math.floor(img.naturalWidth / 2);
+  const hpiece = img.naturalHeight;
+  const results = [] as string[];
+
+  canvas.width = wpiece;
+  canvas.height = hpiece;
+
+  // 左半部分
+  ctx?.drawImage(img, 0, 0, wpiece, hpiece, 0, 0, wpiece, hpiece);
+  results.push(canvas.toDataURL());
+
+  // 右半部分
+  ctx?.drawImage(img, wpiece, 0, wpiece, hpiece, 0, 0, wpiece, hpiece);
+  results.push(canvas.toDataURL());
+
+  cutImg.value = results;
+  splitMode.value = 'vertical';
 }
 
 //计算切割样式（仅控制网格，不再设置固定宽度）
 const cutImgStyle = computed(() => {
+  if (splitMode.value === 'horizontal') {
+    // 水平拆分（上下两半）：2 行 1 列
+    return 'grid-template-rows: repeat(2, 1fr); grid-template-columns: 1fr;';
+  }
+  if (splitMode.value === 'vertical') {
+    // 垂直拆分（左右两半）：1 行 2 列
+    return 'grid-template-rows: 1fr; grid-template-columns: repeat(2, 1fr);';
+  }
   return `grid: repeat(${lineNum.value}, 1fr) / repeat(${lineNum.value}, 1fr);`;
 })
 
@@ -116,7 +179,7 @@ const downloadAll = async () => {
 }
 
 watch(cutImgStyle, () => {
-  if (fileList.value) cut();
+  if (fileList.value && splitMode.value === 'grid') cut();
 })
 
 onMounted(() => {
@@ -140,11 +203,17 @@ onMounted(() => {
       >
         <el-button type="primary">请上传需要切割的图片</el-button>
       </el-upload>
-      <div class="flex mt-3">
-        <div class="flex">
+      <div class="mt-3 flex flex-wrap items-center gap-3">
+        <div class="flex items-center">
           <el-text>行数和列数</el-text>
           <el-input-number v-model="lineNum" :min="1" :max="10" class="ml-3"/>
         </div>
+        <el-button type="success" :disabled="!image.src" @click="splitHorizontal">
+          水平拆分
+        </el-button>
+        <el-button type="warning" :disabled="!image.src" @click="splitVertical">
+          垂直拆分
+        </el-button>
       </div>
 
 
@@ -180,8 +249,9 @@ onMounted(() => {
     <ToolDetail title="描述">
       <el-text>
         将图片分割成四宫格、九宫格、十六宫格，支持自定义行与列；<br>
+        还支持水平拆分（上下两半）与垂直拆分（左右两半），快速将图片从中间一分为二。<br>
         比如：九宫格切图广泛应用于微信朋友圈，微博等社交媒体。
-      </el-text> 
+      </el-text>
     </ToolDetail>
   </div>
 </template>
