@@ -104,7 +104,9 @@
     "/api/flashcards",
     "/api/flashcards/*",
     "/api/hotlist",
-    "/api/hotlist/*"
+    "/api/hotlist/*",
+    "/api/price-comparison",
+    "/api/price-comparison/*"
   ],
   "exclude": []
 }

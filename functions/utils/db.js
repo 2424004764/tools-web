@@ -1140,3 +1140,55 @@ export class OssCredentialModel extends Model {
     }
   }
 }
+
+// PriceComparisonItem 模型 - 比价物品主表
+export class PriceComparisonItemModel extends Model {
+  constructor(db) {
+    super(db)
+    this.config = {
+      tableName: 'price_comparison_items',
+      fields: {
+        id: { type: 'string', primaryKey: true },
+        uid: { type: 'string' },
+        name: { type: 'string' },
+        category: { type: 'string' },
+        spec: { type: 'string' },
+        note: { type: 'text' },
+        status: { type: 'integer' },
+        chosenEntryId: { type: 'string', dbField: 'chosen_entry_id' },
+        createTime: { type: 'datetime', dbField: 'create_time' },
+        updateTime: { type: 'datetime', dbField: 'update_time' }
+      }
+    }
+  }
+}
+
+// PriceComparisonEntry 模型 - 比价条目（同一商品在不同平台的价格）
+export class PriceComparisonEntryModel extends Model {
+  constructor(db) {
+    super(db)
+    this.config = {
+      tableName: 'price_comparison_entries',
+      fields: {
+        id: { type: 'string', primaryKey: true },
+        uid: { type: 'string' },
+        itemId: { type: 'string', dbField: 'item_id' },
+        platform: { type: 'string' },
+        unitPrice: { type: 'real', dbField: 'unit_price' },
+        shippingFee: { type: 'real', dbField: 'shipping_fee' },
+        discount: { type: 'real' },
+        finalPrice: { type: 'real', dbField: 'final_price' },
+        quantity: { type: 'integer' },
+        currency: { type: 'string' },
+        status: { type: 'integer' },
+        purchaseDate: { type: 'string', dbField: 'purchase_date' },
+        link: { type: 'text' },
+        seller: { type: 'string' },
+        note: { type: 'text' },
+        isChosen: { type: 'integer', dbField: 'is_chosen' },
+        createTime: { type: 'datetime', dbField: 'create_time' },
+        updateTime: { type: 'datetime', dbField: 'update_time' }
+      }
+    }
+  }
+}

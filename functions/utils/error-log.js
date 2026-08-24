@@ -125,7 +125,9 @@ export async function logApiError(env, payload = {}) {
         truncate(userAgent, MAX_USER_AGENT),
         typeof durationMs === 'number' ? durationMs : null,
         truncate(extraText, MAX_UPSTREAM_BODY),
-        new Date().toISOString(),
+        // 与项目其他表保持一致：UTC 字符串、空格分隔、无 Z 后缀
+        // 前端 formatTime 会按 UTC 解析再 toLocaleString('zh-CN') 转北京时
+        new Date().toISOString().slice(0, 19).replace('T', ' '),
       )
       .run()
   } catch (e) {

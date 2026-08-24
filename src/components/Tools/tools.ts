@@ -1557,6 +1557,15 @@ export function getToolsCate() {
           cateId: 13,
           cate: '内容管理',
         },
+        {
+          id: 'price-comparison-2026-08-24',
+          title: '物品比价',
+          logo: '',
+          desc: '记录同一商品在淘宝、京东、拼多多、1688、官网、线下等不同平台的售价与最终实付价，自动找出最低价、标记最终购买平台与备注，支持统计节省金额与已购买商品',
+          url: '/price-comparison/',
+          cateId: 13,
+          cate: '内容管理',
+        },
       ]
     }
   ]

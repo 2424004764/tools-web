@@ -1512,6 +1512,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/price-comparison/',
+    component: () => import('@/components/Tools/PriceComparison/PriceComparison.vue'),
+    name: 'priceComparison',
+    meta: {
+      title: "物品比价",
+      keywords: '物品比价,价格对比,购物比价,淘宝京东拼多多比价,1688,最低价,实付价,运费,优惠,最终价',
+      description: '在线物品比价工具，记录同一商品在淘宝、京东、拼多多、1688、官网、线下等不同平台的售价与最终实付价，自动找出最低价、标记最终购买平台与备注，支持统计节省金额、分类汇总与数据导出。'
+    }
+  },
+  {
     path: '/calculator',
     component: () => import('@/components/Tools/Calculator/Calculator.vue'),
     name: 'calculator',

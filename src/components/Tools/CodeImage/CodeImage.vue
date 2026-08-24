@@ -618,11 +618,17 @@ const loadSample = (idx: number) => {
               <span v-if="showLangBadge" class="ci-lang-badge"><svg class="ci-lang-badge-svg" :width="langBadgeWidth" height="20" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="20" rx="10" fill="rgba(127, 127, 127, 0.18)" /><text x="50%" y="14" text-anchor="middle" font-size="11" font-family="Arial, Helvetica, sans-serif" font-weight="500" fill="currentColor" style="text-transform: lowercase; letter-spacing: 0.04em;">{{ language }}</text></svg></span>
             </div>
 
-            <!-- 代码主体 -->
-            <pre
-              class="ci-pre"
-              :class="{ 'ci-pre-with-ln': showLineNumbers }"
-            ><code ref="codeRef" class="hljs" :class="language"><span v-if="showLineNumbers && lineNumberHtml" class="ci-ln-wrap" v-html="lineNumberHtml" /><span class="ci-code-content" v-html="highlightedHtml" /></code></pre>
+            <!-- 代码主体
+                 用 <div> 而不是 <pre>：Vue 3.5 对 <pre> 的 raw-text 解析更严格，
+                 自闭合 <span v-html> 会让它误判为字面字符串，下游 patch 报
+                 "Failed to execute 'appendChild' on 'Node': Unexpected token '<'"。
+                 <code> 保留以维持语义与现有 CSS 选择器（.ci-pre code.hljs 等）。
+                 white-space: pre 由 .ci-pre 提供，仍保留原文格式。 -->
+            <div
+              ref="codeRef"
+              class="ci-pre ci-code-block"
+              :class="[language, { 'ci-pre-with-ln': showLineNumbers }]"
+            ><code class="hljs"><span v-if="showLineNumbers && lineNumberHtml" class="ci-ln-wrap" v-html="lineNumberHtml"></span><span class="ci-code-content" v-html="highlightedHtml"></span></code></div>
 
             <!-- 底部水印 -->
             <div v-if="watermark" class="ci-watermark">{{ watermark }}</div>
@@ -672,7 +678,8 @@ const loadSample = (idx: number) => {
             <span class="ci-dot ci-dot-g"></span>
             <span v-if="showLangBadge" class="ci-lang-badge"><svg class="ci-lang-badge-svg" :width="langBadgeWidth" height="20" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="20" rx="10" fill="rgba(127, 127, 127, 0.18)" /><text x="50%" y="14" text-anchor="middle" font-size="11" font-family="Arial, Helvetica, sans-serif" font-weight="500" fill="currentColor" style="text-transform: lowercase; letter-spacing: 0.04em;">{{ language }}</text></svg></span>
           </div>
-          <pre class="ci-pre" :class="{ 'ci-pre-with-ln': showLineNumbers }"><code class="hljs" :class="language"><span v-if="showLineNumbers && lineNumberHtml" class="ci-ln-wrap" v-html="lineNumberHtml" /><span class="ci-code-content" v-html="highlightedHtml" /></code></pre>
+          <!-- 同主预览：避开 <pre> raw-text 解析问题 -->
+          <div class="ci-pre ci-code-block" :class="[language, { 'ci-pre-with-ln': showLineNumbers }]"><code class="hljs"><span v-if="showLineNumbers && lineNumberHtml" class="ci-ln-wrap" v-html="lineNumberHtml"></span><span class="ci-code-content" v-html="highlightedHtml"></span></code></div>
           <div v-if="watermark" class="ci-watermark">{{ watermark }}</div>
         </div>
       </div>
