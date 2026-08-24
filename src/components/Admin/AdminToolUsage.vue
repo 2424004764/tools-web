@@ -213,7 +213,15 @@ onMounted(() => {
           >
             <span class="text-ink-400 w-5 text-right tabular-nums">{{ i + 1 }}</span>
             <span class="text-ink-900 truncate flex-1" :title="t.tool_title">{{ t.tool_title }}</span>
-            <span class="text-xs text-ink-400 font-mono shrink-0">{{ t.tool_url }}</span>
+            <a
+              :href="t.tool_url"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-xs text-blue-600 hover:underline font-mono shrink-0"
+              :title="`点击打开 ${t.tool_url}`"
+            >
+              {{ t.tool_url }}
+            </a>
             <span class="text-accent-700 font-medium tabular-nums w-12 text-right">
               {{ t.use_count }}
             </span>
@@ -326,7 +334,15 @@ onMounted(() => {
         </el-table-column>
         <el-table-column label="URL" min-width="160">
           <template #default="{ row }">
-            <span class="text-xs text-ink-500 font-mono">{{ row.tool_url }}</span>
+            <a
+              :href="row.tool_url"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-xs text-blue-600 hover:underline font-mono"
+              :title="`点击打开 ${row.tool_url}`"
+            >
+              {{ row.tool_url }}
+            </a>
           </template>
         </el-table-column>
       </el-table>
