@@ -589,6 +589,19 @@ const updateIsMobile = () => {
             <span class="text-xs text-ink-500">{{ formatTime(row.last_login) }}</span>
           </template>
         </el-table-column>
+        <el-table-column label="今日使用工具" width="140" align="center">
+          <template #default="{ row }">
+            <template v-if="(row.today_usage_count ?? 0) > 0">
+              <div class="text-sm text-ink-700 tabular-nums leading-tight">
+                <span class="font-semibold text-accent-600">{{ row.today_tool_count ?? 0 }}</span>
+                <span class="text-ink-500 text-xs mx-0.5">个工具 /</span>
+                <span class="font-semibold text-accent-600">{{ row.today_usage_count ?? 0 }}</span>
+                <span class="text-ink-500 text-xs ml-0.5">次</span>
+              </div>
+            </template>
+            <span v-else class="text-xs text-ink-400">-</span>
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="88" fixed="right" align="center">
           <template #default="{ row }">
             <el-dropdown trigger="click">
