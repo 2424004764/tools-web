@@ -1,0 +1,26 @@
+-- 工具使用记录新增「推广来源」列
+-- 背景：用户在多个平台（Google / Baidu / 微博 / 微信 ...）投放工具链接，
+--   需要在后台看出每个工具的访问是从哪个渠道来的，衡量各渠道引流效果。
+--
+-- 来源解析策略（前端 src/utils/source.ts）：
+--   1. URL 参数 utm_source（标准 UTM）           — 最高优先级
+--   2. document.referrer 域名命中指纹库          — 兜底
+--   3. 都没有 → 'direct'
+--
+-- 首次解析后写入 sessionStorage，站内跳转不再重新识别，
+--   避免「从 Google 进来 → 在站内点别的工具」被误判为站内来源。
+--
+-- 取值约定（短横线和小写字母，便于 URL 参数和后台筛选）：
+--   - 'direct'           无 referrer 或 referrer 不可识别
+--   - 'google' / 'baidu' / 'bing' / 'sogou' / 'so360' / 'duckduckgo'
+--   - 'wechat' / 'weibo' / 'zhihu' / 'xiaohongshu' / 'douyin'
+--   - 'twitter' / 'x' / 'facebook'
+--   - 'csdn' / 'juejin' / 'v2ex' / 'segmentfault' / 'sspai'
+--   - 其他 utm_source 值会原样写入（用户自定义渠道），后端做长度+字符过滤
+--
+-- 部署后本地执行：
+--   pnpm exec wrangler d1 execute yifang-tool --local --file=migrations/057_add_tool_usage_source.sql
+-- 线上：
+--   pnpm exec wrangler d1 execute yifang-tool --remote --file=migrations/057_add_tool_usage_source.sql
+
+ALTER TABLE tool_usage_records ADD COLUMN source TEXT;   -- 推广来源标识（utm_source / referer 解析 / direct）

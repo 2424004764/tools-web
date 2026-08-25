@@ -102,6 +102,19 @@ export async function onRequestGet(context) {
       )
       .all()
 
+    // 推广来源聚合（不区分 NULL 与 'direct'：迁移前的旧记录 source 为 NULL，
+    //   用 COALESCE 归到 direct，避免后台出现两个 zero-count 项）
+    const topSourcesResult = await db
+      .prepare(
+        `SELECT COALESCE(source, 'direct') AS source, COUNT(*) AS use_count,
+                MAX(used_at) AS last_used_at
+         FROM tool_usage_records
+         GROUP BY source
+         ORDER BY use_count DESC, last_used_at DESC
+         LIMIT 10`,
+      )
+      .all()
+
     return json({
       todayCount,
       weekCount,
@@ -109,6 +122,7 @@ export async function onRequestGet(context) {
       activeUsers30d: activeUsers,
       topTools: topToolsResult.results || [],
       topUsers: topUsersResult.results || [],
+      topSources: topSourcesResult.results || [],
     })
   } catch (err) {
     console.error('[admin/tool-usage] stats error:', err)

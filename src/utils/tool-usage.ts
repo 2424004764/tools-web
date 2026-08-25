@@ -7,6 +7,7 @@
 //   4. 仅登录用户打点（由 router 侧判断；本 util 不再重复判断）
 
 import { getToolsCate } from '@/components/Tools/tools'
+import { detectSource } from './source'
 
 const STORAGE_PREFIX = 'tu_'
 const DEDUPE_MS = 30_000
@@ -69,6 +70,8 @@ export function matchToolByPath(path: string): { url: string; title: string } | 
  * - 30 秒内同工具不重复打点（sessionStorage 去重）
  * - 失败仅 console.warn，绝不抛错
  * - fire-and-forget：不 await
+ * - source 在调用时同步解析（detectSource 内部已锁定到 sessionStorage），
+ *   同一会话内所有工具共享同一来源，避免站内跳转被误判
  */
 export function recordToolUsage(toolUrl: string, toolTitle: string): void {
   try {
@@ -78,9 +81,12 @@ export function recordToolUsage(toolUrl: string, toolTitle: string): void {
     if (last && now - last < DEDUPE_MS) return
     sessionStorage.setItem(key, String(now))
 
+    // 推广来源解析（utm_source 优先 → referer 指纹 → direct）
+    const source = detectSource()
+
     // 动态 import 避免循环依赖；fire-and-forget
     void import('@/api/me/tool-usage')
-      .then(({ postToolUsage }) => postToolUsage(toolUrl, toolTitle))
+      .then(({ postToolUsage }) => postToolUsage(toolUrl, toolTitle, source))
       .catch((err) => {
         console.warn('[tool-usage] record failed:', err?.message || err)
       })

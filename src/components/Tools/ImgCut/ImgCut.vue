@@ -10,6 +10,9 @@ const info = reactive({
   title: "图片切割",
 })
 
+// 行数/列数的 localStorage 键名
+const LINE_NUM_KEY = 'imgcut_lineNum'
+
 const fileList = ref()
 const lineNum = ref(3)
 const image = ref({} as any)
@@ -182,8 +185,29 @@ watch(cutImgStyle, () => {
   if (fileList.value && splitMode.value === 'grid') cut();
 })
 
-onMounted(() => {
+// 监听行数列数变化，持久化到 localStorage
+watch(lineNum, (val) => {
+  try {
+    localStorage.setItem(LINE_NUM_KEY, String(val))
+  } catch (e) {
+    // localStorage 不可用时静默忽略
+  }
+})
 
+onMounted(() => {
+  // 从 localStorage 恢复行数/列数设置
+  try {
+    const saved = localStorage.getItem(LINE_NUM_KEY)
+    if (saved !== null) {
+      const parsed = Number(saved)
+      // 校验范围（与 el-input-number 的 min/max 保持一致）
+      if (Number.isFinite(parsed) && parsed >= 1 && parsed <= 10) {
+        lineNum.value = parsed
+      }
+    }
+  } catch (e) {
+    // localStorage 不可用时静默忽略
+  }
 })
 </script>
 

@@ -7,11 +7,13 @@ export type { RecentTool }
 /**
  * 上报一次工具使用。
  * 后端对匿名请求静默 noop；前端失败也仅 console.warn（见 utils/tool-usage.ts 兜底）。
+ * @param source 推广来源（utm_source 优先 → referer 指纹 → 'direct'）
  */
-export async function postToolUsage(toolUrl: string, toolTitle: string): Promise<void> {
+export async function postToolUsage(toolUrl: string, toolTitle: string, source: string): Promise<void> {
   await functionsRequest.post('/api/me/tool-usage', {
     tool_url: toolUrl,
     tool_title: toolTitle,
+    source,
   })
 }
 

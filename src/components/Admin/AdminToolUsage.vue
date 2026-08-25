@@ -7,6 +7,7 @@ import {
 } from '@/api/admin/tool-usage'
 import { functionsRequest } from '@/utils/functionsRequest'
 import { formatLocation } from '@/utils/geo-name'
+import { SOURCE_LABELS, getSourceLabel } from '@/utils/source'
 import type {
   AdminPagination,
   ToolUsageRecord,
@@ -34,10 +35,18 @@ const pagination = ref<AdminPagination>({
 // 工具下拉（来自 /api/tools）
 const toolOptions = ref<{ label: string; value: string }[]>([])
 
+// 推广来源下拉（与 SOURCE_LABELS 一致；direct 放在最前表示无来源/直接访问）
+const sourceOptions = (() => {
+  const entries = Object.entries(SOURCE_LABELS).map(([value, label]) => ({ value, label }))
+  // direct 优先
+  return entries.sort((a, b) => (a.value === 'direct' ? -1 : b.value === 'direct' ? 1 : a.label.localeCompare(b.label)))
+})()
+
 // 筛选
 const filter = reactive({
   uid: '',
   tool_url: '',
+  source: '',
   range: '7d' as '' | 'today' | '7d' | '30d' | 'all',
 })
 
@@ -108,6 +117,7 @@ const loadList = async () => {
       pageSize: pagination.value.pageSize,
       uid: filter.uid || undefined,
       tool_url: filter.tool_url || undefined,
+      source: filter.source || undefined,
       startDate: dateRange.startDate,
       endDate: dateRange.endDate,
     })
@@ -144,6 +154,7 @@ const handleSearch = () => {
 const handleReset = () => {
   filter.uid = ''
   filter.tool_url = ''
+  filter.source = ''
   filter.range = '7d'
   pagination.value.page = 1
   loadList()
@@ -265,6 +276,35 @@ onMounted(() => {
       </el-card>
     </div>
 
+    <!-- 推广来源 TOP 10（独立一行：来源维度比工具/用户少，宽屏下单独成行更易读） -->
+    <el-card shadow="never" class="!rounded-xl mb-6">
+      <template #header>
+        <div class="flex items-center justify-between">
+          <span class="font-medium text-ink-900">推广来源 TOP 10</span>
+          <span class="text-xs text-ink-400">utm_source 优先 → referer 指纹 → direct</span>
+        </div>
+      </template>
+      <div v-if="stats?.topSources?.length" class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
+        <div
+          v-for="(s, i) in stats.topSources"
+          :key="s.source"
+          class="flex items-center gap-3 text-sm"
+        >
+          <span class="text-ink-400 w-5 text-right tabular-nums">{{ i + 1 }}</span>
+          <span class="text-ink-900 truncate flex-1" :title="getSourceLabel(s.source)">
+            {{ getSourceLabel(s.source) }}
+          </span>
+          <span class="text-[10px] text-ink-400 font-mono shrink-0" :title="s.source">
+            {{ s.source }}
+          </span>
+          <span class="text-accent-700 font-medium tabular-nums w-14 text-right">
+            {{ s.use_count }}
+          </span>
+        </div>
+      </div>
+      <el-empty v-else description="暂无数据" :image-size="60" />
+    </el-card>
+
     <!-- 筛选 + 明细表 -->
     <el-card shadow="never" class="!rounded-xl">
       <template #header>
@@ -298,6 +338,22 @@ onMounted(() => {
           @keyup.enter="handleSearch"
           @clear="handleSearch"
         />
+
+        <el-select
+          v-model="filter.source"
+          placeholder="推广来源（可空）"
+          clearable
+          filterable
+          class="!w-48"
+          @change="handleSearch"
+        >
+          <el-option
+            v-for="opt in sourceOptions"
+            :key="opt.value"
+            :label="opt.label"
+            :value="opt.value"
+          />
+        </el-select>
 
         <el-radio-group v-model="filter.range">
           <el-radio-button value="today">今天</el-radio-button>
@@ -355,6 +411,16 @@ onMounted(() => {
                 <template v-else>-</template>
               </span>
             </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="来源" min-width="110">
+          <template #default="{ row }">
+            <span
+              class="text-xs text-ink-900"
+              :title="row.source ? `来源标识: ${row.source}` : '迁移前旧记录，无来源'"
+            >
+              {{ row.source ? getSourceLabel(row.source) : '-' }}
+            </span>
           </template>
         </el-table-column>
         <el-table-column label="工具" min-width="160">

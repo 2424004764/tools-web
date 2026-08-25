@@ -955,7 +955,10 @@ const groupedTemplates = computed(() => {
           </div>
 
           <!-- 槽位上传区：每个槽位一个独立上传位 -->
-          <div class="bg-gray-50 rounded-xl p-3 flex justify-center items-center self-stretch">
+          <div
+            class="rounded-xl p-3 flex justify-center items-center self-stretch transition-colors"
+            :style="{ backgroundColor: bgColor }"
+          >
             <!-- 网格模板：按 grid 等分排版 -->
             <div
               v-if="currentTemplate.type !== 'collage'"
