@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:wrangler": "wrangler pages dev . --local --d1 yifang-tool:afdabfae-6edd-4def-8e77-6a1171009b9c",
+    "dev:wrangler": "pnpm sync:functions && wrangler pages dev . --local --d1 yifang-tool:afdabfae-6edd-4def-8e77-6a1171009b9c",
     "sprite:build": "node scripts/build-sprite.mjs",
     "prebuild": "pnpm sprite:build",
     "prebuild:pro": "pnpm sprite:build",

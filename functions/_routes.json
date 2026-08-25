@@ -106,7 +106,9 @@
     "/api/hotlist",
     "/api/hotlist/*",
     "/api/price-comparison",
-    "/api/price-comparison/*"
+    "/api/price-comparison/*",
+    "/api/music-playlist",
+    "/api/music-playlist/*"
   ],
   "exclude": []
 }

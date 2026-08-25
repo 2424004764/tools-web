@@ -93,6 +93,11 @@ class FunctionsRequest {
     return this.instance.put(url, data, config)
   }
 
+  // PATCH请求
+  patch<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+    return this.instance.patch(url, data, config)
+  }
+
   // DELETE请求
   delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
     return this.instance.delete(url, config)

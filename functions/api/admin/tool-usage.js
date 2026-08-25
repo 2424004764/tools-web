@@ -68,6 +68,8 @@ export async function onRequestGet(context) {
     const pageSize = Math.min(100, Math.max(1, parseInt(url.searchParams.get('pageSize')) || 20))
     const uid = (url.searchParams.get('uid') || '').trim()
     const toolUrl = (url.searchParams.get('tool_url') || '').trim()
+    // 推广来源筛选（与前端 SOURCE_LABELS 一致：direct / google / baidu / wechat ...）
+    const source = (url.searchParams.get('source') || '').trim().toLowerCase()
     const startDate = parseDateToUTC8Start(url.searchParams.get('startDate'))
     const endDate = parseDateToUTC8NextDayStart(url.searchParams.get('endDate'))
 
@@ -80,6 +82,10 @@ export async function onRequestGet(context) {
     if (toolUrl) {
       where.push('r.tool_url = ?')
       args.push(toolUrl)
+    }
+    if (source) {
+      where.push('r.source = ?')
+      args.push(source)
     }
     if (startDate != null) {
       where.push('r.used_at >= ?')
@@ -101,7 +107,7 @@ export async function onRequestGet(context) {
     const list = await db
       .prepare(
         `SELECT r.id, r.uid, r.ip, r.tool_url, r.tool_title, r.used_at,
-                r.country, r.region, r.city, r.timezone, r.colo,
+                r.country, r.region, r.city, r.timezone, r.colo, r.source,
                 u.email AS user_email, u.username AS user_name
          FROM tool_usage_records r
          LEFT JOIN user u ON u.id = r.uid

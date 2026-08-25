@@ -83,6 +83,15 @@ export async function onRequestPost(context) {
   // 工具 url 必须是站内路径（防御性，避免脏数据写入）
   if (!toolUrl.startsWith('/') || toolUrl.startsWith('//')) return jsonNoop()
 
+  // 推广来源：前端 utils/source.ts 已规范化（小写 + 仅 [a-z0-9_-] + ≤ 64）。
+  // 这里再做一次防御性过滤，万一旧版本前端没过滤也不至于污染数据库。
+  const rawSource = (body?.source || '').toString()
+  const source = rawSource
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, '')
+    .slice(0, 64) || null
+
   const db = env?.DB
   if (!db) return jsonNoop()
 
@@ -106,8 +115,8 @@ export async function onRequestPost(context) {
     await db
       .prepare(
         `INSERT INTO tool_usage_records
-           (uid, tool_url, tool_title, used_at, ip, country, region, city, timezone, colo)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           (uid, tool_url, tool_title, used_at, ip, country, region, city, timezone, colo, source)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .bind(
         uid,
@@ -120,6 +129,7 @@ export async function onRequestPost(context) {
         geo.city,
         geo.timezone,
         geo.colo,
+        source,
       )
       .run()
     return new Response(

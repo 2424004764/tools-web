@@ -181,6 +181,14 @@ export interface TopUserSummary {
   user_name: string | null
 }
 
+/** TOP 来源条目（后台统计） */
+export interface TopSourceSummary {
+  /** 来源标识（与 src/utils/source.ts SOURCE_LABELS 一致，如 'google' / 'direct'） */
+  source: string
+  use_count: number
+  last_used_at: number
+}
+
 /** 工具使用记录明细 */
 export interface ToolUsageRecord {
   id: number
@@ -202,6 +210,8 @@ export interface ToolUsageRecord {
   timezone: string | null
   /** Cloudflare 接入点机场代码，如 'HKG' / 'LAX' */
   colo: string | null
+  /** 推广来源（utm_source 优先 → referer 指纹 → 'direct'），迁移前为 null */
+  source: string | null
 }
 
 /** 工具使用记录列表查询参数 */
@@ -210,6 +220,8 @@ export interface ToolUsageListParams {
   pageSize?: number
   uid?: string
   tool_url?: string
+  /** 推广来源筛选，如 'google' / 'baidu' / 'direct' */
+  source?: string
   /** YYYY-MM-DD（本地 UTC+8 当天 00:00 起算，含当天） */
   startDate?: string
   endDate?: string
@@ -223,6 +235,8 @@ export interface ToolUsageStats {
   activeUsers30d: number
   topTools: TopToolSummary[]
   topUsers: TopUserSummary[]
+  /** 推广来源 TOP 10，按 use_count 倒序 */
+  topSources: TopSourceSummary[]
 }
 
 /** 生成记录（AI 工具调用日志） */
