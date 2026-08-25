@@ -6,6 +6,7 @@ import {
   fetchToolUsageStats,
 } from '@/api/admin/tool-usage'
 import { functionsRequest } from '@/utils/functionsRequest'
+import { formatLocation } from '@/utils/geo-name'
 import type {
   AdminPagination,
   ToolUsageRecord,
@@ -73,6 +74,17 @@ const formatTime = (sec: number) => {
   const d = new Date(sec * 1000)
   if (Number.isNaN(d.getTime())) return String(sec)
   return d.toLocaleString('zh-CN', { hour12: false })
+}
+
+// 拼接悬浮提示，展示全部 CF 原始字段（方便排查异常）
+const geoTooltip = (row: ToolUsageRecord) => {
+  const parts: string[] = []
+  if (row.country) parts.push(`国家: ${row.country}`)
+  if (row.region) parts.push(`省/州: ${row.region}`)
+  if (row.city) parts.push(`城市: ${row.city}`)
+  if (row.timezone) parts.push(`时区: ${row.timezone}`)
+  if (row.colo) parts.push(`CF 接入点: ${row.colo}`)
+  return parts.length ? parts.join('\n') : '无地理位置信息'
 }
 
 const loadStats = async () => {
@@ -325,6 +337,24 @@ onMounted(() => {
         <el-table-column label="IP" min-width="130">
           <template #default="{ row }">
             <span class="text-xs text-ink-500 font-mono">{{ row.ip || '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="位置" min-width="170">
+          <template #default="{ row }">
+            <div
+              class="flex flex-col"
+              :title="geoTooltip(row)"
+            >
+              <span class="text-ink-900 text-xs">{{ formatLocation(row.country, row.city) }}</span>
+              <span class="text-[10px] text-ink-400">
+                <template v-if="row.timezone || row.colo">
+                  <span v-if="row.timezone">{{ row.timezone }}</span>
+                  <span v-if="row.timezone && row.colo"> · </span>
+                  <span v-if="row.colo">CF {{ row.colo }}</span>
+                </template>
+                <template v-else>-</template>
+              </span>
+            </div>
           </template>
         </el-table-column>
         <el-table-column label="工具" min-width="160">

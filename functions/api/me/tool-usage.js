@@ -46,6 +46,28 @@ function getClientIp(request) {
   return ''
 }
 
+/**
+ * 从 Cloudflare Pages Functions 的 request.cf 提取地理位置信息。
+ * CF 边缘节点已识别每个客户端 IP，免费且准确（无需第三方 API）。
+ * 字段：
+ *   - country：ISO 3166-1 alpha-2 国家代码，如 'CN' / 'US'
+ *   - region：省/州（格式依国家略有差异）
+ *   - city：城市名（英文/原文）
+ *   - timezone：IANA 时区，如 'Asia/Shanghai'
+ *   - colo：CF 接入点机场代码，如 'HKG' / 'LAX'
+ * 非 CF 环境或 IP 不可识别时，字段可能缺失，落到 null。
+ */
+function getGeo(request) {
+  const cf = request.cf || {}
+  return {
+    country: typeof cf.country === 'string' ? cf.country : null,
+    region: typeof cf.region === 'string' ? cf.region : null,
+    city: typeof cf.city === 'string' ? cf.city : null,
+    timezone: typeof cf.timezone === 'string' ? cf.timezone : null,
+    colo: typeof cf.colo === 'string' ? cf.colo : null,
+  }
+}
+
 export async function onRequestPost(context) {
   const { request, env } = context
 
@@ -77,12 +99,28 @@ export async function onRequestPost(context) {
   // 匿名用户的核心标识就是 IP（让"最近使用"等按 IP 聚合的功能也能用）
   const ip = getClientIp(request)
 
+  // 地理位置（CF 边缘节点识别，免费；非 CF / 不可识别时各字段为 null）
+  const geo = getGeo(request)
+
   try {
     await db
       .prepare(
-        'INSERT INTO tool_usage_records (uid, tool_url, tool_title, used_at, ip) VALUES (?, ?, ?, ?, ?)',
+        `INSERT INTO tool_usage_records
+           (uid, tool_url, tool_title, used_at, ip, country, region, city, timezone, colo)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .bind(uid, toolUrl, toolTitle, Math.floor(Date.now() / 1000), ip || null)
+      .bind(
+        uid,
+        toolUrl,
+        toolTitle,
+        Math.floor(Date.now() / 1000),
+        ip || null,
+        geo.country,
+        geo.region,
+        geo.city,
+        geo.timezone,
+        geo.colo,
+      )
       .run()
     return new Response(
       JSON.stringify({ success: true, data: { recorded: true } }),
