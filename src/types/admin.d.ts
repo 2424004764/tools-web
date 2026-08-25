@@ -192,6 +192,16 @@ export interface ToolUsageRecord {
   used_at: number
   user_email: string | null
   user_name: string | null
+  /** ISO 3166-1 alpha-2 国家代码，如 'CN' / 'US'；来自 CF request.cf */
+  country: string | null
+  /** 省/州（CF 返回值格式依国家略有差异：可能是代码如 'GD' 也可能是名称） */
+  region: string | null
+  /** 城市名（原文/英文，如 'Shenzhen'） */
+  city: string | null
+  /** IANA 时区，如 'Asia/Shanghai' */
+  timezone: string | null
+  /** Cloudflare 接入点机场代码，如 'HKG' / 'LAX' */
+  colo: string | null
 }
 
 /** 工具使用记录列表查询参数 */

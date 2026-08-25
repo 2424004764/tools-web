@@ -101,6 +101,7 @@ export async function onRequestGet(context) {
     const list = await db
       .prepare(
         `SELECT r.id, r.uid, r.ip, r.tool_url, r.tool_title, r.used_at,
+                r.country, r.region, r.city, r.timezone, r.colo,
                 u.email AS user_email, u.username AS user_name
          FROM tool_usage_records r
          LEFT JOIN user u ON u.id = r.uid
