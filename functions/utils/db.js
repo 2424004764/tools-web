@@ -456,7 +456,10 @@ export class Pager {
     if (request) {
       const url = new URL(request.url)
       this.page = Math.max(1, parseInt(url.searchParams.get('page')) || 1)
-      this.pageSize = Math.max(1, parseInt(url.searchParams.get('pageSize')) || defaultPageSize)
+      // pageSize 上限与 QueryBuilder.MAX_LIMIT 对齐：超出会被 limit() 抛错，
+      //   导致整个列表查询 500。这里静默截断到上限，返回用户尽可能多的数据。
+      const requested = parseInt(url.searchParams.get('pageSize')) || defaultPageSize
+      this.pageSize = Math.max(1, Math.min(MAX_LIMIT, requested))
     } else {
       this.page = 1
       this.pageSize = defaultPageSize
