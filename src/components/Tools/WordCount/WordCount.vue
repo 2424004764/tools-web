@@ -12,6 +12,7 @@ const info = reactive({
   punctuationFullNum: 0,
   numberNum: 0,
   emptyNum: 0,
+  lineNum: 0,
   sum: 0,
 })
 
@@ -29,6 +30,8 @@ const changeContent = () => {
   info.numberNum = (info.content.match(/[\d+]/g) || []).length;
   //空白字符
   info.emptyNum = (info.content.match(/[\s*]/g) || []).length;
+  //行数：按 \r?\n 拆分；空文本也至少 1 行（与多数编辑器一致）
+  info.lineNum = info.content.split(/\r?\n/).length;
   //合计
   info.sum = info.chinaCharNum + info.letterNum + info.punctuationHalfNum + info.punctuationFullNum + info.numberNum + info.emptyNum;
 }
@@ -51,6 +54,7 @@ changeContent()
         <div class="ml-3"><el-text>标点符号半角：{{ info.punctuationHalfNum }}</el-text></div>
         <div class="ml-3"><el-text>标点符号全角：{{ info.punctuationFullNum }}</el-text></div>
         <div class="ml-3"><el-text>空白字符：{{ info.emptyNum }}</el-text></div>
+        <div class="ml-3"><el-text>行数：{{ info.lineNum }}</el-text></div>
       </div>
     </div>
 
