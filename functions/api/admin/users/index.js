@@ -23,6 +23,16 @@ function jsonError(message, status = 500) {
   })
 }
 
+// 本地 UTC+8 当天 00:00 的秒级时间戳（与 functions/api/admin/tool-usage.js 保持一致）
+function startOfTodayUTC8() {
+  const now = new Date()
+  const utc8Now = new Date(now.getTime() + 8 * 3600 * 1000)
+  const startUTC8 = new Date(
+    Date.UTC(utc8Now.getUTCFullYear(), utc8Now.getUTCMonth(), utc8Now.getUTCDate(), 0, 0, 0),
+  )
+  return Math.floor((startUTC8.getTime() - 8 * 3600 * 1000) / 1000)
+}
+
 // 与 email-register.js / reset-password.js 保持一致的密码哈希：SHA-256(password + salt) → 小写十六进制
 async function hashPassword(password, salt) {
   const encoder = new TextEncoder()
@@ -104,8 +114,39 @@ async function onRequestGet(context) {
 
     const totalPages = Math.ceil(total / pageSize)
 
+    // 当前页 uid 列表 → 今日工具使用聚合（DISTINCT tool_url 为「使用工具个数」，
+    //   COUNT(*) 为「使用次数」）。一次查询多行，避免每行 correlated subquery。
+    let rows = list.results || []
+    if (rows.length > 0) {
+      const uids = rows.map((r) => r.id)
+      const placeholders = uids.map(() => '?').join(',')
+      const todayStart = startOfTodayUTC8()
+      const usageResult = await db
+        .prepare(
+          `SELECT uid,
+                  COUNT(DISTINCT tool_url) AS tool_count,
+                  COUNT(*)              AS use_count
+           FROM tool_usage_records
+           WHERE uid IN (${placeholders}) AND used_at >= ?
+           GROUP BY uid`,
+        )
+        .bind(...uids, todayStart)
+        .all()
+      const usageMap = new Map(
+        (usageResult.results || []).map((u) => [u.uid, u]),
+      )
+      rows = rows.map((r) => {
+        const u = usageMap.get(r.id)
+        return {
+          ...r,
+          today_tool_count: u?.tool_count ?? 0,
+          today_usage_count: u?.use_count ?? 0,
+        }
+      })
+    }
+
     return json({
-      list: list.results || [],
+      list: rows,
       pagination: {
         total,
         page,

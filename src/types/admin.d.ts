@@ -25,6 +25,10 @@ export interface AdminUser {
   credits_balance?: number
   credits_earned?: number
   credits_spent?: number
+  /** 今日（本地 UTC+8 00:00 至今）使用过的工具数（DISTINCT tool_url）；0 表示今日未使用 */
+  today_tool_count?: number
+  /** 今日（本地 UTC+8 00:00 至今）工具使用总次数（每次进入工具页 = 1 次） */
+  today_usage_count?: number
 }
 
 /** 创建用户请求体（管理员手动创建） */
