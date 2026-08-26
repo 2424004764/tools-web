@@ -416,6 +416,10 @@ export default defineConfig(({command, mode}) => {
           target: 'http://127.0.0.1:8788',
           changeOrigin: true,
         },
+        '/api/image-proxy': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
         '/api/open-providers': {
           target: 'http://127.0.0.1:8788',
           changeOrigin: true,
@@ -513,6 +517,14 @@ export default defineConfig(({command, mode}) => {
           changeOrigin: true,
         },
         '/api/music-playlist/': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
+        '/api/notes/groups': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
+        '/api/notes/groups/': {
           target: 'http://127.0.0.1:8788',
           changeOrigin: true,
         },
