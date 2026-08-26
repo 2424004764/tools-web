@@ -10,6 +10,8 @@
 //   - 桶通过 R2.dev 子域开公开读，前端 <audio src> 直接拿 publicAudioUrl 播放
 //   - play_count 与 view_count 在公开读取时 +1，失败不影响主响应（仿 travelMapsService）
 
+import { MUSIC_MB_PER_CREDIT, MUSIC_FREE_QUOTA_BYTES } from '../config/music.js'
+
 // ============ 常量 ============
 
 export const MAX_FILE_SIZE_BYTES = 30 * 1024 * 1024 // 30 MB
@@ -21,6 +23,123 @@ export const MAX_PLAYLIST_SONGS = 500
 const SLIG_LEN = 8
 const PRESIGN_EXPIRES_SECONDS = 900 // 15 分钟
 const PUBLIC_HOST_FALLBACK = '' // 没配 R2_PUBLIC_HOST 时返回空，前端走 R2.dev 默认
+
+// ============ 积分计费（音乐上传）============
+const SHA256_REGEX = /^[a-f0-9]{64}$/
+
+/** 按 fileSize 计算上传积分（至少 1 积分，余数部分不计费）
+ *  例：2MB=1、4MB=2、10MB=5；3MB、11.2MB → 1、5（余数不补一档） */
+export function calcCreditCost(fileSize, mbPerCredit = MUSIC_MB_PER_CREDIT) {
+  if (!Number.isFinite(fileSize) || fileSize <= 0) return 1
+  const unit = Math.max(1, Number(mbPerCredit) || MUSIC_MB_PER_CREDIT) * 1024 * 1024
+  return Math.max(1, Math.floor(fileSize / unit))
+}
+
+/** 删除歌曲退费：paid=1 不退，paid≥2 按 ceil(paid/2) 退 */
+export function calcRefundCredit(paid) {
+  return paid >= 2 ? Math.ceil(paid / 2) : 0
+}
+
+/** 取计费比例（来自 functions/config/music.js 的静态配置） */
+function getMbPerCredit() {
+  return MUSIC_MB_PER_CREDIT
+}
+
+// ============ 免费额度（音乐上传）============
+
+/** 读 music_user_quota.free_bytes_used；行不存在 → 0 */
+async function getFreeQuotaUsage(db, uid) {
+  try {
+    const row = await db
+      .prepare('SELECT free_bytes_used FROM music_user_quota WHERE uid = ? LIMIT 1')
+      .bind(uid)
+      .first()
+    return Number(row?.free_bytes_used) || 0
+  } catch {
+    return 0
+  }
+}
+
+/** 原子累加 free_bytes_used（UPSERT + 上限封顶在 FREE_QUOTA_BYTES）
+ *  返回最新值。仅当 free_bytes_used + delta 未超过配额时变更。
+ *  入参 freeBytesToConsume 必须是 ≤ (FREE_QUOTA_BYTES - 已用) 的非负整数。 */
+async function consumeFreeQuota(db, uid, freeBytesToConsume) {
+  const total = Math.max(0, Number(MUSIC_FREE_QUOTA_BYTES) || 0)
+  if (freeBytesToConsume <= 0) {
+    return getFreeQuotaUsage(db, uid)
+  }
+  const now = nowSql()
+  // 先确保行存在，再累加（封顶）。避免并发用 UPDATE WHERE free_bytes_used + ? <= ?。
+  await db
+    .prepare(
+      `INSERT INTO music_user_quota (uid, free_bytes_used, updated_at)
+       VALUES (?, 0, ?)
+       ON CONFLICT(uid) DO NOTHING`,
+    )
+    .bind(uid, now)
+    .run()
+  await db
+    .prepare(
+      `UPDATE music_user_quota
+       SET free_bytes_used = MIN(?, free_bytes_used + ?),
+           updated_at = ?
+       WHERE uid = ?`,
+    )
+    .bind(total, freeBytesToConsume, now, uid)
+    .run()
+  return getFreeQuotaUsage(db, uid)
+}
+
+/** 删除免费歌曲时把对应字节数退回额度（封顶 FREE_QUOTA_BYTES） */
+export async function releaseFreeQuota(db, uid, bytesToRelease) {
+  if (bytesToRelease <= 0) return
+  const total = Math.max(0, Number(MUSIC_FREE_QUOTA_BYTES) || 0)
+  const now = nowSql()
+  await db
+    .prepare(
+      `INSERT INTO music_user_quota (uid, free_bytes_used, updated_at)
+       VALUES (?, 0, ?)
+       ON CONFLICT(uid) DO NOTHING`,
+    )
+    .bind(uid, now)
+    .run()
+  // 不允许超过初始 0（行不存在时是 0），即只能把已用额度减下来
+  await db
+    .prepare(
+      `UPDATE music_user_quota
+       SET free_bytes_used = MAX(0, free_bytes_used - ?),
+           updated_at = ?
+       WHERE uid = ?`,
+    )
+    .bind(bytesToRelease, now, uid)
+    .run()
+}
+
+/** 给定本批次字节数 + 用户当前已用额度，算"免费字节 / 付费字节 / cost" */
+export function splitBatchByFreeQuota(totalBytes, freeBytesUsed) {
+  const quota = Math.max(0, Number(MUSIC_FREE_QUOTA_BYTES) || 0)
+  const used = Math.max(0, Number(freeBytesUsed) || 0)
+  const remaining = Math.max(0, quota - used)
+  const freeBytes = Math.min(totalBytes, remaining)
+  const paidBytes = Math.max(0, totalBytes - freeBytes)
+  const cost = paidBytes > 0 ? calcCreditCost(paidBytes, MUSIC_MB_PER_CREDIT) : 0
+  return { freeBytes, paidBytes, cost, quota, freeBytesUsed: used }
+}
+
+/** 从上传 deduct 流水的 reason 中解析 freeBytes（用于 reverse 时释放免费额度）。
+ *  旧 reason（无 freeBytes 字段）→ 返回 0。 */
+export function parseFreeBytesFromReason(reason) {
+  if (typeof reason !== 'string' || !reason) return 0
+  const m = reason.match(/:freeBytes=(\d+)B/)
+  if (!m) return 0
+  const n = Number(m[1])
+  return Number.isFinite(n) && n > 0 ? n : 0
+}
+
+/** 与 ai-image-edit.js 同步的 UTC 'YYYY-MM-DD HH:mm:ss' */
+function nowSql() {
+  return new Date().toISOString().slice(0, 19).replace('T', ' ')
+}
 
 const ALLOWED_MIME = new Set([
   'audio/mpeg',
@@ -373,12 +492,77 @@ export class MusicService {
     return `https://${host}/${r2Key.split('/').map((s) => encodeURIComponent(s)).join('/')}`
   }
 
+  // ---------- 积分流水：refund（删歌退费 / 并发 dedup 退费）----------
+
+  /**
+   * 退 partial 积分。
+   * 与 reverse 的区别：reverse 是上游失败补偿扣费，refund 是用户主动删歌（或并发去重）按规则退一半。
+   * - balance += amount
+   * - total_spent -= amount（同步减掉先前计入的部分）
+   * - INSERT type='refund'，通过 related_tx_id 与原 deduct 流水单向绑定（UNIQUE 防重退）
+   * - 失败属于严重事件，必须告警
+   */
+  async refundCredit(uid, amount, relatedTxId, reason) {
+    if (!Number.isFinite(amount) || amount <= 0) return
+    if (!relatedTxId) return
+    const now = nowSql()
+    const refundTxId = crypto.randomUUID()
+    let actualBalance = null
+    const tryOnce = async () => {
+      const updateResult = await this.db
+        .prepare(
+          `UPDATE user_credits
+           SET balance = balance + ?,
+               total_spent = CASE WHEN total_spent >= ? THEN total_spent - ? ELSE 0 END,
+               updated_at = ?
+           WHERE uid = ?
+           RETURNING balance`,
+        )
+        .bind(amount, amount, amount, now, uid)
+        .first()
+      actualBalance = updateResult?.balance ?? 0
+      await this.db
+        .prepare(
+          `INSERT INTO credit_transactions
+           (id, uid, type, amount, balance_after, reason, operator_uid, source, related_tx_id, idempotency_key, created_at)
+           VALUES (?, ?, 'refund', ?, ?, ?, ?, 'tool', ?, NULL, ?)`,
+        )
+        .bind(refundTxId, uid, amount, actualBalance, reason, uid, relatedTxId, now)
+        .run()
+    }
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        await tryOnce()
+        console.log(`[music-playlist] refund OK uid=${uid.slice(0, 8)} amount=${amount} relatedTxId=${relatedTxId.slice(0, 8)} attempt=${attempt}`)
+        return
+      } catch (err) {
+        const msg = err?.message || ''
+        if (/UNIQUE.*related_tx_id/i.test(msg)) {
+          console.log(`[music-playlist] refund already exists (idempotent) uid=${uid.slice(0, 8)} relatedTxId=${relatedTxId}`)
+          return
+        }
+        console.error(`[music-playlist] refund attempt ${attempt} failed uid=${uid.slice(0, 8)} amount=${amount}`, msg)
+        if (attempt < 3) {
+          await new Promise((r) => setTimeout(r, 200 * 3 ** (attempt - 1)))
+        } else {
+          console.error('[music-playlist] REFUND FAILED — MANUAL INTERVENTION REQUIRED', {
+            uid, amount, relatedTxId, reason, err: msg,
+          })
+        }
+      }
+    }
+  }
+
   // ---------- 鉴权端点：歌曲 ----------
 
   async requestUploadUrl(uid, payload) {
     const filename = safeFilename(payload?.filename)
     const mimeType = typeof payload?.mimeType === 'string' ? payload.mimeType : ''
     const fileSize = Number(payload?.fileSize)
+    const sha256 = String(payload?.sha256 || '').toLowerCase().trim()
+    const idempotencyKey = typeof payload?.idempotencyKey === 'string' && payload.idempotencyKey
+      ? payload.idempotencyKey
+      : null
 
     if (!ALLOWED_MIME.has(mimeType)) {
       throw new ValidationError(`不支持的音频格式：${mimeType || '(空)'}`)
@@ -389,30 +573,149 @@ export class MusicService {
     if (fileSize > MAX_FILE_SIZE_BYTES) {
       throw new ValidationError(`文件超过 ${MAX_FILE_SIZE_BYTES / 1024 / 1024}MB 上限`)
     }
+    if (!SHA256_REGEX.test(sha256)) {
+      throw new ValidationError('文件 SHA-256 不合法（需 64 位小写 hex）')
+    }
 
+    // ============ 1) per-user 查重 ============
+    const existing = await this.db
+      .prepare('SELECT * FROM music_songs WHERE uid = ? AND file_sha256 = ? LIMIT 1')
+      .bind(uid, sha256)
+      .first()
+    if (existing) {
+      return {
+        exists: true,
+        song: songMetaFromRow(existing, this.buildPublicUrl(existing.audio_r2_key)),
+      }
+    }
+
+    // ============ 2) 算 cost + 校验/扣费（每文件独立，含免费额度）============
+    // 取消「首首按 batchTotalSize 扣整批」模型，改为每文件独立计费：
+    //   - 服务端只信本次 fileSize（受 30MB 上限约束，无法虚报）
+    //   - 每文件自己的 freePortion = min(fileSize, 剩余免费额度)
+    //   - 每文件自己的 paidPortion 单独算 cost
+    //   - 用户看到的「本批合计 N 积分」= sum(per-file cost)，数学上等价
+    // 重要：reason 内置 freeBytes=N B 字段，用于 reverse 时找回免费额度字节并释放。
+    const mbPerCredit = getMbPerCredit()
+    const freeQuotaUsedBefore = await getFreeQuotaUsage(this.db, uid)
+    const freeQuotaRemaining = Math.max(
+      0,
+      Math.max(0, MUSIC_FREE_QUOTA_BYTES) - freeQuotaUsedBefore,
+    )
+    const freePortionBytes = Math.min(fileSize, freeQuotaRemaining)
+    const paidBytes = Math.max(0, fileSize - freePortionBytes)
+    const cost = paidBytes > 0 ? calcCreditCost(paidBytes, mbPerCredit) : 0
+
+    let txId = null
+    let balanceAfter = null
+
+    // 1) 先消耗免费额度（即使 cost=0 也要走，便于准确显示已用额度）
+    if (freePortionBytes > 0) {
+      await consumeFreeQuota(this.db, uid, freePortionBytes)
+    }
+
+    // 2) 再扣积分（仅在 cost > 0 时）
+    if (cost > 0) {
+      // 幂等：相同 idempotencyKey 已扣过则复用 cost + txId
+      if (idempotencyKey) {
+        const dedupTx = await this.db
+          .prepare(
+            `SELECT id, balance_after, amount
+             FROM credit_transactions
+             WHERE uid = ? AND idempotency_key = ? AND type = 'deduct'
+               AND reason LIKE 'music-playlist:%'
+             ORDER BY created_at DESC LIMIT 1`,
+          )
+          .bind(uid, idempotencyKey)
+          .first()
+        if (dedupTx) {
+          if (-dedupTx.amount !== cost) {
+            throw new ValidationError(`幂等键冲突（cost ${cost} vs 历史 ${-dedupTx.amount}）`)
+          }
+          txId = dedupTx.id
+          balanceAfter = dedupTx.balance_after
+        }
+      }
+
+      if (!txId) {
+        const balanceRow = await this.db
+          .prepare('SELECT balance FROM user_credits WHERE uid = ?')
+          .bind(uid)
+          .first()
+        const balance = balanceRow?.balance ?? 0
+        if (balance < cost) {
+          // 余额不足：把刚扣的免费额度释放回去（rollback）
+          if (freePortionBytes > 0) {
+            await releaseFreeQuota(this.db, uid, freePortionBytes)
+          }
+          throw new ValidationError(
+            `积分余额不足：当前 ${balance}，本次需 ${cost}（文件 ${(fileSize / 1024 / 1024).toFixed(2)} MB，其中免费 ${(freePortionBytes / 1024 / 1024).toFixed(2)} MB）`,
+          )
+        }
+
+        txId = crypto.randomUUID()
+        const now = nowSql()
+        balanceAfter = balance - cost
+        // reason 内置 freeBytes：reverse 时能据此释放免费额度
+        const reason = `music-playlist:upload:size=${fileSize}B:freeBytes=${freePortionBytes}B`
+        const r = await this.db.batch([
+          this.db
+            .prepare(
+              `UPDATE user_credits
+               SET balance = balance - ?, total_spent = total_spent + ?, updated_at = ?
+               WHERE uid = ? AND balance >= ?`,
+            )
+            .bind(cost, cost, now, uid, cost),
+          this.db
+            .prepare(
+              `INSERT INTO credit_transactions
+               (id, uid, type, amount, balance_after, reason, operator_uid, source, idempotency_key, created_at)
+               VALUES (?, ?, 'deduct', ?, ?, ?, ?, 'tool', ?, ?)`,
+            )
+            .bind(
+              txId, uid, -cost, balanceAfter,
+              reason, uid, idempotencyKey, now,
+            ),
+        ])
+        const changes = r[0]?.meta?.changes ?? r[0]?.changes ?? 0
+        if (changes === 0) {
+          // 并发失败：回滚免费额度
+          if (freePortionBytes > 0) {
+            await releaseFreeQuota(this.db, uid, freePortionBytes)
+          }
+          throw new ValidationError('积分余额不足（并发）')
+        }
+      }
+    } else {
+      // 整首都在免费额度内：不写积分流水
+      const balanceRow = await this.db
+        .prepare('SELECT balance FROM user_credits WHERE uid = ?')
+        .bind(uid)
+        .first()
+      balanceAfter = balanceRow?.balance ?? 0
+    }
+
+    // ============ 3) 签 R2 URL ============
     const songId = crypto.randomUUID()
     const ext = EXT_BY_MIME[mimeType] || 'mp3'
     const r2Key = `songs/${uid}/${songId}.${ext}`
 
-    // 桶名从 binding meta 拿不到（无 .bucketName），所以从 env 显式配置
     const bucket = this.env.R2_BUCKET_NAME
     if (!bucket) throw new ValidationError('R2 桶名未配置（缺少 env.R2_BUCKET_NAME）')
 
     const { uploadUrl, expiresAt } = await signR2PutUrl(this.env, bucket, r2Key, mimeType)
 
-  // 临时调试：确认函数 env 实际拿到的凭据和签发结果
-  // （wrangler 4.59.2 有 .dev.vars 不注入函数 env 的 bug，debug 用一次后可移除）
-  console.log('[music debug] accessKey first 8:', String(this.env.R2_ACCESS_KEY_ID || '').slice(0, 8))
-  console.log('[music debug] secret length:', String(this.env.R2_SECRET_ACCESS_KEY || '').length)
-  console.log('[music debug] accountId:', this.env.R2_ACCOUNT_ID)
-  console.log('[music debug] SignedHeaders in URL:', (uploadUrl.match(/X-Amz-SignedHeaders=([^&]+)/) || [])[1])
-
     return {
+      exists: false,
       uploadUrl,
       r2Key,
       songId,
       expiresAt,
       publicUrl: this.buildPublicUrl(r2Key),
+      cost,
+      txId,
+      balanceAfter,
+      freePortionBytes,
     }
   }
 
@@ -432,6 +735,25 @@ export class MusicService {
     const artist = str(payload?.artist, MAX_ARTIST)
     const album = str(payload?.album, MAX_ALBUM)
 
+    const sha256 = String(payload?.sha256 || '').toLowerCase().trim()
+    if (!SHA256_REGEX.test(sha256)) {
+      throw new ValidationError('文件 SHA-256 不合法')
+    }
+    const creditCostPaid = Number(payload?.creditCostPaid)
+    if (!Number.isFinite(creditCostPaid) || creditCostPaid < 0) {
+      throw new ValidationError('creditCostPaid 不合法')
+    }
+    const freePortionBytes = Number(payload?.freePortionBytes)
+    if (!Number.isFinite(freePortionBytes) || freePortionBytes < 0) {
+      throw new ValidationError('freePortionBytes 不合法')
+    }
+    const creditTxId = typeof payload?.creditTxId === 'string' && payload.creditTxId
+      ? payload.creditTxId.trim()
+      : ''
+    if (creditCostPaid > 0 && !/^[0-9a-f-]{36}$/i.test(creditTxId)) {
+      throw new ValidationError('creditTxId 不合法')
+    }
+
     // 复用 pre-generated songId（前端在 upload-url 时已经分配），保持 R2 key 与 DB id 一致
     // 从 r2Key 提取 uuid 段
     const songId = r2Key.split('/').pop().split('.')[0]
@@ -439,19 +761,54 @@ export class MusicService {
       throw new ValidationError('songId 不合法')
     }
 
+    // 二次查重：极端竞态下 upload-url 与 createSong 之间并发同 sha256 落地，
+    // UNIQUE(uid, file_sha256) 会让第二次 INSERT 失败 → 把第二次扣的退掉 + 返回首次行
+    const dupRow = await this.db
+      .prepare('SELECT * FROM music_songs WHERE uid = ? AND file_sha256 = ? LIMIT 1')
+      .bind(uid, sha256)
+      .first()
+    if (dupRow) {
+      if (creditCostPaid > 0 && creditTxId) {
+        await this.refundCredit(uid, creditCostPaid, creditTxId, '并发重复上传（同 SHA-256）')
+      }
+      return songFromRow(dupRow)
+    }
+
     const slug = await this.generateUniqueSlug('music_songs')
     const ts = now()
 
-    await this.db
-      .prepare(
-        `INSERT INTO music_songs
-           (id, uid, slug, title, artist, album, cover_r2_key, audio_r2_key, mime_type,
-            file_size, duration_sec, is_public, play_count, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, 0, 0, ?, ?)`
-      )
-      .bind(songId, uid, slug, title, artist, album, r2Key, mimeType, fileSize,
-        durationSec ?? null, ts, ts)
-      .run()
+    try {
+      await this.db
+        .prepare(
+          `INSERT INTO music_songs
+             (id, uid, slug, title, artist, album, cover_r2_key, audio_r2_key, mime_type,
+              file_size, duration_sec, is_public, play_count,
+              credit_cost_paid, credit_tx_id, file_sha256, free_portion_bytes,
+              created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?, ?)`
+        )
+        .bind(songId, uid, slug, title, artist, album, r2Key, mimeType, fileSize,
+          durationSec ?? null,
+          creditCostPaid | 0, creditCostPaid > 0 ? creditTxId : null, sha256, freePortionBytes | 0,
+          ts, ts)
+        .run()
+    } catch (err) {
+      const msg = err?.message || ''
+      // UNIQUE 冲突兜底：捕获后查已存在的同行，做退款 + 返回
+      if (/UNIQUE.*file_sha256/i.test(msg) || /uq_music_songs_uid_sha256/.test(msg)) {
+        const existingRow = await this.db
+          .prepare('SELECT * FROM music_songs WHERE uid = ? AND file_sha256 = ? LIMIT 1')
+          .bind(uid, sha256)
+          .first()
+        if (existingRow) {
+          if (creditCostPaid > 0 && creditTxId) {
+            await this.refundCredit(uid, creditCostPaid, creditTxId, '并发重复上传（同 SHA-256）')
+          }
+          return songFromRow(existingRow)
+        }
+      }
+      throw err
+    }
 
     const row = await this.findOwnedSongRow(songId, uid)
     return songFromRow(row)
@@ -532,6 +889,33 @@ export class MusicService {
   async deleteSong(id, uid) {
     const row = await this.findOwnedSongRow(id, uid)
     if (!row) return false
+
+    // 退费：按先前实付积分的一半（向上取整；paid=1 不退）。
+    // 在删 song 行之前计算并发起退费，因为 credit_cost_paid/credit_tx_id 来自该行。
+    const refund = calcRefundCredit(Number(row.credit_cost_paid) || 0)
+    const relatedTxId = typeof row.credit_tx_id === 'string' ? row.credit_tx_id : ''
+    if (refund > 0 && relatedTxId) {
+      try {
+        await this.refundCredit(
+          uid, refund, relatedTxId,
+          `music-playlist:refund:delete:songId=${id}`,
+        )
+      } catch (err) {
+        // 退费失败不应阻塞删歌（song 已删；后续可由后台 reconcile）
+        console.error('[music-playlist] deleteSong refund failed (continuing):', err?.message || err)
+      }
+    }
+
+    // 释放免费额度：仅当本首歌消耗过 free quota（payer 或单文件全免费场景）才退
+    const freeBytesToRelease = Math.max(0, Number(row.free_portion_bytes) || 0)
+    if (freeBytesToRelease > 0) {
+      try {
+        await releaseFreeQuota(this.db, uid, freeBytesToRelease)
+      } catch (err) {
+        // 同 refund：额度释放失败不阻塞删歌
+        console.error('[music-playlist] deleteSong releaseFreeQuota failed (continuing):', err?.message || err)
+      }
+    }
 
     // join 行靠 ON DELETE CASCADE 自动清；这里只删主表 + R2 对象
     const stmts = [

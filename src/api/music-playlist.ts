@@ -5,12 +5,17 @@ import type {
   SongDetail,
   PlaylistMeta,
   PlaylistDetail,
-  UploadUrlResponse,
+  UploadUrlExistingResponse,
+  UploadUrlNewResponse,
+  QuoteResponse,
   PublicSong,
   PublicPlaylist,
   PagedResponse,
   Pagination,
 } from '@/components/Tools/Music/types'
+
+/** requestUploadUrl 返回（discriminated union：exists 分支 vs 正常分支） */
+export type RequestUploadUrlResult = UploadUrlExistingResponse | UploadUrlNewResponse
 
 const EMPTY_PAGINATION: Pagination = {
   total: 0, page: 1, pageSize: 20, totalPages: 0, hasNext: false, hasPrev: false,
@@ -18,17 +23,31 @@ const EMPTY_PAGINATION: Pagination = {
 
 // ============ 鉴权 API ============
 
-/** 申请 SigV4 预签名 PUT URL（用于浏览器直传 R2） */
+/** 上传前的 cost 预览（不扣费，仅算账 + 拿余额）。fileSize 单位：字节 */
+export async function quoteUpload(fileSizes: number[]): Promise<QuoteResponse> {
+  const params = new URLSearchParams()
+  for (const s of fileSizes) params.append('fileSizes', String(s))
+  const res = await functionsRequest.get(`/api/music-playlist/songs/quote?${params.toString()}`)
+  return res.data as QuoteResponse
+}
+
+/** 申请 SigV4 预签名 PUT URL（用于浏览器直传 R2）
+ * - 同一用户 SHA-256 命中已有歌曲 → 返回 { exists: true, song }，不扣费，不签 URL
+ * - 新文件 → 每文件独立计费（含免费额度拆分）：先走免费额度，剩余部分按 2MB/积分
+ * - 返回的 txId 可在上传失败时通过 reverseUpload 反向冲销（积分 + 免费额度同时退还） */
 export async function requestUploadUrl(payload: {
   filename: string
   mimeType: string
   fileSize: number
-}): Promise<UploadUrlResponse> {
+  sha256: string
+  idempotencyKey?: string
+}): Promise<RequestUploadUrlResult> {
   const res = await functionsRequest.post('/api/music-playlist/songs/upload-url', payload)
-  return res.data as UploadUrlResponse
+  return res.data as RequestUploadUrlResult
 }
 
-/** 创建歌曲元数据（R2 上传成功后调用） */
+/** 创建歌曲元数据（R2 上传成功后调用）
+ * - sha256/creditCostPaid/creditTxId/freePortionBytes 由 requestUploadUrl 返回或前端持有 */
 export async function createSong(payload: {
   title: string
   artist?: string
@@ -37,9 +56,20 @@ export async function createSong(payload: {
   mimeType: string
   fileSize: number
   durationSec?: number | null
+  sha256: string
+  creditCostPaid: number
+  creditTxId: string
+  /** 本首歌消耗的免费额度字节（payer 名下整批 freeBytes；后续首 = 0） */
+  freePortionBytes?: number
 }): Promise<Song> {
   const res = await functionsRequest.post('/api/music-playlist/songs', payload)
   return res.data as Song
+}
+
+/** 上传失败时反向冲销扣费（type='reverse'，不走 deleteSong 的 type='refund'） */
+export async function reverseUpload(txId: string): Promise<{ reversed: boolean; amount: number }> {
+  const res = await functionsRequest.post(`/api/music-playlist/songs/${encodeURIComponent(txId)}/reverse`)
+  return res.data as { reversed: boolean; amount: number; txId: string }
 }
 
 export interface ListSongsParams { page?: number; pageSize?: number; keyword?: string }

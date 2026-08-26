@@ -18,10 +18,10 @@ export async function postToolUsage(toolUrl: string, toolTitle: string, source: 
 }
 
 /**
- * 拉取当前用户最近 8 个去重工具。
+ * 拉取当前用户最近 N 个去重工具（默认 8，后端 clamp 到 [1, 50]）。
  * 未登录返回 { items: [] }。
  */
-export async function fetchRecentToolUsage(): Promise<{ items: RecentTool[] }> {
-  const res = await functionsRequest.get('/api/me/tool-usage/recent')
+export async function fetchRecentToolUsage(limit = 8): Promise<{ items: RecentTool[] }> {
+  const res = await functionsRequest.get(`/api/me/tool-usage/recent?limit=${limit}`)
   return res.data.data
 }

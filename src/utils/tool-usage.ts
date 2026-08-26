@@ -97,13 +97,13 @@ export function recordToolUsage(toolUrl: string, toolTitle: string): void {
 }
 
 /**
- * 拉取当前登录用户的最近使用工具（最多 8 个）。
+ * 拉取当前登录用户的最近使用工具（最多 limit 个，默认 8）。
  * 未登录时返回空数组（API 也会返回空数组，但本地短路省一次请求）。
  */
-export async function fetchRecentUsedTools(): Promise<RecentTool[]> {
+export async function fetchRecentUsedTools(limit = 8): Promise<RecentTool[]> {
   try {
     const { fetchRecentToolUsage } = await import('@/api/me/tool-usage')
-    const res = await fetchRecentToolUsage()
+    const res = await fetchRecentToolUsage(limit)
     return res?.items || []
   } catch (err) {
     console.warn('[tool-usage] fetchRecentUsedTools failed:', (err as Error)?.message || err)
