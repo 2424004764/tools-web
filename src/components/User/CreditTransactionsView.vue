@@ -102,7 +102,8 @@ const typeMeta = (t: string) => {
   switch (t) {
     case 'grant':   return { label: '获得', bg: 'bg-emerald-100', text: 'text-emerald-700', amount: 'text-emerald-600', sign: '+' }
     case 'deduct':  return { label: '消费', bg: 'bg-rose-100',    text: 'text-rose-700',    amount: 'text-rose-600',    sign: '' }
-    case 'reverse': return { label: '退还', bg: 'bg-amber-100',   text: 'text-amber-700',   amount: 'text-amber-600',   sign: '+' }
+    case 'reverse':
+    case 'refund':  return { label: '退还', bg: 'bg-amber-100',   text: 'text-amber-700',   amount: 'text-amber-600',   sign: '+' }
     default:        return { label: t,    bg: 'bg-gray-100',    text: 'text-gray-700',    amount: 'text-gray-600',    sign: '' }
   }
 }
@@ -124,9 +125,17 @@ const formatTime = (s: string) => {
   return d.toLocaleString('zh-CN', { hour12: false })
 }
 
+/** 字节数 → 人类可读字符串（KB / MB 自动切换） */
+const formatBytesReadable = (bytes: number): string => {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 KB'
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
+  return `${(bytes / 1024 / 1024).toFixed(2)} MB`
+}
+
 const humanReason = (tx: CreditTransaction): string => {
   const reason = tx.reason || ''
 
+  // AI image edit 上游失败退还
   if (/:reverse:upstream-(\d+)/.test(reason)) {
     const code = reason.match(/:reverse:upstream-(\d+)/)?.[1]
     return `生成失败（${code}）`
@@ -136,6 +145,28 @@ const humanReason = (tx: CreditTransaction): string => {
   if (reason.includes(':reverse:bad-formdata'))  return '请求格式错误，自动退还'
   if (reason.includes(':reverse:empty-prompt'))  return '提示词为空，自动退还'
   if (reason.includes(':reverse:no-image-in-response')) return '上游未返回图片，自动退还'
+
+  // 音乐播放列表
+  if (reason.startsWith('music-playlist:')) {
+    // 批次上传（新版 reason 编码了 batchId/size/count）
+    if (reason.includes(':upload:batchId=')) {
+      const sizeMatch = reason.match(/:size=(\d+)B/)
+      const countMatch = reason.match(/:count=(\d+)/)
+      const bytes = sizeMatch ? Number(sizeMatch[1]) : 0
+      const count = countMatch ? Number(countMatch[1]) : 0
+      const sizeStr = bytes > 0 ? formatBytesReadable(bytes) : ''
+      if (count > 1 && sizeStr) return `上传音频（${count} 个文件，${sizeStr}）`
+      if (count === 1 && sizeStr) return `上传音频（${sizeStr}）`
+      if (count > 1) return `上传音频（${count} 个文件）`
+      return '上传音频'
+    }
+    // 单文件上传（老版 reason: music-playlist:upload:size=NB）
+    const m = reason.match(/size=(\d+)B/)
+    if (m) return `上传音频（${formatBytesReadable(Number(m[1]))}）`
+    if (reason.includes(':refund:delete:')) return '删除歌曲退还'
+    if (reason.endsWith(':upload-failed') || reason.includes(':upload-failed')) return '上传失败，自动退还'
+    if (reason.includes(':upload')) return '上传音频'
+  }
 
   if (tx.type === 'deduct') {
     const idx = reason.indexOf(':')

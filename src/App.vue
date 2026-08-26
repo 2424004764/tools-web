@@ -24,6 +24,11 @@ const Floor = defineAsyncComponent({
   loadingComponent: defineComponent({ render: () => h(LayoutSkeleton, { variant: 'floor' }) }),
   delay: 100,
 })
+// 异步加载：最近使用悬浮按钮（fixed 定位，骨架不影响布局）
+const RecentToolsFab = defineAsyncComponent({
+  loader: () => import('@/components/Common/RecentToolsFab.vue'),
+  delay: 100,
+})
 
 import { useRoute } from 'vue-router';
 import Top from '~icons/ep/top'
@@ -129,6 +134,9 @@ const isMeCreditsPage = computed(() => {
         <Floor />
       </el-footer>
     </el-container>
+
+    <!-- 最近使用悬浮按钮 -->
+    <RecentToolsFab />
 
     <!-- 回到顶部 -->
     <transition name="backtop-fade">

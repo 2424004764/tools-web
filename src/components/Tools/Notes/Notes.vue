@@ -892,7 +892,12 @@ onMounted(async () => {
                   {{ g.name }}
                   <span class="group-option-count">{{ g.count || 0 }}</span>
                 </el-option>
-                <el-option label="未分组" :value="null" />
+                <!-- 与桌面端保持一致：用 'ungrouped' 字符串作为 value，与 handleGroupChange 语义对齐 -->
+                <el-option
+                  v-if="ungroupedCount > 0"
+                  :label="`未分组 (${ungroupedCount})`"
+                  value="ungrouped"
+                />
               </el-select>
             </el-form-item>
             <el-form-item label="笔记内容（支持 Markdown）" required class="form-item">
