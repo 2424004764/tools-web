@@ -44,3 +44,10 @@ CREATE TABLE IF NOT EXISTS music_user_quota (
 
 CREATE INDEX IF NOT EXISTS idx_music_user_quota_updated_at
   ON music_user_quota(updated_at);
+
+-- 4) 同步更新 tool_features.description（首页卡片展示的简介）
+--    与 src/components/Tools/tools.ts 的 desc 字段保持一致
+UPDATE tool_features
+SET description = '登录后上传 MP3 / M4A / WAV 音频到 R2，可把任意歌曲加入一个或多个歌单；每首歌与每个歌单都有独立的公开分享链接，无需登录即可收听。不会压缩音质，完全原版上传',
+    updated_at  = '2026-08-26 00:00:00'
+WHERE url = '/music-playlist/';
