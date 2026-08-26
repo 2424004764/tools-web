@@ -34,6 +34,7 @@ const sizeOptions = [
   { value: '1024x1024', label: '1:1 正方形' },
   { value: '1024x1792', label: '9:16 竖版' },
   { value: '1792x1024', label: '16:9 横版' },
+  { value: '2048x1024', label: '2:1 宽屏' },
 ]
 
 // 表单状态
@@ -998,6 +999,20 @@ const openSlotInNewTab = (slot: ResultSlot) => {
     window.open(slot.url, '_blank')
   }
 }
+
+// 跳转到「图片切割」工具，把当前生成图作为源图带上
+// 路径使用 vue-router 解析，避免硬编码域名；recordId 同步带上以便 ImgCut 走后端代理绕开第三方图床 CORS
+const openInImgCut = (slot: ResultSlot) => {
+  if (!slot.url) return
+  const params = new URLSearchParams()
+  params.set('url', slot.url)
+  if (slot.recordId) params.set('recordId', slot.recordId)
+  const target = router.resolve({
+    path: '/imgcut/',
+    query: Object.fromEntries(params.entries()),
+  }).href
+  window.open(target, '_blank', 'noopener,noreferrer')
+}
 </script>
 
 <template>
@@ -1182,7 +1197,7 @@ const openSlotInNewTab = (slot: ResultSlot) => {
             </span>
           </div>
 
-          <!-- 模型 & 尺寸（一行一个） -->
+          <!-- 模型独占一行；输出尺寸 + 并发数 并排一行 -->
           <div class="grid grid-cols-1 gap-4">
             <div>
               <label class="block text-body-sm font-medium text-gray-700 mb-2">模型</label>
@@ -1196,31 +1211,33 @@ const openSlotInNewTab = (slot: ResultSlot) => {
                 </option>
               </select>
             </div>
-            <div>
-              <label class="block text-body-sm font-medium text-gray-700 mb-2">输出尺寸</label>
-              <select
-                v-model="selectedSize"
-                class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                :disabled="isBatchLoading"
-              >
-                <option v-for="s in sizeOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-body-sm font-medium text-gray-700 mb-2">并发数</label>
-              <select
-                v-model.number="selectedConcurrency"
-                class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                :disabled="isBatchLoading"
-              >
-                <option v-for="n in concurrencyOptions" :key="n" :value="n">{{ n }} 张</option>
-              </select>
-              <span
-                class="text-caption mt-1 block"
-                :class="concurrencyHint ? 'text-red-500' : 'text-gray-400'"
-              >
-                {{ concurrencyHint || `同时生成 ${selectedConcurrency} 个变体，可挑最满意的一张` }}
-              </span>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-body-sm font-medium text-gray-700 mb-2">输出尺寸</label>
+                <select
+                  v-model="selectedSize"
+                  class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  :disabled="isBatchLoading"
+                >
+                  <option v-for="s in sizeOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-body-sm font-medium text-gray-700 mb-2">并发数</label>
+                <select
+                  v-model.number="selectedConcurrency"
+                  class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  :disabled="isBatchLoading"
+                >
+                  <option v-for="n in concurrencyOptions" :key="n" :value="n">{{ n }} 张</option>
+                </select>
+                <span
+                  class="text-caption mt-1 block"
+                  :class="concurrencyHint ? 'text-red-500' : 'text-gray-400'"
+                >
+                  {{ concurrencyHint || `同时生成 ${selectedConcurrency} 个变体，可挑最满意的一张` }}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -1438,6 +1455,17 @@ const openSlotInNewTab = (slot: ResultSlot) => {
                     新标签页
                   </button>
                 </div>
+                <!-- 跳转到「图片切割」工具：把当前生成图作为源图带上（带 recordId 走后端代理绕开第三方图床 CORS） -->
+                <button
+                  @click="openInImgCut(slot)"
+                  class="w-full mt-2 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-body-sm font-medium hover:from-purple-600 hover:to-indigo-600 transition-colors flex items-center justify-center gap-1.5"
+                  title="打开「图片切割」并把这张图作为源图加载"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121M12 12l2.879-2.879M12 12L9.121 14.879M21 3v6h-6M3 21v-6h6" />
+                  </svg>
+                  开始分割
+                </button>
               </div>
 
               <!-- failed：错误信息 + 重试按钮 -->

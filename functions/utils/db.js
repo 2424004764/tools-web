@@ -361,6 +361,26 @@ export class NoteModel extends Model {
         uid: { type: 'string' }, // 用户ID字段简化为uid
         title: { type: 'string' },
         content: { type: 'string' },
+        groupId: { type: 'string', dbField: 'group_id' }, // 笔记所属分组，NULL 表示未分组
+        createTime: { type: 'datetime', dbField: 'create_time' },
+        updateTime: { type: 'datetime', dbField: 'update_time' }
+      }
+    }
+  }
+}
+
+// NoteGroup 模型 - 笔记分组模型
+export class NoteGroupModel extends Model {
+  constructor(db) {
+    super(db)
+    this.config = {
+      tableName: 'note_groups',
+      fields: {
+        id: { type: 'string', primaryKey: true },
+        uid: { type: 'string' }, // 用户ID
+        name: { type: 'string' }, // 分组名称
+        color: { type: 'string' }, // 分组颜色（hex #RRGGBB）
+        sortOrder: { type: 'integer', dbField: 'sort_order' }, // 排序值，越小越靠前
         createTime: { type: 'datetime', dbField: 'create_time' },
         updateTime: { type: 'datetime', dbField: 'update_time' }
       }

@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref,computed, watch } from 'vue'
-import { UploadProps,UploadRawFile,genFileId } from 'element-plus'
+import { onMounted, onUnmounted, nextTick, reactive, ref,computed, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { UploadProps,UploadRawFile,genFileId, ElMessage } from 'element-plus'
 import Download from '~icons/ep/download'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
@@ -21,22 +22,23 @@ const dataFileRef = ref()
 const splitMode = ref<'grid' | 'horizontal' | 'vertical'>('grid')
 
 //上传
-const updateDataFile = async (params) => {
-  let reader = new FileReader();
-  reader.readAsDataURL(params.file);
-  reader.addEventListener(
-      'load',
-      async () => {
-          const imageTmp = new Image();
-          imageTmp.onload = () => {
-            image.value = imageTmp;
-            cut();
-          };
-          imageTmp.src = reader.result as string;
-      },
-      false
-  );
-}
+// 返回 Promise，在 <img> onload 后才 resolve，让 await 调用方能准确知道「图真的渲染好了」
+// —— 这样跳转带 URL 自动加载时，loading 蒙层可以卡到图片就绪再消失，不闪屏
+const updateDataFile = (params): Promise<void> => new Promise((resolve, reject) => {
+  const reader = new FileReader()
+  reader.onerror = () => reject(reader.error || new Error('FileReader 失败'))
+  reader.onload = () => {
+    const imageTmp = new Image()
+    imageTmp.onload = () => {
+      image.value = imageTmp
+      cut()
+      resolve()
+    }
+    imageTmp.onerror = () => reject(new Error('图片解码失败'))
+    imageTmp.src = reader.result as string
+  }
+  reader.readAsDataURL(params.file)
+})
 
 //当超出限制时，执行的钩子函数
 //这里覆盖前一个文件
@@ -194,6 +196,81 @@ watch(lineNum, (val) => {
   }
 })
 
+// ============ 从 URL query 自动加载源图（由 AI 图片编辑工具跳转过来） ============
+// 第三方图床通常没有 CORS 头，前端直接 fetch 会失败。
+// 统一走后端 /api/image-proxy 代理拿 blob：浏览器视角下响应来自同源，没有跨域问题，
+// canvas drawImage 也能正常拿到像素数据。后端代理内部做了白名单 + SSRF 防护。
+const route = useRoute()
+const isLoadingFromUrl = ref(false)
+
+// 加载源图时的自转 spinner —— 用 requestAnimationFrame 直接改 transform，
+// 避开 CSS 动画 / prefers-reduced-motion / scoped keyframes 注入失败等问题。
+const urlLoadingSpinnerRef = ref<HTMLDivElement | null>(null)
+let urlSpinnerRafId = 0
+let urlSpinnerAngle = 0
+const startUrlSpinner = () => {
+  if (!urlLoadingSpinnerRef.value || urlSpinnerRafId) return
+  const tick = () => {
+    urlSpinnerAngle = (urlSpinnerAngle + 6) % 360
+    if (urlLoadingSpinnerRef.value) {
+      urlLoadingSpinnerRef.value.style.transform = `rotate(${urlSpinnerAngle}deg)`
+    }
+    urlSpinnerRafId = requestAnimationFrame(tick)
+  }
+  tick()
+}
+const stopUrlSpinner = () => {
+  if (urlSpinnerRafId) {
+    cancelAnimationFrame(urlSpinnerRafId)
+    urlSpinnerRafId = 0
+  }
+}
+watch(isLoadingFromUrl, async (val) => {
+  if (val) {
+    // 等到 v-if 真的把 spinner div 渲染出来再启动 rAF
+    await nextTick()
+    startUrlSpinner()
+  } else {
+    stopUrlSpinner()
+  }
+})
+
+const loadFromUrl = async () => {
+  const url = route.query.url
+  if (typeof url !== 'string' || !url) return
+
+  isLoadingFromUrl.value = true
+  try {
+    // 走通用图片代理（不依赖 recordId，任何外链图都能代理）
+    const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(url)}`
+    const resp = await fetch(proxyUrl)
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => '')
+      throw new Error(`HTTP ${resp.status}${text ? `: ${text}` : ''}`)
+    }
+    const blob = await resp.blob()
+    // 优先用上游 Content-Type 给个合理后缀名
+    const contentType = resp.headers.get('Content-Type') || 'image/png'
+    const ext = contentType.includes('jpeg') || contentType.includes('jpg')
+      ? 'jpg'
+      : contentType.includes('webp')
+        ? 'webp'
+        : contentType.includes('gif')
+          ? 'gif'
+          : 'png'
+    const filename = `imgcut-source.${ext}`
+    const file = new File([blob], filename, { type: contentType })
+    // 复用 el-upload 的 http-request 流程：FileReader → Image onload → cut()
+    await updateDataFile({ file })
+    ElMessage.success('已加载源图，可调整行/列数开始切割')
+  } catch (err) {
+    console.error('[imgcut] loadFromUrl failed', err)
+    ElMessage.error('加载源图失败：' + ((err as Error)?.message || '未知错误'))
+  } finally {
+    isLoadingFromUrl.value = false
+  }
+}
+
 onMounted(() => {
   // 从 localStorage 恢复行数/列数设置
   try {
@@ -208,6 +285,13 @@ onMounted(() => {
   } catch (e) {
     // localStorage 不可用时静默忽略
   }
+  // 如果是从 AI 图片编辑跳转过来的（带 url 参数），自动加载源图
+  loadFromUrl()
+})
+
+// 卸载时停掉 spinner rAF，避免内存泄漏
+onUnmounted(() => {
+  stopUrlSpinner()
 })
 </script>
 
@@ -226,6 +310,12 @@ onMounted(() => {
         :limit="1"
       >
         <el-button type="primary">请上传需要切割的图片</el-button>
+        <span v-if="isLoadingFromUrl" class="self-center text-caption text-gray-500 flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 12a8 8 0 018-8M20 12a8 8 0 01-8 8" />
+          </svg>
+          正在加载源图…
+        </span>
       </el-upload>
       <div class="mt-3 flex flex-wrap items-center gap-3">
         <div class="flex items-center">
@@ -241,31 +331,53 @@ onMounted(() => {
       </div>
 
 
-      <div class="mt-3 min-h-md bg-gray-100 p-3 mb-3 flex flex-col md:flex-row gap-4 items-start" v-if="image.src">
-        <!-- 预览 -->
-        <div class="w-full md:w-1/2">
-          <div class="flex justify-between items-center mb-2">
-            <el-text>预览: (点击图片可单独下载)</el-text>
-            <el-button type="primary" size="small" @click="downloadAll" :disabled="cutImg.length === 0">
-              <el-icon class="mr-1"><Download /></el-icon>
-              下载所有
-            </el-button>
+      <!-- 包裹图片预览区域，加载源图时整块覆盖半透明蒙层 + spinner，
+           同时兼容「空状态」和「已有图被替换」两种情况 -->
+      <div class="relative">
+        <div class="mt-3 min-h-md bg-gray-100 p-3 mb-3 flex flex-col md:flex-row gap-4 items-start" v-if="image.src">
+          <!-- 预览 -->
+          <div class="w-full md:w-1/2">
+            <div class="flex justify-between items-center mb-2">
+              <el-text>预览: (点击图片可单独下载)</el-text>
+              <el-button type="primary" size="small" @click="downloadAll" :disabled="cutImg.length === 0">
+                <el-icon class="mr-1"><Download /></el-icon>
+                下载所有
+              </el-button>
+            </div>
+            <div :style="cutImgStyle" class="grid gap-2 w-full items-stretch justify-items-center">
+              <!-- w-full + max-h-[320px] + object-contain：
+                   - 宽按 cell 撑满，高度由 max-h 兜底
+                   - object-contain 在高度被截断时按比例缩放，不变形
+                   - 水平/垂直拆分下 cell 较宽的部分由 object-contain 自动留白居中
+                   - 1x1、3x3 网格时图片大约 320px 高，整体不会溢出视口 -->
+              <img v-for="(src,index) in cutImg" :key="index" :src="src" alt="结果" class="w-full max-h-[320px] h-auto object-contain rounded-md cursor-pointer hover:opacity-80 transition-opacity bg-white" @click="downloadSingle(src, index)"/>
+            </div>
           </div>
-          <div :style="cutImgStyle" class="grid gap-2 w-full">
-            <img v-for="(src,index) in cutImg" :key="index" :src="src" alt="结果" class="w-full h-auto block cursor-pointer hover:opacity-80 transition-opacity" @click="downloadSingle(src, index)"/>
+
+          <!-- 原图 -->
+          <div class="w-full md:w-1/2">
+            <el-text>原图: </el-text>
+            <div class="w-full">
+              <img :src="image.src" alt="原图" v-if="image.src" class="max-w-full max-h-[480px] h-auto block rounded-md bg-white"/>
+            </div>
           </div>
+        </div>
+        <div v-else-if="!isLoadingFromUrl">
+          <el-empty :image-size="200" description="无预览"/>
         </div>
 
-        <!-- 原图 -->
-        <div class="w-full md:w-1/2">
-          <el-text>原图: </el-text>
-          <div class="w-full">
-            <img :src="image.src" alt="原图" v-if="image.src" class="max-w-full h-auto block"/>
-          </div>
+        <!-- 加载源图蒙层：覆盖整个图片区，await updateDataFile 解析（即 img.onload）后才隐藏。
+             min-h-md 保证「image 还没加载出来」时空状态也有合理高度，蒙层不会塌成 0 -->
+        <div
+          v-if="isLoadingFromUrl"
+          class="absolute inset-0 z-10 min-h-md flex flex-col items-center justify-center gap-3 rounded-lg bg-white/80 backdrop-blur-sm"
+          role="status"
+          aria-live="polite"
+        >
+          <!-- 自转 spinner：JS rAF 驱动，绕开 prefers-reduced-motion -->
+          <div ref="urlLoadingSpinnerRef" class="url-loading-spinner" aria-hidden="true"></div>
+          <span class="text-body-sm text-gray-600 tracking-wider">正在加载源图…</span>
         </div>
-      </div>
-      <div v-else>
-        <el-empty :image-size="200" description="无预览"/>
       </div>
     </div>
 
@@ -288,5 +400,18 @@ onMounted(() => {
   white-space: normal;
   word-break: break-all;
   overflow-wrap: anywhere;
+}
+
+/* ============ URL 自动加载源图：自转 spinner ============
+   旋转由 JS rAF 直接改 style.transform，不写 animation——
+   避开 prefers-reduced-motion / scoped keyframes 注入失败等问题。 */
+.url-loading-spinner {
+  display: block;
+  width: 36px;
+  height: 36px;
+  border: 3px solid #e0e7ff;
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  will-change: transform;
 }
 </style>

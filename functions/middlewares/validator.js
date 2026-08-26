@@ -4,19 +4,23 @@ export class Validator {
   // 验证笔记创建数据
   static validateCreateNote(data) {
     const errors = []
-    
+
     if (!data.title || typeof data.title !== 'string' || data.title.trim().length === 0) {
       errors.push('标题不能为空')
     }
-    
+
     if (data.title && data.title.length > 200) {
       errors.push('标题长度不能超过200个字符')
     }
-    
+
     if (!data.content || typeof data.content !== 'string' || data.content.trim().length === 0) {
       errors.push('内容不能为空')
     }
-    
+
+    if (data.groupId !== undefined && data.groupId !== null && (typeof data.groupId !== 'string' || data.groupId.trim().length === 0)) {
+      errors.push('分组ID格式错误')
+    }
+
     return {
       isValid: errors.length === 0,
       errors
@@ -26,19 +30,76 @@ export class Validator {
   // 验证笔记更新数据
   static validateUpdateNote(data) {
     const errors = []
-    
+
     if (data.title !== undefined && (typeof data.title !== 'string' || data.title.trim().length === 0)) {
       errors.push('标题不能为空')
     }
-    
+
     if (data.title && data.title.length > 200) {
       errors.push('标题长度不能超过200个字符')
     }
-    
+
     if (data.content !== undefined && (typeof data.content !== 'string' || data.content.trim().length === 0)) {
       errors.push('内容不能为空')
     }
-    
+
+    // groupId 允许显式置 null（移到未分组），但不允许其他类型
+    if (data.groupId !== undefined && data.groupId !== null && (typeof data.groupId !== 'string' || data.groupId.trim().length === 0)) {
+      errors.push('分组ID格式错误')
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    }
+  }
+
+  // 验证笔记分组创建数据
+  static validateCreateNoteGroup(data) {
+    const errors = []
+
+    if (!data.name || typeof data.name !== 'string' || data.name.trim().length === 0) {
+      errors.push('分组名称不能为空')
+    }
+
+    if (data.name && data.name.length > 50) {
+      errors.push('分组名称长度不能超过50个字符')
+    }
+
+    if (!data.color || typeof data.color !== 'string' || !data.color.match(/^#[0-9A-F]{6}$/i)) {
+      errors.push('颜色格式错误')
+    }
+
+    if (data.sortOrder !== undefined && (!Number.isInteger(data.sortOrder) || data.sortOrder < 0)) {
+      errors.push('排序值必须为非负整数')
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    }
+  }
+
+  // 验证笔记分组更新数据
+  static validateUpdateNoteGroup(data) {
+    const errors = []
+
+    if (data.name !== undefined && (typeof data.name !== 'string' || data.name.trim().length === 0)) {
+      errors.push('分组名称不能为空')
+    }
+
+    if (data.name && data.name.length > 50) {
+      errors.push('分组名称长度不能超过50个字符')
+    }
+
+    if (data.color !== undefined && (!data.color || typeof data.color !== 'string' || !data.color.match(/^#[0-9A-F]{6}$/i))) {
+      errors.push('颜色格式错误')
+    }
+
+    if (data.sortOrder !== undefined && (!Number.isInteger(data.sortOrder) || data.sortOrder < 0)) {
+      errors.push('排序值必须为非负整数')
+    }
+
     return {
       isValid: errors.length === 0,
       errors
