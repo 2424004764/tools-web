@@ -248,6 +248,23 @@ export default {
         'body-sm':   ['0.875rem',  { lineHeight: '1.55', fontWeight: '400' }],
         'caption':   ['0.75rem',   { lineHeight: '1.5',  letterSpacing: '0.02em', fontWeight: '400' }],
       },
+
+      // ⚠️ 注意：animation / keyframes 必须放在 extend 里（而不是 theme 顶层）。
+      // theme 顶层的 animation/keyframes 会整体替换 Tailwind 默认动画（spin/ping/pulse/bounce），
+      // 导致 animate-spin / animate-pulse / animate-bounce 全部失效。
+      animation: {
+        fold: 'fold 1s infinite'
+      },
+      keyframes: {
+        fold: {
+          '0%, 100%': {
+            opacity: 0
+          },
+          '50%': {
+            opacity: 1
+          }
+        }
+      }
     },
     screens: {
       // 自定义响应式尺寸
@@ -257,19 +274,6 @@ export default {
       'c-lg': {'min': '1200px'},
       ...defaultTheme.screens,
     },
-    animation: {
-      fold: 'fold 1s infinite'
-    },
-    keyframes: {
-      fold: {
-        '0%, 100%': {
-          opacity: 0
-        },
-        '50%': {
-          opacity: 1
-        }
-      }
-    }
   },
   plugins: [],
 }

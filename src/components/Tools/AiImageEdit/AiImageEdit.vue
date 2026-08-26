@@ -1373,11 +1373,47 @@ const openSlotInNewTab = (slot: ResultSlot) => {
                     :preview-src-list="[slot.url]"
                     :initial-index="0"
                     fit="contain"
-                    class="block w-full"
+                    class="block w-full result-image"
                     style="cursor: zoom-in;"
                     draggable="true"
                     alt="生成结果"
-                  />
+                  >
+                    <!-- 加载占位：success 状态瞬间或慢请求场景下避免宽高为 0 -->
+                    <template #placeholder>
+                      <div class="image-placeholder" role="status" aria-live="polite">
+                        <!-- 直接用 Tailwind 的 animate-spin（项目里 TOS/AppsTab/ImageColorCount 等都用过，
+                            spin keyframes 一定在产物里），绕开 EP / scoped CSS 任何潜在干扰 -->
+                        <svg
+                          class="image-placeholder-spinner animate-spin"
+                          width="32"
+                          height="32"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          aria-hidden="true"
+                        >
+                          <circle
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            stroke-width="3"
+                            stroke-dasharray="30 20"
+                            stroke-linecap="round"
+                          />
+                        </svg>
+                        <span class="image-placeholder-text">加载中…</span>
+                      </div>
+                    </template>
+                    <!-- 加载失败占位 -->
+                    <template #error>
+                      <div class="image-placeholder image-placeholder--error">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4a2 2 0 00-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z" />
+                        </svg>
+                        <span class="image-placeholder-text">图片加载失败</span>
+                      </div>
+                    </template>
+                  </el-image>
                   <p class="text-caption text-gray-400 text-center mt-1 select-none">
                     拖拽此图片到上方上传区即可继续编辑
                   </p>
@@ -1786,10 +1822,63 @@ const openSlotInNewTab = (slot: ResultSlot) => {
   letter-spacing: 0.02em;
 }
 
-/* success：图片自然撑满，下载/新标签页紧凑两列 */
+/* success：图片自然撑满，下载/新标签页紧凑两列
+   min-height 与 .slot-pending 一致——从 pending 切到 success 的瞬间 el-image 还没
+   加载完图片，wrapper 默认高度为 0，不锁最小高度会让整个结果区塌陷成宽高=0 */
 .slot-success {
   display: flex;
   flex-direction: column;
+  min-height: 220px;
+}
+/* 让 el-image wrapper 继承容器高度，避免 fit="contain" + 图片未加载完时塌成 0 */
+:deep(.slot-success .el-image),
+:deep(.result-image) {
+  width: 100%;
+  min-height: 220px;
+  background: #fafafa;
+  display: block;
+}
+/* contain 模式下：限制图片最大高度，避免 16:9 等细长比例图把按钮区顶到屏幕外 */
+:deep(.slot-success .el-image__inner) {
+  max-height: 480px;
+  margin: 0 auto;
+  display: block;
+  object-fit: contain;
+}
+/* 图片加载占位：spinner + 文案，与 pending 状态视觉上一致 */
+.image-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  min-height: 220px;
+  color: #9ca3af;
+  font-size: 13px;
+}
+.image-placeholder-spinner {
+  color: #6366f1;
+}
+.image-placeholder--error {
+  color: #f87171;
+}
+
+/* ⚠️ prefers-reduced-motion 例外：系统开启「减弱动态效果」（如 Windows 关闭动画效果）时，
+   tailwind.css 的全局媒体查询会把所有 CSS 动画冻结成 0.01ms 单次。
+   但 loading 指示器不动，用户就感知不到「正在加载/正在生成」——
+   这里单独放行这两个加载动画（转圈 + 灯泡光晕），与组件里 refill-spinner 用
+   rAF 绕开 prefers-reduced-motion 的意图一致。 */
+@media (prefers-reduced-motion: reduce) {
+  .image-placeholder-spinner {
+    animation-duration: 1s !important;
+    animation-iteration-count: infinite !important;
+  }
+  .slot-pending-bulb-aura {
+    animation-duration: 2.4s !important;
+    animation-iteration-count: infinite !important;
+  }
 }
 
 /* failed：错误居中 + 重试按钮 */
