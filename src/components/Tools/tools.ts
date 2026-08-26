@@ -1297,7 +1297,7 @@ export function getToolsCate() {
           id: 'music-playlist-2026-08-25',
           title: '音乐播放列表',
           logo: '/images/logo/music-playlist.png',
-          desc: '登录后上传 MP3 / M4A / WAV 音频到 R2，可把任意歌曲加入一个或多个歌单；每首歌与每个歌单都有独立的公开分享链接，无需登录即可收听',
+          desc: '登录后上传 MP3 / M4A / WAV 音频到 R2，可把任意歌曲加入一个或多个歌单；每首歌与每个歌单都有独立的公开分享链接，无需登录即可收听。不会压缩音质，完全原版上传',
           url: '/music-playlist/',
           cateId: 7,
           cate: '其他工具',
