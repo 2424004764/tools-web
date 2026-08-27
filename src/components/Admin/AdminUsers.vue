@@ -24,6 +24,7 @@ import {
   Hide,
   ArrowDown,
 } from '@element-plus/icons-vue'
+import { formatLocation } from '@/utils/geo-name'
 
 const loading = ref(false)
 const list = ref<AdminUser[]>([])
@@ -579,6 +580,29 @@ const updateIsMobile = () => {
             <el-tag v-else type="success" effect="plain" size="small">正常</el-tag>
           </template>
         </el-table-column>
+        <el-table-column label="注册位置" width="150">
+          <template #default="{ row }">
+            <div class="flex flex-col gap-0.5 leading-tight">
+              <span
+                v-if="row.register_country || row.register_city"
+                class="text-xs text-ink-700"
+              >
+                {{ formatLocation(row.register_country, row.register_city) }}
+              </span>
+              <span
+                v-else
+                class="text-xs text-ink-400"
+              >-</span>
+              <span
+                v-if="row.register_ip"
+                class="text-[10px] text-ink-400 font-mono"
+                :title="`首次工具使用时的 IP（CF-Connecting-IP）`"
+              >
+                {{ row.register_ip }}
+              </span>
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column label="注册时间" min-width="160">
           <template #default="{ row }">
             <span class="text-xs text-ink-500">{{ formatTime(row.created_at) }}</span>
@@ -589,15 +613,52 @@ const updateIsMobile = () => {
             <span class="text-xs text-ink-500">{{ formatTime(row.last_login) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="今日使用工具" width="140" align="center">
+        <el-table-column label="今日使用工具" width="160" align="center">
           <template #default="{ row }">
             <template v-if="(row.today_usage_count ?? 0) > 0">
-              <div class="text-sm text-ink-700 tabular-nums leading-tight">
-                <span class="font-semibold text-accent-600">{{ row.today_tool_count ?? 0 }}</span>
-                <span class="text-ink-500 text-xs mx-0.5">个工具 /</span>
-                <span class="font-semibold text-accent-600">{{ row.today_usage_count ?? 0 }}</span>
-                <span class="text-ink-500 text-xs ml-0.5">次</span>
-              </div>
+              <el-popover
+                placement="left-start"
+                :width="280"
+                trigger="hover"
+                :show-after="120"
+                popper-class="today-tools-popover"
+                :disabled="!row.today_tools || row.today_tools.length === 0"
+              >
+                <template #reference>
+                  <span class="cursor-pointer inline-flex items-baseline gap-0.5 px-1.5 py-0.5 rounded hover:bg-accent-50 transition-colors tabular-nums leading-tight">
+                    <span class="font-semibold text-accent-600 text-sm">{{ row.today_tool_count ?? 0 }}</span>
+                    <span class="text-ink-500 text-xs mx-0.5">个工具 /</span>
+                    <span class="font-semibold text-accent-600 text-sm">{{ row.today_usage_count ?? 0 }}</span>
+                    <span class="text-ink-500 text-xs ml-0.5">次</span>
+                  </span>
+                </template>
+                <div v-if="row.today_tools && row.today_tools.length > 0">
+                  <div class="text-xs font-medium text-ink-700 mb-2 flex items-center justify-between">
+                    <span>今日使用的工具</span>
+                    <span class="text-ink-400">共 {{ row.today_tools.length }} 个 · {{ row.today_usage_count }} 次</span>
+                  </div>
+                  <ul class="space-y-1 max-h-64 overflow-auto">
+                    <li
+                      v-for="t in row.today_tools"
+                      :key="t.tool_url"
+                      class="flex items-center justify-between gap-2 text-xs hover:bg-accent-50 -mx-1 px-1 py-0.5 rounded"
+                    >
+                      <a
+                        :href="t.tool_url"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-ink-800 truncate hover:text-accent-600"
+                        :title="t.tool_title"
+                      >
+                        {{ t.tool_title }}
+                      </a>
+                      <el-tag size="small" effect="plain" type="info" class="!shrink-0">
+                        {{ t.use_count }} 次
+                      </el-tag>
+                    </li>
+                  </ul>
+                </div>
+              </el-popover>
             </template>
             <span v-else class="text-xs text-ink-400">-</span>
           </template>

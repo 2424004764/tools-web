@@ -98,7 +98,8 @@ export async function onRequest(context) {
       .prepare(
         `SELECT id, path, method, status, error_message, error_stage,
                 upstream_name, upstream_status, upstream_body,
-                uid, client_ip, user_agent, duration_ms, extra, created_at
+                uid, client_ip, country, region, city, timezone, colo,
+                user_agent, duration_ms, extra, created_at
          FROM api_error_logs
          ${whereSql}
          ORDER BY created_at DESC, id DESC

@@ -74,11 +74,25 @@ const uploadedFileNames = ref<string[]>([])
 // 用下标 idx 作为 key 在 reorder 时会让 Vue 误判为「元素被替换」而闪烁，
 // 改用与文件一一绑定的稳定 id 才能让 Vue 正确复用 DOM
 const imageIds = ref<string[]>([])
+// 与 imagePreviews 等长的宽高比字符串，如 '9/16' / '1/1' / '16/9'。
+// 让 grid cell 根据图实际比例伸缩，9:16 长图不会被裁掉。解析异步、不阻塞预览显示。
+const imageAspectStyles = ref<string[]>([])
 // 缩略图网格 ref：用于挂载 Sortable
 const imageGridRef = ref<HTMLElement | null>(null)
 
 const canAddMore = computed(() => imageFiles.value.length < MAX_IMAGES)
 const remainingSlots = computed(() => MAX_IMAGES - imageFiles.value.length)
+
+// 从 dataURL 解析图片宽高比，异步填充 imageAspectStyles[idx]。
+// 失败（如浏览器拒绝读图）时保持 undefined，cell 走默认正方形兜底。
+const probeAspect = (dataUrl: string, idx: number) => {
+  const img = new Image()
+  img.onload = () => {
+    if (!img.width || !img.height) return
+    imageAspectStyles.value[idx] = `${img.width} / ${img.height}`
+  }
+  img.src = dataUrl
+}
 
 // el-upload onChange：每次新增/移除文件都会触发，仅处理新增。
 // auto-upload=false 时 status='ready' 即代表「刚被加入内部列表」。
@@ -118,7 +132,10 @@ const addImageFiles = (files: File[]) => {
     const reader = new FileReader()
     reader.onload = (e) => {
       // 同步追加到预览数组，保持索引一致
-      imagePreviews.value.push(e.target?.result as string)
+      const url = e.target?.result as string
+      imagePreviews.value.push(url)
+      // 异步探测宽高比，9:16 等长图上传时 grid cell 能随之拉高，缩略图不会被裁
+      probeAspect(url, imagePreviews.value.length - 1)
     }
     reader.readAsDataURL(file)
     added++
@@ -137,6 +154,7 @@ const removeImage = (idx: number) => {
   imagePreviews.value.splice(idx, 1)
   uploadedFileNames.value.splice(idx, 1)
   imageIds.value.splice(idx, 1)
+  imageAspectStyles.value.splice(idx, 1)
 }
 
 // 清空全部图片
@@ -146,6 +164,7 @@ const clearAllImages = () => {
   imagePreviews.value = []
   uploadedFileNames.value = []
   imageIds.value = []
+  imageAspectStyles.value = []
   uploadRef.value?.clearFiles()
   nextTick(() => destroyImageSortable())
 }
@@ -372,10 +391,12 @@ const handleImageSortEnd = (evt: Sortable.SortableEvent) => {
   const file = imageFiles.value.splice(oldIndex, 1)[0]
   const preview = imagePreviews.value.splice(oldIndex, 1)[0]
   const name = uploadedFileNames.value.splice(oldIndex, 1)[0]
+  const aspect = imageAspectStyles.value.splice(oldIndex, 1)[0]
   imageIds.value.splice(newIndex, 0, id)
   imageFiles.value.splice(newIndex, 0, file)
   imagePreviews.value.splice(newIndex, 0, preview)
   uploadedFileNames.value.splice(newIndex, 0, name)
+  imageAspectStyles.value.splice(newIndex, 0, aspect)
 }
 
 // isBatchLoading 变化时切换 Sortable 的 disabled 状态
@@ -1134,13 +1155,14 @@ const openInImgCut = (slot: ResultSlot) => {
                       v-for="(preview, idx) in imagePreviews"
                       :key="imageIds[idx]"
                       class="upload-thumb"
+                      :style="imageAspectStyles[idx] ? { aspectRatio: imageAspectStyles[idx] } : undefined"
                       @click.stop
                     >
                       <el-image
                         :src="preview"
                         :preview-src-list="imagePreviews"
                         :initial-index="idx"
-                        fit="cover"
+                        fit="contain"
                         class="upload-thumb-img"
                         alt="上传预览"
                       />
@@ -1644,11 +1666,16 @@ const openInImgCut = (slot: ResultSlot) => {
 }
 .upload-grid {
   display: grid;
+  /* minmax + auto-fill 保持列宽最小 96px、超出后自动折行；
+     grid-auto-rows: auto 让每行高度跟着 row 里实际最高的 cell 走，
+     长图（9:16）上传时该 cell 高度自然撑高，不会被压成正方形导致图片裁切 */
   grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  grid-auto-rows: auto;
   gap: 8px;
 }
 .upload-thumb {
   position: relative;
+  /* 默认正方形兜底；JS 探测到宽高比后通过 :style="aspectRatio:..." 覆盖 */
   aspect-ratio: 1 / 1;
   border-radius: 8px;
   overflow: hidden;
@@ -1693,9 +1720,11 @@ const openInImgCut = (slot: ResultSlot) => {
   height: 100%;
 }
 :deep(.upload-thumb-img img) {
+  /* contain：9:16 等长图在正方形 / 长方形 cell 内完整显示（不被裁切）。
+     cell 的 aspect-ratio 由 JS 根据图片宽高比动态设置，长图 cell 会拉高 */
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
 }
 .upload-thumb-remove {
@@ -2062,5 +2091,29 @@ const openInImgCut = (slot: ResultSlot) => {
 @keyframes btn-shine {
   0%   { transform: translateX(-100%) skewX(-12deg); }
   100% { transform: translateX(220%)  skewX(-12deg); }
+}
+
+/* ============ Element Plus 全屏图片预览 ============
+   el-image-viewer 默认 canvas 是 100vw × 100vh，img 同时设了 max-width:100% 与 max-height:100%，
+   对 9:16 长图：
+     - max-width:100vw 让图宽撑满视口
+     - max-height:100vh 同时生效，触发等比缩放，宽度再被压回到 (100vh × 9/16) ≈ 56vh
+   所以「9:16 长图 + 全屏 viewport」实际渲染宽度 ≈ 56vh（小尺寸屏甚至更窄），
+   视觉上像被裁掉了一样（实际上不是被裁，只是等比缩小居中显示，上下大量黑边）。
+
+   EP 2.x 默认行为就是这种「保持比例 + 居中」，并非 bug。但因为我们在上传缩略图上
+   用了 cover，长图被裁掉时用户心理预期是「原图能看到全貌」，看到全屏 viewer 不再被裁
+   反而觉得奇怪。下面的样式让全屏 viewer 在长图情况下显示更「贴近原图大小」：
+     - 不强制拉伸 width:auto + max-width:100vw
+     - max-height 减去 viewer 顶部 toolbar / 关闭按钮区域（实际值由 EP 内部 .el-image-viewer__actions 高度决定，约 56px）
+     - object-fit:contain 保证不被裁切
+   这段全局生效（el-image-viewer 是 teleport 到 body 的，scoped 样式无法触及） */
+.el-image-viewer__canvas img,
+ .el-image-viewer__img {
+  max-width: 100vw !important;
+  max-height: calc(100vh - 64px) !important;
+  width: auto !important;
+  height: auto !important;
+  object-fit: contain !important;
 }
 </style>

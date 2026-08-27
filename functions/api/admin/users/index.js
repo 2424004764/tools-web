@@ -116,6 +116,7 @@ async function onRequestGet(context) {
 
     // 当前页 uid 列表 → 今日工具使用聚合（DISTINCT tool_url 为「使用工具个数」，
     //   COUNT(*) 为「使用次数」）。一次查询多行，避免每行 correlated subquery。
+    // 同时聚合今日每个工具的使用次数（用于悬浮显示具体工具列表）。
     let rows = list.results || []
     if (rows.length > 0) {
       const uids = rows.map((r) => r.id)
@@ -135,12 +136,57 @@ async function onRequestGet(context) {
       const usageMap = new Map(
         (usageResult.results || []).map((u) => [u.uid, u]),
       )
+
+      // 今日具体工具列表（按 use_count 倒序；悬浮 popover 用）
+      const toolsResult = await db
+        .prepare(
+          `SELECT uid, tool_url, tool_title, COUNT(*) AS use_count
+           FROM tool_usage_records
+           WHERE uid IN (${placeholders}) AND used_at >= ?
+           GROUP BY uid, tool_url, tool_title
+           ORDER BY use_count DESC`,
+        )
+        .bind(...uids, todayStart)
+        .all()
+      const toolsMap = new Map()
+      for (const t of toolsResult.results || []) {
+        if (!toolsMap.has(t.uid)) toolsMap.set(t.uid, [])
+        toolsMap.get(t.uid).push({
+          tool_url: t.tool_url,
+          tool_title: t.tool_title,
+          use_count: t.use_count,
+        })
+      }
+
+      // 注册位置与注册 IP：取该用户最早一条 tool_usage_records 的 country / city / ip
+      // 作为「注册位置」与「注册 IP」（大多数用户首次进入工具就是注册后立即使用；无记录则 null）。
+      // ip 列由 migrations/051_add_tool_usage_ip.sql 引入，旧记录可能为 NULL。
+      const locationResult = await db
+        .prepare(
+          `SELECT uid, country, city, ip
+           FROM tool_usage_records
+           WHERE uid IN (${placeholders})
+             AND (country IS NOT NULL OR city IS NOT NULL OR ip IS NOT NULL)
+           GROUP BY uid
+           HAVING used_at = MIN(used_at)`,
+        )
+        .bind(...uids)
+        .all()
+      const locationMap = new Map(
+        (locationResult.results || []).map((l) => [l.uid, l]),
+      )
+
       rows = rows.map((r) => {
         const u = usageMap.get(r.id)
+        const loc = locationMap.get(r.id)
         return {
           ...r,
           today_tool_count: u?.tool_count ?? 0,
           today_usage_count: u?.use_count ?? 0,
+          today_tools: toolsMap.get(r.id) || [],
+          register_country: loc?.country ?? null,
+          register_city: loc?.city ?? null,
+          register_ip: loc?.ip ?? null,
         }
       })
     }
