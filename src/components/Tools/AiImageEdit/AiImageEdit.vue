@@ -1000,6 +1000,54 @@ const openSlotInNewTab = (slot: ResultSlot) => {
   }
 }
 
+// 把生成结果发送到上传区作为新的参考图
+// 复用 onUploadDrop 中「路径 A」的逻辑：URL+recordId → 后端代理拿 blob → 构造 File → addImageFiles
+// 主要用于手机端：触屏 HTML5 拖拽体验差，按钮是更直接的入口
+const sendResultToUpload = async (slot: ResultSlot) => {
+  if (!slot.url) return
+  // 上传中 / 上传区满：避免静默失败，给用户明确反馈
+  if (isBatchLoading.value) {
+    ElMessage.warning('生成中，暂不能发送')
+    return
+  }
+  if (!canAddMore.value) {
+    ElMessage.warning(`已达上限 ${MAX_IMAGES} 张，请先移除部分图片`)
+    return
+  }
+  isRefillingImage.value = true
+  try {
+    let blob: Blob
+    let filename = 'generated-result.png'
+    if (slot.recordId) {
+      // 走后端代理拿 blob，绕开第三方图床 CORS
+      const res = await fetchMyGenerationRecordImage(slot.recordId)
+      blob = res.blob
+      if (res.filename) filename = res.filename
+    } else {
+      // 兜底：极少数无 recordId 的历史结果
+      const resp = await fetch(slot.url)
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+      blob = await resp.blob()
+    }
+    const file = new File([blob], filename, {
+      type: blob.type || 'image/png',
+    })
+    addImageFiles([file])
+    // addImageFiles 内部已经会 ElMessage.success('图片已就绪')，
+    // 等待 Vue 把新缩略图渲染完，再平滑滚到上传区让用户看到结果
+    await nextTick()
+    // 优先滚到 dropzone 容器（覆盖上传区+缩略图网格），比单纯滚到第一个缩略图更稳
+    document.querySelector('.upload-dropzone')?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    })
+  } catch (err) {
+    ElMessage.error('读取生成结果失败：' + (err as Error)?.message)
+  } finally {
+    isRefillingImage.value = false
+  }
+}
+
 // 跳转到「图片切割」工具，把当前生成图作为源图带上
 // 路径使用 vue-router 解析，避免硬编码域名；recordId 同步带上以便 ImgCut 走后端代理绕开第三方图床 CORS
 const openInImgCut = (slot: ResultSlot) => {
@@ -1432,13 +1480,13 @@ const openInImgCut = (slot: ResultSlot) => {
                     </template>
                   </el-image>
                   <p class="text-caption text-gray-400 text-center mt-1 select-none">
-                    拖拽此图片到上方上传区即可继续编辑
+                    桌面端：拖拽此图片到上方上传区即可继续编辑；手机端：点击「发送至上传区」按钮
                   </p>
                 </div>
-                <div class="flex gap-2 mt-2">
+                <div class="flex gap-2 mt-2 flex-wrap sm:flex-nowrap">
                   <button
                     @click="downloadSlot(slot)"
-                    class="flex-1 py-2 rounded-lg bg-blue-600 text-white text-body-sm font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-1.5"
+                    class="flex-1 min-w-[30%] py-2 rounded-lg bg-blue-600 text-white text-body-sm font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-1.5"
                   >
                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                       <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
@@ -1446,8 +1494,29 @@ const openInImgCut = (slot: ResultSlot) => {
                     下载
                   </button>
                   <button
+                    @click="sendResultToUpload(slot)"
+                    :disabled="isBatchLoading || !canAddMore || isRefillingImage"
+                    class="flex-1 min-w-[30%] py-2 rounded-lg border border-accent-300 bg-accent-50 text-accent-700 text-body-sm font-medium hover:bg-accent-100 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-accent-50"
+                    title="把当前生成结果作为新参考图发送到上传区（手机端专用入口）"
+                    aria-label="发送至上传区"
+                  >
+                    <template v-if="isRefillingImage">
+                      <svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true">
+                        <circle cx="12" cy="12" r="9" stroke-opacity=".25" />
+                        <path stroke-linecap="round" d="M21 12a9 9 0 0 0-9-9" />
+                      </svg>
+                      正在发送…
+                    </template>
+                    <template v-else>
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 19V5m0 0l-6 6m6-6l6 6" />
+                      </svg>
+                      发送至上传区
+                    </template>
+                  </button>
+                  <button
                     @click="openSlotInNewTab(slot)"
-                    class="flex-1 py-2 rounded-lg border border-gray-300 text-gray-700 text-body-sm font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-1.5"
+                    class="flex-1 min-w-[30%] py-2 rounded-lg border border-gray-300 text-gray-700 text-body-sm font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-1.5"
                   >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
