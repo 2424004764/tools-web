@@ -29,6 +29,20 @@ export interface AdminUser {
   today_tool_count?: number
   /** 今日（本地 UTC+8 00:00 至今）工具使用总次数（每次进入工具页 = 1 次） */
   today_usage_count?: number
+  /** 今日使用的工具明细（按 use_count 倒序），悬浮时展示 */
+  today_tools?: TodayToolUsageItem[]
+  /** 注册位置（取自最早一条 tool_usage_records 的地理位置），可能为 null */
+  register_country?: string | null
+  register_city?: string | null
+  /** 注册 IP（取自最早一条 tool_usage_records 的 ip），可能为 null（旧记录无 ip 列） */
+  register_ip?: string | null
+}
+
+/** 后台用户列表中「今日使用工具」悬浮明细条目 */
+export interface TodayToolUsageItem {
+  tool_url: string
+  tool_title: string
+  use_count: number
 }
 
 /** 创建用户请求体（管理员手动创建） */
@@ -285,6 +299,16 @@ export interface ApiErrorLog {
   upstream_body: string | null
   uid: string | null
   client_ip: string | null
+  /** ISO 3166-1 alpha-2 国家代码，来自 CF request.cf */
+  country: string | null
+  /** 省/州（CF 返回值依国家而异） */
+  region: string | null
+  /** 城市名（英文/原文） */
+  city: string | null
+  /** IANA 时区，如 'Asia/Shanghai' */
+  timezone: string | null
+  /** CF 接入点机场代码，如 'HKG' / 'LAX' */
+  colo: string | null
   user_agent: string | null
   duration_ms: number | null
   /** 原始 JSON 字符串 */

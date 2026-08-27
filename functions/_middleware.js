@@ -82,6 +82,16 @@ async function captureApiError(context, response, path, startedAt) {
     uid = null
   }
 
+  // 地理位置：从 request.cf 一次性取出所有字段
+  // CF Pages Functions 在生产环境下 context.request.cf 一定有值；
+  // 本地 wrangler 启动后 context.request.cf 为 undefined，需要兜底
+  const cf = request.cf || {}
+  const country = cf.country || null
+  const region = cf.region || null
+  const city = cf.city || null
+  const timezone = cf.timezone || null
+  const colo = cf.colo || null
+
   await logApiError(env, {
     path,
     method: request.method,
@@ -93,6 +103,11 @@ async function captureApiError(context, response, path, startedAt) {
     upstreamBody: detail.upstreamBody || null,
     uid,
     clientIp: request.headers.get('CF-Connecting-IP') || null,
+    country,
+    region,
+    city,
+    timezone,
+    colo,
     userAgent: request.headers.get('User-Agent') || null,
     durationMs: Date.now() - startedAt,
     extra: detail.extra || null,

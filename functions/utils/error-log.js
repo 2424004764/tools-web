@@ -76,7 +76,7 @@ export async function logApiError(env, payload = {}) {
   try {
     if (!env || !env.DB) return
 
-    const {
+const {
       path,
       method,
       status,
@@ -87,6 +87,11 @@ export async function logApiError(env, payload = {}) {
       upstreamBody = null,
       uid = null,
       clientIp = null,
+      country = null,
+      region = null,
+      city = null,
+      timezone = null,
+      colo = null,
       userAgent = null,
       durationMs = null,
       extra = null,
@@ -107,29 +112,35 @@ export async function logApiError(env, payload = {}) {
       `INSERT INTO api_error_logs
          (id, path, method, status, error_message, error_stage,
           upstream_name, upstream_status, upstream_body,
-          uid, client_ip, user_agent, duration_ms, extra, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          uid, client_ip, country, region, city, timezone, colo,
+          user_agent, duration_ms, extra, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
-      .bind(
-        genId(),
-        path,
-        method,
-        status,
-        truncate(errorMessage, MAX_ERROR_MESSAGE),
-        stage || 'unknown',
-        upstreamName,
-        typeof upstreamStatus === 'number' ? upstreamStatus : null,
-        truncate(upstreamBody, MAX_UPSTREAM_BODY),
-        uid || null,
-        clientIp,
-        truncate(userAgent, MAX_USER_AGENT),
-        typeof durationMs === 'number' ? durationMs : null,
-        truncate(extraText, MAX_UPSTREAM_BODY),
-        // 与项目其他表保持一致：UTC 字符串、空格分隔、无 Z 后缀
-        // 前端 formatTime 会按 UTC 解析再 toLocaleString('zh-CN') 转北京时
-        new Date().toISOString().slice(0, 19).replace('T', ' '),
-      )
-      .run()
+    .bind(
+      genId(),
+      path,
+      method,
+      status,
+      truncate(errorMessage, MAX_ERROR_MESSAGE),
+      stage || 'unknown',
+      upstreamName,
+      typeof upstreamStatus === 'number' ? upstreamStatus : null,
+      truncate(upstreamBody, MAX_UPSTREAM_BODY),
+      uid || null,
+      clientIp,
+      country || null,
+      region || null,
+      city || null,
+      timezone || null,
+      colo || null,
+      truncate(userAgent, MAX_USER_AGENT),
+      typeof durationMs === 'number' ? durationMs : null,
+      truncate(extraText, MAX_UPSTREAM_BODY),
+      // 与项目其他表保持一致：UTC 字符串、空格分隔、无 Z 后缀
+      // 前端 formatTime 会按 UTC 解析再 toLocaleString('zh-CN') 转北京时
+      new Date().toISOString().slice(0, 19).replace('T', ' '),
+    )
+    .run()
   } catch (e) {
     // 日志失败只记控制台，绝不影响主请求
     console.error('logApiError failed:', e)

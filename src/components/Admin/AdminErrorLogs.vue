@@ -3,6 +3,7 @@ import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { fetchApiErrorLogs, cleanupApiErrorLogs } from '@/api/admin/error-log'
 import type { AdminPagination, ApiErrorLog } from '@/types/admin'
+import { formatLocation } from '@/utils/geo-name'
 
 const loading = ref(false)
 const list = ref<ApiErrorLog[]>([])
@@ -240,6 +241,23 @@ onMounted(load)
           </div>
         </template>
       </el-table-column>
+      <el-table-column label="IP" width="120">
+        <template #default="{ row }">
+          <span class="text-xs text-ink-500 font-mono">{{ row.client_ip || '-' }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="位置" width="140">
+        <template #default="{ row }">
+          <span
+            v-if="row.country || row.city"
+            class="text-xs text-ink-700"
+            :title="[row.timezone, row.colo ? `CF ${row.colo}` : null].filter(Boolean).join(' · ')"
+          >
+            {{ formatLocation(row.country, row.city) }}
+          </span>
+          <span v-else class="text-xs text-ink-400">-</span>
+        </template>
+      </el-table-column>
       <el-table-column label="状态码" width="100">
         <template #default="{ row }">
           <el-tag :type="statusTagType(row.status)" effect="plain">{{ row.status }}</el-tag>
@@ -332,6 +350,16 @@ onMounted(load)
         <div>
           <div class="text-gray-500 mb-1">客户端 IP</div>
           <div>{{ selected.client_ip || '-' }}</div>
+        </div>
+        <div>
+          <div class="text-gray-500 mb-1">位置</div>
+          <div>
+            <span v-if="selected.country || selected.city">{{ formatLocation(selected.country, selected.city) }}</span>
+            <span v-else class="text-gray-400">-</span>
+            <span v-if="selected.timezone || selected.colo" class="text-xs text-gray-400 ml-1">
+              ({{ [selected.timezone, selected.colo ? `CF ${selected.colo}` : null].filter(Boolean).join(' · ') }})
+            </span>
+          </div>
         </div>
         <div>
           <div class="text-gray-500 mb-1">User-Agent</div>
