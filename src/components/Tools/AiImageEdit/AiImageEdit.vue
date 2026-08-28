@@ -925,6 +925,35 @@ const clearPrompt = () => {
   }
 }
 
+// ============ 本次生成总耗时（用于「生成结果」标题后展示）============
+// resetResults 时记录 startTime，所有 slot 全部 success/failed 时记录 endTime；
+// 区间内如果还有重试（retrySlot），endTime 会被刷新。
+const batchStartAt = ref<number | null>(null)
+const batchEndAt = ref<number | null>(null)
+
+const totalElapsedMs = computed(() => {
+  if (batchStartAt.value == null) return 0
+  const end = batchEndAt.value ?? Date.now()
+  return Math.max(0, end - batchStartAt.value)
+})
+
+// 把秒级毫秒数格式化为「N秒」或「N分M秒」
+const formatBatchDuration = (ms: number): string => {
+  const totalSec = Math.round(ms / 1000)
+  if (totalSec < 60) return `${totalSec}秒`
+  const m = Math.floor(totalSec / 60)
+  const s = totalSec % 60
+  return s === 0 ? `${m}分` : `${m}分${s}秒`
+}
+
+// 全部 slot 收尾（success 或 failed）时调用，把 batchEndAt 设为当前时间
+// 仍在 pending 中则不更新（生成还没结束，计时器继续走）。
+const finalizeBatchIfDone = () => {
+  if (batchStartAt.value == null) return
+  const allDone = results.every((s) => s.status !== 'pending')
+  if (allDone) batchEndAt.value = Date.now()
+}
+
 // ============ 结果区网格列数：1 全宽，2 两列，3+ 三列（手机端一律单列） ============
 const resultGridClass = computed(() => {
   const n = results.length
@@ -1022,6 +1051,9 @@ const generateImage = async () => {
   // 重置结果区为 N 个 pending slot（旧的 slot 计时器会被 stopAllSlotTimers 清掉）
   resetResults(n)
   isBatchLoading.value = true
+  // 记录批次起止时间：startTime 在这里锁定，endTime 等最后一个 slot 收尾时由 finalizeBatchIfDone 写入
+  batchStartAt.value = Date.now()
+  batchEndAt.value = null
 
   // 乐观扣费：服务端在调上游前就已经扣费，前端立即把余额减掉，
   // 这样在 30~90s 的生成期间徽章和弹窗能保持与服务端一致。
@@ -1081,6 +1113,9 @@ const generateImage = async () => {
     )
   }
 
+  // 全部并发请求已 settle（成功或失败），写结束时间
+  finalizeBatchIfDone()
+
   isBatchLoading.value = false
 }
 
@@ -1129,6 +1164,8 @@ const retrySlot = async (slot: ResultSlot) => {
     userStore.fetchCredits(true)
     // slot 已经被 fireOneRequest 标为 failed + 写入 errorMsg
   }
+  // 重试结束 → 重新判断是否所有 slot 收尾，更新 endTime
+  finalizeBatchIfDone()
   isBatchLoading.value = false
 }
 
@@ -1540,6 +1577,13 @@ const openInImgCut = (slot: ResultSlot) => {
             生成结果
             <span v-if="results.length > 1" class="text-caption text-gray-400 ml-1">
               （{{ results.length }} 张并发）
+            </span>
+            <span
+              v-if="batchStartAt && batchEndAt && results.length > 0"
+              class="text-caption text-gray-500 ml-2 tabular-nums"
+              :title="'从点击「开始生成」到最后一个 slot 收尾的总耗时'"
+            >
+              耗时 {{ formatBatchDuration(totalElapsedMs) }}
             </span>
           </label>
 
