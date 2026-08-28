@@ -557,7 +557,7 @@ const updateIsMobile = () => {
 </script>
 
 <template>
-  <div v-loading="loading">
+  <div v-loading="loading" class="mx-auto max-w-[1400px]">
     <div class="flex flex-wrap items-end gap-3 mb-4">
       <h2 class="text-xl font-semibold text-ink-900 mr-auto">用户管理</h2>
 
@@ -648,7 +648,7 @@ const updateIsMobile = () => {
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="100">
+        <el-table-column label="状态" width="72">
           <template #default="{ row }">
             <el-tag
               v-if="row.is_admin"
@@ -754,38 +754,32 @@ const updateIsMobile = () => {
         </el-table-column>
         <el-table-column label="操作" width="88" fixed="right" align="center">
           <template #default="{ row }">
-            <el-dropdown trigger="click">
-              <el-button link size="small" type="primary">
-                操作<el-icon class="el-icon--right"><ArrowDown /></el-icon>
-              </el-button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item @click="openCreditDialog(row)">
-                    调整积分
-                  </el-dropdown-item>
-                  <el-dropdown-item @click="openLogsDialog(row)">
-                    积分明细
-                  </el-dropdown-item>
-                  <el-dropdown-item @click="openEditDialog(row)">
-                    改名
-                  </el-dropdown-item>
-                  <el-dropdown-item
-                    v-if="!row.is_admin"
-                    divided
-                    @click="handleToggleDisabled(row)"
-                  >
-                    {{ row.is_disabled ? '启用' : '禁用' }}
-                  </el-dropdown-item>
-                  <el-dropdown-item
-                    v-if="!row.is_admin"
-                    divided
-                    @click="handleDeleteUser(row)"
-                  >
-                    <span class="text-danger-600">删除</span>
-                  </el-dropdown-item>
-                </el-dropdown-menu>
+            <el-popover
+              placement="bottom-end"
+              :width="140"
+              trigger="click"
+              :teleported="true"
+              :show-arrow="false"
+              :hide-after="0"
+              popper-class="row-action-popover"
+            >
+              <template #reference>
+                <el-button link size="small" type="primary" @click.stop>
+                  操作<el-icon class="el-icon--right"><ArrowDown /></el-icon>
+                </el-button>
               </template>
-            </el-dropdown>
+              <ul class="row-action-menu" @click.stop>
+                <li class="row-action-item" @click="openCreditDialog(row)">调整积分</li>
+                <li class="row-action-item" @click="openLogsDialog(row)">积分明细</li>
+                <li class="row-action-item" @click="openEditDialog(row)">改名</li>
+                <li v-if="!row.is_admin" class="row-action-item row-action-divider" @click="handleToggleDisabled(row)">
+                  {{ row.is_disabled ? '启用' : '禁用' }}
+                </li>
+                <li v-if="!row.is_admin" class="row-action-item row-action-item-danger" @click="handleDeleteUser(row)">
+                  删除
+                </li>
+              </ul>
+            </el-popover>
           </template>
         </el-table-column>
       </el-table>
@@ -1276,4 +1270,43 @@ const updateIsMobile = () => {
       </template>
     </el-dialog>
   </div>
+</template>
+
+<style scoped>
+/* 行操作 popover 内部菜单：替代 el-dropdown-menu 的自定义 ul/li 渲染。
+   用 popover 比 el-dropdown 在触屏上更可靠（一次 tap 直接显示，无 focus 二次点击问题）。 */
+.row-action-menu {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  min-width: 110px;
+}
+.row-action-item {
+  padding: 8px 12px;
+  font-size: 13px;
+  color: rgb(63, 63, 70);
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+.row-action-item:hover,
+.row-action-item:active {
+  background-color: rgb(239, 246, 255);
+  color: rgb(234, 88, 12);
+}
+.row-action-divider {
+  border-top: 1px solid rgb(244, 244, 245);
+  margin-top: 4px;
+  padding-top: 8px;
+}
+.row-action-item-danger {
+  color: rgb(220, 38, 38);
+}
+.row-action-item-danger:hover,
+.row-action-item-danger:active {
+  background-color: rgb(254, 242, 242);
+  color: rgb(185, 28, 28);
+}
+</style>
 </template>
