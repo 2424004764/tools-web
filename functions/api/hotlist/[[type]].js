@@ -242,16 +242,22 @@ async function handleSingle(context, type, cacheKey) {
   const resp = json(fresh)
   if (resp.status === 200 && !fresh.error) {
     // 写 L2（D1）+ L1（Edge），都通过 waitUntil 不阻塞响应
+    // ⚠️ 必须在 return 之前 clone：Response body 是一次性 ReadableStream，
+    // return 后 CF runtime 立刻开始读取并锁定 stream，再 clone 就报
+    // "ReadableStream is currently locked to a reader"。
+    // 把 resp.clone() 提前到分支顶部，作为 cacheResp 独立用于缓存写入，
+    // 原始 resp 只用于 return 给客户端。
+    const cacheResp = resp.clone()
     if (context?.waitUntil) {
       context.waitUntil(
         (async () => {
           await upsertCache(db, type, fresh)
-          await edge.put(cacheKey, resp.clone())
+          await edge.put(cacheKey, cacheResp)
         })(),
       )
     } else {
       upsertCache(db, type, fresh).catch(() => {})
-      edge.put(cacheKey, resp.clone()).catch(() => {})
+      edge.put(cacheKey, cacheResp).catch(() => {})
     }
   }
   return resp

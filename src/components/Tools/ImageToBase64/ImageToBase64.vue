@@ -21,6 +21,19 @@ const imagePreview = ref('')
 const imageFormat = ref('png')
 const isImageValid = ref(false)
 
+// 输入框最大长度：16 MB 字符串。
+// 浏览器 <img> 加载 data:image/... 在 base64 解码后接近浏览器内存临界点时通常会 onerror，
+// 16 MB 大致对应一张 8K 级别的图片，超出此尺寸的成功率很低。
+// maxlength 在浏览器层阻断粘贴，前端再额外检查避免被 JS 直接设值绕过。
+const MAX_BASE64_INPUT = 16 * 1024 * 1024
+
+// 字节数转可读字符串（KB / MB）
+const formatBytes = (n: number) => {
+  if (n < 1024) return `${n} B`
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`
+  return `${(n / (1024 * 1024)).toFixed(2)} MB`
+}
+
 // 处理文件上传
 const handleFileUpload = (file: File) => {
   if (!file.type.startsWith('image/')) {
@@ -111,6 +124,18 @@ const convertBase64ToImage = () => {
   }
 
   let base64Str = base64Input.value.trim()
+
+  // 长度硬限制：避免超大字符串在浏览器解码时内存溢出或 onerror 静默失败。
+  // 注意：textarea 的 maxlength 已经挡住了 99% 场景，但用户也可以通过 JS 直接设值绕过，
+  // 这里再补一道保险。
+  if (base64Str.length > MAX_BASE64_INPUT) {
+    imagePreview.value = ''
+    isImageValid.value = false
+    ElMessage.warning(
+      `Base64 字符串长度 ${formatBytes(base64Str.length)} 超过 ${formatBytes(MAX_BASE64_INPUT)} 上限，请压缩图片或降低尺寸后重试`,
+    )
+    return
+  }
 
   try {
     // 检查是否包含 data URI 前缀
@@ -316,10 +341,19 @@ const clearBase64ToImage = () => {
           </div>
           <textarea
             v-model="base64Input"
+            :maxlength="MAX_BASE64_INPUT"
             @input="convertBase64ToImage"
             class="w-full h-32 p-3 border border-gray-300 rounded-md bg-white resize-none"
             placeholder="在此粘贴 Base64 字符串，例如：iVBORw0KGgoAAAANS... 或 data:image/png;base64,iVBORw0KG..."
           ></textarea>
+          <!-- 输入长度提示：超过 70% 提醒，超过 100% 阻断（maxlength 已硬限制）。 -->
+          <p v-if="base64Input.length" class="text-caption text-gray-400 mt-1 tabular-nums">
+            当前 {{ formatBytes(base64Input.length) }} /
+            {{ formatBytes(MAX_BASE64_INPUT) }}
+            <span v-if="base64Input.length > MAX_BASE64_INPUT * 0.7" class="text-amber-600 ml-1">
+              （接近上限，大图可能无法解码）
+            </span>
+          </p>
         </div>
 
         <!-- 转换按钮 -->

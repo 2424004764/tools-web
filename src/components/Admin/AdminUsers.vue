@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import {
   fetchAdminUsers,
   adjustUserCredits,
@@ -104,6 +104,93 @@ const creditDialog = reactive({
   reason: '',
   submitting: false,
 })
+
+// 积分调整弹窗是否已填过内容（true 时关闭需确认，避免误触丢失）
+const creditDialogDirty = computed(
+  () => creditDialog.amount > 0 || (creditDialog.reason || '').trim().length > 0,
+)
+
+// 改名弹窗是否已修改用户名（true 时关闭需确认）
+const editDialogDirty = computed(() => (editDialog.username || '').trim().length > 0)
+
+// 批量积分调整是否已填过金额/备注（true 时关闭需确认）
+const batchCreditDialogDirty = computed(
+  () =>
+    batchCreditDialog.amount > 0 || (batchCreditDialog.reason || '').trim().length > 0,
+)
+
+// 创建用户弹窗是否已填过表单（true 时关闭需确认）
+const createDialogDirty = computed(() => {
+  const f = createDialog.form
+  return (
+    (f.email || '').trim().length > 0 ||
+    (f.username || '').trim().length > 0 ||
+    (f.password || '').length > 0 ||
+    !!f.is_admin
+  )
+})
+
+// 通用「已填过」时点遮罩 / ESC 触发二次确认
+// ElMessageBox 走顶层 await 异步；cancel = 留在弹窗，confirm = 关闭
+const beforeCloseCreditDialog = async (done: () => void) => {
+  if (!creditDialogDirty.value) return done()
+  try {
+    await ElMessageBox.confirm(
+      '已填写的金额/备注会丢失，确定关闭？',
+      '关闭确认',
+      { type: 'warning', confirmButtonText: '仍要关闭', cancelButtonText: '继续编辑' },
+    )
+    done()
+  } catch {
+    /* 取消 */
+  }
+}
+
+const beforeCloseEditDialog = async (done: () => void) => {
+  if (!editDialogDirty.value) return done()
+  try {
+    await ElMessageBox.confirm(
+      '已填写的用户名会丢失，确定关闭？',
+      '关闭确认',
+      { type: 'warning', confirmButtonText: '仍要关闭', cancelButtonText: '继续编辑' },
+    )
+    done()
+  } catch {
+    /* 取消 */
+  }
+}
+
+const beforeCloseBatchCreditDialog = async (done: () => void) => {
+  // 完成态页面（lastResult）直接关，没有正在编辑的输入
+  if (batchCreditDialog.lastResult) return done()
+  if (!batchCreditDialogDirty.value) return done()
+  try {
+    await ElMessageBox.confirm(
+      '已填写的金额/备注会丢失，确定关闭？',
+      '关闭确认',
+      { type: 'warning', confirmButtonText: '仍要关闭', cancelButtonText: '继续编辑' },
+    )
+    done()
+  } catch {
+    /* 取消 */
+  }
+}
+
+const beforeCloseCreateDialog = async (done: () => void) => {
+  // 已生成完结果 = 创建成功，关闭安全
+  if (createDialog.result) return done()
+  if (!createDialogDirty.value) return done()
+  try {
+    await ElMessageBox.confirm(
+      '已填写的邮箱/用户名/密码会丢失，确定关闭？',
+      '关闭确认',
+      { type: 'warning', confirmButtonText: '仍要关闭', cancelButtonText: '继续编辑' },
+    )
+    done()
+  } catch {
+    /* 取消 */
+  }
+}
 
 const openCreditDialog = (user: AdminUser) => {
   creditDialog.uid = user.id
@@ -538,20 +625,18 @@ const updateIsMobile = () => {
           width="48"
           :selectable="isSelectable"
         />
-        <el-table-column label="UID" min-width="120">
+<el-table-column label="邮箱 / UID" min-width="220">
           <template #default="{ row }">
-            <div class="flex items-center gap-1">
-              <code class="text-xs text-ink-500">{{ row.id.slice(0, 10) }}…</code>
-              <el-button link size="small" @click="copyUid(row.id)">复制</el-button>
+            <div class="flex flex-col gap-0.5 leading-snug">
+              <span class="text-ink-900 break-all">{{ row.email || '-' }}</span>
+              <div class="flex items-center gap-1">
+                <code class="text-[10px] text-ink-400 font-mono">{{ row.id.slice(0, 10) }}…</code>
+                <el-button link size="small" class="!p-0 !text-xs" @click="copyUid(row.id)">复制 UID</el-button>
+              </div>
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="邮箱" min-width="180">
-          <template #default="{ row }">
-            <span class="text-ink-900">{{ row.email || '-' }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="用户名" min-width="120">
+        <el-table-column label="用户名" min-width="160">
           <template #default="{ row }">
             <span class="text-ink-700">{{ row.username || '-' }}</span>
           </template>
@@ -578,39 +663,6 @@ const updateIsMobile = () => {
               size="small"
             >已禁用</el-tag>
             <el-tag v-else type="success" effect="plain" size="small">正常</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="注册位置" width="150">
-          <template #default="{ row }">
-            <div class="flex flex-col gap-0.5 leading-tight">
-              <span
-                v-if="row.register_country || row.register_city"
-                class="text-xs text-ink-700"
-              >
-                {{ formatLocation(row.register_country, row.register_city) }}
-              </span>
-              <span
-                v-else
-                class="text-xs text-ink-400"
-              >-</span>
-              <span
-                v-if="row.register_ip"
-                class="text-[10px] text-ink-400 font-mono"
-                :title="`首次工具使用时的 IP（CF-Connecting-IP）`"
-              >
-                {{ row.register_ip }}
-              </span>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="注册时间" min-width="160">
-          <template #default="{ row }">
-            <span class="text-xs text-ink-500">{{ formatTime(row.created_at) }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="最后登录" min-width="160">
-          <template #default="{ row }">
-            <span class="text-xs text-ink-500">{{ formatTime(row.last_login) }}</span>
           </template>
         </el-table-column>
         <el-table-column label="今日使用工具" width="160" align="center">
@@ -663,6 +715,43 @@ const updateIsMobile = () => {
             <span v-else class="text-xs text-ink-400">-</span>
           </template>
         </el-table-column>
+        <el-table-column label="注册位置" width="150">
+          <template #default="{ row }">
+            <div class="flex flex-col gap-0.5 leading-tight">
+              <span
+                v-if="row.register_country || row.register_city"
+                class="text-xs text-ink-700"
+              >
+                {{ formatLocation(row.register_country, row.register_city) }}
+              </span>
+              <span
+                v-else
+                class="text-xs text-ink-400"
+              >-</span>
+              <span
+                v-if="row.register_ip"
+                class="text-[10px] text-ink-400 font-mono"
+                :title="`首次工具使用时的 IP（CF-Connecting-IP）`"
+              >
+                {{ row.register_ip }}
+              </span>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="注册 / 最后登录" min-width="170">
+          <template #default="{ row }">
+            <div class="flex flex-col gap-0.5 leading-tight">
+              <div class="flex items-center gap-1 text-[11px]">
+                <span class="text-ink-400">注册</span>
+                <span class="text-ink-700 tabular-nums">{{ formatTime(row.created_at) }}</span>
+              </div>
+              <div class="flex items-center gap-1 text-[11px]">
+                <span class="text-ink-400">登录</span>
+                <span class="text-ink-700 tabular-nums">{{ formatTime(row.last_login) }}</span>
+              </div>
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="88" fixed="right" align="center">
           <template #default="{ row }">
             <el-dropdown trigger="click">
@@ -701,13 +790,15 @@ const updateIsMobile = () => {
         </el-table-column>
       </el-table>
 
-      <div class="flex justify-end mt-4">
+      <div :class="isMobile ? 'flex justify-center mt-4 overflow-x-auto py-1' : 'flex justify-end mt-4'">
         <el-pagination
           :current-page="pagination.page"
           :page-size="pagination.pageSize"
           :total="pagination.total"
           :page-count="pagination.totalPages"
-          layout="total, prev, pager, next, jumper"
+          :layout="isMobile ? 'prev, pager, next' : 'total, prev, pager, next, jumper'"
+          :pager-count="isMobile ? 5 : 7"
+          :small="isMobile"
           :background="true"
           @current-change="handlePageChange"
         />
@@ -718,10 +809,12 @@ const updateIsMobile = () => {
     <el-dialog
       v-model="creditDialog.visible"
       :title="`调整积分 - ${creditDialog.userLabel}`"
-      width="420px"
+      :width="isMobile ? '92vw' : '420px'"
       :close-on-click-modal="false"
+      :close-on-press-escape="false"
+      :before-close="beforeCloseCreditDialog"
     >
-      <el-form label-width="80px" class="!mt-2">
+      <el-form :label-width="isMobile ? '64px' : '80px'" class="!mt-2">
         <el-form-item label="操作类型">
           <el-radio-group v-model="creditDialog.type">
             <el-radio-button value="grant">赠送</el-radio-button>
@@ -748,14 +841,21 @@ const updateIsMobile = () => {
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="creditDialog.visible = false">取消</el-button>
-        <el-button
-          type="primary"
-          :loading="creditDialog.submitting"
-          @click="submitCredit"
-        >
-          确认{{ creditDialog.type === 'grant' ? '赠送' : '扣减' }}
-        </el-button>
+        <!-- 移动端按钮纵向堆叠 + 占满宽度，桌面端保持横向 -->
+        <div :class="isMobile ? 'flex flex-col gap-2 w-full' : 'flex justify-end gap-2'">
+          <el-button
+            @click="creditDialog.visible = false"
+            :class="isMobile ? '!w-full !order-2' : '!order-1'"
+          >取消</el-button>
+          <el-button
+            type="primary"
+            :loading="creditDialog.submitting"
+            @click="submitCredit"
+            :class="isMobile ? '!w-full !order-1' : '!order-2'"
+          >
+            确认{{ creditDialog.type === 'grant' ? '赠送' : '扣减' }}
+          </el-button>
+        </div>
       </template>
     </el-dialog>
 
@@ -763,21 +863,29 @@ const updateIsMobile = () => {
     <el-dialog
       v-model="editDialog.visible"
       title="修改用户名"
-      width="380px"
+      :width="isMobile ? '92vw' : '380px'"
       :close-on-click-modal="false"
+      :close-on-press-escape="false"
+      :before-close="beforeCloseEditDialog"
     >
-      <el-form label-width="80px" class="!mt-2">
+      <el-form :label-width="isMobile ? '64px' : '80px'" class="!mt-2">
         <el-form-item label="用户名">
           <el-input v-model="editDialog.username" maxlength="64" show-word-limit />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="editDialog.visible = false">取消</el-button>
-        <el-button
-          type="primary"
-          :loading="editDialog.submitting"
-          @click="submitEdit"
-        >保存</el-button>
+        <div :class="isMobile ? 'flex flex-col gap-2 w-full' : 'flex justify-end gap-2'">
+          <el-button
+            @click="editDialog.visible = false"
+            :class="isMobile ? '!w-full !order-2' : '!order-1'"
+          >取消</el-button>
+          <el-button
+            type="primary"
+            :loading="editDialog.submitting"
+            @click="submitEdit"
+            :class="isMobile ? '!w-full !order-1' : '!order-2'"
+          >保存</el-button>
+        </div>
       </template>
     </el-dialog>
 
@@ -785,12 +893,14 @@ const updateIsMobile = () => {
     <el-dialog
       v-model="batchCreditDialog.visible"
       :title="batchCreditDialog.lastResult ? '批量调整完成' : '批量调整积分'"
-      width="560px"
+      :width="isMobile ? '92vw' : '560px'"
       :close-on-click-modal="false"
+      :close-on-press-escape="false"
+      :before-close="beforeCloseBatchCreditDialog"
       @close="closeBatchCreditDialog"
     >
       <template v-if="!batchCreditDialog.lastResult">
-        <el-form label-width="80px" class="!mt-2">
+        <el-form :label-width="isMobile ? '64px' : '80px'" class="!mt-2">
           <el-form-item label="操作类型">
             <el-radio-group v-model="batchCreditDialog.type">
               <el-radio-button value="grant">赠送</el-radio-button>
@@ -872,19 +982,29 @@ const updateIsMobile = () => {
       </template>
 
       <template #footer>
-        <template v-if="!batchCreditDialog.lastResult">
-          <el-button @click="closeBatchCreditDialog">取消</el-button>
-          <el-button
-            type="primary"
-            :loading="batchCreditDialog.submitting"
-            @click="submitBatchCredit"
-          >
-            确认{{ batchCreditDialog.type === 'grant' ? '赠送' : '扣减' }}
-          </el-button>
-        </template>
-        <template v-else>
-          <el-button type="primary" @click="closeBatchCreditDialog">关闭</el-button>
-        </template>
+        <div :class="isMobile ? 'flex flex-col gap-2 w-full' : 'flex justify-end gap-2'">
+          <template v-if="!batchCreditDialog.lastResult">
+            <el-button
+              @click="closeBatchCreditDialog"
+              :class="isMobile ? '!w-full !order-2' : '!order-1'"
+            >取消</el-button>
+            <el-button
+              type="primary"
+              :loading="batchCreditDialog.submitting"
+              @click="submitBatchCredit"
+              :class="isMobile ? '!w-full !order-1' : '!order-2'"
+            >
+              确认{{ batchCreditDialog.type === 'grant' ? '赠送' : '扣减' }}
+            </el-button>
+          </template>
+          <template v-else>
+            <el-button
+              type="primary"
+              @click="closeBatchCreditDialog"
+              :class="isMobile ? '!w-full' : ''"
+            >关闭</el-button>
+          </template>
+        </div>
       </template>
     </el-dialog>
 
@@ -892,8 +1012,8 @@ const updateIsMobile = () => {
     <el-dialog
       v-model="logsDialog.visible"
       :title="`积分明细 - ${logsDialog.userLabel}`"
-      width="820px"
-      :close-on-click-modal="false"
+      :width="isMobile ? '92vw' : '820px'"
+      :close-on-click-modal="true"
     >
       <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
         <div class="flex items-baseline gap-2">
@@ -974,13 +1094,15 @@ const updateIsMobile = () => {
         </el-table-column>
       </el-table>
 
-      <div class="flex justify-end mt-3">
+      <div :class="isMobile ? 'flex justify-center mt-3 overflow-x-auto py-1' : 'flex justify-end mt-3'">
         <el-pagination
           :current-page="logsDialog.page"
           :page-size="logsDialog.pageSize"
           :total="logsDialog.total"
           :page-count="Math.max(1, Math.ceil(logsDialog.total / logsDialog.pageSize))"
-          layout="total, prev, pager, next"
+          :layout="isMobile ? 'prev, pager, next' : 'total, prev, pager, next'"
+          :pager-count="isMobile ? 5 : 7"
+          :small="isMobile"
           :background="true"
           @current-change="handleLogsPageChange"
         />
@@ -992,6 +1114,9 @@ const updateIsMobile = () => {
       v-model="createDialog.visible"
       title="创建用户"
       :width="isMobile ? '92vw' : '520px'"
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
+      :before-close="beforeCloseCreateDialog"
     >
       <!-- 表单面板 -->
       <template v-if="!createDialog.result">
