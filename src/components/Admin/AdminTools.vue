@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import {
   fetchAdminTools,
   updateAdminTool,
@@ -93,6 +93,11 @@ const handleToggle = async (row: ToolFeature, value: 0 | 1 | boolean) => {
     ElMessage.error(err?.response?.data?.error || '操作失败')
   }
 }
+
+// 初次加载完成后把当前所有分类 id 写入 activeCategories → 默认全部展开。
+// 之后用户手动折叠/展开的状态由 el-collapse 自身维护；watch 只在「首次从空 → 有数据」时触发。
+// 这个 watch 必须在 `groupedList` 声明之后才注册（参见下方 sortedList 之后的 watch）。
+const activeInitDone = ref(false)
 
 // ============ 编辑排序/标题 ============
 const editDialog = reactive({
@@ -368,8 +373,20 @@ const groupedList = computed(() => {
     .map(([cid, v]) => ({ id: cid, name: v.name, tools: v.tools }))
 })
 
+// 这里 watch 必须在 groupedList 声明之后注册（避免 setup 阶段的 TDZ 陷阱）。
+// 第一次拿到分类数据时自动展开所有折叠面板；之后保留用户手动折叠/展开的状态。
+watch(
+  () => groupedList.value.map((g) => g.id),
+  (ids) => {
+    if (activeInitDone.value || ids.length === 0) return
+    activeInitDone.value = true
+    activeCategories.value = ids
+  },
+)
+
 onMounted(() => {
-  activeCategories.value = [] // 默认全部折叠
+  // 默认折叠状态由上面 watch 在 groupedList 首次拿到数据时统一初始化为「全展开」，
+  // 这里不再强制清空（之前清空会让用户每次进页都看到一片空折叠面板）
   load()
 })
 </script>

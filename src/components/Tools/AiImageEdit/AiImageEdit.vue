@@ -37,11 +37,54 @@ const sizeOptions = [
   { value: '2048x1024', label: '2:1 宽屏' },
 ]
 
-// 表单状态
-const selectedSize = ref(sizeOptions[0].value)
 // 并发数：1-5，默认 1。N 个变体并发请求，每张独立结果/扣费/失败重试
-const selectedConcurrency = ref(1)
 const concurrencyOptions = [1, 2, 3, 4, 5]
+
+// ============ localStorage 同步 ref ============
+// 用法：直接像普通 ref 用（selectedSize.value / v-model="selectedSize"），
+// 初始化时就从 localStorage 读取（合法值校验），任何变化都自动写回。
+// 解决了「ref 默认值 → onMounted 异步赋值 → watch 才触发」的中间态：
+// 进页面时 <select> 的 v-model 已经指向 cache 值，UI 立即正确显示。
+function useCachedRef<T extends string | number>(
+  key: string,
+  defaultValue: T,
+  validate?: (val: T) => boolean,
+) {
+  let initial: T = defaultValue
+  try {
+    const raw = localStorage.getItem(key)
+    if (raw !== null) {
+      // 数字需要 parseInt；字符串直接用
+      const parsed = (typeof defaultValue === 'number'
+        ? (parseInt(raw, 10) as unknown as T)
+        : (raw as unknown as T))
+      if (typeof parsed === 'number' && Number.isNaN(parsed)) {
+        // ignore: 解析失败走默认值
+      } else if (!validate || validate(parsed)) {
+        initial = parsed
+      }
+    }
+  } catch {
+    // localStorage 不可用（隐私模式），静默走默认值
+  }
+  const r = ref(initial)
+  watch(r, (val) => {
+    try { localStorage.setItem(key, String(val)) } catch { /* 静默忽略 */ }
+  })
+  return r
+}
+
+// 表单状态（直接从 localStorage 读初值，避免「默认值 → 异步赋值」的中间态）
+const selectedSize = useCachedRef<string>(
+  'ai-image-edit:size',
+  sizeOptions[0].value,
+  (val) => sizeOptions.some((s) => s.value === val),
+)
+const selectedConcurrency = useCachedRef<number>(
+  'ai-image-edit:concurrency',
+  1,
+  (val) => concurrencyOptions.includes(val),
+)
 const prompt = ref('')
 const promptTouched = ref(false)
 // 批次级 loading：只要还有任意 slot 是 pending 就保持 true
@@ -408,6 +451,8 @@ watch(isBatchLoading, (val) => {
 
 // 提示词缓存 key：刷新页面后自动恢复上次输入
 const PROMPT_CACHE_KEY = 'ai-image-edit:prompt'
+// 尺寸 / 并发数 缓存 key 由 useCachedRef 内部固定（'ai-image-edit:size' / 'ai-image-edit:concurrency'），
+// 这里不重复声明常量避免与 useCachedRef 实现耦合。
 
 // 响应式：< 640px 视为手机端 → 「我的历史」改走独立页面 /ai-image-edit/history
 const isMobile = ref(false)
@@ -429,6 +474,16 @@ onMounted(() => {
   updateIsMobile()
   window.addEventListener('resize', updateIsMobile)
   document.addEventListener('paste', handlePaste)
+  // 全局 ESC 兜底关闭预览（el-image / el-image-viewer 默认就支持，
+  // 但移动端触屏或某些嵌套场景下不一定触发，这里强制接管）
+  window.addEventListener('keydown', onGlobalKeydown)
+  // 全局点击外部兜底关闭预览：移动端/嵌套 el-upload-dragger 时 EP 自带遮罩关闭
+  // 偶尔不响应，这里用 mousedown 抢先一步（click 会晚一拍，避免和触发预览的 click 抢同一拍）
+  window.addEventListener('mousedown', onGlobalClickOutside, true)
+  // 监听 body 子树变化：viewer 通过 teleport 渲染到 body，需要观察其挂载时机
+  viewerWrapperObserver.observe(document.body, { childList: true, subtree: true })
+  // 首次扫描（可能在 mount 时 viewer 已渲染）
+  attachViewerCloseHandlers()
   fetchModelList()
   // URL 带 prompt 参数时优先用它（从 AI 提示词工具跳转过来）
   const urlPrompt = route.query.prompt
@@ -443,6 +498,8 @@ onMounted(() => {
   } catch {
     // localStorage 不可用（隐私模式等），静默忽略
   }
+  // selectedSize / selectedConcurrency 由上面的 useCachedRef 在初始化时已读 cache，
+  // 此处不再重复读取（避免「默认值 → 异步赋值」的中间态闪烁）
 })
 
 // 实时同步提示词到 localStorage
@@ -457,6 +514,76 @@ watch(prompt, (val) => {
     // 静默忽略
   }
 })
+
+// 全局 ESC 键关闭全屏预览
+const onGlobalKeydown = (e: KeyboardEvent) => {
+  if (e.key === 'Escape' && previewOpen.value) {
+    closePreview()
+  }
+}
+
+// ============ 强制接管 viewer 关闭 ============
+// 痛点：EP 默认的 hide-on-click-modal 在触屏 + 移动浏览器 + 部分事件穿透场景下不响应。
+// 解决：viewer wrapper 一旦挂载（teleported 到 body），立刻在它上面挂 capture 阶段的
+// mousedown 监听，点 wrapper 本身 / mask / 图片都能直接关闭；只有底部操作栏不关。
+// 用 MutationObserver 自动跟随 wrapper 的挂载与卸载（v-if 控制的 viewer 反复进出）。
+const viewerWrapperObserver = new MutationObserver(() => {
+  attachViewerCloseHandlers()
+})
+// 哪些区域是「点击不关闭」（viewer 内部的工具栏 / 关闭按钮本身 / 切换按钮）
+const VIEWER_KEEP_OPEN_SELECTOR = [
+  '.el-image-viewer__actions',     // 底部操作栏（缩放/旋转/重置/左/右）
+  '.el-image-viewer__close',     // 关闭按钮（按它自己会触发 EP close，不重复处理）
+  '.el-image-viewer__arrow',     // 左右切换按钮
+  '.el-image-viewer__prev',
+  '.el-image-viewer__next',
+].join(',')
+
+// 当前已绑定的 wrapper 元素，用于解绑时去重
+let attachedViewerWrapper: HTMLElement | null = null
+const viewerMousedownHandler = (e: MouseEvent) => {
+  const target = e.target as HTMLElement | null
+  if (!target) return
+  // 点在操作栏内 → 不关
+  if (target.closest(VIEWER_KEEP_OPEN_SELECTOR)) return
+  // 其余全部视为关闭信号（遮罩、图片本体、wrapper 空白区）
+  e.stopPropagation()
+  e.preventDefault()
+  closePreview()
+}
+
+const attachViewerCloseHandlers = () => {
+  // viewer 通过 teleport 渲染到 body 下，与组件 DOM 树解耦
+  const wrapper = document.querySelector<HTMLElement>('.el-image-viewer__wrapper')
+  if (!wrapper) return
+  if (wrapper === attachedViewerWrapper) return
+  // 先解绑旧 wrapper（如果存在）
+  if (attachedViewerWrapper) {
+    attachedViewerWrapper.removeEventListener('mousedown', viewerMousedownHandler, true)
+  }
+  // 在 capture 阶段抢先触发，确保比 EP 自带 handler 更早执行
+  wrapper.addEventListener('mousedown', viewerMousedownHandler, true)
+  attachedViewerWrapper = wrapper
+}
+
+const detachViewerCloseHandlers = () => {
+  if (attachedViewerWrapper) {
+    attachedViewerWrapper.removeEventListener('mousedown', viewerMousedownHandler, true)
+    attachedViewerWrapper = null
+  }
+}
+
+// 旧的兜底（保留给非 viewer 的边缘情况，但实际场景下 viewer 已经全覆盖）
+const onGlobalClickOutside = (e: MouseEvent) => {
+  if (!previewOpen.value) return
+  const target = e.target as HTMLElement | null
+  if (!target) return
+  // 黑名单：viewer 自身 / 缩略图 / el-image wrapper（已被 viewer 内部监听器接管）
+  if (target.closest('.el-image-viewer__wrapper')) return
+  if (target.closest('.upload-thumb')) return
+  if (target.closest('.el-image')) return
+  closePreview()
+}
 
 // 拉取后台配置的 model 列表（key/label/cost/is_default）
 const fetchModelList = async () => {
@@ -479,6 +606,10 @@ const fetchModelList = async () => {
 onUnmounted(() => {
   document.removeEventListener('paste', handlePaste)
   window.removeEventListener('resize', updateIsMobile)
+  window.removeEventListener('keydown', onGlobalKeydown)
+  window.removeEventListener('mousedown', onGlobalClickOutside, true)
+  viewerWrapperObserver.disconnect()
+  detachViewerCloseHandlers()
   stopAllSlotVisuals()
   stopBtnAnim()
   stopSpinner()
@@ -630,13 +761,27 @@ const resetResults = (n: number) => {
   for (const slot of results) startSlotTimer(slot)
 }
 
-// 历史缩略图全屏预览：在页面根级统一渲染，避开与 dialog 的栈上下文冲突
-const previewUrl = ref<string | null>(null)
-const openPreview = (url: string) => {
-  previewUrl.value = url
+// 全屏预览（统一接管：历史缩略图 + 上传区点击缩略图 + 生成结果图）
+// 用 urlList + activeIndex 取代原来的 previewUrl，单图预览也包成单元素数组
+const previewList = ref<string[]>([])
+const previewIndex = ref(0)
+const previewOpen = ref(false)
+
+const openPreview = (url: string, list?: string[], index?: number) => {
+  if (list && list.length > 0) {
+    previewList.value = list
+    previewIndex.value = typeof index === 'number' && index >= 0 && index < list.length
+      ? index
+      : list.indexOf(url)
+    if (previewIndex.value < 0) previewIndex.value = 0
+  } else {
+    previewList.value = [url]
+    previewIndex.value = 0
+  }
+  previewOpen.value = true
 }
 const closePreview = () => {
-  previewUrl.value = null
+  previewOpen.value = false
 }
 
 // 按钮 JS 动画
@@ -1160,11 +1305,10 @@ const openInImgCut = (slot: ResultSlot) => {
                     >
                       <el-image
                         :src="preview"
-                        :preview-src-list="imagePreviews"
-                        :initial-index="idx"
                         fit="contain"
                         class="upload-thumb-img"
                         alt="上传预览"
+                        @click="openPreview(preview, imagePreviews, idx)"
                       />
                       <button
                         type="button"
@@ -1221,9 +1365,8 @@ const openInImgCut = (slot: ResultSlot) => {
               <button
                 type="button"
                 @click="promptLibraryRef?.open()"
-                :disabled="isBatchLoading"
                 title="从提示词库选择（需要登录）"
-                class="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-caption font-medium border border-blue-300 text-blue-700 hover:bg-blue-50 active:bg-blue-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                class="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-caption font-medium border border-blue-300 text-blue-700 hover:bg-blue-50 active:bg-blue-100 transition-colors"
               >
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h10M4 18h10" />
@@ -1238,16 +1381,14 @@ const openInImgCut = (slot: ResultSlot) => {
                 maxlength="5000"
                 class="w-full p-4 pr-10 pb-7 border rounded-lg focus:ring-2 focus:ring-blue-500 min-h-[120px] resize-y"
                 :class="{ 'border-red-400': promptTouched && !prompt.trim() }"
-                :disabled="isBatchLoading"
                 @blur="promptTouched = true"
               ></textarea>
               <button
                 v-if="prompt"
                 type="button"
                 @click="clearPrompt"
-                :disabled="isBatchLoading"
                 title="清空提示词（会同时清空本地缓存）"
-                class="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full text-gray-400 hover:text-white hover:bg-red-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                class="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full text-gray-400 hover:text-white hover:bg-red-500 transition-colors"
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -1274,7 +1415,6 @@ const openInImgCut = (slot: ResultSlot) => {
               <select
                 v-model="selectedModel"
                 class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                :disabled="isBatchLoading"
               >
                 <option v-for="m in modelList" :key="m.model_key" :value="m.model_key">
                   {{ m.model_label }}{{ m.credit_cost > 0 ? `（${m.credit_cost} 积分）` : '' }}
@@ -1284,23 +1424,21 @@ const openInImgCut = (slot: ResultSlot) => {
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label class="block text-body-sm font-medium text-gray-700 mb-2">输出尺寸</label>
-                <select
-                  v-model="selectedSize"
-                  class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                  :disabled="isBatchLoading"
-                >
-                  <option v-for="s in sizeOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
-                </select>
+<select
+                v-model="selectedSize"
+                class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              >
+                <option v-for="s in sizeOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
+              </select>
               </div>
               <div>
                 <label class="block text-body-sm font-medium text-gray-700 mb-2">并发数</label>
-                <select
-                  v-model.number="selectedConcurrency"
-                  class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                  :disabled="isBatchLoading"
-                >
-                  <option v-for="n in concurrencyOptions" :key="n" :value="n">{{ n }} 张</option>
-                </select>
+<select
+                v-model.number="selectedConcurrency"
+                class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              >
+                <option v-for="n in concurrencyOptions" :key="n" :value="n">{{ n }} 张</option>
+              </select>
                 <span
                   class="text-caption mt-1 block"
                   :class="concurrencyHint ? 'text-red-500' : 'text-gray-400'"
@@ -1340,6 +1478,7 @@ const openInImgCut = (slot: ResultSlot) => {
               ref="btnRef"
               @click="generateImage"
               :disabled="!canGenerate"
+              :title="isBatchLoading ? '已有请求在进行中，请等待完成' : (!canGenerate ? '请先填写提示词并确保有可用模型' : '开始生成')"
               class="relative w-full py-4 rounded-xl font-semibold text-white flex items-center justify-center gap-2 overflow-hidden shadow-lg transition-all duration-300 ease-out group"
               :class="canGenerate && !isBatchLoading
                 ? 'bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 hover:-translate-y-0.5 hover:shadow-2xl hover:brightness-110 hover:saturate-150 active:translate-y-0 active:scale-[0.99]'
@@ -1457,13 +1596,12 @@ const openInImgCut = (slot: ResultSlot) => {
                 >
                   <el-image
                     :src="slot.url"
-                    :preview-src-list="[slot.url]"
-                    :initial-index="0"
                     fit="contain"
                     class="block w-full result-image"
                     style="cursor: zoom-in;"
                     draggable="true"
                     alt="生成结果"
+                    @click="openPreview(slot.url, results.map(r => r.url), results.findIndex(r => r.id === slot.id))"
                   >
                     <!-- 加载占位：success 状态瞬间或慢请求场景下避免宽高为 0 -->
                     <template #placeholder>
@@ -1613,11 +1751,13 @@ const openInImgCut = (slot: ResultSlot) => {
       不会发生"列表盖住图片"的情况。
     -->
     <el-image-viewer
-      v-if="previewUrl"
-      :url-list="[previewUrl]"
-      :initial-index="0"
+      v-if="previewOpen && previewList.length > 0"
+      :url-list="previewList"
+      :initial-index="previewIndex"
       teleported
       :z-index="9999"
+      hide-on-click-modal
+      :close-on-press-escape="true"
       @close="closePreview"
     />
   </div>
