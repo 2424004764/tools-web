@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, onUnmounted, reactive, ref } from 'vue'
 import { fetchGlobalCreditTransactions } from '@/api/admin/credit'
 import type { CreditTransaction, AdminPagination } from '@/types/admin'
 
@@ -100,7 +100,21 @@ const handlePageChange = (p: number) => {
 
 const fmtAmount = (n: number) => (n > 0 ? `+${n}` : `${n}`)
 
-onMounted(load)
+// 移动端检测：< 640px 时切换分页器为精简布局
+const isMobile = ref(false)
+const MOBILE_BREAKPOINT = 640
+const updateIsMobile = () => {
+  isMobile.value = typeof window !== 'undefined' && window.innerWidth < MOBILE_BREAKPOINT
+}
+
+onMounted(() => {
+  updateIsMobile()
+  window.addEventListener('resize', updateIsMobile)
+  load()
+})
+onUnmounted(() => {
+  window.removeEventListener('resize', updateIsMobile)
+})
 </script>
 
 <template>
@@ -197,13 +211,15 @@ onMounted(load)
         <el-table-column label="备注" min-width="160" prop="reason" show-overflow-tooltip />
       </el-table>
 
-      <div class="flex justify-end mt-4">
+      <div :class="isMobile ? 'flex justify-center mt-4 overflow-x-auto py-1' : 'flex justify-end mt-4'">
         <el-pagination
           :current-page="pagination.page"
           :page-size="pagination.pageSize"
           :total="pagination.total"
           :page-count="pagination.totalPages"
-          layout="total, prev, pager, next, jumper"
+          :layout="isMobile ? 'prev, pager, next' : 'total, prev, pager, next, jumper'"
+          :pager-count="isMobile ? 5 : 7"
+          :small="isMobile"
           :background="true"
           @current-change="handlePageChange"
         />
