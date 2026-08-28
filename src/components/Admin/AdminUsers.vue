@@ -1309,4 +1309,3 @@ const updateIsMobile = () => {
   color: rgb(185, 28, 28);
 }
 </style>
-</template>

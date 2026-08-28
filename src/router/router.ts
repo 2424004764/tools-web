@@ -1552,6 +1552,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/food-log/',
+    component: () => import('@/components/Tools/FoodLog/FoodLog.vue'),
+    name: 'foodLog',
+    meta: {
+      title: "今日吃啥",
+      keywords: '今日吃啥,食物记录,饮食记录,卡路里,三餐,早餐,午餐,晚餐,加餐,体重管理',
+      description: '在线食物记录工具，按早/中/晚/加餐分组记录今天吃了什么，可选填入估算卡路里，自动统计今日总条数与总卡路里，帮你清晰掌握每日饮食摄入。'
+    }
+  },
+  {
     path: '/calculator',
     component: () => import('@/components/Tools/Calculator/Calculator.vue'),
     name: 'calculator',
