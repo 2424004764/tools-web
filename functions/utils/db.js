@@ -184,20 +184,36 @@ export class Model {
   // 创建记录
   async create(data) {
     const mappedData = this.mapToDb(data)
-    
+
     // 添加ID（如果没有提供）
     if (!mappedData.id) {
       mappedData.id = crypto.randomUUID()
     }
-    
+
+    // 如果 model 声明了 createdAt 字段（dbField 通常为 'created_at' / 'create_time'），
+    // 自动用 SQL CURRENT_TIMESTAMP 写入，避免业务代码在 create 后再发一条 UPDATE 补时间。
+    // 注意：D1 的 CURRENT_TIMESTAMP 返回 UTC 时间，与前端解析约定一致（见 mapFromDb 的 datetime 分支）。
+    const createdAtField = this.config.fields.createdAt?.dbField
+      || this.config.fields.createTime?.dbField
+
+    if (createdAtField && !Object.prototype.hasOwnProperty.call(mappedData, createdAtField)) {
+      // 没传 createdAt 时不追加到 bind 参数，由 SQL 自带 CURRENT_TIMESTAMP 占位
+      const fields = Object.keys(mappedData)
+      const placeholders = fields.map(() => '?').join(', ')
+      const values = Object.values(mappedData)
+      const sql = `INSERT INTO ${this.config.tableName} (${[...fields, createdAtField].join(', ')}) VALUES (${placeholders}, CURRENT_TIMESTAMP)`
+      await this.db.prepare(sql).bind(...values).run()
+      return { id: mappedData.id, success: true }
+    }
+
     const fields = Object.keys(mappedData)
     const placeholders = fields.map(() => '?').join(', ')
     const values = Object.values(mappedData)
-    
+
     const sql = `INSERT INTO ${this.config.tableName} (${fields.join(', ')}) VALUES (${placeholders})`
-    
+
     await this.db.prepare(sql).bind(...values).run()
-    
+
     return { id: mappedData.id, success: true }
   }
 
@@ -1211,6 +1227,28 @@ export class PriceComparisonEntryModel extends Model {
         isChosen: { type: 'integer', dbField: 'is_chosen' },
         createTime: { type: 'datetime', dbField: 'create_time' },
         updateTime: { type: 'datetime', dbField: 'update_time' }
+      }
+    }
+  }
+}
+
+// 食物记录模型（单用户，无成员维度）
+export class FoodLogModel extends Model {
+  constructor(db) {
+    super(db)
+    this.config = {
+      tableName: 'food_log',
+      fields: {
+        id: { type: 'string', primaryKey: true },
+        uid: { type: 'string' },
+        name: { type: 'string' },
+        meal: { type: 'string' },
+        category: { type: 'string' },
+        quantity: { type: 'string' },
+        calories: { type: 'integer' },
+        note: { type: 'text' },
+        eatenAt: { type: 'integer', dbField: 'eaten_at' },
+        createdAt: { type: 'datetime', dbField: 'created_at' }
       }
     }
   }

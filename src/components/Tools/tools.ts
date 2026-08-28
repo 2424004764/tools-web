@@ -1575,6 +1575,15 @@ export function getToolsCate() {
           cateId: 13,
           cate: '内容管理',
         },
+        {
+          id: 'food-log-2026-08-28',
+          title: '今日吃啥',
+          logo: '',
+          desc: '按早/中/晚/加餐记录今天吃了什么，可选填入估算卡路里，自动统计今日总条数与总卡路里',
+          url: '/food-log/',
+          cateId: 13,
+          cate: '内容管理',
+        },
       ]
     }
   ]

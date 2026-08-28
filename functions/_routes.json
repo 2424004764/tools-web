@@ -80,6 +80,8 @@
     "/api/user-tool-prompts/*",
     "/api/user-tool-prompt-groups",
     "/api/user-tool-prompt-groups/*",
+    "/api/food-log",
+    "/api/food-log/*",
     "/api/tools",
     "/api/ai-image-edit",
     "/api/ai-image-edit/*",
