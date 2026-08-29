@@ -415,6 +415,9 @@ const initImageSortable = () => {
     // 延迟 80ms 才进入拖拽，避免和「点击放大」冲突（区分不动 vs 移动）
     delay: 80,
     delayOnTouchOnly: true,
+    // 触摸起手在延迟期内移动超过 10px 即取消拖拽并放行滚动，
+    // 否则从缩略图上起手滑动页面时前 80ms 会被 preventDefault 卡住
+    touchStartThreshold: 10,
     disabled: isBatchLoading.value,
     onEnd: handleImageSortEnd,
   })
@@ -614,6 +617,8 @@ onUnmounted(() => {
   stopBtnAnim()
   stopSpinner()
   destroyImageSortable()
+  // 兜底：预览开着时直接离开页面（路由切换），viewer 随组件卸载不会恢复 body 滚动锁
+  restoreBodyScrollLock()
 })
 
 // ============ 生成结果：N 路并发，每张一个 Slot ============
@@ -782,6 +787,22 @@ const openPreview = (url: string, list?: string[], index?: number) => {
 }
 const closePreview = () => {
   previewOpen.value = false
+  // EP 的 image-viewer 只在自己的 hide() 里恢复 body 滚动锁（overflow: hidden），
+  // 而移动端「点图片/遮罩关闭」走的是 capture mousedown 兜底 → v-if 直接卸载，
+  // hide() 不会执行 → 锁泄漏后整页无法滑动。这里统一兜底恢复。
+  nextTick(restoreBodyScrollLock)
+}
+
+// 恢复 body 滚动锁。viewer 或其他 EP 弹层（dialog/drawer 的 .el-overlay）仍在展示时
+// 不动——锁归它们管，由各自的生命周期负责恢复
+const restoreBodyScrollLock = () => {
+  if (document.body.style.overflow !== 'hidden') return
+  if (document.querySelector('.el-image-viewer__wrapper')) return
+  const overlays = document.querySelectorAll<HTMLElement>('.el-overlay')
+  for (const el of overlays) {
+    if (el.style.display !== 'none') return
+  }
+  document.body.style.overflow = ''
 }
 
 // 按钮 JS 动画
