@@ -1,12 +1,20 @@
 <script setup lang="ts">
 import ArrowLeft from '~icons/ep/arrowLeft'
-import { onMounted, computed, ref } from 'vue';
+import { onMounted, computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router'
 import { useToolsStore } from '@/store/modules/tools'
 import { useComponentStore } from '@/store/modules/component'
-import {rtrim} from '@/utils/string'
+import { useUserStore } from '@/store/modules/user'
+import { rtrim } from '@/utils/string'
 import { ElMessage } from 'element-plus'
 import QrcodeVue3 from 'qrcode-vue3'
+import IconStarFilled from '~icons/ep/star-filled'
+import IconStar from '~icons/ep/star'
+import {
+  fetchFavoriteToolUrls,
+  addFavoriteTool,
+  removeFavoriteTool,
+} from '@/api/favorite-tools'
 const props = defineProps({
   title: String,
   id: Number
@@ -16,6 +24,7 @@ const router = useRouter()
 //store
 const toolsStore = useToolsStore()
 const componentStore = useComponentStore()
+const userStore = useUserStore()
 // 保存工具所属的分类ID
 const toolCateId = ref<number>(0)
 
@@ -58,6 +67,47 @@ const goBack = () => {
 const showQrcode = ref(false)
 const toolLink = computed(() => window.location.href)
 
+// ============ 收藏当前工具 ============
+// 以当前路由路径作为收藏标识（与 tools.ts 的 url 对齐，统一去尾部斜杠）
+const currentToolUrl = computed(() => rtrim(route.path, '/'))
+const favorited = ref(false)
+const favoriteSubmitting = ref(false)
+
+const loadFavoriteState = async () => {
+  if (!userStore.getLoginStatus) return
+  try {
+    const urls = await fetchFavoriteToolUrls()
+    favorited.value = urls.includes(currentToolUrl.value)
+  } catch {
+    // 静默：收藏状态加载失败不影响页面
+  }
+}
+
+const toggleFavorite = async () => {
+  if (!userStore.getLoginStatus) {
+    ElMessage.warning('登录后即可收藏工具')
+    return
+  }
+  if (favoriteSubmitting.value) return
+  favoriteSubmitting.value = true
+  const next = !favorited.value
+  // 乐观更新，失败回滚
+  favorited.value = next
+  try {
+    if (next) {
+      await addFavoriteTool(currentToolUrl.value)
+      ElMessage.success('已收藏')
+    } else {
+      await removeFavoriteTool(currentToolUrl.value)
+      ElMessage.success('已取消收藏')
+    }
+  } catch {
+    favorited.value = !next
+  } finally {
+    favoriteSubmitting.value = false
+  }
+}
+
 const toggleQrcode = () => {
   showQrcode.value = !showQrcode.value
 }
@@ -93,11 +143,18 @@ const toggleSidebar = (value: string | number | boolean) => {
 
 onMounted(() => {
   findToolCateId()
+  loadFavoriteState()
 
   // 从 URL 恢复专注模式
   if (route.query.focus === '1') {
     componentStore.setHideAllUI(true)
   }
+})
+
+// 路由变化（不同工具页之间切换）时刷新收藏状态
+watch(() => route.path, () => {
+  favorited.value = false
+  loadFavoriteState()
 })
 
 </script>
@@ -123,6 +180,24 @@ onMounted(() => {
     <div class="flex flex-wrap gap-2 justify-start items-center w-full sm:w-auto">
       <!-- 自定义右侧内容（slot：例如用户积分 badge） -->
       <slot name="right" />
+
+      <!-- 收藏当前工具 -->
+      <button
+        @click="toggleFavorite"
+        :disabled="favoriteSubmitting"
+        class="flex items-center gap-1 transition-colors duration-200 px-3 py-2 rounded-lg"
+        :class="favorited
+          ? 'text-accent-600 bg-accent-50'
+          : 'text-ink-700 hover:text-accent-600 hover:bg-accent-50'"
+        :title="userStore.getLoginStatus
+          ? (favorited ? '取消收藏' : '收藏此工具')
+          : '登录后可用'"
+        :aria-label="favorited ? '取消收藏当前工具' : '收藏当前工具'"
+      >
+        <IconStarFilled v-if="favorited" class="w-[18px] h-[18px]" />
+        <IconStar v-else class="w-[18px] h-[18px]" />
+        <span class="text-body-sm font-medium">{{ favorited ? '已收藏' : '收藏' }}</span>
+      </button>
 
       <!-- 专注模式开关 -->
       <div class="flex items-center gap-2 px-3 py-2">
