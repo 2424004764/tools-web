@@ -1,0 +1,304 @@
+/* ============================================================
+   管理后台专属皮肤（admin.scss）
+   由 AdminLayout.vue 在进入后台时 import，离开后台时卸载。
+
+   作用范围分两层：
+   - .admin-root     → 后台页面内的所有内容（布局、表格、卡片、表单、
+                       内联渲染的 dialog / drawer）
+   - body.admin-mode → 传送到 body 的浮层（下拉 popper、Message、
+                       MessageBox）。AdminLayout 挂载时给 body 加
+                       admin-mode 类、卸载时移除，皮肤不泄漏到前台。
+   ============================================================ */
+
+/* ---------- 全局基础 ---------- */
+.admin-root {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* 滚动条：细、中性、圆角 */
+.admin-root ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.admin-root ::-webkit-scrollbar-track {
+  background: transparent;
+}
+.admin-root ::-webkit-scrollbar-thumb {
+  background: rgb(var(--ink-300) / 0.6);
+  border-radius: 8px;
+}
+.admin-root ::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--ink-400) / 0.8);
+}
+
+/* ---------- 卡片 ---------- */
+.admin-root .el-card {
+  --el-card-border-color: rgb(var(--border-default));
+  --el-card-border-radius: 14px;
+  --el-card-padding: 20px;
+  box-shadow:
+    0 1px 2px rgb(var(--ink-950) / 0.03),
+    0 8px 24px -16px rgb(var(--ink-950) / 0.08);
+}
+.admin-root .el-card__header {
+  border-bottom-color: rgb(var(--border-subtle));
+}
+
+/* ---------- 表格 ---------- */
+.admin-root .el-table {
+  --el-table-border-color: rgb(var(--border-default));
+  --el-table-header-bg-color: rgb(var(--surface-1));
+  --el-table-header-text-color: rgb(var(--ink-500));
+  --el-table-row-hover-bg-color: rgb(var(--accent-50) / 0.55);
+  --el-table-fixed-box-shadow: 0 -8px 16px -10px rgb(var(--ink-950) / 0.1);
+
+  font-size: 13.5px;
+}
+/* 表格整体包一层圆角细边框，成为独立的数据面板 */
+.admin-root .el-table__inner-wrapper {
+  border: 1px solid rgb(var(--border-default));
+  border-radius: 12px;
+  overflow: hidden;
+}
+.admin-root .el-table .el-table__cell {
+  padding: 12px 0;
+}
+.admin-root .el-table .cell {
+  padding: 0 14px;
+}
+.admin-root .el-table th.el-table__cell {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+.admin-root .el-table--small .el-table__cell {
+  padding: 9px 0;
+}
+.admin-root .el-table--small .cell {
+  padding: 0 12px;
+}
+/* 斑马纹弱化为极浅底色 */
+.admin-root .el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
+  background: rgb(var(--surface-1) / 0.6);
+}
+
+/* ---------- 按钮 ---------- */
+.admin-root .el-button {
+  border-radius: 8px;
+  font-weight: 500;
+}
+.admin-root .el-button--primary {
+  --el-button-bg-color: rgb(var(--accent-500));
+  --el-button-border-color: transparent;
+  --el-button-hover-bg-color: rgb(var(--accent-600));
+  --el-button-hover-border-color: transparent;
+  --el-button-active-bg-color: rgb(var(--accent-700));
+  --el-button-active-border-color: transparent;
+  --el-button-disabled-bg-color: rgb(var(--accent-300));
+  --el-button-disabled-border-color: transparent;
+}
+.admin-root .el-button--default {
+  --el-button-hover-bg-color: rgb(var(--surface-2));
+  --el-button-hover-border-color: rgb(var(--border-strong));
+  --el-button-hover-text-color: rgb(var(--accent-700));
+}
+
+/* ---------- 输入 / 选择 ---------- */
+.admin-root .el-input__wrapper,
+.admin-root .el-textarea__inner {
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgb(var(--border-default)) inset;
+  transition: box-shadow 0.15s ease;
+}
+.admin-root .el-input__wrapper:hover {
+  box-shadow: 0 0 0 1px rgb(var(--border-strong)) inset;
+}
+.admin-root .el-input__wrapper.is-focus {
+  box-shadow:
+    0 0 0 1px rgb(var(--accent-500)) inset,
+    0 0 0 3px rgb(var(--accent-500) / 0.12);
+}
+.admin-root .el-textarea__inner:hover {
+  box-shadow: 0 0 0 1px rgb(var(--border-strong)) inset;
+}
+.admin-root .el-textarea__inner:focus {
+  box-shadow:
+    0 0 0 1px rgb(var(--accent-500)) inset,
+    0 0 0 3px rgb(var(--accent-500) / 0.12);
+}
+.admin-root .el-select__wrapper {
+  border-radius: 8px;
+  min-height: 32px;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgb(var(--border-default)) inset;
+  transition: box-shadow 0.15s ease;
+}
+.admin-root .el-select__wrapper.is-hovering {
+  box-shadow: 0 0 0 1px rgb(var(--border-strong)) inset;
+}
+.admin-root .el-select__wrapper.is-focused {
+  box-shadow:
+    0 0 0 1px rgb(var(--accent-500)) inset,
+    0 0 0 3px rgb(var(--accent-500) / 0.12);
+}
+
+/* ---------- 表单 ---------- */
+.admin-root .el-form-item__label {
+  color: rgb(var(--ink-700));
+  font-weight: 500;
+}
+
+/* ---------- 标签 ---------- */
+.admin-root .el-tag {
+  border-radius: 999px;
+  border: none;
+  font-weight: 500;
+  padding: 0 10px;
+}
+
+/* ---------- 分页 ---------- */
+.admin-root .el-pagination {
+  --el-pagination-text-color: rgb(var(--ink-500));
+  --el-pagination-button-color: rgb(var(--ink-600));
+  font-weight: 500;
+}
+.admin-root .el-pagination.is-background .el-pager li,
+.admin-root .el-pagination.is-background .btn-prev,
+.admin-root .el-pagination.is-background .btn-next {
+  border-radius: 8px;
+  font-weight: 500;
+}
+.admin-root .el-pagination.is-background .el-pager li {
+  background: rgb(var(--surface-2));
+  color: rgb(var(--ink-600));
+}
+.admin-root .el-pagination.is-background .el-pager li:hover:not(.is-active) {
+  color: rgb(var(--accent-600));
+}
+.admin-root .el-pagination.is-background .el-pager li.is-active {
+  background: rgb(var(--accent-500));
+  color: #fff;
+}
+.admin-root .el-pagination.is-background .btn-prev,
+.admin-root .el-pagination.is-background .btn-next {
+  background: rgb(var(--surface-2));
+}
+
+/* ---------- Dialog（内联渲染于 .admin-root 内） ---------- */
+.admin-root .el-overlay {
+  background-color: rgb(var(--ink-950) / 0.45);
+  backdrop-filter: blur(3px);
+}
+.admin-root .el-dialog {
+  --el-dialog-padding-primary: 20px;
+  border-radius: 16px;
+  box-shadow: 0 24px 64px -16px rgb(var(--ink-950) / 0.28);
+}
+.admin-root .el-dialog__header {
+  padding-bottom: 8px;
+}
+.admin-root .el-dialog__title {
+  font-size: 16px;
+  font-weight: 600;
+  color: rgb(var(--ink-900));
+}
+.admin-root .el-dialog__body {
+  color: rgb(var(--ink-700));
+}
+.admin-root .el-dialog__headerbtn {
+  top: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  transition: background 0.15s ease;
+}
+.admin-root .el-dialog__headerbtn:hover {
+  background: rgb(var(--surface-2));
+}
+
+/* ---------- Drawer（移动端侧栏） ---------- */
+.admin-root .el-drawer.ltr {
+  border-radius: 0 16px 16px 0;
+}
+.admin-root .el-drawer__body {
+  padding: 0;
+}
+
+/* ---------- 空状态 / 加载 ---------- */
+.admin-root .el-empty__description p {
+  color: rgb(var(--ink-400));
+}
+.admin-root .el-loading-mask {
+  background-color: rgb(var(--surface-0) / 0.6);
+  backdrop-filter: blur(2px);
+}
+
+/* ============================================================
+   传送浮层：body.admin-mode
+   ============================================================ */
+body.admin-mode .el-popper.is-light {
+  border-radius: 10px;
+  border-color: rgb(var(--border-default));
+  box-shadow: 0 12px 32px -8px rgb(var(--ink-950) / 0.14);
+}
+body.admin-mode .el-select-dropdown__item.is-hovering,
+body.admin-mode .el-select-dropdown__item.hover {
+  background: rgb(var(--accent-50) / 0.6);
+}
+body.admin-mode .el-select-dropdown__item.is-selected {
+  color: rgb(var(--accent-600));
+  font-weight: 600;
+}
+body.admin-mode .el-picker-panel {
+  border-radius: 12px;
+}
+body.admin-mode .el-message {
+  border-radius: 10px;
+  border: 1px solid rgb(var(--border-default));
+  box-shadow: 0 8px 24px -8px rgb(var(--ink-950) / 0.16);
+}
+body.admin-mode .el-message-box {
+  border-radius: 14px;
+  border: none;
+  box-shadow: 0 24px 64px -16px rgb(var(--ink-950) / 0.28);
+}
+body.admin-mode .el-message-box__title {
+  font-weight: 600;
+  color: rgb(var(--ink-900));
+}
+
+/* ============================================================
+   后台通用组件
+   ============================================================ */
+
+/* 统计卡片（仪表盘） */
+.admin-stat-card {
+  background: #fff;
+  border: 1px solid rgb(var(--border-default));
+  border-radius: 14px;
+  padding: 18px 20px;
+  box-shadow:
+    0 1px 2px rgb(var(--ink-950) / 0.03),
+    0 8px 24px -16px rgb(var(--ink-950) / 0.08);
+  transition:
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+.admin-stat-card:hover {
+  box-shadow:
+    0 2px 4px rgb(var(--ink-950) / 0.04),
+    0 12px 32px -12px rgb(var(--ink-950) / 0.12);
+  transform: translateY(-1px);
+}
+.admin-stat-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
