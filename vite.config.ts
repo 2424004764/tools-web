@@ -543,6 +543,28 @@ export default defineConfig(({command, mode}) => {
         'axios',
         'element-plus',
         'lodash',
+        // 项目内懒加载路由独占的第三方依赖：不预构建的话，首次访问对应页面时
+        // Vite 会中途重新预构建并强制整页 reload，撞上路由切换就白屏
+        'sortablejs',
+        // Element Plus 按需样式（unplugin-vue-components importStyle: 'css' 生成
+        // element-plus/es/components/*/style/css 导入）。以下清单覆盖全站用到的
+        // 所有 EP 组件，冷启动一次性预构建，避免 dev 会话中途
+        // "optimized dependencies changed. reloading" 导致整页刷新 / 白屏
+        ...[
+          'alert', 'aside', 'autocomplete', 'backtop', 'button', 'button-group',
+          'card', 'checkbox', 'checkbox-group', 'col', 'collapse', 'collapse-item',
+          'color-picker', 'config-provider', 'container', 'date-picker', 'descriptions',
+          'descriptions-item', 'dialog', 'divider', 'drawer', 'dropdown',
+          'dropdown-item', 'dropdown-menu', 'empty', 'footer', 'form', 'form-item',
+          'header', 'icon', 'image', 'image-viewer', 'input', 'input-number',
+          'link', 'main', 'menu', 'menu-item', 'menu-item-group', 'option',
+          'pagination', 'popover', 'progress', 'radio', 'radio-button',
+          'radio-group', 'rate', 'row', 'scrollbar', 'select', 'slider',
+          'sub-menu', 'switch', 'tab-pane', 'table', 'table-column', 'tabs',
+          'tag', 'text', 'time-picker', 'tooltip', 'upload',
+          // ElMessage / ElMessageBox / ElNotification / ElLoading 自动导入样式
+          'message', 'message-box', 'notification', 'loading',
+        ].map((c) => `element-plus/es/components/${c}/style/css`),
       ],
       // @element-plus/icons-vue 全量 ~250KB，按需 ESM import 即可，无需预构建全部
       // 后续可改 unplugin-icons + @iconify-json/ep 实现 icon-level 按需（45+ 处 import 替换）

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useIsMobile } from '@/composables/useIsMobile'
 import {
   fetchRedeemCodeBatch,
   fetchRedeemCodeBatches,
@@ -148,6 +149,9 @@ const clearBatchNote = () => {
     .catch(() => {})
 }
 
+// 移动端分页器适配：< 640px 时切精简布局 + 5 个页码 + small 模式
+const { isMobile } = useIsMobile()
+
 onMounted(load)
 </script>
 
@@ -264,13 +268,15 @@ onMounted(load)
         </el-table-column>
       </el-table>
 
-      <div class="flex justify-end mt-4">
+      <div :class="isMobile ? 'flex justify-center mt-4 overflow-x-auto py-1' : 'flex justify-end mt-4'">
         <el-pagination
           :current-page="pagination.page"
           :page-size="pagination.pageSize"
           :total="pagination.total"
           :page-count="pagination.totalPages"
-          layout="total, prev, pager, next, jumper"
+          :layout="isMobile ? 'prev, pager, next' : 'total, prev, pager, next, jumper'"
+          :pager-count="isMobile ? 5 : 7"
+          :small="isMobile"
           :background="true"
           @current-change="handlePageChange"
         />

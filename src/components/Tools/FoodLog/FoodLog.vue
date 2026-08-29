@@ -1,12 +1,13 @@
 <script setup lang="ts">
 // 今日吃啥 - 食物记录
-// 极简单用户工具：录入 → 列表 → 删行
-// 不做 member / chart / 统计,聚焦「今天吃了什么」
+// 极简单用户工具：录入 → 列表 → 删行 → 历史(最近 7/14/30 天)
+// 不做 member / chart,聚焦「今天吃了什么」
 
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
+import FoodLogItemRow from './FoodLogItemRow.vue'
 import {
   fetchFoodLog,
   createFoodLog,
@@ -101,7 +102,13 @@ onMounted(() => {
   updateIsMobile()
   window.addEventListener('resize', updateIsMobile)
   load()
+  loadHistory()
 })
+
+// 增删改后今日列表与历史记录一起刷新
+async function reloadAll() {
+  await Promise.all([load(), loadHistory()])
+}
 
 // ============ 提交 ============
 function openCreate() {
@@ -151,7 +158,7 @@ async function submit() {
       ElMessage.success('已记录')
     }
     formVisible.value = false
-    await load()
+    await reloadAll()
   } catch (err: any) {
     ElMessage.error(err?.response?.data?.error || '保存失败')
   } finally {
@@ -173,7 +180,7 @@ async function onDelete(item: FoodLogItem) {
   try {
     await deleteFoodLog(item.id)
     ElMessage.success('已删除')
-    await load()
+    await reloadAll()
   } catch (err: any) {
     ElMessage.error(err?.response?.data?.error || '删除失败')
   }
@@ -193,12 +200,71 @@ const groupedByMeal = computed(() => {
     .map((m) => ({ meal: m, items: map[m] }))
 })
 
-// ============ 展示工具 ============
-function formatTime(sec: number) {
-  const d = new Date(sec * 1000)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`
+// ============ 历史记录（最近 7/14/30 天） ============
+const historyDays = ref<7 | 14 | 30>(7)
+const historyLoading = ref(false)
+const historyList = ref<FoodLogItem[]>([])
+
+async function loadHistory() {
+  if (!userStore.getLoginStatus) return
+  historyLoading.value = true
+  try {
+    // 含今天在内的最近 N 天
+    const now = new Date()
+    const today0 = Math.floor(new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() / 1000)
+    const res = await fetchFoodLog({
+      startAt: today0 - (historyDays.value - 1) * 86400,
+      endAt: today0 + 86400,
+    })
+    // 后端按 eatenAt 倒序返回
+    historyList.value = res.items
+  } catch (err: any) {
+    console.error('[food-log] history load error', err)
+    ElMessage.error(err?.response?.data?.error || '历史记录加载失败')
+  } finally {
+    historyLoading.value = false
+  }
 }
+
+const WEEKDAY_LABELS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+
+interface HistoryGroup {
+  key: string
+  label: string
+  items: FoodLogItem[]
+  count: number
+  totalCalories: number
+}
+
+// 按日期分组（今天/昨天/8月28日 周五），日期倒序
+const historyGroups = computed<HistoryGroup[]>(() => {
+  const groups: HistoryGroup[] = []
+  const indexByKey = new Map<string, number>()
+  const today0 = (() => {
+    const now = new Date()
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+  })()
+  for (const it of historyList.value) {
+    const d = new Date(it.eatenAt * 1000)
+    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+    let gi = indexByKey.get(key)
+    if (gi === undefined) {
+      const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+      const dayOffset = Math.round((today0 - dayStart) / 86400000)
+      const label = dayOffset === 0 ? '今天' : dayOffset === 1 ? '昨天' : `${d.getMonth() + 1}月${d.getDate()}日 ${WEEKDAY_LABELS[d.getDay()]}`
+      groups.push({ key, label, items: [], count: 0, totalCalories: 0 })
+      gi = groups.length - 1
+      indexByKey.set(key, gi)
+    }
+    const g = groups[gi]
+    g.items.push(it)
+    g.count++
+    g.totalCalories += it.calories || 0
+  }
+  return groups
+})
+
+// ============ 展示工具 ============
 </script>
 
 <template>
@@ -267,42 +333,59 @@ function formatTime(sec: number) {
           <span class="text-caption text-ink-500">{{ group.items.length }} 条</span>
         </header>
         <ul class="divide-y divide-border-subtle">
-            <li
-              v-for="item in group.items"
-              :key="item.id"
-              class="flex items-center gap-3 py-2.5"
-            >
-              <span class="text-caption text-ink-400 tabular-nums w-12 shrink-0">
-                {{ formatTime(item.eatenAt) }}
-              </span>
-              <div class="flex-1 min-w-0">
-                <div class="text-body-sm text-ink-900 truncate">{{ item.name }}</div>
-                <div class="text-caption text-ink-500 flex items-center gap-2 mt-0.5 truncate">
-                  <span class="px-1.5 py-0.5 rounded bg-surface-2 text-ink-600">{{ CATEGORY_LABELS[item.category] }}</span>
-                  <span v-if="item.quantity">{{ item.quantity }}</span>
-                  <span v-if="item.calories != null" class="tabular-nums">{{ item.calories }} kcal</span>
-                  <span v-if="item.note" class="truncate">· {{ item.note }}</span>
-                </div>
-              </div>
-              <button
-                type="button"
-                @click="openEdit(item)"
-                class="text-caption text-ink-400 hover:text-accent-600 px-2 py-1 rounded hover:bg-accent-50 transition-colors shrink-0"
-                :aria-label="`编辑 ${item.name}`"
-              >
-                编辑
-              </button>
-              <button
-                type="button"
-                @click="onDelete(item)"
-                class="text-caption text-ink-400 hover:text-danger-600 px-2 py-1 rounded hover:bg-danger-50 transition-colors shrink-0"
-                :aria-label="`删除 ${item.name}`"
-              >
-                删除
-              </button>
-            </li>
+          <FoodLogItemRow
+            v-for="item in group.items"
+            :key="item.id"
+            :item="item"
+            @edit="openEdit"
+            @delete="onDelete"
+          />
         </ul>
       </section>
+    </div>
+
+    <!-- 历史记录（最近 7/14/30 天，按日期倒序分组） -->
+    <div v-if="userStore.getLoginStatus" class="mt-8">
+      <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+        <h3 class="text-body font-semibold text-ink-900 flex items-center gap-2">
+          <span class="inline-block w-1.5 h-4 rounded-full bg-accent-500"></span>
+          历史记录
+        </h3>
+        <el-radio-group v-model="historyDays" size="small" @change="loadHistory">
+          <el-radio-button :value="7">最近7天</el-radio-button>
+          <el-radio-button :value="14">最近14天</el-radio-button>
+          <el-radio-button :value="30">最近30天</el-radio-button>
+        </el-radio-group>
+      </div>
+      <div v-loading="historyLoading" class="space-y-3">
+        <div
+          v-if="!historyLoading && historyGroups.length === 0"
+          class="rounded-xl bg-white p-8 text-center text-ink-500 border border-border-default"
+        >
+          最近 {{ historyDays }} 天还没有记录
+        </div>
+        <section
+          v-for="g in historyGroups"
+          :key="g.key"
+          class="rounded-xl bg-white p-4 border border-border-default"
+        >
+          <header class="flex items-center justify-between mb-3">
+            <h4 class="text-body-sm font-semibold text-ink-900">{{ g.label }}</h4>
+            <span class="text-caption text-ink-500">
+              {{ g.count }} 条<template v-if="g.totalCalories > 0"> · {{ g.totalCalories }} kcal</template>
+            </span>
+          </header>
+          <ul class="divide-y divide-border-subtle">
+            <FoodLogItemRow
+              v-for="item in g.items"
+              :key="item.id"
+              :item="item"
+              @edit="openEdit"
+              @delete="onDelete"
+            />
+          </ul>
+        </section>
+      </div>
     </div>
 
     <!-- 新增 / 编辑弹窗 -->
@@ -389,7 +472,7 @@ function formatTime(sec: number) {
 
     <ToolDetail title="功能说明">
       <div class="space-y-3 text-body-sm text-ink-800">
-        <p><strong>用途：</strong>快速记录今天吃了什么，按早 / 中 / 晚 / 加餐分组，可选填入估算卡路里，每天自动统计条数与总卡路里。</p>
+        <p><strong>用途：</strong>快速记录今天吃了什么，按早 / 中 / 晚 / 加餐分组，可选填入估算卡路里，每天自动统计条数与总卡路里。下方「历史记录」默认展示最近 7 天，可切换最近 14 天 / 30 天查看更早的记录。</p>
         <p><strong>使用建议：</strong>不需要精确到克，只需大致估算。吃过的随手记一条就行，避免最后补记遗漏。</p>
         <p><strong>隐私：</strong>所有记录仅本人可见，存储在 Cloudflare D1 持久化数据中。删除单条不影响其他数据。</p>
       </div>

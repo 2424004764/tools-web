@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useIsMobile } from '@/composables/useIsMobile'
 import {
   fetchToolUsageRecords,
   fetchToolUsageStats,
@@ -173,6 +174,9 @@ watch(
     loadList()
   },
 )
+
+// 移动端分页器适配：< 640px 时切精简布局 + 5 个页码 + small 模式
+const { isMobile } = useIsMobile()
 
 onMounted(() => {
   loadStats()
@@ -444,10 +448,12 @@ onMounted(() => {
       </el-table>
       <el-empty v-else description="暂无记录" :image-size="60" />
 
-      <div v-if="pagination.totalPages > 1" class="flex justify-end mt-4">
+      <div v-if="pagination.totalPages > 1" :class="isMobile ? 'flex justify-center mt-4 overflow-x-auto py-1' : 'flex justify-end mt-4'">
         <el-pagination
           background
-          layout="prev, pager, next, total, jumper"
+          :layout="isMobile ? 'prev, pager, next' : 'prev, pager, next, total, jumper'"
+          :pager-count="isMobile ? 5 : 7"
+          :small="isMobile"
           :total="pagination.total"
           :page-size="pagination.pageSize"
           :current-page="pagination.page"
