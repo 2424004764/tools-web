@@ -12,6 +12,16 @@ import { useSpriteLogo } from '@/components/Tools/useSpriteLogo'
 import HotList from './HotList.vue'
 import { fetchRecentUsedTools } from '@/utils/tool-usage'
 import type { RecentTool } from '@/utils/tool-usage'
+import {
+  fetchFavoriteToolUrls,
+  addFavoriteTool,
+  removeFavoriteTool,
+  normalizeToolUrl,
+} from '@/api/favorite-tools'
+import { ElMessage } from 'element-plus'
+import IconStarFilled from '~icons/ep/star-filled'
+import IconStar from '~icons/ep/star'
+import IconClose from '~icons/ep/close'
 //store
 const toolsStore = useToolsStore()
 const componentStore = useComponentStore()
@@ -68,14 +78,78 @@ const formatRelativeTime = (sec: number): string => {
   return `${d.getMonth() + 1} 月 ${d.getDate()} 日`
 }
 
-// 把 recentTools 的 tool_url 投影到 toolsStore.cates 上对应的工具条目（用于渲染 logo）
+// 把工具 url 投影到 toolsStore.cates 上对应的工具条目（用于渲染 logo / 标题）。
+// 收藏 url 在 API 层已去尾斜杠，tools.ts 的 url 大多带尾斜杠，这里两侧都归一后再比较
 const lookupToolInfo = (toolUrl: string) => {
+  const want = normalizeToolUrl(toolUrl)
   for (const cate of toolsStore.cates) {
     for (const tool of cate.list || []) {
-      if (tool.url === toolUrl) return tool
+      if (normalizeToolUrl(tool.url) === want) return tool
     }
   }
   return null
+}
+
+// ============ 我的收藏 ============
+// favoriteList 按收藏时间倒序（后端返回顺序），收藏条直接用；
+// favoriteUrls 是同数据的 Set，卡片星标 O(1) 判断。未登录两者为空。
+const favoriteList = ref<string[]>([])
+const favoriteUrls = ref<Set<string>>(new Set())
+const favoriteLoading = ref(false)
+
+const isFavorited = (toolUrl: string) =>
+  favoriteUrls.value.has(normalizeToolUrl(toolUrl))
+
+const ensureFavoritesLoaded = async () => {
+  if (!userStore.getLoginStatus) {
+    favoriteList.value = []
+    favoriteUrls.value = new Set()
+    return
+  }
+  if (favoriteLoading.value) return
+  favoriteLoading.value = true
+  try {
+    const urls = await fetchFavoriteToolUrls()
+    favoriteList.value = urls
+    favoriteUrls.value = new Set(urls)
+  } finally {
+    favoriteLoading.value = false
+  }
+}
+
+// 收藏/取消收藏（卡片右上角星标共用）。未登录点击提示「登录后可用」
+const toggleFavorite = async (rawUrl: string) => {
+  if (!userStore.getLoginStatus) {
+    ElMessage.warning('登录后即可收藏工具')
+    return
+  }
+  const toolUrl = normalizeToolUrl(rawUrl)
+  const favorited = favoriteUrls.value.has(toolUrl)
+  // 乐观更新，失败回滚
+  if (favorited) {
+    favoriteUrls.value.delete(toolUrl)
+    favoriteList.value = favoriteList.value.filter((u) => u !== toolUrl)
+  } else {
+    favoriteUrls.value.add(toolUrl)
+    favoriteList.value = [toolUrl, ...favoriteList.value]
+  }
+  try {
+    if (favorited) {
+      await removeFavoriteTool(toolUrl)
+      ElMessage.success('已取消收藏')
+    } else {
+      await addFavoriteTool(toolUrl)
+      ElMessage.success('已收藏')
+    }
+  } catch {
+    if (favorited) {
+      favoriteUrls.value.add(toolUrl)
+      favoriteList.value = [toolUrl, ...favoriteList.value]
+    } else {
+      favoriteUrls.value.delete(toolUrl)
+      favoriteList.value = favoriteList.value.filter((u) => u !== toolUrl)
+    }
+  }
 }
 
 const scrollToTop = () => {
@@ -263,6 +337,9 @@ onMounted(async () => {
   // 「最近使用」独立加载，与 cates 解耦；登录态变化或路由回首页时也会触发
   ensureRecentLoaded()
 
+  // 「我的收藏」同样独立加载
+  ensureFavoritesLoaded()
+
   // 预先添加滚动监听器；handleScroll 通过 isScrollListenerActive / isScrollingToAnchor 双重门控
   window.addEventListener('scroll', throttledHandleScroll)
 
@@ -298,6 +375,8 @@ watch(() => route.path, (newPath) => {
     }
     // 回首页时重新拉取最近使用（用户在工具页点了别处回来的场景）
     ensureRecentLoaded()
+    // 回首页时同步收藏状态（用户可能在详情页收藏/取消过）
+    ensureFavoritesLoaded()
   } else {
     isScrollListenerActive.value = false
   }
@@ -309,10 +388,13 @@ watch(
   (logged) => {
     if (!logged) {
       recentTools.value = []
+      favoriteList.value = []
+      favoriteUrls.value = new Set()
     } else {
       // 重新登录时强制刷新一次（onMounted 里的幂等保护允许重置）
       recentTools.value = []
       ensureRecentLoaded()
+      ensureFavoritesLoaded()
     }
   },
 )
@@ -394,6 +476,72 @@ watch(() => toolsStore.cates.length, (newLen, oldLen) => {
       </div>
     </section>
 
+    <!-- 我的收藏（仅登录且有收藏时展示） -->
+    <section
+      v-if="userStore.getLoginStatus && favoriteList.length > 0"
+      class="mt-6"
+      aria-label="我收藏的工具"
+    >
+      <div class="flex items-baseline justify-between mb-3">
+        <h2 class="text-h3 font-bold m-0 text-ink-900">我的收藏</h2>
+        <span class="text-xs text-ink-400">收藏 {{ favoriteList.length }} 个</span>
+      </div>
+      <div class="flex overflow-x-auto gap-3 pb-2 -mx-1 px-1 snap-x recent-scroll">
+        <router-link
+          v-for="toolUrl in favoriteList"
+          :key="toolUrl"
+          :to="toolUrl"
+          class="relative snap-start shrink-0 w-44 sm:w-48 group block border border-border-default rounded-2xl bg-white p-3 hover:bg-accent-50 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+          :aria-label="`跳转到 ${lookupToolInfo(toolUrl)?.title || '收藏的工具'}`"
+        >
+          <!-- 右上角移除收藏：仅从收藏中移除，不跳转 -->
+          <button
+            type="button"
+            class="absolute top-1.5 right-1.5 z-10 w-5 h-5 rounded-full bg-ink-900/35 text-white flex items-center justify-center hover:bg-danger-500 transition-colors duration-150"
+            :title="`移除收藏 ${lookupToolInfo(toolUrl)?.title || ''}`"
+            :aria-label="`从收藏中移除 ${lookupToolInfo(toolUrl)?.title || '该工具'}`"
+            @click.stop.prevent="toggleFavorite(toolUrl)"
+          >
+            <IconClose class="w-3 h-3" aria-hidden="true" />
+          </button>
+          <div class="flex items-center gap-2 min-h-[2.5rem]">
+            <template v-if="lookupToolInfo(toolUrl)">
+              <img
+                v-if="!useSpriteLogo(lookupToolInfo(toolUrl)!).style"
+                :src="lookupToolInfo(toolUrl)!.logo"
+                loading="lazy"
+                class="w-9 h-9 min-h-[2.25rem] min-w-[2.25rem] object-contain"
+                :alt="lookupToolInfo(toolUrl)!.title"
+              >
+              <div
+                v-else
+                class="w-9 h-9 min-h-[2.25rem] min-w-[2.25rem]"
+                :style="useSpriteLogo(lookupToolInfo(toolUrl)!).style"
+                role="img"
+                :aria-label="lookupToolInfo(toolUrl)!.title"
+              ></div>
+            </template>
+            <div
+              v-else
+              class="w-9 h-9 rounded-md bg-accent-50 flex items-center justify-center text-accent-700 text-sm font-semibold"
+              aria-hidden="true"
+            >
+              ?
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium text-ink-900 truncate">
+                {{ lookupToolInfo(toolUrl)?.title || '已下线工具' }}
+              </div>
+              <div class="text-[11px] text-ink-400 mt-0.5 flex items-center gap-1">
+                <IconStarFilled class="w-3 h-3 text-accent-500" aria-hidden="true" />
+                <span>已收藏</span>
+              </div>
+            </div>
+          </div>
+        </router-link>
+      </div>
+    </section>
+
     <!-- list -->
     <div v-for="(cate, index) in toolsStore.cates" :key="index">
       <!-- cate title -->
@@ -415,8 +563,26 @@ watch(() => toolsStore.cates.length, (newLen, oldLen) => {
         >
           <router-link
             :to="item.url"
-            class="flex flex-col mt-5 border-solid rounded-2xl border-border-default p-2 bg-white shadow-lg group-hover:bg-accent-50 group-hover:shadow-xl group-hover:border-border-default w-full p-5 group-hover:-translate-y-3 duration-300 transition-all"
+            class="relative flex flex-col mt-5 border-solid rounded-2xl border-border-default p-2 bg-white shadow-lg group-hover:bg-accent-50 group-hover:shadow-xl group-hover:border-border-default w-full p-5 group-hover:-translate-y-3 duration-300 transition-all"
           >
+            <!-- 收藏星标：卡片右上角。登录后点击收藏/取消，未登录提示登录后可用 -->
+            <button
+              type="button"
+              class="absolute top-2.5 right-2.5 z-10 p-1.5 rounded-full transition-colors duration-150"
+              :class="isFavorited(item.url)
+                ? 'text-accent-500'
+                : 'text-ink-300 hover:text-accent-400'"
+              :title="userStore.getLoginStatus
+                ? (isFavorited(item.url) ? '取消收藏' : '收藏工具')
+                : '登录后可用'"
+              :aria-label="userStore.getLoginStatus
+                ? (isFavorited(item.url) ? `取消收藏 ${item.title}` : `收藏 ${item.title}`)
+                : `登录后可收藏 ${item.title}`"
+              @click.stop.prevent="toggleFavorite(item.url)"
+            >
+              <IconStarFilled v-if="isFavorited(item.url)" class="w-[18px] h-[18px]" />
+              <IconStar v-else class="w-[18px] h-[18px]" />
+            </button>
             <div class="flex items-center border-b border-border-subtle pb-2">
               <img
                 v-if="!useSpriteLogo(item).style"

@@ -56,6 +56,8 @@
     "/api/letter/*",
     "/api/favorite-apps",
     "/api/favorite-apps/*",
+    "/api/favorite-tools",
+    "/api/favorite-tools/*",
     "/api/ai-providers",
     "/api/ai-providers/*",
     "/api/ai-models",
