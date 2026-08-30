@@ -1836,6 +1836,16 @@ export const constantRoute = [
           description: '查看 /api/* 失败请求，自动捕获 status>=400 的响应',
         },
       },
+      {
+        path: 'db-stats',
+        component: () => import('@/components/Admin/AdminDbStats.vue'),
+        name: 'adminDbStats',
+        meta: {
+          title: '数据统计',
+          keywords: '后台数据统计,数据表行数',
+          description: '查看所有数据表的行数与今日/7日/30日新增趋势',
+        },
+      },
     ],
   },
 ]
