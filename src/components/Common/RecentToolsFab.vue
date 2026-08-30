@@ -25,6 +25,11 @@ import { useLocalStorage, useWindowSize } from '@vueuse/core'
 import Clock from '~icons/ep/clock'
 import Close from '~icons/ep/close'
 import Refresh from '~icons/ep/refresh'
+import StarFilled from '~icons/ep/star-filled'
+import {
+  fetchFavoriteToolUrls,
+  normalizeToolUrl,
+} from '@/api/favorite-tools'
 
 const route = useRoute()
 const userStore = useUserStore()
@@ -33,7 +38,9 @@ const componentStore = useComponentStore()
 
 // === 数据 ===
 const open = ref(false)
+const activeTab = ref<'recent' | 'favorites'>('recent')
 const recentTools = ref<RecentTool[]>([])
+const favoriteUrls = ref<string[]>([])
 const loading = ref(false)
 
 const visible = computed(() => {
@@ -56,13 +63,39 @@ const formatRelativeTime = (sec: number): string => {
 }
 
 const lookupToolInfo = (toolUrl: string) => {
+  const want = normalizeToolUrl(toolUrl)
   for (const cate of toolsStore.cates) {
     for (const tool of cate.list || []) {
-      if (tool.url === toolUrl) return tool
+      if (normalizeToolUrl(tool.url) === want) return tool
     }
   }
   return null
 }
+
+// 工具清单（toolsStore.cates）来自 /api/tools，只含已启用工具；
+// 两个列表都以此为白名单过滤掉已禁用/下线的工具
+const isEnabledTool = (toolUrl: string) => lookupToolInfo(toolUrl) != null
+
+const loadFavorites = async () => {
+  if (!userStore.getLoginStatus) {
+    favoriteUrls.value = []
+    return
+  }
+  try {
+    favoriteUrls.value = await fetchFavoriteToolUrls()
+  } catch (err: any) {
+    console.warn('[RecentToolsFab] 拉取收藏失败：', err?.message || err)
+    favoriteUrls.value = []
+  }
+}
+
+// 弹窗数据源：最近使用 + 收藏（均过滤为已启用工具）
+const enabledRecentTools = computed(() =>
+  recentTools.value.filter((t) => isEnabledTool(t.tool_url)),
+)
+const enabledFavoriteUrls = computed(() =>
+  favoriteUrls.value.filter((url) => isEnabledTool(url)),
+)
 
 const loadRecent = async () => {
   if (!userStore.getLoginStatus) {
@@ -80,22 +113,45 @@ const loadRecent = async () => {
   }
 }
 
+// 打开弹窗 / 挂载时加载全部数据源；工具清单未就绪时按需补拉
+const loadAll = async () => {
+  if (!userStore.getLoginStatus) {
+    recentTools.value = []
+    favoriteUrls.value = []
+    return
+  }
+  if (toolsStore.cates.length === 0) {
+    try {
+      await toolsStore.getToolCate()
+    } catch (err: any) {
+      console.warn('[RecentToolsFab] 工具清单加载失败：', err?.message || err)
+    }
+  }
+  await Promise.all([loadRecent(), loadFavorites()])
+}
+
 onMounted(() => {
-  if (visible.value) loadRecent()
+  if (visible.value) loadAll()
 })
 
 watch(visible, (v) => {
-  if (v) loadRecent()
-  else recentTools.value = []
+  if (v) loadAll()
+  else {
+    recentTools.value = []
+    favoriteUrls.value = []
+  }
 })
 
 watch(() => userStore.getLoginStatus, (logged) => {
-  if (logged) loadRecent()
-  else recentTools.value = []
+  if (logged) loadAll()
+  else {
+    recentTools.value = []
+    favoriteUrls.value = []
+  }
 })
 
 watch(open, (isOpen) => {
-  if (isOpen && userStore.getLoginStatus) loadRecent()
+  if (isOpen && userStore.getLoginStatus) loadAll()
   updateMode()
 })
 
@@ -317,8 +373,8 @@ onUnmounted(clearHideTimer)
       <template #reference>
         <button
           type="button"
-          :aria-label="open ? '关闭最近使用' : '打开最近使用 / 可拖动调整位置'"
-          title="拖动调整位置 · 点击查看最近使用"
+          :aria-label="open ? '关闭' : '打开最近使用 / 收藏 / 可拖动调整位置'"
+          title="拖动调整位置 · 点击查看最近使用与收藏"
           :class="[
             'w-11 h-11 rounded-full bg-white shadow-lg border border-border-subtle flex items-center justify-center hover:bg-accent-50 hover:border-accent-200 transition-colors duration-200 group relative',
             mode === 'dragging' ? 'cursor-grabbing' : 'cursor-grab',
@@ -346,16 +402,49 @@ onUnmounted(clearHideTimer)
       </template>
 
       <div class="recent-tools-panel">
-        <header class="flex items-center justify-between px-4 py-3 border-b border-border-subtle">
-          <h3 class="text-sm font-semibold text-ink-900 m-0">最近使用</h3>
+        <header class="flex items-center justify-between px-3 py-2.5 border-b border-border-subtle">
+          <!-- 最近使用 / 收藏 切换 -->
+          <div class="flex items-center gap-0.5 bg-surface-2 rounded-lg p-0.5" role="tablist" aria-label="工具列表切换">
+            <button
+              type="button"
+              role="tab"
+              :aria-selected="activeTab === 'recent'"
+              class="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors duration-150 bg-transparent border-0 cursor-pointer"
+              :class="activeTab === 'recent'
+                ? 'bg-white text-ink-900 shadow-sm'
+                : 'text-ink-500 hover:text-ink-900'"
+              @click="activeTab = 'recent'"
+            >
+              <el-icon :size="12" aria-hidden="true"><Clock /></el-icon>
+              <span>最近使用</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              :aria-selected="activeTab === 'favorites'"
+              class="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors duration-150 bg-transparent border-0 cursor-pointer"
+              :class="activeTab === 'favorites'
+                ? 'bg-white text-ink-900 shadow-sm'
+                : 'text-ink-500 hover:text-ink-900'"
+              @click="activeTab = 'favorites'"
+            >
+              <el-icon :size="12" aria-hidden="true"><StarFilled /></el-icon>
+              <span>收藏</span>
+              <span
+                v-if="enabledFavoriteUrls.length > 0"
+                class="text-[10px] text-ink-400"
+                aria-hidden="true"
+              >{{ enabledFavoriteUrls.length }}</span>
+            </button>
+          </div>
           <div class="flex items-center gap-1">
             <button
               type="button"
               :disabled="loading"
-              :aria-label="loading ? '刷新中' : '刷新最近使用'"
+              :aria-label="loading ? '刷新中' : '刷新'"
               title="刷新"
               class="w-7 h-7 rounded-md flex items-center justify-center text-ink-500 hover:text-accent-600 hover:bg-accent-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-transparent border-0 cursor-pointer"
-              @click="loadRecent"
+              @click="loadAll"
             >
               <el-icon :size="14" :class="loading ? 'is-loading' : ''" aria-hidden="true"><Refresh /></el-icon>
             </button>
@@ -372,63 +461,116 @@ onUnmounted(clearHideTimer)
         </header>
 
         <div class="px-4 py-2 max-h-[60vh] overflow-y-auto overscroll-contain">
-          <div v-if="loading && recentTools.length === 0" class="py-6 text-center text-xs text-ink-400">
-            加载中…
-          </div>
+          <!-- 最近使用 -->
+          <template v-if="activeTab === 'recent'">
+            <div v-if="loading && enabledRecentTools.length === 0" class="py-6 text-center text-xs text-ink-400">
+              加载中…
+            </div>
 
-          <div v-else-if="recentTools.length === 0" class="py-8 text-center text-xs text-ink-400">
-            暂无使用记录
-          </div>
+            <div v-else-if="enabledRecentTools.length === 0" class="py-8 text-center text-xs text-ink-400">
+              暂无使用记录
+            </div>
 
-          <ul v-else class="m-0 p-0 list-none flex flex-col gap-1">
-            <li v-for="item in recentTools" :key="item.tool_url">
-              <router-link
-                :to="item.tool_url"
-                class="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-accent-50 transition-colors duration-150 group/item"
-                :aria-label="`跳转到 ${item.tool_title}`"
-                @click="onItemClick"
-              >
-                <template v-if="lookupToolInfo(item.tool_url)">
-                  <img
-                    v-if="!useSpriteLogo(lookupToolInfo(item.tool_url)!).style"
-                    :src="lookupToolInfo(item.tool_url)!.logo"
-                    loading="lazy"
-                    :alt="item.tool_title"
-                    class="w-9 h-9 min-h-[2.25rem] min-w-[2.25rem] object-contain shrink-0"
-                  >
+            <ul v-else class="m-0 p-0 list-none flex flex-col gap-1">
+              <li v-for="item in enabledRecentTools" :key="item.tool_url">
+                <router-link
+                  :to="item.tool_url"
+                  class="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-accent-50 transition-colors duration-150 group/item"
+                  :aria-label="`跳转到 ${item.tool_title}`"
+                  @click="onItemClick"
+                >
+                  <template v-if="lookupToolInfo(item.tool_url)">
+                    <img
+                      v-if="!useSpriteLogo(lookupToolInfo(item.tool_url)!).style"
+                      :src="lookupToolInfo(item.tool_url)!.logo"
+                      loading="lazy"
+                      :alt="item.tool_title"
+                      class="w-9 h-9 min-h-[2.25rem] min-w-[2.25rem] object-contain shrink-0"
+                    >
+                    <div
+                      v-else
+                      class="w-9 h-9 min-h-[2.25rem] min-w-[2.25rem] shrink-0"
+                      :style="useSpriteLogo(lookupToolInfo(item.tool_url)!).style"
+                      role="img"
+                      :aria-label="item.tool_title"
+                    ></div>
+                  </template>
                   <div
                     v-else
-                    class="w-9 h-9 min-h-[2.25rem] min-w-[2.25rem] shrink-0"
-                    :style="useSpriteLogo(lookupToolInfo(item.tool_url)!).style"
-                    role="img"
-                    :aria-label="item.tool_title"
-                  ></div>
-                </template>
-                <div
-                  v-else
-                  class="w-9 h-9 min-h-[2.25rem] min-w-[2.25rem] rounded-md bg-accent-50 flex items-center justify-center text-accent-700 text-sm font-semibold shrink-0"
-                  aria-hidden="true"
-                >{{ (item.tool_title || '?').charAt(0) }}</div>
+                    class="w-9 h-9 min-h-[2.25rem] min-w-[2.25rem] rounded-md bg-accent-50 flex items-center justify-center text-accent-700 text-sm font-semibold shrink-0"
+                    aria-hidden="true"
+                  >{{ (item.tool_title || '?').charAt(0) }}</div>
 
-                <div class="flex-1 min-w-0">
-                  <div class="text-sm font-medium text-ink-900 truncate group-hover/item:text-accent-700 transition-colors">
-                    {{ item.tool_title }}
+                  <div class="flex-1 min-w-0">
+                    <div class="text-sm font-medium text-ink-900 truncate group-hover/item:text-accent-700 transition-colors">
+                      {{ item.tool_title }}
+                    </div>
+                    <div class="text-[11px] text-ink-400 mt-0.5 flex items-center gap-1">
+                      <span>{{ formatRelativeTime(item.last_used_at) }}</span>
+                      <template v-if="item.use_count > 1">
+                        <span aria-hidden="true">·</span>
+                        <span class="text-accent-600">使用 {{ item.use_count }} 次</span>
+                      </template>
+                    </div>
                   </div>
-                  <div class="text-[11px] text-ink-400 mt-0.5 flex items-center gap-1">
-                    <span>{{ formatRelativeTime(item.last_used_at) }}</span>
-                    <template v-if="item.use_count > 1">
-                      <span aria-hidden="true">·</span>
-                      <span class="text-accent-600">使用 {{ item.use_count }} 次</span>
-                    </template>
+                </router-link>
+              </li>
+            </ul>
+          </template>
+
+          <!-- 收藏 -->
+          <template v-else>
+            <div v-if="loading && enabledFavoriteUrls.length === 0" class="py-6 text-center text-xs text-ink-400">
+              加载中…
+            </div>
+
+            <div v-else-if="enabledFavoriteUrls.length === 0" class="py-8 text-center text-xs text-ink-400 leading-relaxed">
+              还没有收藏工具<br>
+              <span class="text-[11px]">在首页点击工具卡片右上角的星标即可收藏</span>
+            </div>
+
+            <ul v-else class="m-0 p-0 list-none flex flex-col gap-1">
+              <li v-for="toolUrl in enabledFavoriteUrls" :key="toolUrl">
+                <router-link
+                  :to="toolUrl"
+                  class="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-accent-50 transition-colors duration-150 group/item"
+                  :aria-label="`跳转到 ${lookupToolInfo(toolUrl)?.title || '收藏的工具'}`"
+                  @click="onItemClick"
+                >
+                  <template v-if="lookupToolInfo(toolUrl)">
+                    <img
+                      v-if="!useSpriteLogo(lookupToolInfo(toolUrl)!).style"
+                      :src="lookupToolInfo(toolUrl)!.logo"
+                      loading="lazy"
+                      :alt="lookupToolInfo(toolUrl)!.title"
+                      class="w-9 h-9 min-h-[2.25rem] min-w-[2.25rem] object-contain shrink-0"
+                    >
+                    <div
+                      v-else
+                      class="w-9 h-9 min-h-[2.25rem] min-w-[2.25rem] shrink-0"
+                      :style="useSpriteLogo(lookupToolInfo(toolUrl)!).style"
+                      role="img"
+                      :aria-label="lookupToolInfo(toolUrl)!.title"
+                    ></div>
+                  </template>
+
+                  <div class="flex-1 min-w-0">
+                    <div class="text-sm font-medium text-ink-900 truncate group-hover/item:text-accent-700 transition-colors">
+                      {{ lookupToolInfo(toolUrl)?.title || '收藏的工具' }}
+                    </div>
+                    <div class="text-[11px] text-ink-400 mt-0.5 flex items-center gap-1">
+                      <el-icon :size="10" class="text-accent-500" aria-hidden="true"><StarFilled /></el-icon>
+                      <span>已收藏</span>
+                    </div>
                   </div>
-                </div>
-              </router-link>
-            </li>
-          </ul>
+                </router-link>
+              </li>
+            </ul>
+          </template>
         </div>
 
         <footer class="px-4 py-2 border-t border-border-subtle text-[11px] text-ink-400 text-center">
-          按最近使用排序
+          {{ activeTab === 'recent' ? '按最近使用排序' : '按收藏时间排序' }}
         </footer>
       </div>
     </el-popover>
