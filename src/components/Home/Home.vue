@@ -209,6 +209,80 @@ const scrollToAnchor = async () => {
   })
 }
 
+// ============ 刷新后精确恢复滚动位置 ============
+// 仅 F5 刷新（navigation type === 'reload'）时恢复像素级位置；
+// SPA 站内导航（如详情页「返回」跳 /?value=cate_X）仍走锚点定位，新标签页分享链接也不受影响
+const HOME_SCROLL_KEY = 'home_scroll_restore_y'
+
+const isReloadNavigation = () => {
+  try {
+    const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined
+    return nav ? nav.type === 'reload' : (performance as any).navigation?.type === 1
+  } catch {
+    return false
+  }
+}
+
+// >0 表示有待恢复的滚动位置（本次挂载内消费一次）
+const pendingScrollRestore = ref(0)
+
+const onPageHide = () => {
+  if (route.path !== '/') return
+  try {
+    sessionStorage.setItem(HOME_SCROLL_KEY, String(window.scrollY))
+  } catch {
+    // sessionStorage 不可用（隐私模式等）时静默忽略
+  }
+}
+
+// 等分类列表渲染完成后恢复保存的滚动位置。
+// 注意：热门资讯 / 最近使用 / 收藏条都是异步渲染的，恢复后页面高度还会变化把内容顶偏，
+// 所以恢复后 2s 内做多次校正回填；期间用户主动滚动（滚轮/触摸/按键）立即交还控制权
+const restoreScrollWhenReady = async () => {
+  const y = pendingScrollRestore.value
+  if (!y) return
+  // 取消监听要在等 cates 之前就挂上：用户在任何时刻主动滚动都立即交还控制权
+  let cancelled = false
+  const onCancel = () => { cancelled = true }
+  window.addEventListener('wheel', onCancel, { once: true, passive: true })
+  window.addEventListener('touchmove', onCancel, { once: true, passive: true })
+  window.addEventListener('keydown', onCancel, { once: true })
+
+  const waitStart = Date.now()
+  while (toolsStore.cates.length === 0 && Date.now() - waitStart < 3000) {
+    await new Promise((resolve) => setTimeout(resolve, 50))
+  }
+  await nextTick()
+
+  const finish = () => {
+    window.removeEventListener('wheel', onCancel)
+    window.removeEventListener('touchmove', onCancel)
+    window.removeEventListener('keydown', onCancel)
+    pendingScrollRestore.value = 0
+    try {
+      sessionStorage.removeItem(HOME_SCROLL_KEY)
+    } catch {
+      // 静默
+    }
+    // 校正结束后再激活滚动监听（恢复/校正产生的滚动事件不回写 URL）
+    isScrollListenerActive.value = true
+  }
+
+  requestAnimationFrame(() => window.scrollTo(0, y))
+  // 首次恢复后页面高度仍会随异步区块变化，按间隔校正回填
+  const correctionDelays = [500, 1100, 1800]
+  for (const delay of correctionDelays) {
+    await new Promise((resolve) => setTimeout(resolve, delay))
+    if (cancelled) {
+      finish()
+      return
+    }
+    window.scrollTo(0, y)
+  }
+  if (!cancelled) window.scrollTo(0, y)
+  finish()
+}
+
 // 滚动监听相关
 const isScrollListenerActive = ref(false)
 // 用户手动点击分类后，暂时禁用滚动监听（避免冲突）
@@ -331,6 +405,12 @@ const gotoAnchor = async (anchor: string) => {
 onMounted(async () => {
   await nextTick()
 
+  // 刷新（F5）：优先精确恢复上次滚动位置，跳过锚点定位
+  if (isReloadNavigation()) {
+    const saved = parseInt(sessionStorage.getItem(HOME_SCROLL_KEY) || '0', 10)
+    if (saved > 0) pendingScrollRestore.value = saved
+  }
+
   // 主动加载工具列表（避免依赖 Left.vue 的副作用）
   ensureCatesLoaded()
 
@@ -342,9 +422,13 @@ onMounted(async () => {
 
   // 预先添加滚动监听器；handleScroll 通过 isScrollListenerActive / isScrollingToAnchor 双重门控
   window.addEventListener('scroll', throttledHandleScroll)
+  window.addEventListener('pagehide', onPageHide)
 
   // 只在有明确的 query.value 时才滚动到锚点
-  if (route.query && route.query.value) {
+  if (pendingScrollRestore.value > 0) {
+    // 刷新恢复：等 cates 渲染后 restoreScrollWhenReady 内部会激活滚动监听
+    restoreScrollWhenReady()
+  } else if (route.query && route.query.value) {
     scrollToAnchor()
     // scrollToAnchor 将在 ~1.5s 后设置 isScrollListenerActive = true
   } else {
@@ -361,6 +445,7 @@ onUnmounted(() => {
   // 清理滚动监听
   isScrollListenerActive.value = false
   window.removeEventListener('scroll', throttledHandleScroll)
+  window.removeEventListener('pagehide', onPageHide)
   if (scrollTimer) {
     cancelAnimationFrame(scrollTimer)
   }
@@ -404,6 +489,8 @@ watch(() => route.query.value, () => {
 })
 
 watch(() => toolsStore.cates.length, (newLen, oldLen) => {
+  // 刷新恢复流程中：由 restoreScrollWhenReady 负责定位，不走锚点（避免互相覆盖）
+  if (pendingScrollRestore.value > 0) return
   // cates 从无到有首次加载：onMounted 中的 scrollToAnchor 调用时锚点元素可能尚未渲染，
   // 会导致 scrollIntoView 失败；此时需重置标志位强制重新触发滚动，避免被同锚点拦截吞掉。
   if (oldLen === 0 && newLen > 0 && route.query.value) {
@@ -528,7 +615,7 @@ watch(() => toolsStore.cates.length, (newLen, oldLen) => {
             >
               ?
             </div>
-            <div class="flex-1 min-w-0">
+            <div class="flex-1 min-w-0 pr-4">
               <div class="text-sm font-medium text-ink-900 truncate">
                 {{ lookupToolInfo(toolUrl)?.title || '已下线工具' }}
               </div>
@@ -565,12 +652,12 @@ watch(() => toolsStore.cates.length, (newLen, oldLen) => {
             :to="item.url"
             class="relative flex flex-col mt-5 border-solid rounded-2xl border-border-default p-2 bg-white shadow-lg group-hover:bg-accent-50 group-hover:shadow-xl group-hover:border-border-default w-full p-5 group-hover:-translate-y-3 duration-300 transition-all"
           >
-            <!-- 收藏星标：卡片右上角。登录后点击收藏/取消，未登录提示登录后可用 -->
+            <!-- 收藏星标：悬在顶部留白区，高于标题行 -->
             <button
               type="button"
-              class="absolute top-2.5 right-2.5 z-10 p-1.5 rounded-full transition-colors duration-150"
+              class="absolute -top-1 right-1.5 z-10 w-6 h-6 rounded-full bg-white shadow-sm flex items-center justify-center transition-all duration-150"
               :class="isFavorited(item.url)
-                ? 'text-accent-500'
+                ? 'bg-accent-50 text-accent-500'
                 : 'text-ink-300 hover:text-accent-400'"
               :title="userStore.getLoginStatus
                 ? (isFavorited(item.url) ? '取消收藏' : '收藏工具')
@@ -580,8 +667,8 @@ watch(() => toolsStore.cates.length, (newLen, oldLen) => {
                 : `登录后可收藏 ${item.title}`"
               @click.stop.prevent="toggleFavorite(item.url)"
             >
-              <IconStarFilled v-if="isFavorited(item.url)" class="w-[18px] h-[18px]" />
-              <IconStar v-else class="w-[18px] h-[18px]" />
+              <IconStarFilled v-if="isFavorited(item.url)" class="w-3.5 h-3.5" />
+              <IconStar v-else class="w-3.5 h-3.5" />
             </button>
             <div class="flex items-center border-b border-border-subtle pb-2">
               <img
@@ -598,8 +685,9 @@ watch(() => toolsStore.cates.length, (newLen, oldLen) => {
                 role="img"
                 :aria-label="item.title"
               ></div>
-              <div class="flex flex-col ml-2 w-full">
+              <div class="flex flex-col ml-2 w-full min-w-0">
                 <div class="flex">
+                  <!-- 星标悬在标题行上方，标题无需让位 -->
                   <div class="font-semibold text-body-lg line-clamp-1 text-ink-900">{{ item.title }}</div>
                 </div>
                 <div class="flex justify-between">

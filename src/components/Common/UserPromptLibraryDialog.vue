@@ -370,16 +370,19 @@ const groupChips = computed(() => {
     append-to-body
     destroy-on-close
   >
-    <div :class="isMobile ? 'flex flex-col gap-3' : 'grid grid-cols-[180px_1fr] gap-4 min-h-[480px]'">
+    <div
+      :class="isMobile ? 'flex flex-col gap-3' : 'grid grid-cols-[180px_1fr] gap-4'"
+      :style="isMobile ? {} : { height: 'min(70vh, 620px)' }"
+    >
       <!-- ============ 桌面端：左侧分组列表 ============ -->
-      <aside v-if="!isMobile" class="flex flex-col gap-2 border-r border-gray-200 pr-3">
-        <div class="flex items-center justify-between mb-1">
+      <aside v-if="!isMobile" class="flex flex-col gap-2 border-r border-gray-200 pr-3 overflow-hidden">
+        <div class="flex items-center justify-between mb-1 shrink-0">
           <span class="text-sm font-medium text-gray-700">分组</span>
           <el-button link size="small" type="primary" @click="openCreateGroup">
             + 新建
           </el-button>
         </div>
-        <ul class="flex flex-col gap-1 overflow-y-auto" style="max-height: 420px">
+        <ul class="flex flex-col gap-1 overflow-y-auto min-h-0">
           <li v-for="g in [{ id: '__all__', name: '全部', prompt_count: null, color: '' }, ...groups, { id: '__none__', name: '未分组', prompt_count: null, color: '' }]"
               :key="g.id">
             <button
@@ -438,9 +441,9 @@ const groupChips = computed(() => {
       </aside>
 
       <!-- ============ 右侧：搜索 + 提示词列表 ============ -->
-      <section class="flex flex-col min-w-0">
+      <section class="flex flex-col min-w-0 overflow-hidden">
         <!-- 顶部操作区 -->
-        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3 shrink-0">
           <div class="text-sm text-gray-500">
             点击列表中的某条即可填入到上方输入框；最多 5000 字。
           </div>
@@ -489,13 +492,14 @@ const groupChips = computed(() => {
           </button>
         </div>
 
-        <!-- ============ 桌面端：el-table ============ -->
-        <div v-if="!isMobile" v-loading="loading">
+        <!-- ============ 桌面端：el-table（内部滚动，弹窗不超出视口） ============ -->
+        <div v-if="!isMobile" v-loading="loading" class="flex-1 min-h-0">
           <el-table
             :data="filteredList"
             stripe
             empty-text="该分组下还没有提示词"
             row-key="id"
+            height="100%"
             @row-click="onRowClick"
             style="cursor: pointer"
           >
@@ -522,7 +526,7 @@ const groupChips = computed(() => {
                 <span v-else class="text-xs text-gray-400">未分组</span>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="160" align="right">
+            <el-table-column label="操作" width="160" align="right" fixed="right">
               <template #default="{ row }">
                 <el-button size="small" link type="primary" @click.stop="openEdit(row)">
                   编辑
