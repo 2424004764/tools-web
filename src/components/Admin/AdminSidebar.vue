@@ -13,6 +13,7 @@ import IconDocument from '~icons/ep/document'
 import IconPicture from '~icons/ep/picture'
 import IconWarning from '~icons/ep/warning'
 import IconLightning from '~icons/ep/lightning'
+import IconDataAnalysis from '~icons/ep/data-analysis'
 
 const route = useRoute()
 const router = useRouter()
@@ -61,6 +62,12 @@ const groups: MenuGroup[] = [
       { index: '/admin/generation-records', title: '请求日志', icon: IconDocument },
       { index: '/admin/ai-media-works', title: 'AI 媒体作品', icon: IconPicture },
       { index: '/admin/error-logs', title: '错误日志', icon: IconWarning },
+    ],
+  },
+  {
+    title: '系统',
+    items: [
+      { index: '/admin/db-stats', title: '数据统计', icon: IconDataAnalysis },
     ],
   },
 ]
