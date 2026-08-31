@@ -3,8 +3,8 @@ import { BookmarksService } from '../services/bookmarksService.js'
 import { Validator } from '../middlewares/validator.js'
 
 export class BookmarksController {
-  constructor(db) {
-    this.bookmarksService = new BookmarksService(db)
+  constructor(db, env = null, waitUntil = null) {
+    this.bookmarksService = new BookmarksService(db, env, waitUntil)
   }
 
   // 获取当前用户的所有书签（支持分页）

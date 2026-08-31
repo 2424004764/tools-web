@@ -2,9 +2,9 @@ import { ApiResponse, QAModel, QueryBuilder, Pager } from '../utils/db.js'
 import { AuthMiddleware } from '../middlewares/auth.js'
 
 export class QARouter {
-  constructor(db) {
+  constructor(db, env = null, waitUntil = null) {
     this.db = db
-    this.qaModel = new QAModel(db)
+    this.qaModel = new QAModel(db, env, waitUntil)
   }
 
   async handle(request, path, env, origin) {

@@ -3,8 +3,8 @@ import { NotesService } from '../services/notesService.js'
 import { Validator } from '../middlewares/validator.js'
 
 export class NotesController {
-  constructor(db) {
-    this.notesService = new NotesService(db)
+  constructor(db, env = null, waitUntil = null) {
+    this.notesService = new NotesService(db, env, waitUntil)
   }
 
   // ===== 笔记分组 =====

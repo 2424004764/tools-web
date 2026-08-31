@@ -3,8 +3,8 @@ import { AuthMiddleware } from '../middlewares/auth.js'
 import { ApiResponse, Pager } from '../utils/db.js'
 
 export class LettersRouter {
-  constructor(db) {
-    this.controller = new LettersController(db)
+  constructor(db, env = null, waitUntil = null) {
+    this.controller = new LettersController(db, env, waitUntil)
   }
 
   // 路由分发

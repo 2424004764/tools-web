@@ -3,8 +3,8 @@ import { LettersService } from '../services/lettersService.js'
 import { Validator } from '../middlewares/validator.js'
 
 export class LettersController {
-  constructor(db) {
-    this.lettersService = new LettersService(db)
+  constructor(db, env = null, waitUntil = null) {
+    this.lettersService = new LettersService(db, env, waitUntil)
   }
 
   // 获取当前用户的所有信件（支持分页）

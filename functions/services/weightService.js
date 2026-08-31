@@ -21,10 +21,10 @@ const DEFAULT_STATISTICS = {
 }
 
 export class WeightService {
-  constructor(db) {
+  constructor(db, env = null, waitUntil = null) {
     this.db = db
-    this.recordModel = new WeightRecordModel(db)
-    this.memberModel = new WeightMemberModel(db)
+    this.recordModel = new WeightRecordModel(db, env, waitUntil)
+    this.memberModel = new WeightMemberModel(db, env, waitUntil)
   }
 
   // ===== 成员管理 =====

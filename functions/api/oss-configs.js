@@ -30,7 +30,7 @@ export async function onRequest(context) {
     return AuthMiddleware.createAuthErrorResponse(authResult.error, '*', 401)
   }
   const uid = authResult.user.id
-  const service = new OssService(db, env.JWT_SECRET)
+  const service = new OssService(db, env.JWT_SECRET, env, context.waitUntil)
 
   try {
     if (request.method === 'GET') {

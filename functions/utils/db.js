@@ -1,4 +1,5 @@
 import { getCORSHeaders } from './cors.js'
+import { logSlowQuery, shouldLogSlowQuery, parseSqlMeta, DEFAULT_SLOW_QUERY_THRESHOLD_MS } from './slow-query-log.js'
 
 // ===== 安全约束：防止 SQL 注入 =====
 const ALLOWED_OPERATORS = new Set([
@@ -138,8 +139,64 @@ export class QueryBuilder {
 
 // 数据库模型基类
 export class Model {
-  constructor(db) {
+  // env / waitUntil 用于慢查询日志：
+  //   env 提供 DB binding 与阈值配置；waitUntil 把日志写入交给后台执行，不阻塞主请求。
+  // 老代码只传 db，新代码应同时传 env 与 waitUntil；缺省时不影响业务功能。
+  constructor(db, env = null, waitUntil = null) {
     this.db = db
+    this.env = env
+    this.waitUntil = typeof waitUntil === 'function' ? waitUntil : null
+  }
+
+  /**
+   * 统一执行 D1 语句 + 慢查询计时。
+   *
+   * 用法：await this.executeQuery('SELECT', sql, params, stmt => stmt.all())
+   *
+   * @param {string} operation SQL 操作类型（SELECT/INSERT/UPDATE/DELETE/OTHER）
+   * @param {string} sql 完整 SQL（会原样入库）
+   * @param {Array} params bind 参数数组
+   * @param {(stmt: any) => Promise<any>} execFn 实际执行语句的回调
+   * @returns {Promise<any>} execFn 的返回值
+   */
+  async executeQuery(operation, sql, params, execFn) {
+    const startedAt = Date.now()
+    let result
+    let err = null
+    try {
+      result = await execFn(this.db.prepare(sql).bind(...(params || [])))
+      return result
+    } catch (e) {
+      err = e
+      throw e
+    } finally {
+      const durationMs = Date.now() - startedAt
+      this._maybeLogSlowQuery(operation, sql, params, durationMs, err)
+    }
+  }
+
+  _maybeLogSlowQuery(operation, sql, params, durationMs, error) {
+    if (!this.env || !this.env.DB) return
+    const { enabled } = shouldLogSlowQuery(this.env, durationMs)
+    if (!enabled) return
+
+    const meta = parseSqlMeta(sql)
+    const task = logSlowQuery(this.env, {
+      sqlText: sql,
+      params,
+      durationMs,
+      operation: operation || meta.operation,
+      tableName: meta.tableName,
+      source: 'model',
+      error: error ? (error.message || String(error)) : null,
+    })
+
+    if (this.waitUntil) {
+      try { this.waitUntil(task) } catch { /* waitUntil 不可用时静默 */ }
+    } else {
+      // 兜底：没有 waitUntil 时也不阻塞，挂到微任务即可
+      task.catch(() => {})
+    }
   }
 
   // 字段映射：数据库字段名 -> JS字段名
@@ -202,7 +259,7 @@ export class Model {
       const placeholders = fields.map(() => '?').join(', ')
       const values = Object.values(mappedData)
       const sql = `INSERT INTO ${this.config.tableName} (${[...fields, createdAtField].join(', ')}) VALUES (${placeholders}, CURRENT_TIMESTAMP)`
-      await this.db.prepare(sql).bind(...values).run()
+      await this.executeQuery('INSERT', sql, values, (stmt) => stmt.run())
       return { id: mappedData.id, success: true }
     }
 
@@ -212,7 +269,7 @@ export class Model {
 
     const sql = `INSERT INTO ${this.config.tableName} (${fields.join(', ')}) VALUES (${placeholders})`
 
-    await this.db.prepare(sql).bind(...values).run()
+    await this.executeQuery('INSERT', sql, values, (stmt) => stmt.run())
 
     return { id: mappedData.id, success: true }
   }
@@ -231,17 +288,17 @@ export class Model {
       sql += queryBuilder.buildLimit()
     }
     
-    const result = await this.db.prepare(sql).bind(...params).all()
+    const result = await this.executeQuery('SELECT', sql, params, (stmt) => stmt.all())
     return result.results.map(row => this.mapFromDb(row))
   }
 
   // 查询单条记录
   async findOne(queryBuilder) {
     const whereClause = queryBuilder.buildWhere(this)
-    
+
     let sql = `SELECT * FROM ${this.config.tableName}${whereClause.sql} LIMIT 1`
-    
-    const result = await this.db.prepare(sql).bind(...whereClause.params).first()
+
+    const result = await this.executeQuery('SELECT', sql, whereClause.params, (stmt) => stmt.first())
     return result ? this.mapFromDb(result) : null
   }
 
@@ -261,8 +318,8 @@ export class Model {
     // 添加更新时间
     const updateTimeField = this.config.fields.updateTime?.dbField || 'update_time'
     const sql = `UPDATE ${this.config.tableName} SET ${setClause}, ${updateTimeField} = CURRENT_TIMESTAMP WHERE id = ?`
-    
-    const result = await this.db.prepare(sql).bind(...values).run()
+
+    const result = await this.executeQuery('UPDATE', sql, values, (stmt) => stmt.run())
     return (result.meta?.changes ?? result.changes ?? 0) > 0
   }
 
@@ -270,23 +327,23 @@ export class Model {
   async updateWithQuery(data, queryBuilder) {
     const mappedData = this.mapToDb(data)
     const whereClause = queryBuilder.buildWhere(this)
-    
+
     const fields = Object.keys(mappedData)
     const setClause = fields.map(field => `${field} = ?`).join(', ')
     const values = [...Object.values(mappedData), ...whereClause.params]
-    
+
     const updateTimeField = this.config.fields.updateTime?.dbField || 'update_time'
     const sql = `UPDATE ${this.config.tableName} SET ${setClause}, ${updateTimeField} = CURRENT_TIMESTAMP${whereClause.sql}`
-    
-    const result = await this.db.prepare(sql).bind(...values).run()
+
+    const result = await this.executeQuery('UPDATE', sql, values, (stmt) => stmt.run())
     return (result.meta?.changes ?? result.changes ?? 0) > 0
   }
 
   // 删除记录
   async delete(id) {
     const sql = `DELETE FROM ${this.config.tableName} WHERE id = ?`
-    
-    const result = await this.db.prepare(sql).bind(id).run()
+
+    const result = await this.executeQuery('DELETE', sql, [id], (stmt) => stmt.run())
     return (result.meta?.changes ?? result.changes ?? 0) > 0
   }
 
@@ -294,16 +351,16 @@ export class Model {
   async deleteWithQuery(queryBuilder) {
     const whereClause = queryBuilder.buildWhere(this)
     const sql = `DELETE FROM ${this.config.tableName}${whereClause.sql}`
-    
-    const result = await this.db.prepare(sql).bind(...whereClause.params).run()
+
+    const result = await this.executeQuery('DELETE', sql, whereClause.params, (stmt) => stmt.run())
     return (result.meta?.changes ?? result.changes ?? 0) > 0
   }
 
   // 检查记录是否存在
   async exists(id) {
     const sql = `SELECT 1 FROM ${this.config.tableName} WHERE id = ? LIMIT 1`
-    
-    const result = await this.db.prepare(sql).bind(id).first()
+
+    const result = await this.executeQuery('SELECT', sql, [id], (stmt) => stmt.first())
     return !!result
   }
 
@@ -311,14 +368,14 @@ export class Model {
   async count(queryBuilder) {
     let sql = `SELECT COUNT(*) as count FROM ${this.config.tableName}`
     let params = []
-    
+
     if (queryBuilder) {
       const whereClause = queryBuilder.buildWhere(this)
       sql += whereClause.sql
       params = whereClause.params
     }
-    
-    const result = await this.db.prepare(sql).bind(...params).first()
+
+    const result = await this.executeQuery('SELECT', sql, params, (stmt) => stmt.first())
     return result?.count || 0
   }
 
@@ -540,20 +597,156 @@ export class Pager {
 }
 
 // 数据库初始化函数 - 公共逻辑
-export function initDatabase(env) {
+//
+// 返回 { success, db, env, waitUntil }：
+//   - db 是经过慢查询包装的对象，所有 db.prepare().bind().run/all/first 都会被计时
+//   - env / waitUntil 透传出来，方便调用方转发给 Model 构造函数
+export function initDatabase(env, waitUntil = null) {
   // 确保D1数据库存在
-  if (!env.DB) {
+  if (!env || !env.DB) {
     console.error('D1 database not bound. Please check your Cloudflare Pages configuration.')
     return {
       success: false,
-      response: ApiResponse.error('Database not available', 500)
+      response: ApiResponse.error('Database not available', '*', 500),
     }
   }
-  
+
+  const safeWaitUntil = typeof waitUntil === 'function' ? waitUntil : null
+
   return {
     success: true,
-    db: env.DB
+    db: wrapDb(env.DB, env, safeWaitUntil),
+    env,
+    waitUntil: safeWaitUntil,
   }
+}
+
+// ===== D1 慢查询包装层 =====
+//
+// 目标：让所有 `db.prepare(...).bind(...).run/all/first()` 的耗时都被统计。
+// 实现：包装 prepare / batch / exec / dump。
+//
+// 兼容性：
+//   - 直接用 env.DB.prepare(sql).bind(...).all() 的代码（占项目里大多数）零改动
+//   - Model 基类仍然走 this.executeQuery（不依赖 wrapDb），与本包装互不冲突
+//
+// 限制：
+//   - wrapDb 不知道当前请求 path/method/uid（这是设计取舍：Proxy 实现复杂且收益小）。
+//     所以 source='raw' 的日志这几列为 NULL；context 上的 path/method 由调用方显式注入。
+
+/**
+ * 包一层 D1 prepared statement，让 run / all / first / raw 自带计时与慢查询落库。
+ *
+ * bind(...) 必须返回一个对象（不是真正的 D1PreparedStatement），但只要属性齐备、
+ * 支持链式 bind + 终态 run/all/first/raw，业务代码就完全无感。
+ *
+ * 关键点：每次 .bind() 都返回一个新的 Proxy，但执行（run/all/first）时需要拿到
+ * 最近一次 bind 的参数。用一个外层闭包持有 params，bind 时写入，exec 时读取。
+ */
+function wrapPreparedStatement(innerStmt, sql, env, waitUntil, initialParams = []) {
+  // params 在闭包中共享：bind 写入，exec 读取
+  let params = initialParams
+
+  const makeExec = (method) => async () => {
+    const startedAt = Date.now()
+    let result
+    let err = null
+    try {
+      // 必须先 bind 再调用，否则 D1 会报错
+      result = await innerStmt[method](...params)
+      return result
+    } catch (e) {
+      err = e
+      throw e
+    } finally {
+      const durationMs = Date.now() - startedAt
+      maybeLogRaw(env, waitUntil, sql, params, durationMs, err)
+    }
+  }
+
+  const handler = {
+    get(_target, prop) {
+      if (prop === 'bind') {
+        return (...values) => {
+          // 返回同一个 Proxy 实例，但更新闭包中的 params
+          // 通过把 params 写到 Proxy 上一个属性上，并返回同一个 proxy：
+          //   执行端（run/all/first）始终通过该 proxy 触发 get，能拿到最新 params。
+          // 实现：用 mutable 容器（数组），让 bind 与 exec 共享。
+          params = values
+          // 把最新 params 暴露给 exec 闭包：直接通过外层 let 变量即可
+          return wrappedProxy
+        }
+      }
+      if (prop === 'run') return makeExec('run')
+      if (prop === 'all') return makeExec('all')
+      if (prop === 'first') return makeExec('first')
+      if (prop === 'raw') return makeExec('raw')
+      // 其他属性（如 Symbol.toPrimitive 等）尽量原样返回
+      const v = innerStmt[prop]
+      return typeof v === 'function' ? v.bind(innerStmt) : v
+    },
+  }
+
+  const wrappedProxy = new Proxy({}, handler)
+  return wrappedProxy
+}
+
+function maybeLogRaw(env, waitUntil, sql, params, durationMs, error) {
+  if (!env || !env.DB) return
+  const { enabled } = shouldLogSlowQuery(env, durationMs)
+  if (!enabled) return
+
+  const meta = parseSqlMeta(sql)
+  const task = logSlowQuery(env, {
+    sqlText: sql,
+    params: Array.isArray(params) ? params : null,
+    durationMs,
+    operation: meta.operation,
+    tableName: meta.tableName,
+    source: 'raw',
+    error: error ? (error.message || String(error)) : null,
+  })
+
+  if (typeof waitUntil === 'function') {
+    try { waitUntil(task) } catch { /* waitUntil 失败时静默 */ }
+  } else {
+    task.catch(() => {})
+  }
+}
+
+class WrappedD1Database {
+  constructor(rawDb, env, waitUntil) {
+    this._raw = rawDb
+    this._env = env
+    this._waitUntil = typeof waitUntil === 'function' ? waitUntil : null
+  }
+
+  prepare(sql) {
+    return wrapPreparedStatement(this._raw.prepare(sql), sql, this._env, this._waitUntil)
+  }
+
+  // batch 转发：项目里几乎没用；如需逐条计时后续可扩展
+  batch(statements) {
+    return this._raw.batch(statements)
+  }
+
+  // exec / dump 是 D1 内部管理接口，按原样转发
+  exec(sql) {
+    return this._raw.exec(sql)
+  }
+
+  async dump() {
+    if (typeof this._raw.dump === 'function') return this._raw.dump()
+    throw new Error('D1 dump() is not supported in this runtime')
+  }
+}
+
+// ===== 实际 raw SQL 包装函数 =====
+//
+// 暴露独立函数以便单元测试 / 其他模块复用。
+export function wrapDb(rawDb, env, waitUntil = null) {
+  if (!rawDb) return null
+  return new WrappedD1Database(rawDb, env, waitUntil)
 }
 
 // PasswordEntry 模型 - 密码条目模型
@@ -672,9 +865,9 @@ export class QAModel extends Model {
       const values = fields.map(field => insertData[field])
 
       const sql = `INSERT INTO ${this.config.tableName} (${fields.join(', ')}) VALUES (${placeholders})`
-      
-      await this.db.prepare(sql).bind(...values).run()
-      
+
+      await this.executeQuery('INSERT', sql, values, (stmt) => stmt.run())
+
       return { success: true, id }
     } catch (error) {
       console.error('QAModel create error:', error)
@@ -723,7 +916,7 @@ export class QAModel extends Model {
       values.push(id)
 
       const sql = `UPDATE ${this.config.tableName} SET ${updateFields.join(', ')} WHERE id = ?`
-      const result = await this.db.prepare(sql).bind(...values).run()
+      const result = await this.executeQuery('UPDATE', sql, values, (stmt) => stmt.run())
 
       // 修复：检查正确的changes字段
       const changes = result.meta?.changes ?? result.changes ?? 0
@@ -739,8 +932,8 @@ export class QAModel extends Model {
   async findById(id) {
     try {
       const sql = `SELECT * FROM ${this.config.tableName} WHERE id = ?`
-      const result = await this.db.prepare(sql).bind(id).first()
-      
+      const result = await this.executeQuery('SELECT', sql, [id], (stmt) => stmt.first())
+
       if (!result) {
         return null
       }
@@ -799,7 +992,7 @@ export class QAModel extends Model {
         params = [...params, ...limitParams]
       }
       
-      const results = await this.db.prepare(sql).bind(...params).all()
+      const results = await this.executeQuery('SELECT', sql, params, (stmt) => stmt.all())
 
       return results.map(result => {
         // 反序列化JSON数据，添加错误处理
@@ -847,7 +1040,7 @@ export class QAModel extends Model {
       sql += queryBuilder.buildLimit()
     }
     
-    const results = await this.db.prepare(sql).bind(...params).all()
+    const results = await this.executeQuery('SELECT', sql, params, (stmt) => stmt.all())
 
     // 确保results是数组
     const resultsArray = Array.isArray(results) ? results : (results.results || [])
@@ -929,7 +1122,7 @@ export class LinkModel extends Model {
 
   async incrementClicks(slug) {
     const sql = `UPDATE ${this.config.tableName} SET clicks = clicks + 1, update_time = CURRENT_TIMESTAMP WHERE slug = ?`
-    await this.db.prepare(sql).bind(slug).run()
+    await this.executeQuery('UPDATE', sql, [slug], (stmt) => stmt.run())
   }
 }
 

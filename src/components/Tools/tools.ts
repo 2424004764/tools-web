@@ -1418,6 +1418,15 @@ export function getToolsCate() {
           cate: 'AI工具'
         },
         {
+          id: 'my-ai-creations-2026-08-31',
+          title: '我的 AI 创作',
+          logo: '/images/logo/ai-media-works.png',
+          desc: '查看当前登录用户在 AI 工具中生成的私有图片素材，按提示词任务分组浏览',
+          url: '/my-ai-creations/',
+          cateId: 10,
+          cate: 'AI工具'
+        },
+        {
           id: 'd7354ccf-b8b2-4f9c-856c-4000c8e6959a',
           title: 'AI 穿搭建议',
           logo: '/images/logo/ai_outfit.png',

@@ -187,7 +187,7 @@ function normalizeRoutes(rawRoutes) {
 }
 
 export class TravelMapsService {
-  constructor(db) {
+  constructor(db, env = null, waitUntil = null) {
     this.db = db
   }
 

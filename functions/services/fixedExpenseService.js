@@ -26,9 +26,9 @@ const CATEGORY_COLORS = {
 }
 
 export class FixedExpenseService {
-  constructor(db) {
+  constructor(db, env = null, waitUntil = null) {
     this.db = db
-    this.model = new FixedExpenseModel(db)
+    this.model = new FixedExpenseModel(db, env, waitUntil)
   }
 
   // ===== 列表 =====

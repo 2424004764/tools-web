@@ -3,8 +3,8 @@ import { AuthMiddleware } from '../middlewares/auth.js'
 import { ApiResponse } from '../utils/db.js'
 
 export class WeightRouter {
-  constructor(db) {
-    this.controller = new WeightController(db)
+  constructor(db, env = null, waitUntil = null) {
+    this.controller = new WeightController(db, env, waitUntil)
   }
 
   // 路由分发 - 添加认证检查

@@ -18,7 +18,7 @@ export async function onRequest(context) {
   }
 
   try {
-    const resumeRouter = new ResumeRouter(env.DB)
+    const resumeRouter = new ResumeRouter(env.DB, env, context.waitUntil)
     return await resumeRouter.handle(request, path, env, origin)
   } catch (error) {
     console.error('简历API错误:', error)

@@ -3,8 +3,8 @@ import { SalaryService } from '../services/salaryService.js'
 import { SalaryValidator } from '../middlewares/salaryValidator.js'
 
 export class SalaryController {
-  constructor(db) {
-    this.salaryService = new SalaryService(db)
+  constructor(db, env = null, waitUntil = null) {
+    this.salaryService = new SalaryService(db, env, waitUntil)
   }
 
   // ===== 成员操作 =====

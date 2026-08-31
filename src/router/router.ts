@@ -693,6 +693,16 @@ export const constantRoute = [
     },
   },
   {
+    path: '/my-ai-creations/',
+    component: () => import('@/components/Tools/MyAiCreations/MyAiCreations.vue'),
+    name: 'MyAiCreations',
+    meta: {
+      title: '我的 AI 创作',
+      keywords: '我的AI创作,我的AI图片,私有画廊,我的素材',
+      description: '查看当前登录用户在 AI 工具中生成的图片素材，按提示词任务分组展示。',
+    },
+  },
+  {
     path: '/ai-outfit',
     component: () => import('@/components/Tools/AiOutfit/AiOutfit.vue'),
     name: 'AiOutfit',
@@ -1837,13 +1847,23 @@ export const constantRoute = [
         },
       },
       {
+        path: 'slow-query-logs',
+        component: () => import('@/components/Admin/AdminSlowQueryLogs.vue'),
+        name: 'adminSlowQueryLogs',
+        meta: {
+          title: '慢查询日志',
+          keywords: '后台慢查询日志,SQL耗时',
+          description: '查看超过阈值的 D1 SQL 调用，记录 SQL 文本 / 耗时 / 来源 / 路径',
+        },
+      },
+      {
         path: 'db-stats',
         component: () => import('@/components/Admin/AdminDbStats.vue'),
         name: 'adminDbStats',
         meta: {
           title: '数据统计',
           keywords: '后台数据统计,数据表行数',
-          description: '查看所有数据表的行数与今日/7日/30日新增趋势',
+          description: '查看所有数据表的行数与今日/7天/30天新增趋势',
         },
       },
     ],

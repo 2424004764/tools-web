@@ -3,8 +3,8 @@ import { TodosService } from '../services/todosService.js'
 import { Validator } from '../middlewares/validator.js'
 
 export class TodosController {
-  constructor(db) {
-    this.todosService = new TodosService(db)
+  constructor(db, env = null, waitUntil = null) {
+    this.todosService = new TodosService(db, env, waitUntil)
   }
 
   async index(user, pager, origin, filters) {

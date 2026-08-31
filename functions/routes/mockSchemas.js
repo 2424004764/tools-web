@@ -3,8 +3,8 @@ import { AuthMiddleware } from '../middlewares/auth.js'
 import { ApiResponse, Pager } from '../utils/db.js'
 
 export class MockSchemasRouter {
-  constructor(db) {
-    this.controller = new MockSchemasController(db)
+  constructor(db, env = null, waitUntil = null) {
+    this.controller = new MockSchemasController(db, env, waitUntil)
   }
 
   async handle(request, path, env, origin) {

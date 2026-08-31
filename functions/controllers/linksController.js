@@ -2,8 +2,8 @@ import { ApiResponse } from '../utils/db.js'
 import { LinksService } from '../services/linksService.js'
 
 export class LinksController {
-  constructor(db) {
-    this.linksService = new LinksService(db)
+  constructor(db, env = null, waitUntil = null) {
+    this.linksService = new LinksService(db, env, waitUntil)
   }
 
   async store(data, origin) {

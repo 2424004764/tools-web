@@ -1,8 +1,8 @@
 import { TodoModel, QueryBuilder } from '../utils/db.js'
 
 export class TodosService {
-  constructor(db) {
-    this.todoModel = new TodoModel(db)
+  constructor(db, env = null, waitUntil = null) {
+    this.todoModel = new TodoModel(db, env, waitUntil)
   }
 
   async getAllTodos(uid, pager, filters = {}) {

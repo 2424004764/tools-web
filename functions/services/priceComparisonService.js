@@ -70,10 +70,10 @@ function calcFinalPrice(unitPrice, quantity, shippingFee, discount) {
 }
 
 export class PriceComparisonService {
-  constructor(db) {
+  constructor(db, env = null, waitUntil = null) {
     this.db = db
-    this.itemModel = new PriceComparisonItemModel(db)
-    this.entryModel = new PriceComparisonEntryModel(db)
+    this.itemModel = new PriceComparisonItemModel(db, env, waitUntil)
+    this.entryModel = new PriceComparisonEntryModel(db, env, waitUntil)
   }
 
   // ===== 物品列表 =====

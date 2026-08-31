@@ -89,6 +89,8 @@
     "/api/ai-image-edit/*",
     "/api/ai-media-works",
     "/api/ai-media-works/*",
+    "/api/ai-creations",
+    "/api/ai-creations/*",
     "/api/ai-outfit",
     "/api/ai-outfit/*",
     "/api/tools/credit-cost",

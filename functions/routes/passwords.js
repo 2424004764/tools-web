@@ -3,8 +3,8 @@ import { AuthMiddleware } from '../middlewares/auth.js'
 import { ApiResponse } from '../utils/db.js'
 
 export class PasswordsRouter {
-  constructor(db) {
-    this.controller = new PasswordController(db)
+  constructor(db, env = null, waitUntil = null) {
+    this.controller = new PasswordController(db, env, waitUntil)
   }
 
   // 路由分发 - 添加认证检查

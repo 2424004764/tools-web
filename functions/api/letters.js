@@ -13,14 +13,14 @@ export async function onRequest(context) {
   }
 
   // 初始化数据库
-  const dbInit = initDatabase(env)
+  const dbInit = initDatabase(env, context.waitUntil)
   if (!dbInit.success) {
     return dbInit.response
   }
 
   try {
     // 创建路由实例并处理请求（传入env用于JWT验证）
-    const router = new LettersRouter(dbInit.db)
+    const router = new LettersRouter(dbInit.db, dbInit.env, dbInit.waitUntil)
     return await router.handle(request, path, env, origin)
   } catch (error) {
     console.error('Letters API error:', error)
