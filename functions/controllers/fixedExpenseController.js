@@ -3,8 +3,8 @@ import { FixedExpenseService } from '../services/fixedExpenseService.js'
 import { FixedExpenseValidator } from '../middlewares/fixedExpenseValidator.js'
 
 export class FixedExpenseController {
-  constructor(db) {
-    this.service = new FixedExpenseService(db)
+  constructor(db, env = null, waitUntil = null) {
+    this.service = new FixedExpenseService(db, env, waitUntil)
   }
 
   async getList(user, origin, queryParams = {}) {

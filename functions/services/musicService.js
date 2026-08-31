@@ -464,7 +464,7 @@ async function deleteR2Object(env, bucket, r2Key) {
 // ============ 主 Service ============
 
 export class MusicService {
-  constructor(db, env) {
+  constructor(db, env, waitUntil = null) {
     this.db = db
     this.env = env
   }

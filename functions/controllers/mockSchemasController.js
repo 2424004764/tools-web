@@ -2,8 +2,8 @@ import { ApiResponse } from '../utils/db.js'
 import { MockSchemasService } from '../services/mockSchemasService.js'
 
 export class MockSchemasController {
-  constructor(db) {
-    this.service = new MockSchemasService(db)
+  constructor(db, env = null, waitUntil = null) {
+    this.service = new MockSchemasService(db, env, waitUntil)
   }
 
   async index(user, pager, origin) {

@@ -1,10 +1,10 @@
 import { NoteModel, NoteGroupModel, QueryBuilder } from '../utils/db.js'
 
 export class NotesService {
-  constructor(db) {
+  constructor(db, env = null, waitUntil = null) {
     this.db = db
-    this.noteModel = new NoteModel(db)
-    this.groupModel = new NoteGroupModel(db)
+    this.noteModel = new NoteModel(db, env, waitUntil)
+    this.groupModel = new NoteGroupModel(db, env, waitUntil)
   }
 
   // ===== 笔记分组操作 =====

@@ -1,8 +1,8 @@
 import { MockSchemaModel, QueryBuilder } from '../utils/db.js'
 
 export class MockSchemasService {
-  constructor(db) {
-    this.model = new MockSchemaModel(db)
+  constructor(db, env = null, waitUntil = null) {
+    this.model = new MockSchemaModel(db, env, waitUntil)
   }
 
   async getAllSchemas(uid, pager) {

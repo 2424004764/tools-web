@@ -328,6 +328,44 @@ export interface ApiErrorLogParams {
   endDate?: string
 }
 
+/** SQL 慢查询日志（由 functions/utils/slow-query-log.js 异步写入） */
+export interface SlowQueryLog {
+  id: string
+  sql_text: string
+  /** bind 参数的 JSON 序列化字符串（最多 50 个，超出会被截断） */
+  params: string | null
+  /** SQL 首关键字：SELECT / INSERT / UPDATE / DELETE / CREATE / OTHER */
+  operation: string | null
+  /** SQL 里第一条出现的表名（粗略解析） */
+  table_name: string | null
+  duration_ms: number
+  path: string | null
+  method: string | null
+  uid: string | null
+  /** 'model'（Model.executeQuery 拦截）/ 'raw'（wrapDb 拦截） */
+  source: string | null
+  /** 若 SQL 抛出，记录异常信息 */
+  error: string | null
+  created_at: string
+}
+
+export interface SlowQueryLogParams {
+  page?: number
+  pageSize?: number
+  /** 精确匹配表名 */
+  table?: string
+  /** 'model' / 'raw' */
+  source?: string
+  path?: string
+  uid?: string
+  /** 模糊匹配 SQL 文本 / 错误信息 / 路径 */
+  keyword?: string
+  /** 仅看耗时 >= N 毫秒 */
+  minDuration?: number
+  startDate?: string
+  endDate?: string
+}
+
 /** 兑换码（管理视图） */
 export interface RedeemCode {
   id: string

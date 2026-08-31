@@ -124,7 +124,7 @@ export async function onRequest(context) {
       })
     }
 
-    const service = new OssService(db, env.JWT_SECRET)
+    const service = new OssService(db, env.JWT_SECRET, env, context.waitUntil)
     const raw = await service.getRawById(config_id, uid)
     if (!raw.success) {
       // 400：让前端能读到后端返回的具体错误（配置不存在 / 密钥无法解密），避免被当成 404「接口不存在」

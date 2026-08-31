@@ -2,10 +2,10 @@ import { OssCredentialModel, QueryBuilder } from '../utils/db.js'
 import { encryptSecret, decryptSecret, maskSecret } from '../utils/crypto-secret.js'
 
 export class OssService {
-  constructor(db, jwtSecret) {
+  constructor(db, jwtSecret, env = null, waitUntil = null) {
     this.db = db
     this.jwtSecret = jwtSecret
-    this.model = new OssCredentialModel(db)
+    this.model = new OssCredentialModel(db, env, waitUntil)
   }
 
   /**

@@ -1,10 +1,10 @@
 import { PasswordEntryModel, PasswordGroupModel, QueryBuilder } from '../utils/db.js'
 
 export class PasswordService {
-  constructor(db) {
+  constructor(db, env = null, waitUntil = null) {
     this.db = db
-    this.entryModel = new PasswordEntryModel(db)
-    this.groupModel = new PasswordGroupModel(db)
+    this.entryModel = new PasswordEntryModel(db, env, waitUntil)
+    this.groupModel = new PasswordGroupModel(db, env, waitUntil)
   }
 
   // ===== 密码分组操作 =====

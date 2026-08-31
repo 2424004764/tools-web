@@ -27,10 +27,10 @@ const MEMBER_COLORS = [
 const MEMBER_EMOJIS = ['👤', '👨', '👩', '🧑', '👨‍💼', '👩‍💼', '🧔', '👱‍♀️', '👱', '🧑‍💻']
 
 export class SalaryService {
-  constructor(db) {
+  constructor(db, env = null, waitUntil = null) {
     this.db = db
-    this.recordModel = new SalaryRecordModel(db)
-    this.memberModel = new SalaryMemberModel(db)
+    this.recordModel = new SalaryRecordModel(db, env, waitUntil)
+    this.memberModel = new SalaryMemberModel(db, env, waitUntil)
   }
 
   // ===== 成员管理 =====

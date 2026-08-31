@@ -18,7 +18,7 @@ export async function onRequest(context) {
     return ApiResponse.cors(origin)
   }
 
-  const dbInit = initDatabase(env)
+  const dbInit = initDatabase(env, context.waitUntil)
   if (!dbInit.success) {
     return dbInit.response
   }
@@ -32,7 +32,7 @@ export async function onRequest(context) {
   const id = path.replace(/^\//, '').trim()
 
   try {
-    const service = new TravelMapsService(dbInit.db)
+    const service = new TravelMapsService(dbInit.db, dbInit.env, dbInit.waitUntil)
 
     switch (request.method) {
       case 'GET': {

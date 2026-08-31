@@ -11,13 +11,13 @@ export async function onRequest(context) {
     return ApiResponse.cors(origin)
   }
 
-  const dbInit = initDatabase(env)
+  const dbInit = initDatabase(env, context.waitUntil)
   if (!dbInit.success) {
     return dbInit.response
   }
 
   try {
-    const router = new TodosRouter(dbInit.db)
+    const router = new TodosRouter(dbInit.db, dbInit.env, dbInit.waitUntil)
     return await router.handle(request, path, env, origin)
   } catch (error) {
     console.error('Todos API error:', error)

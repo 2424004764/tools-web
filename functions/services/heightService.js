@@ -22,10 +22,10 @@ const DEFAULT_STATISTICS = {
 }
 
 export class HeightService {
-  constructor(db) {
+  constructor(db, env = null, waitUntil = null) {
     this.db = db
-    this.recordModel = new HeightRecordModel(db)
-    this.memberModel = new HeightMemberModel(db)
+    this.recordModel = new HeightRecordModel(db, env, waitUntil)
+    this.memberModel = new HeightMemberModel(db, env, waitUntil)
   }
 
   // ===== 成员管理 =====

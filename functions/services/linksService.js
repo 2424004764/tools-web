@@ -1,8 +1,8 @@
 import { LinkModel, QueryBuilder } from '../utils/db.js'
 
 export class LinksService {
-  constructor(db) {
-    this.linkModel = new LinkModel(db)
+  constructor(db, env = null, waitUntil = null) {
+    this.linkModel = new LinkModel(db, env, waitUntil)
   }
 
   generateSlug(length = 6) {

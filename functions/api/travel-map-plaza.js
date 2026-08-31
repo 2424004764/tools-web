@@ -14,7 +14,7 @@ export async function onRequest(context) {
     return ApiResponse.error('不支持的请求方法', origin, 405)
   }
 
-  const dbInit = initDatabase(env)
+  const dbInit = initDatabase(env, context.waitUntil)
   if (!dbInit.success) {
     return dbInit.response
   }
@@ -23,7 +23,7 @@ export async function onRequest(context) {
     const pager = Pager.fromRequest(request, 12)
     // Pager 不限制上界，这里兜一层避免被要求一次拉全表
     pager.pageSize = Math.min(pager.pageSize, 48)
-    const service = new TravelMapsService(dbInit.db)
+    const service = new TravelMapsService(dbInit.db, dbInit.env, dbInit.waitUntil)
     const { list, total } = await service.listPlaza(pager.page, pager.pageSize)
     return ApiResponse.success(pager.createResult(list, total), origin)
   } catch (error) {

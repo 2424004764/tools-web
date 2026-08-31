@@ -3,8 +3,8 @@ import { HeightService } from '../services/heightService.js'
 import { HeightValidator } from '../middlewares/heightValidator.js'
 
 export class HeightController {
-  constructor(db) {
-    this.heightService = new HeightService(db)
+  constructor(db, env = null, waitUntil = null) {
+    this.heightService = new HeightService(db, env, waitUntil)
   }
 
   // ===== 成员操作 =====

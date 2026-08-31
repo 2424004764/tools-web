@@ -3,8 +3,8 @@ import { ResumeService } from '../services/resumeService.js'
 import { Validator } from '../middlewares/validator.js'
 
 export class ResumeController {
-  constructor(db) {
-    this.resumeService = new ResumeService(db)
+  constructor(db, env = null, waitUntil = null) {
+    this.resumeService = new ResumeService(db, env, waitUntil)
   }
 
   // 获取当前用户的所有简历（支持分页）

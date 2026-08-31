@@ -2,8 +2,8 @@ import { ApiResponse, Pager } from '../utils/db.js'
 import { LifeTrajectoriesService } from '../services/lifeTrajectoriesService.js'
 
 export class LifeTrajectoriesController {
-  constructor(db) {
-    this.service = new LifeTrajectoriesService(db)
+  constructor(db, env = null, waitUntil = null) {
+    this.service = new LifeTrajectoriesService(db, env, waitUntil)
   }
 
   // 公开列表（无需登录，按时间倒序）

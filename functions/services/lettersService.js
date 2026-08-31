@@ -2,7 +2,7 @@ import { QueryBuilder } from '../utils/db.js'
 
 // Letter Model
 class LetterModel {
-  constructor(db) {
+  constructor(db, env = null, waitUntil = null) {
     this.db = db
     this.config = {
       tableName: 'letters',
@@ -105,8 +105,8 @@ class LetterModel {
 }
 
 export class LettersService {
-  constructor(db) {
-    this.letterModel = new LetterModel(db)
+  constructor(db, env = null, waitUntil = null) {
+    this.letterModel = new LetterModel(db, env, waitUntil)
   }
 
   // 生成唯一 slug

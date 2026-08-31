@@ -2,8 +2,8 @@ import { Model, QueryBuilder } from '../utils/db.js'
 
 // 人生轨迹模型
 export class LifeTrajectoryModel extends Model {
-  constructor(db) {
-    super(db)
+  constructor(db, env = null, waitUntil = null) {
+    super(db, env, waitUntil)
     this.config = {
       tableName: 'life_trajectories',
       fields: {
@@ -19,8 +19,8 @@ export class LifeTrajectoryModel extends Model {
 
 // 人生轨迹服务
 export class LifeTrajectoriesService {
-  constructor(db) {
-    this.model = new LifeTrajectoryModel(db)
+  constructor(db, env = null, waitUntil = null) {
+    this.model = new LifeTrajectoryModel(db, env, waitUntil)
   }
 
   // 获取最新的人生轨迹列表（所有人可见，按时间倒序）

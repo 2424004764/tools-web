@@ -3,8 +3,8 @@ import { PasswordService } from '../services/passwordService.js'
 import { Validator } from '../middlewares/validator.js'
 
 export class PasswordController {
-  constructor(db) {
-    this.passwordService = new PasswordService(db)
+  constructor(db, env = null, waitUntil = null) {
+    this.passwordService = new PasswordService(db, env, waitUntil)
   }
 
   // ===== 分组操作 =====

@@ -3,8 +3,8 @@ import { ApiResponse } from '../utils/db.js'
 import { LifeTrajectoriesController } from '../controllers/lifeTrajectoriesController.js'
 
 export class LifeTrajectoriesRouter {
-  constructor(db) {
-    this.controller = new LifeTrajectoriesController(db)
+  constructor(db, env = null, waitUntil = null) {
+    this.controller = new LifeTrajectoriesController(db, env, waitUntil)
   }
 
   // 公开/登录 共用入口：

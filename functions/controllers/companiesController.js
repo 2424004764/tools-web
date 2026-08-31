@@ -2,8 +2,8 @@ import { CompanyModel } from '../utils/db.js'
 import { ApiResponse, QueryBuilder, Pager } from '../utils/db.js'
 
 export class CompaniesController {
-  constructor(db) {
-    this.model = new CompanyModel(db)
+  constructor(db, env = null, waitUntil = null) {
+    this.model = new CompanyModel(db, env, waitUntil)
   }
 
   // 获取当前用户的所有公司记录（支持分页）

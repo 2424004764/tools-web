@@ -1,8 +1,8 @@
 import { ResumeModel, QueryBuilder } from '../utils/db.js'
 
 export class ResumeService {
-  constructor(db) {
-    this.resumeModel = new ResumeModel(db)
+  constructor(db, env = null, waitUntil = null) {
+    this.resumeModel = new ResumeModel(db, env, waitUntil)
   }
 
   // 获取当前用户的所有简历（支持分页）

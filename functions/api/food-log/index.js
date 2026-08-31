@@ -106,7 +106,7 @@ export async function onRequest(context) {
     return new Response(null, { headers: corsHeaders })
   }
 
-  const dbInit = initDatabase(env)
+  const dbInit = initDatabase(env, context.waitUntil)
   if (!dbInit.success) {
     return new Response(JSON.stringify({ success: false, error: '数据库未配置' }), {
       status: 500,
@@ -123,7 +123,7 @@ export async function onRequest(context) {
   }
 
   const url = new URL(request.url)
-  const model = new FoodLogModel(dbInit.db)
+  const model = new FoodLogModel(dbInit.db, dbInit.env, dbInit.waitUntil)
 
   try {
     // ============ GET: 列出某时间范围内（默认今天）的所有食物记录 ============

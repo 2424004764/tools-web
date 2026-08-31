@@ -3,8 +3,8 @@ import { WeightService } from '../services/weightService.js'
 import { WeightValidator } from '../middlewares/weightValidator.js'
 
 export class WeightController {
-  constructor(db) {
-    this.weightService = new WeightService(db)
+  constructor(db, env = null, waitUntil = null) {
+    this.weightService = new WeightService(db, env, waitUntil)
   }
 
   // ===== 成员操作 =====

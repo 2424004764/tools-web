@@ -3,8 +3,8 @@ import { PriceComparisonService } from '../services/priceComparisonService.js'
 import { PriceComparisonValidator } from '../middlewares/priceComparisonValidator.js'
 
 export class PriceComparisonController {
-  constructor(db) {
-    this.service = new PriceComparisonService(db)
+  constructor(db, env = null, waitUntil = null) {
+    this.service = new PriceComparisonService(db, env, waitUntil)
   }
 
   // ===== 物品 =====

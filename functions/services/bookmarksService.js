@@ -1,8 +1,8 @@
 import { BookmarkModel, QueryBuilder } from '../utils/db.js'
 
 export class BookmarksService {
-  constructor(db) {
-    this.bookmarkModel = new BookmarkModel(db)
+  constructor(db, env = null, waitUntil = null) {
+    this.bookmarkModel = new BookmarkModel(db, env, waitUntil)
   }
 
   // 获取当前用户的所有书签（支持分页）
