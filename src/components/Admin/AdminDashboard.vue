@@ -8,8 +8,8 @@ import IconLock from '~icons/ep/lock'
 import IconCoin from '~icons/ep/coin'
 import IconSetUp from '~icons/ep/set-up'
 import IconHistogram from '~icons/ep/histogram'
-import IconDataLine from '~icons/ep/data-line'
 import IconTrophy from '~icons/ep/trophy'
+import IconTimer from '~icons/ep/timer'
 
 const data = ref<AdminDashboard | null>(null)
 const loading = ref(false)
@@ -135,37 +135,76 @@ onMounted(load)
       </div>
     </div>
 
-    <!-- 工具使用统计（来自 tool_usage_records；老版本迁移前为 0） -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-      <div class="admin-stat-card">
-        <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0">
-            <div class="text-sm text-ink-500">今日工具使用</div>
-            <div class="mt-1.5 text-2xl font-semibold text-accent-700 tabular-nums">
+    <!-- 第 1 行：工具使用次数 + 慢日志数（各占 2 列） -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <!-- 工具使用次数（来自 tool_usage_records；老版本迁移前为 0） -->
+      <div class="admin-stat-card md:col-span-2">
+        <div class="text-sm text-ink-500 mb-2 flex items-center gap-1.5">
+          <IconHistogram class="w-3.5 h-3.5" />
+          工具使用次数
+        </div>
+        <div class="grid grid-cols-3 divide-x divide-ink-100">
+          <div class="pr-2 first:pl-0">
+            <div class="text-[11px] text-ink-400">今日</div>
+            <div class="mt-0.5 text-lg font-semibold text-accent-700 tabular-nums leading-tight">
               {{ data?.todayToolUsage ?? 0 }}
             </div>
-            <div class="text-xs text-ink-400 mt-1.5">登录用户进入工具页次数</div>
           </div>
-          <span class="admin-stat-icon bg-accent-50 text-accent-600" aria-hidden="true">
-            <IconHistogram class="w-4 h-4" />
-          </span>
-        </div>
-      </div>
-      <div class="admin-stat-card">
-        <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0">
-            <div class="text-sm text-ink-500">本周工具使用</div>
-            <div class="mt-1.5 text-2xl font-semibold text-ink-900 tabular-nums">
+          <div class="px-2">
+            <div class="text-[11px] text-ink-400">本周</div>
+            <div class="mt-0.5 text-lg font-semibold text-ink-900 tabular-nums leading-tight">
               {{ data?.weekToolUsage ?? 0 }}
             </div>
-            <div class="text-xs text-ink-400 mt-1.5">本周一至今累计</div>
           </div>
-          <span class="admin-stat-icon bg-indigo-50 text-indigo-600" aria-hidden="true">
-            <IconDataLine class="w-4 h-4" />
-          </span>
+          <div class="pl-2 last:pr-0">
+            <div class="text-[11px] text-ink-400">本月</div>
+            <div class="mt-0.5 text-lg font-semibold text-ink-900 tabular-nums leading-tight">
+              {{ data?.monthToolUsage ?? 0 }}
+            </div>
+          </div>
+        </div>
+        <div class="text-[11px] text-ink-400 mt-2">
+          登录用户进入工具页次数
         </div>
       </div>
-      <div class="admin-stat-card">
+
+      <!-- 慢日志数（阈值 100ms） -->
+      <div class="admin-stat-card md:col-span-2">
+        <div class="text-sm text-ink-500 mb-2 flex items-center gap-1.5">
+          <IconTimer class="w-3.5 h-3.5" />
+          慢日志数 <span class="text-[11px] text-ink-400 font-normal">（阈值 100ms）</span>
+        </div>
+        <div class="grid grid-cols-3 divide-x divide-ink-100">
+          <div class="pr-2 first:pl-0">
+            <div class="text-[11px] text-ink-400">今日</div>
+            <div class="mt-0.5 text-lg font-semibold text-ink-900 tabular-nums leading-tight">
+              {{ data?.slowQueries?.today ?? 0 }}
+            </div>
+          </div>
+          <div class="px-2">
+            <div class="text-[11px] text-ink-400">本周</div>
+            <div class="mt-0.5 text-lg font-semibold text-ink-900 tabular-nums leading-tight">
+              {{ data?.slowQueries?.week ?? 0 }}
+            </div>
+          </div>
+          <div class="pl-2 last:pr-0">
+            <div class="text-[11px] text-ink-400">本月</div>
+            <div class="mt-0.5 text-lg font-semibold text-ink-900 tabular-nums leading-tight">
+              {{ data?.slowQueries?.month ?? 0 }}
+            </div>
+          </div>
+        </div>
+        <div class="text-[11px] text-ink-400 mt-2">
+          <router-link to="/admin/slow-query-logs" class="text-accent-600 hover:text-accent-700 font-medium">
+            查看明细 →
+          </router-link>
+        </div>
+      </div>
+    </div>
+
+    <!-- 第 2 行：TOP 5 工具（占 2 列；右侧留空给后续报表） -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div class="admin-stat-card md:col-span-2">
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0 flex-1">
             <div class="text-sm text-ink-500 mb-2">TOP 5 工具</div>
@@ -176,7 +215,17 @@ onMounted(load)
                 class="flex items-center gap-2 text-sm"
               >
                 <span class="text-ink-400 w-4 text-right tabular-nums">{{ i + 1 }}.</span>
-                <span class="text-ink-900 truncate flex-1">{{ t.tool_title }}</span>
+                <a
+                  v-if="t.tool_url"
+                  :href="t.tool_url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-ink-900 truncate flex-1 hover:text-accent-600 hover:underline transition-colors"
+                  :title="`跳转到 ${t.tool_title}`"
+                >
+                  {{ t.tool_title }}
+                </a>
+                <span v-else class="text-ink-900 truncate flex-1">{{ t.tool_title }}</span>
                 <span class="text-accent-700 font-medium tabular-nums">{{ t.count }}</span>
               </div>
             </div>

@@ -44,6 +44,16 @@ function startOfWeekUTC8() {
   return Math.floor((utc8Now.getTime() - 8 * 3600 * 1000) / 1000)
 }
 
+// 秒级时间戳 → 本地 UTC+8 日期 'YYYY-MM-DD'（用于统计区间展示）
+function tsToUTC8DateStr(sec) {
+  if (!sec || !Number.isFinite(sec)) return null
+  const d = new Date(sec * 1000 + 8 * 3600 * 1000)
+  const y = d.getUTCFullYear()
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(d.getUTCDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 export async function onRequestGet(context) {
   const { env } = context
   const db = env?.DB
@@ -107,13 +117,21 @@ export async function onRequestGet(context) {
     const topSourcesResult = await db
       .prepare(
         `SELECT COALESCE(source, 'direct') AS source, COUNT(*) AS use_count,
-                MAX(used_at) AS last_used_at
+                MAX(used_at) AS last_used_at,
+                MIN(used_at) AS first_used_at
          FROM tool_usage_records
          GROUP BY source
          ORDER BY use_count DESC, last_used_at DESC
          LIMIT 10`,
       )
       .all()
+
+    // 整张表的统计区间（用于前端展示「数据是何时到何时」）
+    const rangeRow = await db
+      .prepare('SELECT MIN(used_at) AS first_at, MAX(used_at) AS last_at FROM tool_usage_records')
+      .first()
+    const rangeStart = tsToUTC8DateStr(rangeRow?.first_at)
+    const rangeEnd = tsToUTC8DateStr(rangeRow?.last_at)
 
     return json({
       todayCount,
@@ -123,6 +141,8 @@ export async function onRequestGet(context) {
       topTools: topToolsResult.results || [],
       topUsers: topUsersResult.results || [],
       topSources: topSourcesResult.results || [],
+      rangeStart,
+      rangeEnd,
     })
   } catch (err) {
     console.error('[admin/tool-usage] stats error:', err)
