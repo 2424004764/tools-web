@@ -177,7 +177,17 @@ export interface AdminDashboard {
   /** 工具使用（依赖 tool_usage_records 表；老版本迁移前为 0） */
   todayToolUsage?: number
   weekToolUsage?: number
+  monthToolUsage?: number
   topTools?: TopToolSummary[]
+  /** 慢日志统计（依赖 slow_query_logs 表；未迁移兜底全为 0） */
+  slowQueries?: SlowQuerySummary
+}
+
+/** 慢日志按时间窗聚合（UTC+8 自然日 / 周一 / 1 号起） */
+export interface SlowQuerySummary {
+  today: number
+  week: number
+  month: number
 }
 
 /** TOP 工具条目（仪表盘 / 后台统计共用） */
@@ -255,6 +265,10 @@ export interface ToolUsageStats {
   topUsers: TopUserSummary[]
   /** 推广来源 TOP 10，按 use_count 倒序 */
   topSources: TopSourceSummary[]
+  /** 整张表的最早记录日期（UTC+8 'YYYY-MM-DD'）；用于标注统计区间 */
+  rangeStart?: string | null
+  /** 整张表的最新记录日期（UTC+8 'YYYY-MM-DD'）；用于标注统计区间 */
+  rangeEnd?: string | null
 }
 
 /** 生成记录（AI 工具调用日志） */

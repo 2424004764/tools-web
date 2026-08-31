@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref, watch } from 'vue'
+import { onMounted, reactive, ref, watch, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useIsMobile } from '@/composables/useIsMobile'
 import {
@@ -85,6 +85,26 @@ const formatTime = (sec: number) => {
   if (Number.isNaN(d.getTime())) return String(sec)
   return d.toLocaleString('zh-CN', { hour12: false })
 }
+
+// 秒级时间戳 → 本地 UTC+8 'YYYY-MM-DD'（与后端 tsToUTC8DateStr 对齐）
+const formatUTC8Date = (sec: number | null | undefined) => {
+  if (!sec || !Number.isFinite(sec)) return '-'
+  const d = new Date(sec * 1000 + 8 * 3600 * 1000)
+  if (Number.isNaN(d.getTime())) return '-'
+  const y = d.getUTCFullYear()
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(d.getUTCDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+// 整张表的统计区间（顶部 4 卡和 TOP 来源卡共用）
+const rangeLabel = computed(() => {
+  const s = stats.value?.rangeStart
+  const e = stats.value?.rangeEnd
+  if (!s && !e) return '暂无数据'
+  if (s === e) return `${s}`
+  return `${s || '?'} ~ ${e || '?'}`
+})
 
 // 拼接悬浮提示，展示全部 CF 原始字段（方便排查异常）
 const geoTooltip = (row: ToolUsageRecord) => {
@@ -194,6 +214,14 @@ onMounted(() => {
       </el-button>
     </div>
 
+    <!-- 顶部统计范围提示 -->
+    <div class="text-xs text-ink-400 mb-2 flex items-center gap-1.5">
+      <span>数据范围（UTC+8 自然日）：</span>
+      <span class="font-medium text-ink-600 tabular-nums">{{ rangeLabel }}</span>
+      <span class="text-ink-300">·</span>
+      <span class="text-ink-400">以下 TOP 10 / 活跃用户 / 总次数均按此区间统计</span>
+    </div>
+
     <!-- 顶部 4 个统计卡 -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
       <el-card shadow="never" class="!rounded-xl">
@@ -283,9 +311,16 @@ onMounted(() => {
     <!-- 推广来源 TOP 10（独立一行：来源维度比工具/用户少，宽屏下单独成行更易读） -->
     <el-card shadow="never" class="!rounded-xl mb-6">
       <template #header>
-        <div class="flex items-center justify-between">
-          <span class="font-medium text-ink-900">推广来源 TOP 10</span>
-          <span class="text-xs text-ink-400">utm_source 优先 → referer 指纹 → direct</span>
+        <div class="flex items-center justify-between gap-3 flex-wrap">
+          <div class="flex items-center gap-2">
+            <span class="font-medium text-ink-900">推广来源 TOP 10</span>
+            <span class="text-xs text-ink-400">utm_source 优先 → referer 指纹 → direct</span>
+          </div>
+          <span class="text-xs text-ink-500">
+            统计区间：
+            <span class="font-medium text-ink-700 tabular-nums">{{ rangeLabel }}</span>
+            <span class="text-ink-400">（UTC+8 自然日）</span>
+          </span>
         </div>
       </template>
       <div v-if="stats?.topSources?.length" class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
@@ -300,6 +335,12 @@ onMounted(() => {
           </span>
           <span class="text-[10px] text-ink-400 font-mono shrink-0" :title="s.source">
             {{ s.source }}
+          </span>
+          <span
+            class="text-[10px] text-ink-500 shrink-0 tabular-nums"
+            :title="s.last_used_at ? `最近一次：${formatTime(s.last_used_at)}` : ''"
+          >
+            {{ formatUTC8Date(s.last_used_at) }}
           </span>
           <span class="text-accent-700 font-medium tabular-nums w-14 text-right">
             {{ s.use_count }}

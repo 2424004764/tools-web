@@ -1,7 +1,7 @@
 //通过vue-router插件实现模板路由配置
 import { createRouter, createWebHistory } from 'vue-router'
 import { constantRoute } from './router'
-import { isAppStale, isVersionCheckComplete } from '@/utils/version-guard'
+import { checkAppStale } from '@/utils/version-guard'
 import { useUserStore } from '@/store/modules/user'
 import { matchToolByPath, recordToolUsage } from '@/utils/tool-usage'
 
@@ -39,31 +39,31 @@ const router = createRouter({
 const APP_TITLE = import.meta.env.VITE_APP_TITLE as string
 const APP_DESC = import.meta.env.VITE_APP_DESC as string
 
-router.beforeEach((to, _from, next) => {
+router.beforeEach(async (to, _from, next) => {
   // 记录目标路径，供 onError 硬刷时使用（避免 currentRoute 还指向旧路由）
   sessionStorage.setItem(TARGET_PATH_KEY, to.fullPath)
 
-  // 版本过期：CF 已重新部署，但当前 SPA 还停在旧 chunk 上。
-  // 直接硬刷到目标 URL —— 用户感受是"点完就到目标页"，无感知。
-  // 受 MAX_RELOADS_PER_SESSION 上限保护，超过后停止硬刷（CDN 缓存异常场景下的死循环兜底）。
-  if (isAppStale()) {
+  // 版本过期检查（被动触发：仅在路由跳转时拉一次，不再有 setInterval 轮询）。
+  // checkAppStale() 内部使用单飞模式避免同一时间并发拉多次；
+  // 命中 stale → 直接硬刷到目标 URL；未命中 → 继续正常导航。
+  // 受 MAX_RELOADS_PER_SESSION + MIN_RELOAD_INTERVAL 双重保护，避免死循环。
+  const staleTarget = await checkAppStale(to.fullPath || '/')
+  if (staleTarget) {
     const reloadCount = parseInt(sessionStorage.getItem(RELOAD_COUNT_KEY) || '0', 10)
     const lastReload = parseInt(sessionStorage.getItem(LAST_RELOAD_TIME_KEY) || '0', 10)
     const now = Date.now()
 
-    // 两次硬刷之间最小间隔，防止 scroll → router.replace → 硬刷 的紧密循环
     if (reloadCount < MAX_RELOADS_PER_SESSION && (now - lastReload) > MIN_RELOAD_INTERVAL) {
       sessionStorage.setItem(RELOAD_COUNT_KEY, String(reloadCount + 1))
       sessionStorage.setItem(LAST_RELOAD_TIME_KEY, String(now))
-      window.location.replace(to.fullPath || '/')
+      window.location.replace(staleTarget)
       return // 不调用 next()，中断当前 SPA 导航
     }
     if (reloadCount >= MAX_RELOADS_PER_SESSION) {
       console.warn('[version-guard] 已达硬刷上限，跳过本轮。')
     }
-  } else if (isVersionCheckComplete()) {
-    // hash 一致 且 已至少完成一次版本检查 → 重置计数（成功落到新版本）
-    // 注意：仅在检查完成后重置，避免页面刚加载时 latestFingerprint 为空导致误清除
+  } else {
+    // hash 一致 → 重置计数（成功落到新版本）
     if (sessionStorage.getItem(RELOAD_COUNT_KEY)) {
       sessionStorage.removeItem(RELOAD_COUNT_KEY)
     }

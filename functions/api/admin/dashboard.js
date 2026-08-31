@@ -70,10 +70,15 @@ export async function onRequest(context) {
       .prepare('SELECT COUNT(*) AS total, SUM(CASE WHEN is_enabled = 1 THEN 1 ELSE 0 END) AS enabled FROM tool_features')
       .first()
 
-    // 工具使用：今日 / 本周 / TOP 5（依赖 tool_usage_records，可能因迁移未执行而抛错 → 兜底 0）
+    // 工具使用：今日 / 本周 / 本月 / TOP 5（依赖 tool_usage_records，可能因迁移未执行而抛错 → 兜底 0）
     let todayToolUsage = 0
     let weekToolUsage = 0
+    let monthToolUsage = 0
     let topTools = []
+    // 慢日志：今日 / 本周 / 本月（依赖 slow_query_logs 表，未迁移兜底 0）
+    let slowQueryToday = 0
+    let slowQueryWeek = 0
+    let slowQueryMonth = 0
     try {
       const now = Date.now()
       const todayStartUTC8 = (() => {
@@ -91,6 +96,13 @@ export async function onRequest(context) {
         utc8.setUTCHours(0, 0, 0, 0)
         return Math.floor((utc8.getTime() - 8 * 3600 * 1000) / 1000)
       })()
+      const monthStartUTC8 = (() => {
+        const utc8 = new Date(now + 8 * 3600 * 1000)
+        const start = new Date(
+          Date.UTC(utc8.getUTCFullYear(), utc8.getUTCMonth(), 1, 0, 0, 0),
+        )
+        return Math.floor((start.getTime() - 8 * 3600 * 1000) / 1000)
+      })()
       const todayRow2 = await db
         .prepare('SELECT COUNT(*) AS c FROM tool_usage_records WHERE used_at >= ?')
         .bind(todayStartUTC8)
@@ -101,6 +113,11 @@ export async function onRequest(context) {
         .bind(weekStartUTC8)
         .first()
       weekToolUsage = weekRow2?.c || 0
+      const monthRow2 = await db
+        .prepare('SELECT COUNT(*) AS c FROM tool_usage_records WHERE used_at >= ?')
+        .bind(monthStartUTC8)
+        .first()
+      monthToolUsage = monthRow2?.c || 0
       const topToolsResult = await db
         .prepare(
           `SELECT tool_url, tool_title, COUNT(*) AS count
@@ -115,9 +132,51 @@ export async function onRequest(context) {
         tool_title: r.tool_title,
         count: r.count,
       }))
+      // 慢日志统计：created_at 是 UTC 'YYYY-MM-DD HH:mm:ss' 字符串，
+      // 直接用 date(created_at, '+8 hours') 与 today/week/month 起始日期（UTC+8）字符串比对
+      // 比起再算时间戳更直观，也避免时区边界误差。
+      const todayDateStr = (() => {
+        const utc8 = new Date(now + 8 * 3600 * 1000)
+        return `${utc8.getUTCFullYear()}-${String(utc8.getUTCMonth() + 1).padStart(2, '0')}-${String(utc8.getUTCDate()).padStart(2, '0')}`
+      })()
+      const weekStartDateStr = (() => {
+        const utc8 = new Date(now + 8 * 3600 * 1000)
+        const dow = utc8.getUTCDay()
+        const daysSinceMonday = (dow + 6) % 7
+        utc8.setUTCDate(utc8.getUTCDate() - daysSinceMonday)
+        return `${utc8.getUTCFullYear()}-${String(utc8.getUTCMonth() + 1).padStart(2, '0')}-${String(utc8.getUTCDate()).padStart(2, '0')}`
+      })()
+      const monthStartDateStr = (() => {
+        const utc8 = new Date(now + 8 * 3600 * 1000)
+        return `${utc8.getUTCFullYear()}-${String(utc8.getUTCMonth() + 1).padStart(2, '0')}-01`
+      })()
+      const slowTodayRow = await db
+        .prepare(
+          `SELECT COUNT(*) AS c FROM slow_query_logs
+           WHERE date(created_at, '+8 hours') >= ?`,
+        )
+        .bind(todayDateStr)
+        .first()
+      slowQueryToday = slowTodayRow?.c || 0
+      const slowWeekRow = await db
+        .prepare(
+          `SELECT COUNT(*) AS c FROM slow_query_logs
+           WHERE date(created_at, '+8 hours') >= ?`,
+        )
+        .bind(weekStartDateStr)
+        .first()
+      slowQueryWeek = slowWeekRow?.c || 0
+      const slowMonthRow = await db
+        .prepare(
+          `SELECT COUNT(*) AS c FROM slow_query_logs
+           WHERE date(created_at, '+8 hours') >= ?`,
+        )
+        .bind(monthStartDateStr)
+        .first()
+      slowQueryMonth = slowMonthRow?.c || 0
     } catch (e) {
       // 迁移未执行等场景：兜底为 0，绝不阻塞仪表盘
-      console.warn('[admin/dashboard] tool_usage 聚合失败（可能表未创建）:', e?.message || e)
+      console.warn('[admin/dashboard] tool_usage / slow_query 聚合失败（可能表未创建）:', e?.message || e)
     }
 
     return json({
@@ -134,7 +193,13 @@ export async function onRequest(context) {
       },
       todayToolUsage,
       weekToolUsage,
+      monthToolUsage,
       topTools,
+      slowQueries: {
+        today: slowQueryToday,
+        week: slowQueryWeek,
+        month: slowQueryMonth,
+      },
     })
   } catch (error) {
     console.error('dashboard API error:', error)

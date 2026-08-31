@@ -16,7 +16,6 @@ import pinia from './store'
 import { useUserStore } from './store/modules/user'
 import { initializeAIProviders } from './spi/init'
 import { injectCloudflareAnalytics } from './utils/analytics'
-import { startVersionGuard } from './utils/version-guard'
 
 const app = createApp(App)
 app.use(pinia)
@@ -37,8 +36,9 @@ router.beforeEach(async (to) => {
 // 全局初始化登录态：刷新后从 localStorage 还原 isLoggedIn / user，
 // 否则未在 onMounted 显式 initUserState() 的页面守卫会误判未登录，导致死循环
 useUserStore().initUserState()
-// 版本指纹守卫：检测 CF 重新部署后让用户透明刷新到新版本
-startVersionGuard()
+// 版本指纹守卫：检测 CF 重新部署后让用户透明刷新到新版本。
+// 已改造为「只在路由跳转时检查」（见 router.beforeEach 调用 checkAppStale），
+// 不再有 setInterval 轮询，避免浪费 CF Pages 请求次数。
 app.mount('#app')
 
 // 延迟初始化AI提供者（不阻塞应用启动）
