@@ -11,6 +11,20 @@
 //   - play_count 与 view_count 在公开读取时 +1，失败不影响主响应（仿 travelMapsService）
 
 import { MUSIC_MB_PER_CREDIT, MUSIC_FREE_QUOTA_BYTES } from '../config/music.js'
+// R2 SigV4 预签名与公网 URL 构造已抽到共享模块 r2.js；
+// 这里用别名 import 保留 musicService.js 内部既有调用风格：
+//   _signR2PutUrl(...)     → signR2PutUrl(...)
+//   _buildR2PublicUrl(...) → buildPublicUrl(...)
+//   _deleteR2Object(...)   → deleteR2Object(...)
+// 同时把旧名从本文件 re-export 出去，保证其他文件
+//   `import { deleteR2Object } from '../services/musicService.js'` 仍可用。
+import {
+  signR2PutUrl as _signR2PutUrl,
+  buildR2PublicUrl as _buildR2PublicUrl,
+  deleteR2Object as _deleteR2Object,
+} from './r2.js'
+
+// 内部无前缀调用：直接用顶部 _ 别名（line 523 / 747 / 750 等位置直接写 _signR2PutUrl(...) / _deleteR2Object(...)）
 
 // ============ 常量 ============
 
@@ -253,213 +267,15 @@ function playlistMetaFromRow(row) {
 }
 
 // ============ SigV4 (R2 兼容 S3) 预签名 PUT 签发 ============
+// 全部 helper 与签名逻辑已抽到 ./r2.js；这里只保留 musicService 自身的便利方法。
+// 维持外部调用风格不变：
+//   - signR2PutUrl  → _signR2PutUrl（r2.js 实现）
+//   - buildPublicUrl → _buildR2PublicUrl（r2.js 实现）
+//   - deleteR2Object → _deleteR2Object（r2.js 实现）
+// 函数体已删除以避免双份实现漂移。
 
-const enc = new TextEncoder()
-
-function toHex(buffer) {
-  const bytes = new Uint8Array(buffer)
-  let out = ''
-  for (let i = 0; i < bytes.length; i++) out += bytes[i].toString(16).padStart(2, '0')
-  return out
-}
-
-async function hmac(key, data) {
-  // key: ArrayBuffer | Uint8Array | string; data: string
-  let keyBuf
-  if (typeof key === 'string') {
-    keyBuf = enc.encode(key)
-  } else if (key instanceof Uint8Array) {
-    keyBuf = key
-  } else {
-    keyBuf = new Uint8Array(key)
-  }
-  const cryptoKey = await crypto.subtle.importKey(
-    'raw', keyBuf, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
-  )
-  // 注意：HMAC key 的 sign 算法必须是 'HMAC'（hash 已在 importKey 里指定），
-  // 不能传 'SHA-256'，否则报 InvalidAccessError: algorithm mismatch
-  return await crypto.subtle.sign({ name: 'HMAC' }, cryptoKey, enc.encode(data))
-}
-
-async function sha256Hex(data) {
-  const hash = await crypto.subtle.digest('SHA-256', enc.encode(data))
-  return toHex(hash)
-}
-
-// URI 编码（RFC 3986 严格模式：~ 不编码）
-function uriEncode(value, encodeSlash = true) {
-  let str = String(value)
-  // 先 encodeURIComponent 一次，再把 ! ~ * ' ( ) 还原，最后把 %7E 还原为 ~
-  str = encodeURIComponent(str)
-  str = str.replace(/!/g, '%21').replace(/\*/g, '%2A').replace(/'/g, '%27').replace(/\(/g, '%28').replace(/\)/g, '%29')
-  str = str.replace(/%7E/g, '~')
-  if (!encodeSlash) str = str.replace(/%2F/g, '/')
-  return str
-}
-
-// 关键 → S3 path-style 编码。每个路径段单独编码后用 / 连接
-function encodeS3Key(key) {
-  return key.split('/').map((seg) => uriEncode(seg, true)).join('/')
-}
-
-/**
- * 签发 R2 预签名 PUT URL
- * @param env: Cloudflare Pages env，需含 R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / R2_ACCOUNT_ID / MEDIA (binding)
- * @param bucket R2 桶名（从 binding 配置读取；这里直接传 env.MEDIA 默认桶较麻烦，直接用 toml 中的桶名）
- * @param r2Key 对象键（如 songs/uid/id.mp3）
- * @param contentType MIME 类型
- */
-export async function signR2PutUrl(env, bucket, r2Key, contentType) {
-  const accessKeyId = env.R2_ACCESS_KEY_ID
-  const secretAccessKey = env.R2_SECRET_ACCESS_KEY
-  const accountId = env.R2_ACCOUNT_ID
-  if (!accessKeyId || !secretAccessKey || !accountId) {
-    throw new ValidationError('R2 凭据未配置（缺少 R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / R2_ACCOUNT_ID）')
-  }
-  if (!bucket) throw new ValidationError('R2 桶名未配置（wrangler.toml [[r2_buckets]] binding）')
-
-  // 时间戳
-  const nowDate = new Date()
-  const amzDate = nowDate.toISOString().replace(/[:-]|\.\d{3}/g, '') // YYYYMMDDTHHMMSSZ
-  const dateStamp = amzDate.substring(0, 8) // YYYYMMDD
-
-  // endpoint（账户级域名；区域 R2 自动就近）
-  const host = `${bucket}.${accountId}.r2.cloudflarestorage.com`
-  const encodedKey = encodeS3Key(r2Key)
-  const canonicalUri = `/${encodedKey}`
-
-  // service: s3, region: auto
-  const credentialScope = `${dateStamp}/auto/s3/aws4_request`
-
-  // signedHeaders 必须与下方 canonicalHeaders / signedHeaders 变量保持一致
-  // 这里要签两个：host（浏览器自动加）+ content-type（XHR 显式加）
-  const signedHeaders = 'content-type;host'
-
-  // query 参数（按字典序）
-  const queryParams = new URLSearchParams({
-    'X-Amz-Algorithm': 'AWS4-HMAC-SHA256',
-    'X-Amz-Content-Sha256': 'UNSIGNED-PAYLOAD',
-    'X-Amz-Credential': `${accessKeyId}/${credentialScope}`,
-    'X-Amz-Date': amzDate,
-    'X-Amz-Expires': String(PRESIGN_EXPIRES_SECONDS),
-    'X-Amz-SignedHeaders': signedHeaders,
-  })
-  // 严格按 SigV4：query 必须字典序排序（URLSearchParams.toString 已经按插入顺序，不保证字典序）
-  const sortedQuery = [...queryParams.entries()]
-    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-    .map(([k, v]) => `${uriEncode(k)}=${uriEncode(v)}`)
-    .join('&')
-
-  const canonicalHeaders = `content-type:${contentType}\nhost:${host}\n`
-  const payloadHash = 'UNSIGNED-PAYLOAD'
-
-  const canonicalRequest = [
-    'PUT',
-    canonicalUri,
-    sortedQuery,
-    canonicalHeaders,
-    signedHeaders,
-    payloadHash,
-  ].join('\n')
-
-  const stringToSign = [
-    'AWS4-HMAC-SHA256',
-    amzDate,
-    credentialScope,
-    await sha256Hex(canonicalRequest),
-  ].join('\n')
-
-  // 计算签名：kDate → kRegion(auto) → kService(s3) → kSigning
-  const kSecret = enc.encode(`AWS4${secretAccessKey}`)
-  const kDate = await hmac(kSecret, dateStamp)
-  const kRegion = await hmac(kDate, 'auto')
-  const kService = await hmac(kRegion, 's3')
-  const kSigning = await hmac(kService, 'aws4_request')
-  const signature = toHex(await hmac(kSigning, stringToSign))
-
-  const uploadUrl = `https://${host}${canonicalUri}?${sortedQuery}&X-Amz-Signature=${signature}`
-
-  // 计算过期时间（绝对时间戳 ms）
-  const expiresAt = nowDate.getTime() + PRESIGN_EXPIRES_SECONDS * 1000
-
-  return { uploadUrl, r2Key, expiresAt }
-}
-
-/**
- * 服务端用 SigV4 直接删 R2 对象（不走 binding，避免 preview bucket 不一致）
- * 与 signR2PutUrl 保持同一组 R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / R2_ACCOUNT_ID
- */
-async function deleteR2Object(env, bucket, r2Key) {
-  const accessKeyId = env.R2_ACCESS_KEY_ID
-  const secretAccessKey = env.R2_SECRET_ACCESS_KEY
-  const accountId = env.R2_ACCOUNT_ID
-  if (!accessKeyId || !secretAccessKey || !accountId) {
-    throw new Error('R2 凭据未配置（缺少 R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / R2_ACCOUNT_ID）')
-  }
-  if (!bucket) throw new Error('R2 桶名未配置（缺少 env.R2_BUCKET_NAME）')
-
-  const nowDate = new Date()
-  const amzDate = nowDate.toISOString().replace(/[:-]|\.\d{3}/g, '')
-  const dateStamp = amzDate.substring(0, 8)
-  const host = `${bucket}.${accountId}.r2.cloudflarestorage.com`
-  const canonicalUri = `/${encodeS3Key(r2Key)}`
-  const credentialScope = `${dateStamp}/auto/s3/aws4_request`
-
-  // DELETE 无 body，只需签 host；payload 走 UNSIGNED-PAYLOAD
-  // ⚠️ 不要再手动加任何 header（如 x-amz-content-sha256），
-  // Cloudflare Workers fetch 转发 DELETE 请求时，会把请求里出现的 header
-  // 都纳入签名计算；没签进 signedHeaders 就加 header 会导致 R2 端 SignatureDoesNotMatch
-  const signedHeaders = 'host'
-  const canonicalHeaders = `host:${host}\n`
-  const payloadHash = 'UNSIGNED-PAYLOAD'
-
-  const queryParams = new URLSearchParams({
-    'X-Amz-Algorithm': 'AWS4-HMAC-SHA256',
-    'X-Amz-Content-Sha256': 'UNSIGNED-PAYLOAD',
-    'X-Amz-Credential': `${accessKeyId}/${credentialScope}`,
-    'X-Amz-Date': amzDate,
-    'X-Amz-Expires': '300',
-    'X-Amz-SignedHeaders': signedHeaders,
-  })
-  const sortedQuery = [...queryParams.entries()]
-    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-    .map(([k, v]) => `${uriEncode(k)}=${uriEncode(v)}`)
-    .join('&')
-
-  const canonicalRequest = [
-    'DELETE',
-    canonicalUri,
-    sortedQuery,
-    canonicalHeaders,
-    signedHeaders,
-    payloadHash,
-  ].join('\n')
-
-  const stringToSign = [
-    'AWS4-HMAC-SHA256',
-    amzDate,
-    credentialScope,
-    await sha256Hex(canonicalRequest),
-  ].join('\n')
-
-  const kSecret = enc.encode(`AWS4${secretAccessKey}`)
-  const kDate = await hmac(kSecret, dateStamp)
-  const kRegion = await hmac(kDate, 'auto')
-  const kService = await hmac(kRegion, 's3')
-  const kSigning = await hmac(kService, 'aws4_request')
-  const signature = toHex(await hmac(kSigning, stringToSign))
-
-  const url = `https://${host}${canonicalUri}?${sortedQuery}&X-Amz-Signature=${signature}`
-  const response = await fetch(url, {
-    method: 'DELETE',
-  })
-
-  // 204 = 成功，404 = 已不存在（视为成功，幂等）
-  if (!response.ok && response.status !== 404) {
-    const text = await response.text().catch(() => '')
-    throw new Error(`R2 delete 失败: HTTP ${response.status} ${text}`)
-  }
-}
+// 从共享模块 re-export（顶部已 import _deleteR2Object，这里仅注释）
+// 旧式 import 自本文件仍可工作；同时也支持直接 import 自 r2.js。
 
 // ============ 主 Service ============
 
@@ -485,11 +301,10 @@ export class MusicService {
   }
 
   // ---------- 公开音频 URL ----------
-
+  // 内部直接走共享 r2.js 的 buildR2PublicUrl；保留方法名 buildPublicUrl 不变
+  // 以维持其他文件对 musicService 实例方法的调用。
   buildPublicUrl(r2Key) {
-    const host = this.env.R2_PUBLIC_HOST || PUBLIC_HOST_FALLBACK
-    if (!host) return ''
-    return `https://${host}/${r2Key.split('/').map((s) => encodeURIComponent(s)).join('/')}`
+    return _buildR2PublicUrl(this.env, r2Key)
   }
 
   // ---------- 积分流水：refund（删歌退费 / 并发 dedup 退费）----------
@@ -703,7 +518,7 @@ export class MusicService {
     const bucket = this.env.R2_BUCKET_NAME
     if (!bucket) throw new ValidationError('R2 桶名未配置（缺少 env.R2_BUCKET_NAME）')
 
-    const { uploadUrl, expiresAt } = await signR2PutUrl(this.env, bucket, r2Key, mimeType)
+    const { uploadUrl, expiresAt } = await _signR2PutUrl(this.env, bucket, r2Key, mimeType)
 
     return {
       exists: false,
@@ -927,10 +742,10 @@ export class MusicService {
     const bucket = this.env.R2_BUCKET_NAME
     try {
       if (bucket && row.audio_r2_key) {
-        await deleteR2Object(this.env, bucket, row.audio_r2_key)
+        await _deleteR2Object(this.env, bucket, row.audio_r2_key)
       }
       if (bucket && row.cover_r2_key) {
-        await deleteR2Object(this.env, bucket, row.cover_r2_key)
+        await _deleteR2Object(this.env, bucket, row.cover_r2_key)
       }
     } catch (error) {
       console.error('R2 delete object failed:', error)

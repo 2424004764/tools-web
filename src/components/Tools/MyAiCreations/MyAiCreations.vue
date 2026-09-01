@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import {
   fetchAiCreations,
   fetchAiCreationCategories,
+  deleteAiCreationGroup,
+  deleteAiCreationImage,
   type AiCreationGroup,
   type AiCreationImage,
   type AiCreationCategory,
@@ -15,6 +17,13 @@ import {
 const router = useRouter()
 
 const info = reactive({ title: '我的 AI 创作' })
+
+// 用 group_id（首选）或 prompt_id 作为列表里的查找 key
+const groupKeyOf = (g: AiCreationGroup): string => {
+  if (g.id != null) return `id:${g.id}`
+  if (g.prompt_id) return `pid:${g.prompt_id}`
+  return ''
+}
 
 // ============ 状态 ============
 const loading = ref(false)
@@ -51,13 +60,18 @@ const viewerIndex = ref(0)
 
 const openViewer = (list: string[], index: number) => {
   if (!list || list.length === 0) return
+  // 进入全屏 viewer 前先关闭组详情弹窗，避免两层 modal 重叠导致点击被遮挡
+  closeGroupDetail()
   viewerList.value = list
   viewerIndex.value = Math.max(0, Math.min(index, list.length - 1))
   viewerVisible.value = true
 }
 
 const closeViewer = () => {
+  // 同时清空列表，避免下次 openViewer 时数据残留导致组件复用异常
   viewerVisible.value = false
+  viewerList.value = []
+  viewerIndex.value = 0
 }
 
 // ============ 组详情弹窗 ============
@@ -76,10 +90,12 @@ const setSelectedImage = (img: AiCreationImage) => {
   selectedImageId.value = img.id
 }
 
-// 详情弹窗里点主图 / 「全屏浏览」→ 进入 el-image-viewer
-const enterFullscreenViewer = (startIndex: number) => {
-  if (!selectedGroup.value) return
-  const list = selectedGroup.value.images.map((i) => i.media_url)
+// 详情弹窗里点主图 / 「全屏浏览」/ 组卡上的「查看 N 张图」按钮 → 进入 el-image-viewer
+// group 可选：传了就用传入的组（组卡路径），不传则用 selectedGroup（详情弹窗路径）
+const enterFullscreenViewer = (startIndex: number, group?: AiCreationGroup | null) => {
+  const g = group ?? selectedGroup.value
+  if (!g) return
+  const list = g.images.map((i) => i.media_url)
   openViewer(list, startIndex)
 }
 
@@ -87,6 +103,110 @@ const copyImageUrl = (url?: string | null) => {
   if (!url) return
   navigator.clipboard?.writeText(url)
   ElMessage.success('已复制链接')
+}
+
+// ============ 删除 ============
+// 列表局部状态：保存每行是否在删除中（避免重复点击）
+const deletingGroupIds = reactive(new Set<number>())
+const deletingImageIds = reactive(new Set<number>())
+
+/** 整组删除：先 confirm → 调 API → 刷新列表 + 关闭详情弹窗 */
+const handleDeleteGroup = async (g: AiCreationGroup) => {
+  if (!g || deletingGroupIds.has(g.id)) return
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除该组及其下全部 ${g.image_count} 张图吗？该操作将同时删除 R2 存储中的对象，无法撤销。`,
+      '删除整组',
+      {
+        type: 'warning',
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+        confirmButtonClass: 'el-button--danger',
+      },
+    )
+  } catch {
+    return // 用户取消
+  }
+  deletingGroupIds.add(g.id)
+  try {
+    const res = await deleteAiCreationGroup(g.id)
+    // 从列表里移除
+    const idx = groups.value.findIndex((x) => groupKeyOf(x) === groupKeyOf(g))
+    if (idx >= 0) groups.value.splice(idx, 1)
+    pagination.value.total = Math.max(0, pagination.value.total - 1)
+    pagination.value.totalImages = Math.max(0, pagination.value.totalImages - (res.images || 0))
+    ElMessage.success(`已删除（清理 R2 ${res.r2_deleted}/${res.images}）`)
+    // 关弹窗
+    if (selectedGroup.value && selectedGroup.value.id === g.id) {
+      closeGroupDetail()
+    }
+    // 列表为空时再拉一次刷新
+    if (groups.value.length === 0 && pagination.value.hasNext) {
+      loadGroups()
+    }
+  } catch (e: any) {
+    console.error('[my-ai-creations] delete group error:', e)
+    ElMessage.error(e?.response?.data?.error || e?.message || '删除失败')
+  } finally {
+    deletingGroupIds.delete(g.id)
+  }
+}
+
+/** 单图删除：先 confirm → 调 API → 列表里移除该图 */
+const handleDeleteImage = async (img: AiCreationImage, parentGroup?: AiCreationGroup) => {
+  if (!img || deletingImageIds.has(img.id)) return
+  try {
+    await ElMessageBox.confirm(
+      '确定删除这张图吗？该操作将删除 R2 存储中的对象，无法撤销。',
+      '删除图片',
+      {
+        type: 'warning',
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+        confirmButtonClass: 'el-button--danger',
+      },
+    )
+  } catch {
+    return
+  }
+  deletingImageIds.add(img.id)
+  try {
+    await deleteAiCreationImage(img.id)
+    ElMessage.success('已删除')
+    pagination.value.totalImages = Math.max(0, pagination.value.totalImages - 1)
+    // 详情弹窗打开时，弹窗内的 images 也要更新
+    if (parentGroup) {
+      parentGroup.images = parentGroup.images.filter((i) => i.id !== img.id)
+      parentGroup.image_count = parentGroup.images.length
+      if (parentGroup.cover && parentGroup.cover.id === img.id) {
+        parentGroup.cover =
+          parentGroup.images.length > 0
+            ? {
+                id: parentGroup.images[0].id,
+                media_url: parentGroup.images[0].media_url,
+                thumbnail_url: parentGroup.images[0].thumbnail_url,
+              }
+            : null
+      }
+      if (selectedImageId.value === img.id) {
+        selectedImageId.value =
+          parentGroup.images.length > 0 ? parentGroup.images[0].id : null
+      }
+      // 整组都被删空时自动关弹窗
+      if (parentGroup.images.length === 0) {
+        closeGroupDetail()
+        // 同步从主列表里移除该组（孤儿空组）
+        const idx = groups.value.findIndex((x) => groupKeyOf(x) === groupKeyOf(parentGroup))
+        if (idx >= 0) groups.value.splice(idx, 1)
+        pagination.value.total = Math.max(0, pagination.value.total - 1)
+      }
+    }
+  } catch (e: any) {
+    console.error('[my-ai-creations] delete image error:', e)
+    ElMessage.error(e?.response?.data?.error || e?.message || '删除失败')
+  } finally {
+    deletingImageIds.delete(img.id)
+  }
 }
 
 // 详情弹窗里根据 selectedImageId 找到当前主图
@@ -167,8 +287,9 @@ const markFailed = (id: number) => {
   markCoverLoaded(id)
 }
 
+// 描述（prompt 正文）：只取 prompt 内容；不 fallback 到 title，避免与标题重复。
 const groupPromptText = (g: AiCreationGroup) =>
-  g.prompt?.content || g.title || g.images[0]?.prompt || ''
+  g.prompt?.content || g.images[0]?.prompt || ''
 
 const groupTitle = (g: AiCreationGroup) =>
   g.title || g.prompt?.title || `任务 #${g.id}`
@@ -374,7 +495,9 @@ onUnmounted(() => {
               >
                 {{ groupTitle(g) }}
               </h3>
+              <!-- 描述行：当 prompt 正文与标题完全一致时省略，避免视觉重复 -->
               <p
+                v-if="groupPromptText(g) && groupPromptText(g).trim() !== groupTitle(g).trim()"
                 class="text-xs text-gray-600 mt-1 line-clamp-3 leading-snug"
                 :title="groupPromptText(g)"
               >
@@ -387,9 +510,18 @@ onUnmounted(() => {
                 <button
                   type="button"
                   class="ml-auto text-xs px-2.5 py-1 rounded-md bg-indigo-500 text-white hover:bg-indigo-600 active:scale-95 transition-all"
-                  @click="enterFullscreenViewer(0)"
+                  @click="enterFullscreenViewer(0, g)"
                 >
                   查看 {{ g.image_count }} 张图 →
+                </button>
+                <button
+                  type="button"
+                  class="mac-card-del text-xs px-2 py-1 rounded-md text-red-500 hover:bg-red-50 border border-red-200 hover:border-red-400 transition-all"
+                  :disabled="deletingGroupIds.has(g.id)"
+                  :title="`删除该组（含 ${g.image_count} 张图）`"
+                  @click="handleDeleteGroup(g)"
+                >
+                  {{ deletingGroupIds.has(g.id) ? '删除中…' : '删除' }}
                 </button>
               </div>
             </div>
@@ -473,7 +605,9 @@ onUnmounted(() => {
             <h3 class="text-sm font-semibold text-gray-800 mb-2">
               {{ groupTitle(selectedGroup) }}
             </h3>
+            <!-- 描述：与标题完全一致时省略，避免视觉重复 -->
             <div
+              v-if="groupPromptText(selectedGroup) && groupPromptText(selectedGroup).trim() !== groupTitle(selectedGroup).trim()"
               class="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-lg p-3 mb-4 whitespace-pre-wrap break-words"
             >
               {{ groupPromptText(selectedGroup) }}
@@ -482,23 +616,37 @@ onUnmounted(() => {
             <!-- 组内小图网格 -->
             <h4 class="text-xs font-semibold text-gray-500 mb-2">组内图片</h4>
             <div class="grid grid-cols-4 gap-2 mb-4">
-              <button
+              <div
                 v-for="(img, idx) in selectedGroup.images"
                 :key="img.id"
-                type="button"
-                class="aspect-square rounded overflow-hidden border-2 transition-all"
-                :class="img.id === selectedImageId ? 'border-indigo-500 ring-2 ring-indigo-200' : 'border-gray-100 hover:border-indigo-300'"
-                :title="`第 ${idx + 1} 张`"
-                @click="setSelectedImage(img)"
+                class="relative group/thumb"
               >
-                <img
-                  :src="img.thumbnail_url || img.media_url"
-                  :alt="`${idx + 1}`"
-                  loading="lazy"
-                  class="w-full h-full object-cover"
-                  @error="onImageError($event, img.id)"
-                />
-              </button>
+                <button
+                  type="button"
+                  class="aspect-square w-full rounded overflow-hidden border-2 transition-all"
+                  :class="img.id === selectedImageId ? 'border-indigo-500 ring-2 ring-indigo-200' : 'border-gray-100 hover:border-indigo-300'"
+                  :title="`第 ${idx + 1} 张`"
+                  @click="setSelectedImage(img)"
+                >
+                  <img
+                    :src="img.thumbnail_url || img.media_url"
+                    :alt="`${idx + 1}`"
+                    loading="lazy"
+                    class="w-full h-full object-cover"
+                    @error="onImageError($event, img.id)"
+                  />
+                </button>
+                <!-- 单图删除小 X -->
+                <button
+                  type="button"
+                  class="mac-img-del absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/65 text-white text-xs leading-none flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition-opacity hover:bg-red-500"
+                  :disabled="deletingImageIds.has(img.id)"
+                  :title="`删除第 ${idx + 1} 张`"
+                  @click.stop="handleDeleteImage(img, selectedGroup ?? undefined)"
+                >
+                  ×
+                </button>
+              </div>
             </div>
 
             <el-descriptions :column="1" border size="small" class="mb-2">
@@ -537,6 +685,16 @@ onUnmounted(() => {
                 复制链接
               </el-button>
             </div>
+            <el-button
+              type="danger"
+              plain
+              size="small"
+              class="!w-full !ml-0 mt-2"
+              :disabled="deletingGroupIds.has(selectedGroup.id)"
+              @click="handleDeleteGroup(selectedGroup)"
+            >
+              {{ deletingGroupIds.has(selectedGroup.id) ? '删除中…' : `删除该组（${selectedGroup.image_count} 张）` }}
+            </el-button>
             <el-button class="!w-full !ml-0 mt-2 md:!hidden" size="small" @click="closeGroupDetail">
               关闭
             </el-button>
