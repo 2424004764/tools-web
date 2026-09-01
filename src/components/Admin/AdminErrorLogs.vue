@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { fetchApiErrorLogs, cleanupApiErrorLogs } from '@/api/admin/error-log'
+import { fetchApiErrorLogs, cleanupApiErrorLogs, setApiErrorLogResolved } from '@/api/admin/error-log'
 import type { AdminPagination, ApiErrorLog } from '@/types/admin'
 import { formatLocation } from '@/utils/geo-name'
 
@@ -17,6 +17,7 @@ const filter = reactive({
   status: '' as '' | '400' | '401' | '403' | '404' | '409' | '500',
   stage: '' as '' | 'validation' | 'auth' | 'db' | 'kv' | 'upstream' | 'unknown',
   uid: '',
+  resolved: '' as '' | '0' | '1',
 })
 
 const statusOptions = [
@@ -37,6 +38,12 @@ const stageOptions = [
   { value: 'kv', label: 'KV' },
   { value: 'upstream', label: '上游' },
   { value: 'unknown', label: '未分类' },
+]
+
+const resolvedOptions = [
+  { value: '', label: '全部' },
+  { value: '0', label: '未处理' },
+  { value: '1', label: '已处理' },
 ]
 
 const stageTagType = (s: string | null) => {
@@ -92,6 +99,7 @@ const load = async () => {
       status: filter.status ? Number(filter.status) : undefined,
       stage: filter.stage || undefined,
       uid: filter.uid || undefined,
+      resolved: filter.resolved || undefined,
     })
     list.value = result.list
     pagination.value = result.pagination
@@ -138,6 +146,93 @@ const handleCleanup = async () => {
     cleaning.value = false
   }
 }
+
+// 把单条标记为已处理 / 取消标记
+//   - 标记为已处理：弹窗让用户填一句备注（可空），便于事后翻查
+//   - 取消标记：直接二次确认即可
+const toggling = ref<string | null>(null)
+
+const applyResolved = async (row: ApiErrorLog, next: 0 | 1) => {
+  if (toggling.value) return
+  if (next === 1) {
+    let note = ''
+    try {
+      const r = await ElMessageBox.prompt(
+        '可选：填一句处理说明（例如：已修复上线，commit abc123）',
+        '标记为已处理',
+        {
+          confirmButtonText: '标记',
+          cancelButtonText: '取消',
+          inputType: 'textarea',
+          inputValue: row.resolved_note || '',
+          inputPlaceholder: '可选，最多 200 字',
+          inputValidator: (val: string) => (val ? val.length <= 200 || '备注最多 200 字' : true),
+        },
+      )
+      note = (r?.value || '').trim()
+    } catch {
+      return
+    }
+    toggling.value = row.id
+    try {
+      const updated = await setApiErrorLogResolved(row.id, 1, note)
+      Object.assign(row, {
+        is_resolved: updated.is_resolved,
+        resolved_at: updated.resolved_at,
+        resolved_note: updated.resolved_note,
+        resolved_by: row.resolved_by, // 后端没回写该字段，由下次 load 校正
+      })
+      ElMessage.success('已标记为已处理')
+      // 当前若处于「未处理」筛选，把这条从列表移除；其他筛选保留
+      if (filter.resolved === '0') {
+        list.value = list.value.filter((it) => it.id !== row.id)
+        pagination.value.total = Math.max(0, pagination.value.total - 1)
+      }
+      if (selected.value?.id === row.id) selected.value = row
+    } catch (err: any) {
+      ElMessage.error(err?.response?.data?.error || err?.message || '标记失败')
+    } finally {
+      toggling.value = null
+    }
+    return
+  }
+
+  // 撤回
+  try {
+    await ElMessageBox.confirm('确认将这条日志改回「未处理」？', '撤回处理', {
+      confirmButtonText: '撤回',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+  } catch {
+    return
+  }
+  toggling.value = row.id
+  try {
+    const updated = await setApiErrorLogResolved(row.id, 0)
+    Object.assign(row, {
+      is_resolved: updated.is_resolved,
+      resolved_at: null,
+      resolved_by: null,
+      resolved_note: null,
+    })
+    ElMessage.success('已撤回处理')
+    if (filter.resolved === '1') {
+      list.value = list.value.filter((it) => it.id !== row.id)
+      pagination.value.total = Math.max(0, pagination.value.total - 1)
+    }
+    if (selected.value?.id === row.id) selected.value = row
+  } catch (err: any) {
+    ElMessage.error(err?.response?.data?.error || err?.message || '撤回失败')
+  } finally {
+    toggling.value = null
+  }
+}
+
+const rowResolvedTag = (row: ApiErrorLog) =>
+  row.is_resolved === 1
+    ? { type: 'success' as const, label: '已处理' }
+    : { type: 'danger' as const, label: '未处理' }
 
 // ============ 详情抽屉 ============
 const drawerVisible = ref(false)
@@ -211,6 +306,15 @@ onMounted(load)
       >
         <el-option v-for="o in stageOptions" :key="o.value" :label="o.label" :value="o.value" />
       </el-select>
+      <el-select
+        v-model="filter.resolved"
+        placeholder="处理状态"
+        clearable
+        class="!w-32"
+        @change="handleSearch"
+      >
+        <el-option v-for="o in resolvedOptions" :key="o.value" :label="o.label" :value="o.value" />
+      </el-select>
       <el-input
         v-model="filter.uid"
         placeholder="用户 UID"
@@ -265,6 +369,32 @@ onMounted(load)
             <el-tag :type="statusTagType(row.status)" effect="plain">{{ row.status }}</el-tag>
           </template>
         </el-table-column>
+        <el-table-column label="处理" width="100">
+          <template #default="{ row }">
+            <el-tag :type="rowResolvedTag(row).type" effect="plain" size="small">
+              {{ rowResolvedTag(row).label }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="100" fixed="right">
+          <template #default="{ row }">
+            <el-button
+              v-if="row.is_resolved === 1"
+              size="small"
+              link
+              :loading="toggling === row.id"
+              @click.stop="applyResolved(row, 0)"
+            >撤回</el-button>
+            <el-button
+              v-else
+              size="small"
+              type="primary"
+              link
+              :loading="toggling === row.id"
+              @click.stop="applyResolved(row, 1)"
+            >标记</el-button>
+          </template>
+        </el-table-column>
         <el-table-column label="环节" width="100">
           <template #default="{ row }">
             <el-tag :type="stageTagType(row.error_stage)" effect="plain" size="small">
@@ -284,6 +414,14 @@ onMounted(load)
         <el-table-column label="错误摘要" min-width="240">
           <template #default="{ row }">
             <span class="text-gray-700">{{ truncate(row.error_message, 80) }}</span>
+            <el-tag
+              v-if="row.error_stack"
+              size="small"
+              type="warning"
+              effect="plain"
+              class="ml-1"
+              title="点击行查看异常堆栈"
+            >堆栈</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="耗时" width="90">
@@ -342,6 +480,36 @@ onMounted(load)
             </div>
           </div>
           <div>
+            <div class="text-gray-500 mb-1">处理状态</div>
+            <div class="flex items-center gap-2">
+              <el-tag :type="rowResolvedTag(selected).type" effect="plain" size="small">
+                {{ rowResolvedTag(selected).label }}
+              </el-tag>
+              <el-button
+                v-if="selected.is_resolved === 1"
+                size="small"
+                link
+                :loading="toggling === selected.id"
+                @click="applyResolved(selected, 0)"
+              >撤回</el-button>
+              <el-button
+                v-else
+                size="small"
+                type="primary"
+                :loading="toggling === selected.id"
+                @click="applyResolved(selected, 1)"
+              >标记为已处理</el-button>
+            </div>
+          </div>
+          <div v-if="selected.resolved_at">
+            <div class="text-gray-500 mb-1">处理时间</div>
+            <div>{{ formatTime(selected.resolved_at) }}</div>
+          </div>
+          <div v-if="selected.resolved_by">
+            <div class="text-gray-500 mb-1">处理人 UID</div>
+            <div class="truncate">{{ selected.resolved_by }}</div>
+          </div>
+          <div>
             <div class="text-gray-500 mb-1">UID</div>
             <div class="truncate">{{ selected.uid || '匿名' }}</div>
           </div>
@@ -369,6 +537,17 @@ onMounted(load)
           </div>
         </div>
 
+        <div v-if="selected.resolved_note">
+          <div class="flex items-center mb-1">
+            <span class="text-gray-500 text-sm">处理备注</span>
+            <el-button link size="small" class="ml-auto"
+                       @click="copyText(selected.resolved_note, '处理备注')">复制</el-button>
+          </div>
+          <div class="bg-gray-50 rounded p-3 text-sm whitespace-pre-wrap break-all">
+            {{ selected.resolved_note }}
+          </div>
+        </div>
+
         <div>
           <div class="flex items-center mb-1">
             <span class="text-gray-500 text-sm">错误信息</span>
@@ -378,6 +557,15 @@ onMounted(load)
           <div class="bg-gray-50 rounded p-3 text-sm whitespace-pre-wrap break-all">
             {{ selected.error_message || '-' }}
           </div>
+        </div>
+
+        <div v-if="selected.error_stack">
+          <div class="flex items-center mb-1">
+            <span class="text-gray-500 text-sm">异常堆栈</span>
+            <el-button link size="small" class="ml-auto"
+                       @click="copyText(selected.error_stack, '异常堆栈')">复制</el-button>
+          </div>
+          <pre class="bg-gray-50 rounded p-3 text-xs overflow-auto max-h-72 whitespace-pre-wrap break-all">{{ selected.error_stack }}</pre>
         </div>
 
         <div v-if="selected.upstream_name || selected.upstream_body">

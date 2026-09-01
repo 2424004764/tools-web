@@ -13,6 +13,7 @@
 // 上游响应体最多存这么长，避免单条日志过大撑爆 D1
 const MAX_UPSTREAM_BODY = 2000
 const MAX_ERROR_MESSAGE = 500
+const MAX_ERROR_STACK = 4000
 const MAX_USER_AGENT = 300
 
 /** 挂载点的 key，中间件与业务代码约定一致 */
@@ -81,6 +82,7 @@ const {
       method,
       status,
       errorMessage = null,
+      errorStack = null,
       stage = null,
       upstreamName = null,
       upstreamStatus = null,
@@ -113,8 +115,8 @@ const {
          (id, path, method, status, error_message, error_stage,
           upstream_name, upstream_status, upstream_body,
           uid, client_ip, country, region, city, timezone, colo,
-          user_agent, duration_ms, extra, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          user_agent, duration_ms, extra, error_stack, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .bind(
       genId(),
@@ -136,6 +138,7 @@ const {
       truncate(userAgent, MAX_USER_AGENT),
       typeof durationMs === 'number' ? durationMs : null,
       truncate(extraText, MAX_UPSTREAM_BODY),
+      truncate(errorStack, MAX_ERROR_STACK),
       // 与项目其他表保持一致：UTC 字符串、空格分隔、无 Z 后缀
       // 前端 formatTime 会按 UTC 解析再 toLocaleString('zh-CN') 转北京时
       new Date().toISOString().slice(0, 19).replace('T', ' '),

@@ -209,6 +209,9 @@ export class TravelMapsService {
   // ---------- 我的地图 ----------
 
   async listMyMaps(uid, page, pageSize) {
+    if (!uid || typeof uid !== 'string') {
+      throw new ValidationError('无效的用户 ID')
+    }
     const offset = (page - 1) * pageSize
     const countRow = await this.db
       .prepare('SELECT COUNT(*) AS total FROM travel_maps WHERE uid = ?')
@@ -370,6 +373,9 @@ export class TravelMapsService {
   // ---------- 地图广场 / 公开访问 ----------
 
   async listPlaza(page, pageSize) {
+    if (typeof page !== 'number' || typeof pageSize !== 'number') {
+      throw new ValidationError('分页参数必须是数字')
+    }
     const offset = (page - 1) * pageSize
     const countRow = await this.db
       .prepare('SELECT COUNT(*) AS total FROM travel_maps WHERE is_public = 1')

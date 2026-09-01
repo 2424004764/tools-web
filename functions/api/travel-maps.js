@@ -78,7 +78,13 @@ export async function onRequest(context) {
       return ApiResponse.error(error.message, origin, 400)
     }
     console.error('TravelMaps API error:', error)
-    return ApiResponse.error('内部服务器错误', origin, 500)
+    // 把真实异常的 message + stack 写到响应 JSON 的 detail 字段，
+    // _middleware.js 会读出来落到 api_error_logs.error_stack，
+    // 运维在管理后台错误日志页直接看到堆栈，不必翻 Cloudflare 日志。
+    const detail = error.stack
+      ? `${error.name}: ${error.message}\n\n${error.stack}`
+      : `${error.name}: ${error.message}`
+    return ApiResponse.error('内部服务器错误', origin, 500, detail)
   }
 }
 
