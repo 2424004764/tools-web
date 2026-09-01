@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElNotification } from 'element-plus'
 import type { UploadProps } from 'element-plus'
 import Sortable from 'sortablejs'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
@@ -13,6 +13,11 @@ import { functionsRequest } from '@/utils/functionsRequest'
 import { fetchToolModels, type PublicToolModel } from '@/api/tool-models'
 import { fetchMyGenerationRecordImage } from '@/api/me'
 import { useUserStore } from '@/store/modules/user'
+import {
+  initAiCreationSave,
+  confirmAiCreationSave,
+  uploadImageBlobToR2,
+} from '@/api/ai-creations'
 
 const info = reactive({
   title: 'AI图片编辑',
@@ -100,9 +105,12 @@ const historyRef = ref<InstanceType<typeof GenerationHistoryDialog> | null>(null
 
 // 提示词库弹窗 ref（从提示词库选择）
 const promptLibraryRef = ref<InstanceType<typeof UserPromptLibraryDialog> | null>(null)
+// 当前选中的提示词库 id（保存到「我的 AI 创作」时用作 group 复用键；未选则不传）
+const selectedPromptId = ref<string | null>(null)
 // 选中提示词库里的某条后，回填到输入框（强制覆盖，保持和「点开 → 选中」的语义一致）
 const onPromptSelect = (payload: { id: string; title: string; content: string }) => {
   prompt.value = payload.content
+  selectedPromptId.value = payload.id
   ElMessage.success(payload.title ? `已填入「${payload.title}」` : '已填入提示词')
 }
 
@@ -639,6 +647,156 @@ const results = reactive<ResultSlot[]>([])
 // 计时器存 Map，避免 Vue 把 setInterval id 视为响应式字段
 const slotTimers = new Map<string, ReturnType<typeof setInterval>>()
 
+// ============ 保存到「我的 AI 创作」============
+// 默认关；用户勾选后才会出现「保存全部」按钮；用户偏好 localStorage 持久化。
+const SAVE_TOGGLE_KEY = 'ai-image-edit:save-to-creations'
+const saveToCreationsEnabled = ref(false)
+const saveToCreationsLoading = ref(false)
+const saveProgress = reactive({ done: 0, total: 0 })
+// 记录保存操作开始时间（用于 finally 时让 loading 至少保留 600ms 可视）
+let saveStartAt = 0
+// 保存成功后记录对应 group_id + 成功张数；切换新一轮生成时清空
+const savedGroupIds = ref<number | null>(null)
+const savedImageCount = ref(0)
+
+onMounted(() => {
+  try {
+    saveToCreationsEnabled.value = localStorage.getItem(SAVE_TOGGLE_KEY) === '1'
+  } catch {
+    /* 隐私模式静默 */
+  }
+})
+const onSaveToggleChange = (val: boolean | string | number) => {
+  try {
+    localStorage.setItem(SAVE_TOGGLE_KEY, val ? '1' : '0')
+  } catch {
+    /* 静默 */
+  }
+}
+
+// 仅成功的 slot 才允许保存
+const successfulResults = computed(() =>
+  results.filter((r) => r.status === 'success' && r.url),
+)
+
+/**
+ * 把 N 张结果图批量保存到当前用户的「我的 AI 创作」画廊：
+ *   1) 拉每一张图 → blob
+ *   2) POST /api/ai-creations/save/init  拿到 group_id + 每个图的上传 URL
+ *   3) 并发 fetch PUT 把 blob 写到 R2
+ *   4) POST /api/ai-creations/save/confirm 把成功项写入 D1
+ * 失败：单图粒度，成功 / 失败分别提示；某一张失败不影响其他图。
+ */
+const saveAllToCreations = async () => {
+  if (saveToCreationsLoading.value) return
+  const items = successfulResults.value
+  if (items.length === 0) {
+    ElMessage.warning('暂无可保存的图')
+    return
+  }
+  saveToCreationsLoading.value = true
+  saveProgress.done = 0
+  saveProgress.total = items.length
+  saveStartAt = Date.now()
+
+  try {
+    // 1) init：复用同一 group（同一 prompt + 同一波结果）
+    //    - 优先从 UserPromptLibrary 选择的 prompt id 关联；若没有则不传
+    const promptId = selectedPromptId.value
+    const promptTextStr = prompt.value || ''
+
+    const init = await initAiCreationSave({
+      prompt_id: promptId || undefined,
+      scene: 'ai-image-edit',
+      category: 'AI图片',
+      ...(selectedModel.value ? { model_name: selectedModel.value } : {}),
+      ...(promptTextStr.trim() ? { title: promptTextStr.trim().slice(0, 100) } : {}),
+      images: items.map((it) => ({
+        upstream_url: it.url,
+        prompt: promptTextStr || '(空提示词)',
+      })),
+    })
+
+    // 2) 拉 blob + 上传 R2（并发，每个独立 Promise.allSettled）
+    const uploadResults = await Promise.allSettled(
+      init.plan.map(async (planItem) => {
+        const slot = items[planItem.index]
+        // 先 fetch 拿 blob
+        const res = await fetch(slot.url)
+        if (!res.ok) throw new Error(`fetch upstream 失败: HTTP ${res.status}`)
+        const blob = await res.blob()
+        // 再 PUT 到 R2 presigned URL
+        await uploadImageBlobToR2(planItem.upload_url, blob, planItem.content_type)
+        return {
+          r2_key: planItem.r2_key,
+          public_url: planItem.public_url,
+          prompt: promptTextStr || '(空提示词)',
+          width: null,
+          height: null,
+          file_size: blob.size,
+        }
+      }),
+    )
+
+    // 3) 收集成功项，调 confirm
+    const successes = uploadResults
+      .map((r) => r)
+      .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled')
+      .map((r) => r.value)
+
+    const failed = uploadResults
+      .map((r, i) => ({ r, idx: i }))
+      .filter((x) => x.r.status === 'rejected')
+      .map((x) => ({
+        index: x.idx,
+        error: ((x.r as PromiseRejectedResult).reason?.message) || '未知错误',
+      }))
+
+    saveProgress.done = successes.length
+
+    if (successes.length > 0) {
+      const confirm = await confirmAiCreationSave({
+        group_id: init.group_id,
+        images: successes,
+      })
+      // 标记本轮结果已保存：按钮 disable，文案改为「已保存」
+      savedGroupIds.value = init.group_id
+      savedImageCount.value = confirm.inserted
+      // 用 ElNotification 替代 ElMessage.onClick（EP v2 ElMessage 不支持 onClick 参数）
+      ElNotification({
+        type: failed.length === 0 ? 'success' : 'warning',
+        title: failed.length === 0 ? '已保存到我的创作' : '部分保存成功',
+        message: `成功 ${confirm.inserted} 张${failed.length ? `，失败 ${failed.length} 张` : ''}。点击查看`,
+        duration: 4500,
+        onClick: () => {
+            // 新标签页打开「我的 AI 创作」，避免打断当前生成流程
+            const url = new URL('/my-ai-creations/', window.location.origin).toString()
+            window.open(url, '_blank', 'noopener,noreferrer')
+          },
+      })
+    } else {
+      ElMessage.error('全部上传失败，未保存任何图')
+    }
+
+    if (failed.length > 0) {
+      console.warn('[save-to-creations] 失败明细:', failed)
+    }
+  } catch (e: any) {
+    console.error('[save-to-creations] error:', e)
+    ElMessage.error(e?.response?.data?.error || e?.message || '保存失败，请稍后重试')
+  } finally {
+    // loading 至少保留 600ms 可视，避免快请求时一闪而过用户察觉不到
+    const elapsed = Date.now() - saveStartAt
+    const minVisible = 600
+    if (elapsed < minVisible) {
+      await new Promise((r) => setTimeout(r, minVisible - elapsed))
+    }
+    saveToCreationsLoading.value = false
+    saveProgress.done = 0
+    saveProgress.total = 0
+  }
+}
+
 // ============ Per-slot canvas 粒子动画 ============
 // 每张 pending slot 跑一个独立 canvas，粒子数 25（N=5 时共 125 个可接受）
 interface Particle {
@@ -763,6 +921,9 @@ const stopAllSlotCanvases = () => {
 const resetResults = (n: number) => {
   stopAllSlotVisuals()
   results.splice(0, results.length, ...Array.from({ length: n }, createPendingSlot))
+  // 新一轮生成开始：清空"已保存"标记，让保存按钮重新可点
+  savedGroupIds.value = null
+  savedImageCount.value = 0
   for (const slot of results) startSlotTimer(slot)
 }
 
@@ -939,6 +1100,7 @@ const canGenerate = computed(() => {
 const clearPrompt = () => {
   prompt.value = ''
   promptTouched.value = false
+  selectedPromptId.value = null // 提示词被清空，原 prompt id 失效
   try {
     localStorage.removeItem(PROMPT_CACHE_KEY)
   } catch {
@@ -1594,19 +1756,48 @@ const openInImgCut = (slot: ResultSlot) => {
 
         <!-- 右侧：结果区 -->
         <div class="space-y-4">
-          <label class="block text-body-sm font-medium text-gray-700">
-            生成结果
-            <span v-if="results.length > 1" class="text-caption text-gray-400 ml-1">
-              （{{ results.length }} 张并发）
-            </span>
-            <span
-              v-if="batchStartAt && batchEndAt && results.length > 0"
-              class="text-caption text-gray-500 ml-2 tabular-nums"
-              :title="'从点击「开始生成」到最后一个 slot 收尾的总耗时'"
-            >
-              耗时 {{ formatBatchDuration(totalElapsedMs) }}
-            </span>
-          </label>
+          <div class="flex items-center justify-between gap-2 flex-wrap">
+            <label class="block text-body-sm font-medium text-gray-700">
+              生成结果
+              <span v-if="results.length > 1" class="text-caption text-gray-400 ml-1">
+                （{{ results.length }} 张并发）
+              </span>
+              <span
+                v-if="batchStartAt && batchEndAt && results.length > 0"
+                class="text-caption text-gray-500 ml-2 tabular-nums"
+                :title="'从点击「开始生成」到最后一个 slot 收尾的总耗时'"
+              >
+                耗时 {{ formatBatchDuration(totalElapsedMs) }}
+              </span>
+            </label>
+
+            <!-- 保存到我的作品：开关 + 全部保存按钮 -->
+            <div v-if="successfulResults.length > 0" class="flex items-center gap-2">
+              <el-switch
+                v-model="saveToCreationsEnabled"
+                size="small"
+                :active-text="savedGroupIds ? '已保存' : '保存到我的作品'"
+                :disabled="!!savedGroupIds"
+                @change="onSaveToggleChange"
+              />
+              <el-button
+                v-if="saveToCreationsEnabled"
+                size="small"
+                type="primary"
+                :loading="saveToCreationsLoading"
+                :disabled="successfulResults.length === 0 || !!savedGroupIds"
+                @click="saveAllToCreations"
+              >
+                {{
+                  savedGroupIds
+                    ? `已保存 ${savedImageCount} 张到我的作品`
+                    : saveToCreationsLoading
+                      ? `保存中 ${saveProgress.done}/${saveProgress.total}`
+                      : '保存全部到我的作品'
+                }}
+              </el-button>
+            </div>
+          </div>
 
           <!-- 空状态 -->
           <div
