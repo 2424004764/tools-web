@@ -62,12 +62,40 @@ GITEE_REDIRECT_URI = "http://127.0.0.1:8788/gitee-auth"
 GITHUB_CLIENT_ID = "Ov23lih4DozBgCiAwLWe"
 GITHUB_REDIRECT_URI = "http://127.0.0.1:8788/github-auth"
 
+# 慢查询日志（functions/utils/slow-query-log.js）
+# 超过该毫秒数的 D1 调用会被记到 slow_query_logs 表。设 "0" 完全关闭。
+SLOW_QUERY_THRESHOLD_MS = "100"
+# 总开关："0" / "false" 关闭，其他值或未配置均为启用
+SLOW_QUERY_ENABLED = "1"
+
+# 音乐播放列表 R2 公开访问域（R2 → 桶设置 → Public Access → R2.dev 子域）
+# 留空表示暂未启用公开读（service 会返回空 publicUrl，前端 <audio> 无法播放）
+R2_PUBLIC_HOST = ""
+# 音乐播放列表 R2 桶名（与 [[r2_buckets]] 的 bucket_name 保持一致；service 通过 env.R2_BUCKET_NAME 读取）
+R2_BUCKET_NAME = "tools-web"
+
 # 验证码 KV 绑定（替代 send-verification-code.js 里的内存 Map）
 # 部署前需先执行：wrangler kv:namespace create VERIFICATION_CODES
 # 拿到 namespace id 后替换下面的占位 ID
 [[kv_namespaces]]
 binding = "VERIFICATION_CODES"
 id = "c7ad6378e7ce4e219d4268e6524711aa"
+
+# ---------- 音乐播放列表 R2 存储 ----------
+# 部署前需先执行：
+#   wrangler r2 bucket create tools-web
+# 然后在 Cloudflare Pages Dashboard → Settings → Functions → R2 bucket bindings 添加：
+#   Variable name: MEDIA
+#   R2 bucket:     tools-web
+# 同时在 Pages Secrets（不是 vars）添加：
+#   R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_ACCOUNT_ID
+#   （通过 `wrangler r2 bucket token create` 生成；本地同步写入 .dev.vars）
+# 桶的 R2.dev 子域需在 Cloudflare 控制台 → R2 → 桶设置 → Public Access 启用
+# 把子域填到下面的 R2_PUBLIC_HOST。
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "tools-web"
+preview_bucket_name = "tools-web-preview"
 
 # ---------- AI 媒体作品 推送 API Key ----------
 # 注意：本地随意填一个；线上部署时必须在 Cloudflare Pages Dashboard 改绑上线值
@@ -77,9 +105,24 @@ AIMW_KEY = "dev-local-test-key-7f3a9b2c1e8d"
 # bafang.me（AI 图片编辑 / AI 穿搭建议 共用）
 # 重要：per [[memory:wrangler-dot-dev-vars-not-propagated]]，单独写在 .dev.vars 不够，
 # 必须也写在 wrangler.toml 的 [env.dev.vars] 里，wrangler 4.59.2 才会注入到函数运行时 env。
+BAFANG_API_KEY = "REPLACE_WITH_YOUR_ACCOUNT_ID"
+# Cloudflare R2（音乐播放列表本地 SigV4 凭据）
+# 必须也写在 .dev.vars 里（真实值），wrangler 启动时会以 .dev.vars 优先覆盖这里
+R2_ACCOUNT_ID = "REPLACE_WITH_YOUR_ACCOUNT_ID"
+R2_ACCESS_KEY_ID = "REPLACE_WITH_YOUR_ACCESS_KEY"
+R2_SECRET_ACCESS_KEY = "REPLACE_WITH_YOUR_SECRET_KEY"
+# Supabase（后端专用 service_role key，bypass RLS）
+# ⚠️ 必须放在本地 .dev.vars（gitignored）；线上部署在 Cloudflare Dashboard 设为 Secret。
+# 这里写一个占位防止 wrangler 注入失败
+SUPABASE_URL = "https://wvdyjqjwkhfvfcmjpaoo.supabase.co"
+SUPABASE_SERVICE_KEY = "REPLACE_WITH_SECRET_KEY"
+
 
 [env.production.vars]
 # 线上绑定时填入真实值（带引号保护特殊字符）
 AIMW_KEY = "eB16n6DlEDKBN@Of"
 # 线上绑定方式：在 Cloudflare Pages Dashboard → Settings → Variables and secrets → 设为 Secret
 BAFANG_API_KEY = "REPLACE_AT_CF_DASHBOARD"
+# Supabase（service_role key 同 dev，必须在 Dashboard 设为 Secret；toml 这里只放占位）
+SUPABASE_URL = "https://wvdyjqjwkhfvfcmjpaoo.supabase.co"
+SUPABASE_SERVICE_KEY = "REPLACE_AT_CF_DASHBOARD"
