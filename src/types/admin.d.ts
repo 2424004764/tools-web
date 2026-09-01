@@ -306,6 +306,8 @@ export interface ApiErrorLog {
   /** 返回给客户端的 HTTP 状态码 */
   status: number
   error_message: string | null
+  /** 服务端异常堆栈（由 ApiResponse.error(..., detail) 传入；仅 status=500 时才有值） */
+  error_stack: string | null
   /** 失败环节：validation/auth/db/kv/upstream/unknown */
   error_stage: string | null
   upstream_name: string | null
@@ -327,6 +329,11 @@ export interface ApiErrorLog {
   duration_ms: number | null
   /** 原始 JSON 字符串 */
   extra: string | null
+  /** 是否已处理：0=未处理，1=已处理 */
+  is_resolved: 0 | 1
+  resolved_at: string | null
+  resolved_by: string | null
+  resolved_note: string | null
   created_at: string
 }
 
@@ -340,6 +347,8 @@ export interface ApiErrorLogParams {
   keyword?: string
   startDate?: string
   endDate?: string
+  /** '0' = 仅未处理，'1' = 仅已处理；不传 = 全部 */
+  resolved?: '0' | '1'
 }
 
 /** SQL 慢查询日志（由 functions/utils/slow-query-log.js 异步写入） */

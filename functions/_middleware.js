@@ -54,6 +54,7 @@ async function captureApiError(context, response, path, startedAt) {
   const { request, env } = context
 
   let errorMessage = null
+  let errorStack = null
   try {
     const contentType = response.headers.get('Content-Type') || ''
     if (contentType.includes('application/json')) {
@@ -63,6 +64,11 @@ async function captureApiError(context, response, path, startedAt) {
           const parsed = JSON.parse(text)
           // 项目里两种错误响应外壳：{ error } 与 { success:false, error }
           errorMessage = parsed?.error || parsed?.message || null
+          // ApiResponse.error(..., detail) 会写入 detail 字段；
+          // 业务 catch 抛真异常时把 error.message + stack 放这里，便于排障。
+          if (typeof parsed?.detail === 'string' && parsed.detail) {
+            errorStack = parsed.detail
+          }
         } catch {
           errorMessage = text
         }
@@ -97,6 +103,7 @@ async function captureApiError(context, response, path, startedAt) {
     method: request.method,
     status: response.status,
     errorMessage,
+    errorStack,
     stage: detail.stage || null,
     upstreamName: detail.upstreamName || null,
     upstreamStatus: detail.upstreamStatus ?? null,

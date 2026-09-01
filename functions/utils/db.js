@@ -525,8 +525,13 @@ export class ApiResponse {
     })
   }
 
-  static error(message, origin, status = 500) {
-    return new Response(JSON.stringify({ error: message }), {
+  static error(message, origin, status = 500, detail = null) {
+    // 业务 catch 抛真异常时，把 error.message + error.stack 通过 detail 传进来，
+    // 中间件 (_middleware.js) 会读到 detail 字段并写入 api_error_logs.error_stack。
+    // 前端 axios 默认会忽略 detail（按 error 字段弹 ElMessage 即可）。
+    const body = { error: message }
+    if (detail) body.detail = detail
+    return new Response(JSON.stringify(body), {
       status,
       headers: {
         'Content-Type': 'application/json',
@@ -643,17 +648,29 @@ export function initDatabase(env, waitUntil = null) {
  * 关键点：每次 .bind() 都返回一个新的 Proxy，但执行（run/all/first）时需要拿到
  * 最近一次 bind 的参数。用一个外层闭包持有 params，bind 时写入，exec 时读取。
  */
+/**
+ * 让 db.batch() 能从包装 Proxy 里取回「真正绑定好参数的 D1 语句」。
+ * 用 Symbol.for 保证跨模块引用同一个 key。
+ */
+export const REAL_BOUND_STMT = Symbol.for('wrappedD1.realBoundStmt')
+
 function wrapPreparedStatement(innerStmt, sql, env, waitUntil, initialParams = []) {
   // params 在闭包中共享：bind 写入，exec 读取
   let params = initialParams
+
+  // D1 的 .first() / .all() / .run() / .raw() 都不接受绑定值——
+  // 参数只能通过 .bind() 传入。所以这里必须先对真实语句调用 .bind(...)，
+  // 再执行对应方法；不能把 params 直接展开传给 innerStmt[method](...)，
+  // 否则 D1 会把第一个值误当成 .first(colName) 的列名，导致
+  // "Wrong number of parameter bindings"。
+  const boundStmt = () => (params.length > 0 ? innerStmt.bind(...params) : innerStmt)
 
   const makeExec = (method) => async () => {
     const startedAt = Date.now()
     let result
     let err = null
     try {
-      // 必须先 bind 再调用，否则 D1 会报错
-      result = await innerStmt[method](...params)
+      result = await boundStmt()[method]()
       return result
     } catch (e) {
       err = e
@@ -681,6 +698,8 @@ function wrapPreparedStatement(innerStmt, sql, env, waitUntil, initialParams = [
       if (prop === 'all') return makeExec('all')
       if (prop === 'first') return makeExec('first')
       if (prop === 'raw') return makeExec('raw')
+      // db.batch() 需要真正的（已绑定参数的）D1 语句，而不是这个 Proxy
+      if (prop === REAL_BOUND_STMT) return boundStmt()
       // 其他属性（如 Symbol.toPrimitive 等）尽量原样返回
       const v = innerStmt[prop]
       return typeof v === 'function' ? v.bind(innerStmt) : v
@@ -725,9 +744,12 @@ class WrappedD1Database {
     return wrapPreparedStatement(this._raw.prepare(sql), sql, this._env, this._waitUntil)
   }
 
-  // batch 转发：项目里几乎没用；如需逐条计时后续可扩展
+  // batch 转发：先把包装 Proxy 还原成真正绑定好参数的 D1 语句，
+  // 否则 this._raw.batch() 拿到的是 Proxy，D1 序列化/执行会失败。
+  // （travel-maps 的 saveMap / deleteMap 就依赖 batch。）
   batch(statements) {
-    return this._raw.batch(statements)
+    const unwrapped = (statements || []).map((s) => (s && s[REAL_BOUND_STMT]) || s)
+    return this._raw.batch(unwrapped)
   }
 
   // exec / dump 是 D1 内部管理接口，按原样转发
