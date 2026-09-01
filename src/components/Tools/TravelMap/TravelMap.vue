@@ -128,7 +128,20 @@ const shareUrl = computed(() =>
 // 此时 dialog 已经 close 了，watch 看到的 state 是稳定可保存的。
 const applyingDetail = ref(false)
 let autoSaveTimer: ReturnType<typeof setTimeout> | null = null
-watch([title, description, baseLayer, points, routes], () => {
+
+/**
+ * 排一次去抖的静默自动保存（1.5s）。
+ * 内容改动 watch 与地图视野变化（拖动/缩放）共用这一条调度。
+ *
+ * 抑制条件（任一命中就不存）：
+ *   - loading / applyingDetail：正在初始化或把服务器响应回填到本地，不算用户改动
+ *   - 画线中（route / route-osrm）：draftPath 还没落库，不能把半成品打回去
+ *   - 未登录 / 地图未初始化：没有可保存的对象
+ *
+ * 真正的 center/zoom 由 handleSave 现场从 mapRef.getView() 取，
+ * 所以这里不需要先把视野写回响应式状态（也就不存在反馈循环）。
+ */
+function scheduleAutoSave() {
   if (loading.value) return
   if (applyingDetail.value) return
   if (mode.value === 'route' || mode.value === 'route-osrm') return
@@ -138,7 +151,9 @@ watch([title, description, baseLayer, points, routes], () => {
   autoSaveTimer = setTimeout(() => {
     void handleSave({ silent: true })
   }, 1500)
-}, { deep: true })
+}
+
+watch([title, description, baseLayer, points, routes], scheduleAutoSave, { deep: true })
 
 // ---------- 搜索 ----------
 
@@ -466,16 +481,17 @@ function handleMapClick(ll: { lng: number; lat: number }) {
 }
 
 function handleViewChange(payload: { center: LngLat; zoom: number }) {
-  // 这里原本会把 center/zoom 写回父组件状态（用于保存时写回 map meta），
-  // 但「地图自己拖动」也会 emit view-change，如果实时回写，
-  // 子组件的 center watch 会命中 → 调 centerAndZoom → 再触发 moveend →
-  // 再 emit → 死循环，瓦片请求风暴式打过来。
+  // 不把 center/zoom 实时写回父组件响应式状态：「地图自己拖动」也会 emit
+  // view-change，一旦回写，子组件的 center watch 会命中 → 调 centerAndZoom →
+  // 再触发 moveend → 再 emit → 死循环，瓦片请求风暴式打过来。
   //
-  // 修法：本地缓存的 center/zoom 只在「用户主动跳视野」时才更新（panTo /
-  // fitAll / openMap）。地图自己拖出来的最终位置，在保存时由 handleSave
-  // 自己从 mapRef.getCenter() 取实时值，避免依赖父组件状态去触发子组件 watch。
-  // 这里只更新 POI 搜索要用的视野缓存（currentBounds 在子组件内自行维护）。
+  // 但视野（中心点 + 缩放级别）需要持久化，否则用户拖到某个地方一刷新，
+  // 地图又跳回上次保存的位置。做法：这里只排一次去抖的静默自动保存，
+  // 保存时 handleSave 现场从 mapRef.getView() 取实时 center/zoom 落库——
+  // 既不回写响应式状态（无反馈循环），又能把拖动/缩放后的位置存下来。
+  // （POI 搜索要用的视野缓存 currentBounds 由子组件自行维护，不受影响。）
   void payload
+  scheduleAutoSave()
 }
 
 function handlePointClick(id: string) {
