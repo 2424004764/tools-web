@@ -6,6 +6,7 @@ import Download from '~icons/ep/download'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import JSZip from 'jszip'
+import { fetchMyGenerationRecordImage } from '@/api/me'
 
 const info = reactive({
   title: "图片切割",
@@ -236,12 +237,25 @@ watch(isLoadingFromUrl, async (val) => {
 })
 
 const loadFromUrl = async () => {
-  const url = route.query.url
-  if (typeof url !== 'string' || !url) return
+  const url = typeof route.query.url === 'string' ? route.query.url : ''
+  const recordId = typeof route.query.recordId === 'string' ? route.query.recordId : ''
+  if (!url && !recordId) return
 
   isLoadingFromUrl.value = true
   try {
-    // 走通用图片代理（不依赖 recordId，任何外链图都能代理）
+    // 优先用 recordId 走「生成记录图片代理」：同源、不受第三方图床 CORS 限制，
+    // 且后端能把 data: base64 图也解出来（image-proxy 只认 http/https，data: 图
+    // 从 AI 图片编辑跳过来时只能靠这条路）。
+    if (recordId) {
+      const { blob } = await fetchMyGenerationRecordImage(recordId)
+      const file = new File([blob], 'imgcut-source.png', { type: blob.type || 'image/png' })
+      // 复用 el-upload 的 http-request 流程：FileReader → Image onload → cut()
+      await updateDataFile({ file })
+      ElMessage.success('已加载源图，可调整行/列数开始切割')
+      return
+    }
+
+    // 无 recordId（极少见的历史/外链场景）：退回通用图片代理
     const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(url)}`
     const resp = await fetch(proxyUrl)
     if (!resp.ok) {
@@ -260,7 +274,6 @@ const loadFromUrl = async () => {
           : 'png'
     const filename = `imgcut-source.${ext}`
     const file = new File([blob], filename, { type: contentType })
-    // 复用 el-upload 的 http-request 流程：FileReader → Image onload → cut()
     await updateDataFile({ file })
     ElMessage.success('已加载源图，可调整行/列数开始切割')
   } catch (err) {

@@ -51,6 +51,38 @@ export async function onRequest(context) {
     return jsonError('该记录无可下载的图片', 400)
   }
 
+  // data: URL（b64_json / Gemini inline_data）：Workers 的 fetch() 不支持 data: 协议，
+  // 必须本地解码。上游返回 base64 时这里就是唯一可用的取图路径。
+  if (row.result_url.startsWith('data:')) {
+    try {
+      const commaIdx = row.result_url.indexOf(',')
+      const meta = row.result_url.slice(5, commaIdx)          // image/png;base64
+      const contentType = (meta.split(';')[0] || 'image/png').trim() || 'image/png'
+      const binary = atob(row.result_url.slice(commaIdx + 1))
+      const bytes = new Uint8Array(binary.length)
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+      const ext = contentType.includes('jpeg') || contentType.includes('jpg')
+        ? 'jpg'
+        : contentType.includes('webp')
+          ? 'webp'
+          : contentType.includes('gif')
+            ? 'gif'
+            : 'png'
+      return new Response(bytes, {
+        status: 200,
+        headers: {
+          'Content-Type': contentType,
+          'Content-Disposition': `inline; filename="ai-image.${ext}"`,
+          'Cache-Control': 'public, max-age=86400',
+          ...corsHeaders,
+        },
+      })
+    } catch (err) {
+      console.error('[me/generation-records/[id]/image] data: URL 解码失败', err)
+      return jsonError('图片数据解码失败', 502)
+    }
+  }
+
   // 服务端 fetch（无 CORS 限制），直接流式转发
   try {
     const upstream = await fetch(row.result_url)

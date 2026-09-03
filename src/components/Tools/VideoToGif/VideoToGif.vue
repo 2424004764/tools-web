@@ -87,14 +87,17 @@ const seekTo = (time: number) => {
   }
 }
 
-// 加载 gifshot 库（使用本地文件）
-const loadGifshot = async (): Promise<any> => {
-  if ((window as any).gifshot) {
-    return (window as any).gifshot
+// 加载 gif.js 库（GIF 编码器，使用本地文件）。
+// 之前用的是 gifshot（用 blob URL 创建 worker，受限于 CSP worker-src 策略容易在
+// 严格 CSP 站点上被拦截）。gif.js 用普通 script worker（/lib/gif.worker.js），
+// 只要 worker-src 'self' 就能跑，跟业务代码本身的 'self' 同源，兼容性更好。
+const loadGifjs = async (): Promise<any> => {
+  if ((window as any).GIF) {
+    return (window as any).GIF
   }
 
   // 先尝试本地文件
-  const localUrl = '/lib/gifshot.min.js'
+  const localUrl = '/lib/gif.js'
 
   try {
     await new Promise<void>((resolve, reject) => {
@@ -104,18 +107,18 @@ const loadGifshot = async (): Promise<any> => {
       script.onerror = () => reject(new Error('Local file failed'))
       document.head.appendChild(script)
     })
-    if ((window as any).gifshot) {
-      console.log('Using local gifshot')
-      return (window as any).gifshot
+    if ((window as any).GIF) {
+      console.log('Using local gif.js')
+      return (window as any).GIF
     }
   } catch (e) {
     console.warn('Local file failed, trying CDN...')
   }
 
-  // 备用CDN
+  // 备用 CDN（jsDelivr 是 workerScript 路径友好的 CDN）
   const cdnUrls = [
-    'https://cdn.bootcdn.net/ajax/libs/gifshot/0.3.2/gifshot.min.js',
-    'https://lib.baomitu.com/gifshot/0.3.2/gifshot.min.js',
+    'https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.js',
+    'https://cdn.bootcdn.net/ajax/libs/gif.js/0.2.0/gif.js',
   ]
 
   for (const url of cdnUrls) {
@@ -127,9 +130,9 @@ const loadGifshot = async (): Promise<any> => {
         script.onerror = () => reject(new Error(`Failed: ${url}`))
         document.head.appendChild(script)
       })
-      if ((window as any).gifshot) {
+      if ((window as any).GIF) {
         console.log('Loaded from:', url)
-        return (window as any).gifshot
+        return (window as any).GIF
       }
     } catch (e) {
       console.warn(`Failed ${url}`)
@@ -157,23 +160,44 @@ const generateGif = async () => {
   progress.value = 0
 
   try {
-    // 加载库
+    // 加载库（gif.js 用法比 gifshot 直接：构造实例 → addFrame → render，
+    // worker 是普通 script worker，跟业务代码同源，避开 blob worker 的 CSP 限制）
     ElMessage.info('正在加载GIF库...')
-    const gifshot = await loadGifshot()
-    progress.value = 10
+    const GIF = await loadGifjs()
+    progress.value = 5
 
     video.pause()
 
-    const numFrames = Math.floor(duration * videoSettings.fps)
+    const numFrames = Math.max(1, Math.floor(duration * videoSettings.fps))
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')!
     const height = Math.floor(videoSettings.width * (video.videoHeight / video.videoWidth))
     canvas.width = videoSettings.width
     canvas.height = height
 
-    const frameDataUrls: string[] = []
+    // 构造 GIF 编码器。
+    // workerScript 必须指向 /lib/gif.worker.js（同源），CSP worker-src 'self' 即放行。
+    // workers: 2 利用多核 CPU 并行编码帧。
+    // quality: 10（默认），值越小越慢画质越好，10 是平衡点。
+    // delay 单位 ms（gifshot 的 interval 单位 s，这里换算）。
+    const gif = new GIF({
+      workers: 2,
+      quality: 10,
+      width: videoSettings.width,
+      height,
+      workerScript: '/lib/gif.worker.js',
+      repeat: 0, // 0 = 永久循环
+    })
 
-    // 捕获帧
+    // 编码进度：worker 完成一帧就触发一次，0..1 → 10%~95%
+    gif.on('progress', (p: number) => {
+      progress.value = Math.floor(10 + p * 85)
+    })
+
+    // 抽帧：和原来一样用 seeked 事件等视频跳到目标时间，再 drawImage 到 canvas。
+    // 不再生成 dataURL（避免大帧在主线程里来回序列化），直接把 canvas 传给 addFrame。
+    // copy: true 让 gif.js 在 addFrame 时立刻把像素数据拷进 frame.data，
+    // 后面我们继续改 ctx 不会污染已加入的帧。
     for (let i = 0; i < numFrames; i++) {
       const time = videoSettings.startTime + (i / videoSettings.fps)
       video.currentTime = time
@@ -182,46 +206,32 @@ const generateGif = async () => {
         const onSeeked = () => {
           video.removeEventListener('seeked', onSeeked)
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-          frameDataUrls.push(canvas.toDataURL('image/jpeg', 0.8))
-          progress.value = 10 + Math.floor((i + 1) / numFrames * 70)
+          gif.addFrame(canvas, {
+            copy: true,
+            delay: Math.round(1000 / videoSettings.fps),
+          })
+          // 抽帧进度：占 5%~10%
+          progress.value = 5 + Math.floor((i + 1) / numFrames * 5)
           resolve()
         }
         video.addEventListener('seeked', onSeeked)
       })
     }
 
-    // 生成GIF
-    progress.value = 85
+    // 编码 + 渲染：worker 跑完后 finished 回调直接拿到 Blob
     ElMessage.info('正在生成GIF...')
-
     await new Promise<void>((resolve, reject) => {
-      gifshot.createGIF({
-        images: frameDataUrls,
-        gifWidth: videoSettings.width,
-        gifHeight: height,
-        interval: 1 / videoSettings.fps,
-        sampleInterval: 10,
-        numWorkers: 1,
-      }, (obj: any) => {
+      gif.on('finished', (blob: Blob) => {
         progress.value = 100
-        if (!obj.error) {
-          generatedGifUrl.value = obj.image
-
-          // 转换为Blob
-          const byteString = atob(obj.image.split(',')[1])
-          const ab = new ArrayBuffer(byteString.length)
-          const ia = new Uint8Array(ab)
-          for (let i = 0; i < byteString.length; i++) {
-            ia[i] = byteString.charCodeAt(i)
-          }
-          generatedGifBlob.value = new Blob([ab], { type: 'image/gif' })
-
-          ElMessage.success('GIF生成成功！')
-          resolve()
-        } else {
-          reject(new Error(obj.errorMsg || '生成失败'))
-        }
+        generatedGifBlob.value = blob
+        generatedGifUrl.value = URL.createObjectURL(blob)
+        ElMessage.success('GIF生成成功！')
+        resolve()
       })
+      gif.on('abort', () => {
+        reject(new Error('GIF 生成被取消'))
+      })
+      gif.render()
     })
 
     video.currentTime = videoSettings.startTime
