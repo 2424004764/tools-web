@@ -33,6 +33,10 @@ const currentModelCost = computed(() => {
   const m = modelList.value.find((x) => x.model_key === selectedModel.value)
   return m?.credit_cost ?? 0
 })
+// 本次生成总消耗 = 单张积分 × 并发数。
+// 注意：当前只算"成功发起请求"的并发数；实际上传上游后失败的部分会按上游规则
+// 退还（详见后端 generateImage 实现），但下单时按 N 张扣，前端展示按这个数提示。
+const totalCost = computed(() => currentModelCost.value * selectedConcurrency.value)
 
 // 尺寸选项（按宽高比显示；value 保留像素值发给上游 bafang.me）
 const sizeOptions = [
@@ -131,30 +135,94 @@ const historyRef = ref<InstanceType<typeof GenerationHistoryDialog> | null>(null
 // 从「我的创作」选择素材弹窗 ref
 const creationPickerRef = ref<InstanceType<typeof CreationPickerDialog> | null>(null)
 
-// 选中创作素材 → 后端代理拉 blob（R2 公网图不带 CORS 头，浏览器直接 fetch 会被拦）
-// → 转 File 加入上传区（当作普通参考图）
-const handlePickCreationImage = async (img: AiCreationImage) => {
-  try {
-    const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(img.media_url)}`
-    const resp = await fetch(proxyUrl)
-    if (!resp.ok) {
-      const text = await resp.text().catch(() => '')
-      throw new Error(`HTTP ${resp.status}${text ? `: ${text}` : ''}`)
-    }
-    const blob = await resp.blob()
-    const type = blob.type || 'image/png'
-    const ext = type.includes('jpeg') || type.includes('jpg')
-      ? 'jpg'
-      : type.includes('webp')
-        ? 'webp'
-        : type.includes('gif')
-          ? 'gif'
-          : 'png'
-    const file = new File([blob], `creation-${img.id}.${ext}`, { type })
-    addImageFiles([file])
-  } catch (err) {
-    ElMessage.error('读取创作素材失败：' + (err as Error)?.message)
+// 已加入上传区的「创作素材 id 列表」：从 uploadedFileNames 解析（handlePickCreationImage
+// 生成的文件名格式是 creation-${id}.${ext}，id 是 AiCreationImage.id，number）。
+// 传给 CreationPickerDialog 作初始选中态，让「第二次打开弹窗」时已选图保持 ✓。
+// 用户主动从上传区移除的图，名字不再在数组里 → 自然从 preselected 里消失。
+const preselectedCreationIds = computed<number[]>(() => {
+  const ids: number[] = []
+  for (const name of uploadedFileNames.value) {
+    const m = /^creation-(\d+)\.[^.]+$/.exec(name || '')
+    if (m) ids.push(Number(m[1]))
   }
+  return ids
+})
+
+// 选中创作素材（支持多选）→ 后端代理批量拉 blob（R2 公网图不带 CORS 头，
+// 浏览器直接 fetch 会被拦）→ 转 File 批量加入上传区（当作普通参考图）。
+// 上传区上限 16 张由 useUpload MAX_IMAGES 控制；超出部分 addImageFiles 内部静默丢弃并提示。
+//
+// 性能优化：拉 thumbnail_url 而不是 media_url。
+//   - 原图（media_url）通常几 MB，多张一起拉会很慢，且后续 addImageFiles
+//     内部还要同步 FileReader.readAsDataURL → <img src> 解码，多张大图解码吃 CPU。
+//   - 缩略图（thumbnail_url）通常 <100KB，是原图的 1/30～1/100，
+//     网络/CPU 都快一个数量级。AI 编辑时只要看清主体就够，不需要原图分辨率。
+//   - 后端约定 thumbnail_url 缺失时回退 media_url（ai-creations 后端逻辑）；
+//     前端先尝试 thumbnail_url，失败再回退 media_url 兜底。
+const handlePickCreationImage = async (imgs: AiCreationImage[]) => {
+  if (!imgs || imgs.length === 0) return
+
+  isRefillingImage.value = true
+  try {
+    // 并发拉所有 blob：N 张图同时发 image-proxy 请求，比串行快 N 倍。
+    // 单张失败不阻塞其它图，失败的那张单独提示。
+    const tasks = imgs.map(async (img) => {
+      // 优先缩略图，没有再回退原图
+      const targetUrl = img.thumbnail_url || img.media_url
+      try {
+        const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(targetUrl)}`
+        const resp = await fetch(proxyUrl)
+        if (!resp.ok) {
+          // 缩略图失败兜底：再试一次原图（thumbnail 可能生成失败）
+          if (targetUrl !== img.media_url) {
+            console.warn('[creation-pick] thumbnail failed, fallback to media', img.id, resp.status)
+            const retryResp = await fetch(`/api/image-proxy?url=${encodeURIComponent(img.media_url)}`)
+            if (retryResp.ok) {
+              const blob = await retryResp.blob()
+              return makeFileFromBlob(blob, img.id)
+            }
+          }
+          const text = await resp.text().catch(() => '')
+          throw new Error(`HTTP ${resp.status}${text ? `: ${text}` : ''}`)
+        }
+        const blob = await resp.blob()
+        return makeFileFromBlob(blob, img.id)
+      } catch (err) {
+        console.error('[creation-pick] fetch failed', img.id, err)
+        return null
+      }
+    })
+
+    const files = (await Promise.all(tasks)).filter((f): f is File => f !== null)
+    if (files.length > 0) {
+      addImageFiles(files)
+    }
+    const failed = imgs.length - files.length
+    if (failed > 0) {
+      ElMessage.warning(`有 ${failed} 张图读取失败，已跳过`)
+    }
+    // 处理完毕：通知弹窗关闭（弹窗保持在打开 + loading 状态直到这一行执行）
+    creationPickerRef.value?.close()
+  } catch (err) {
+    // 出错时让弹窗恢复可交互，让用户能调整选择重试
+    creationPickerRef.value?.cancelSubmitting()
+    ElMessage.error('读取创作素材失败：' + (err as Error)?.message)
+  } finally {
+    isRefillingImage.value = false
+  }
+}
+
+// 从 blob + 创建 Creation File（命名沿用 creation-${id}.${ext} 让父组件 computed 能识别）
+function makeFileFromBlob(blob: Blob, id: number): File {
+  const type = blob.type || 'image/png'
+  const ext = type.includes('jpeg') || type.includes('jpg')
+    ? 'jpg'
+    : type.includes('webp')
+      ? 'webp'
+      : type.includes('gif')
+        ? 'gif'
+        : 'png'
+  return new File([blob], `creation-${id}.${ext}`, { type })
 }
 
 // 响应式：< 640px 视为手机端 → 「我的历史」改走独立页面 /ai-image-edit/history
@@ -271,6 +339,13 @@ const openSlotInNewTab = (slot: ResultSlot) => {
   if (slot.url) {
     window.open(slot.url, '_blank')
   }
+}
+
+// 在新标签页打开「我的 AI 创作」页面，查看完整结果列表
+// 用 vue-router 解析路径避免硬编码域名；noopener,noreferrer 是基本卫生
+const openMyCreationsInNewTab = () => {
+  const target = router.resolve('/my-ai-creations/').href
+  window.open(target, '_blank', 'noopener,noreferrer')
 }
 
 // 把生成结果发送到上传区作为新的参考图
@@ -661,11 +736,17 @@ onUnmounted(() => {
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
-                <span v-if="currentModelCost > 0 && selectedConcurrency > 1">
-                  开始生成（{{ currentModelCost }} 积分 × {{ selectedConcurrency }}）
-                </span>
-                <span v-else-if="currentModelCost > 0">
-                  开始生成（{{ currentModelCost }} 积分）
+                <!-- 按钮上的积分文字：直接显示完整表达式（单价 × 并发 = 总计）。
+                     并发=1 时「× 1」是冗余信息，只显示「开始生成 · N 积分」；
+                     并发>1 时显示完整「N × Y = Z 积分」，让用户能核对单价 × 数量 = 总计。
+                     免费模型则不显示数字。 -->
+                <span v-if="totalCost > 0" class="tabular-nums">
+                  开始生成<span class="mx-1">·</span>{{ currentModelCost }} 积分
+                  <template v-if="selectedConcurrency > 1">
+                    <span class="mx-1">×</span>{{ selectedConcurrency }}
+                    <span class="mx-1">=</span>
+                    <span class="font-bold">{{ totalCost }} 积分</span>
+                  </template>
                 </span>
                 <span v-else>开始生成</span>
               </template>
@@ -705,25 +786,38 @@ onUnmounted(() => {
             </label>
 
             <!-- 自动保存到我的创作（无需手动、无开关）：生成完一张自动存一张 -->
-            <div v-if="successfulResults.length > 0" class="flex items-center gap-2">
+            <div class="flex items-center gap-2">
               <span
-                v-if="savedGroupIds"
+                v-if="successfulResults.length > 0 && savedGroupIds"
                 class="text-caption text-green-600 font-medium"
               >
                 ✓ 已保存 {{ savedImageCount }} 张到我的作品
               </span>
+              <!-- 跳转到「我的 AI 创作」：放在标题栏右侧常驻，无论有没有生成都能去管理历史作品 -->
+              <button
+                type="button"
+                class="text-caption text-accent-700 hover:text-accent-800 font-medium inline-flex items-center gap-0.5"
+                title="在新标签页打开「我的 AI 创作」查看所有已保存的作品"
+                @click="openMyCreationsInNewTab"
+              >
+                查看我的作品
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </button>
             </div>
           </div>
 
-          <!-- 空状态 -->
-          <div
-            v-if="results.length === 0"
-            class="border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center py-16 text-gray-400"
-          >
-            <svg class="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <span class="text-body-sm">点击「开始生成」查看结果</span>
+          <!-- 空状态：占位（跳转按钮已合并到上方标题栏右侧） -->
+          <div v-if="results.length === 0">
+            <div
+              class="border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center py-16 text-gray-400"
+            >
+              <svg class="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span class="text-body-sm">点击「开始生成」查看结果</span>
+            </div>
           </div>
 
           <!-- 结果网格：1/2 列自适应（不设 3 列避免拥挤），手机端一律单列 -->
@@ -928,7 +1022,17 @@ onUnmounted(() => {
     <!-- 用户生成历史弹窗 -->
     <GenerationHistoryDialog ref="historyRef" :on-preview="openPreview" />
     <UserPromptLibraryDialog ref="promptLibraryRef" scene="ai-image-edit" @select="onPromptSelect" />
-    <CreationPickerDialog ref="creationPickerRef" @select="handlePickCreationImage" />
+    <!-- maxSelect = 剩余可用槽位（上传区上限 16 - 已选数量），动态联动：
+     上传区已选 3 张 → 弹窗里最多再勾 13 张；上传区满（16）时弹窗里一张都不能选。
+     上传区满时把 maxSelect 设为 0 配合子组件 hasLimit 判定，让未选图置灰。
+     preselectedIds = 上传区里已加入的创作素材 id 列表（从文件名解析），
+     让「再次打开弹窗」时这些图自动处于选中态，跟用户实际操作同步。 -->
+<CreationPickerDialog
+  ref="creationPickerRef"
+  :max-select="Math.max(0, MAX_IMAGES - imageFiles.length)"
+  :preselected-ids="preselectedCreationIds"
+  @select="handlePickCreationImage"
+/>
 
     <!--
       历史缩略图全屏预览：渲染在 AiImageEdit.vue 根级，跟历史弹窗在同一 DOM 树层级之外，

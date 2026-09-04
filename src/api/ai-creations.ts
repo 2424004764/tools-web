@@ -186,3 +186,73 @@ export async function deleteAiCreationImage(
   const res = await functionsRequest.delete(`/api/ai-creations/images/${imageId}`)
   return res.data.data
 }
+
+// ============ 「认领」记录（用户声明某图已发布到某平台）============
+// 预设平台写死在代码里（按用户决定）；用户可以在弹窗里输入自定义平台名（不入库平台库）
+
+/** 系统预设平台列表（在认领弹窗里以 checkbox 形式给出） */
+export const PRESET_PLATFORMS = ['小红书', '微博', '公众号', '视频号'] as const
+
+export type PresetPlatform = (typeof PRESET_PLATFORMS)[number]
+
+/** 单条认领记录 */
+export interface ImageClaim {
+  id: number
+  image_id: number
+  platform: string
+  created_at: string
+}
+
+/** 批量拉一批图的认领（避免每张图单独请求） */
+export async function fetchImageClaims(imageIds: number[]): Promise<ImageClaim[]> {
+  if (!imageIds || imageIds.length === 0) return []
+  const res = await functionsRequest.get('/api/ai-creations/claims', {
+    params: { imageIds: imageIds.join(',') },
+  })
+  return (res.data?.data as ImageClaim[]) || []
+}
+
+/** 单条认领（重复认领同一平台幂等） */
+export async function claimImage(
+  imageId: number,
+  platform: string,
+): Promise<{ image_id: number; platform: string; created: boolean }> {
+  const res = await functionsRequest.post('/api/ai-creations/claims', {
+    image_id: imageId,
+    platform,
+  })
+  return res.data.data
+}
+
+/** 取消单个认领 */
+export async function unclaimImage(
+  imageId: number,
+  platform: string,
+): Promise<{ image_id: number; platform: string; deleted: boolean }> {
+  const res = await functionsRequest.delete('/api/ai-creations/claims', {
+    params: { image_id: imageId, platform },
+  })
+  return res.data.data
+}
+
+/** 删除某张图的所有认领（图被删除时调用）
+ *  后端会无视外键直接 DELETE FROM ai_creation_claims WHERE image_id = ? AND uid = ? */
+export async function unclaimByImage(
+  imageId: number,
+): Promise<{ image_id: number; deleted: number }> {
+  const res = await functionsRequest.delete('/api/ai-creations/claims', {
+    params: { image_id: imageId },
+  })
+  return res.data.data
+}
+
+/** 批量删除多张图的所有认领（删除整组时调用，一次 SQL 删干净） */
+export async function unclaimByImages(
+  imageIds: number[],
+): Promise<{ deleted: number }> {
+  if (!imageIds || imageIds.length === 0) return { deleted: 0 }
+  const res = await functionsRequest.delete('/api/ai-creations/claims', {
+    params: { image_ids: imageIds.join(',') },
+  })
+  return res.data.data
+}

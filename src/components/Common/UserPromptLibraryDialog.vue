@@ -359,6 +359,14 @@ const groupChips = computed(() => {
     { id: '__none__', name: '未分组', count: null, color: '' },
   ]
 })
+
+// 当前选中的是「真实的用户分组」（非 全部/未分组）时返回该分组对象，
+// 用于桌面端和移动端的「编辑/合并/删除」操作入口
+const activeGroup = computed<UserToolPromptGroup | null>(() => {
+  const id = activeGroupId.value
+  if (id === '__all__' || id === '__none__') return null
+  return groups.value.find((g) => g.id === id) || null
+})
 </script>
 
 <template>
@@ -473,7 +481,7 @@ const groupChips = computed(() => {
         </div>
 
         <!-- 移动端：分组 chips 横滑 -->
-        <div v-if="isMobile" class="flex items-center gap-2 mb-3 overflow-x-auto pb-1 -mx-1 px-1">
+        <div v-if="isMobile" class="flex items-center gap-2 mb-2 overflow-x-auto pb-1 -mx-1 px-1">
           <button
             v-for="chip in groupChips"
             :key="chip.id"
@@ -490,6 +498,27 @@ const groupChips = computed(() => {
             <span>{{ chip.name }}</span>
             <span v-if="chip.count != null" class="text-xs opacity-70">{{ chip.count }}</span>
           </button>
+        </div>
+
+        <!-- 移动端：选中「真实分组」时显示管理入口（编辑/合并/删除）。
+             桌面端在左侧分组列表里已经做了，这里补全移动端的同等能力。
+             仅在选中非「全部/未分组」时显示，避免在固定项上误触操作按钮。 -->
+        <div v-if="isMobile && activeGroup"
+             class="flex items-center gap-2 mb-3 px-1 text-gray-600">
+          <span class="text-xs text-gray-400 mr-auto">
+            分组「{{ activeGroup.name }}」· {{ activeGroup.prompt_count }} 条
+          </span>
+          <el-button size="small" link type="primary" @click="openEditGroup(activeGroup)">
+            编辑
+          </el-button>
+          <el-button size="small" link type="warning"
+                     :disabled="activeGroup.prompt_count === 0"
+                     @click="onMergeGroupInto(activeGroup, '__none__')">
+            合并到未分组
+          </el-button>
+          <el-button size="small" link type="danger" @click="onDeleteGroup(activeGroup)">
+            删除
+          </el-button>
         </div>
 
         <!-- ============ 桌面端：el-table（内部滚动，弹窗不超出视口） ============ -->
