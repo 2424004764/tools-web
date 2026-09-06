@@ -30,6 +30,7 @@
   - [Docker部署](#Docker部署)
   - [手动部署](#手动部署)
   - [cloudflare部署](#Cloudflare部署)
+  - [搜索引擎主动推送](#搜索引擎主动推送)
 - [工具列表](#工具列表)
 - [其他](#其他)
 
@@ -102,6 +103,12 @@ pnpm sync:functions
 
 # 构建并通过 Wrangler 部署到 Cloudflare Pages 项目 tools-web
 pnpm deploy:cf
+
+# 构建 + 部署 + 主动推送 sitemap 到搜索引擎（百度 / IndexNow / Google）
+pnpm deploy:cf --push
+
+# 构建 + 部署 + 全量推（忽略本地增量快照）
+pnpm deploy:cf --push --force
 ```
 
 > `dist/` 是本地构建产物，已加入 `.gitignore`，不提交到 Git。执行 `pnpm deploy:cf` 时会重新生成 `dist/` 并由 Wrangler 上传。
@@ -136,6 +143,7 @@ pnpm deploy:cf
 
 1. `pnpm build:pro`：生成生产环境的 `dist/`，并同步 Cloudflare Functions 与路由配置。
 2. `pnpm exec wrangler pages deploy dist --project-name tools-web`：将 `dist/` 部署到 Cloudflare Pages 的 `tools-web` 项目。
+3. （仅当命令行带 `--push` 时）调 `scripts/submit-search.mjs`，把 sitemap 里"近 7 天没推过"的 URL 主动推给百度 / IndexNow / Google。详细配置见 [搜索引擎主动推送](#搜索引擎主动推送)。
 
 也可以分步执行：
 
@@ -147,6 +155,90 @@ pnpm exec wrangler pages deploy dist --project-name tools-web
 部署前请确认 `.env.production` 已正确配置，并已在 Cloudflare Pages 控制台配置 D1、KV、环境变量和密钥绑定。
 
 详见我的公众号文章：[https://mp.weixin.qq.com/s/kIrz2uAv0cmT3f2rPWbtdQ](https://mp.weixin.qq.com/s/RXWAGN6OpKw2qa1DKF_5-g)
+
+### 搜索引擎主动推送
+
+`pnpm deploy:cf` 部署完成后，可以顺手把新增的工具页面主动推给搜索引擎，加快收录速度。脚本位于 `scripts/submit-search.mjs`，支持三家：
+
+| 搜索引擎 | 覆盖 | 是否需要 token | 申请入口 |
+|---|---|---|---|
+| 百度站长 | 百度 | ✅ | https://ziyuan.baidu.com |
+| IndexNow | Bing / Yandex / Seznam / Naver | ✅（一把 key 多家通用）| https://www.bing.com/indexnow |
+| Google | Google | ❌（只 ping sitemap） | https://search.google.com/search-console |
+
+#### 1. 申请 token
+
+> ⚠️ **百度主动推送有门槛**：默认新站是没有权限调用的，需要先在 [百度站长平台](https://ziyuan.baidu.com) 完成站点验证后，**日均访问量达到约 1 万 UV（连续 30 天）** 才会开放「主动推送（实时）」接口的配额。低流量站点即便加了 token，调用时也会返回 `{"error":400,"message":"site init fail"}` 或 `over quota`，**这是百度限制，不是代码 bug**。如果当前站点流量还没达标，可以**暂时只配 IndexNow + Google ping**，等流量起来后再补百度。
+
+**百度**：
+1. https://ziyuan.baidu.com → 站点管理 → 添加并验证 `https://tool.fologde.com`
+2. 验证通过后，左侧「链接提交 → 主动推送（实时）」会显示一个接口地址：
+   ```
+   http://data.zz.baidu.com/urls?site=https://tool.fologde.com&token=xxxxxxxx
+   ```
+4. 把 `token=` 后面的字符串填到 `.env.production` 的 `BAIDU_PUSH_TOKEN`
+
+**IndexNow**（一次配置，Bing/Yandex/Seznam/Naver 通用）：
+1. 生成一段 8~128 位的随机字符串作为 key（比如 `a3f8d2e1b9c74f6a8d2e1b9c74f6a8d2`）
+2. 在 `public/` 下创建一个文件名 = key、内容也是 key 的文本文件：
+   ```bash
+   echo "a3f8d2e1b9c74f6a8d2e1b9c74f6a8d2" > public/a3f8d2e1b9c74f6a8d2e1b9c74f6a8d2.txt
+   ```
+3. 部署一次，让 key 文件上线（可访问 `https://tool.fologde.com/<key>.txt`）
+4. 把 key 填到 `.env.production` 的 `INDEXNOW_KEY`，文件 URL 填到 `INDEXNOW_KEY_LOCATION`
+
+**Google**：去 https://search.google.com/search-console 添加并验证域名，然后提交 `sitemap.xml`。脚本里的 ping 只是通知 Google 抓取，真正收录还是靠 Search Console。
+
+#### 2. 填入 `.env.production`
+
+```env
+SITE_ORIGIN=https://tool.fologde.com
+BAIDU_PUSH_TOKEN=你的百度token
+INDEXNOW_KEY=你的key
+INDEXNOW_KEY_LOCATION=https://tool.fologde.com/你的key.txt
+GOOGLE_PING_SITEMAP=1
+```
+
+> ⚠️ `SITE_ORIGIN` 必须填 https 公网域名，`localhost` / `127.0.0.1` / `*.local` 一律被脚本拒绝推送，避免污染搜索引擎数据。
+
+#### 3. 日常用法
+
+```bash
+pnpm deploy:cf                # 仅部署，不推送
+pnpm deploy:cf --push         # 部署 + 推送（推荐：每次发布都用这条）
+pnpm deploy:cf --push --force # 部署 + 全量推（忽略本地增量快照）
+pnpm deploy:cf --push --resubmit-days=3   # 把"多少天内已推过不再推"改成 3 天
+pnpm submit:search --dry-run  # 不部署、只看脚本会推哪些 URL
+```
+
+不带 `--push` 时，deploy 完会打印一行 `⏭️ 未传 --push，跳过搜索引擎推送（仅部署）`，不污染搜索引擎。
+
+带 `--push` 时默认静默运行——成功不打印任何日志，只有推送失败时才会报错。要看推送详情（比如调试 token），临时加 `SEARCH_PUSH_VERBOSE=1`：
+
+```bash
+# Windows CMD
+set SEARCH_PUSH_VERBOSE=1 && pnpm deploy:cf --push
+# PowerShell
+$env:SEARCH_PUSH_VERBOSE=1; pnpm deploy:cf --push
+```
+
+#### 4. 增量推送
+
+脚本会维护仓库根目录的 `.search-submissions.json`，记录每条 URL 上次成功推送的时间戳。默认 7 天内已推过的会跳过，避免浪费百度配额（每天约几千条）。
+
+- 想清空快照重新全量推：`rm .search-submissions.json`
+- 想覆盖默认重推周期：见上面的 `--resubmit-days=N`
+
+#### 5. 常见失败排查
+
+| 现象 | 可能原因 |
+|---|---|
+| `SITE_ORIGIN 指向本地域名` | `.env.production` 没填 `SITE_ORIGIN` 或写成了 `http://localhost:xxx` |
+| `百度返回 {"error":400,"message":"site init fail"}` | token 错，或百度站长那边"主动推送"选项卡还没打开过 |
+| `百度返回 over quota` | 当天百度推送配额用完，第二天自动恢复 |
+| IndexNow HTTP 403 | key 文件访问不到（404 / 路径错 / 还没部署） |
+| IndexNow HTTP 422 | `urlList` 里有不在 key 文件声明 host 下的地址 |
+| Google `fetch failed` | 本地网络访问不了 `www.google.com`（脚本仍在跑，部署完成不影响） |
 
 ## 本地调试functions
 根目录执行命令：
@@ -247,6 +339,19 @@ wrangler d1 execute tools-web-db --command \
 - 2026-07-14: 新增退休倒计时工具，按出生日期/性别/目标退休年龄实时计算剩余天/时/分/秒，拆解为 X 年 Y 个月 Z 天，并展示工作日/工作小时/周末天数等统计，数据本地保存
 - 2026-07-14: 新增辈分称谓计算工具，以「我」为根的交互式家谱树，点击节点长出父母/兄弟/子女等分支，自动推导中国式亲戚称谓、辈分（长N辈/平辈/晚N辈）、直系/旁系/姻亲与父系母系，支持堂表区分及对方对我的反向称呼，附辈分速查表
 - 2026-07-18: 新增图片转线稿图工具，采用铅笔素描算法（灰度反相+高斯模糊+颜色减淡）一键把照片、插画转为黑白线稿，支持批量上传、拖拽、Ctrl+V 剪贴板粘贴，可调线条强度与粗细及反色输出，纯前端本地处理不上传服务器
+
+### 近期更新汇总（2026-08-27 ~ 2026-09-04）
+
+- 创作结果认领：每张 AI 作品可标记"已发布到哪些平台"（小红书 / 公众号 / B站...），认领 tag 在合集卡片上直观可见
+- AI 图片编辑可从「我的创作」库直接选素材、生成结果可一键回传至上传区作为参考图，编辑与创作两条工作流互通
+- 视频转 GIF 换库实现（替换底层依赖，性能更好）
+- AI 作品页：完整管理页支持分类、缩略图堆叠、删除 / 认领 / 查看弹窗等
+- 工具可收藏：任意工具页右上角 ⭐ 收藏，悬浮按钮 RecentToolsFab 同时展示最近使用和收藏列表
+- 后台数据统计 + 慢 SQL 日志：管理员可看积分流水、生成记录、错误日志
+- 后台用户列表显示 IP、积分流水页码兼容手机端
+- 旅游地图刷新后保留上次的缩放和位置
+- 「今日吃啥」工具：随机决定今天吃什么
+- 修复旅游地图打开报错、ai 编辑页手机端无法滑动
 
 ## 工具列表
 

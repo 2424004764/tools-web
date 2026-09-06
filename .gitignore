@@ -37,6 +37,9 @@ public/sitemap.txt
 .claude/settings.local.json
 .claude/skills/
 
+# 搜索引擎推送快照（运行 scripts/submit-search.mjs 生成）
+.search-submissions.json
+
 nul
 .zcode/
 $null

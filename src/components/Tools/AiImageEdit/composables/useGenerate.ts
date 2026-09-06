@@ -7,12 +7,19 @@ import { functionsRequest } from '@/utils/functionsRequest'
 import type { PublicToolModel } from '@/api/tool-models'
 import type { ResultSlot } from './useSlotVisuals'
 
-/** userStore 的最小接口（只需要生成用到的余额能力） */
+/** userStore 的最小接口（生成 + 余额 + 登录态判断） */
 interface BalanceStore {
+  getLoginStatus: boolean
   credits: { balance: number }
   setBalance(balance: number): void
   fetchCredits(force?: boolean): Promise<unknown>
 }
+
+/** 并发数提示状态：
+ *  - '' 空 = 正常
+ *  - 'unlogged' 未登录
+ *  - 'insufficient' 余额不足 */
+export type ConcurrencyHintState = '' | 'unlogged' | 'insufficient'
 
 export function useGenerate(opts: {
   results: ResultSlot[]
@@ -121,15 +128,24 @@ export function useGenerate(opts: {
     if (allDone) batchEndAt.value = Date.now()
   }
 
-  // 余额不足提示词（输入即时反馈）
-  const concurrencyHint = computed(() => {
+  // 并发数下方的提示：区分未登录 / 余额不足 / 正常。
+  const concurrencyHint = computed<{
+    state: ConcurrencyHintState
+    text: string
+  }>(() => {
+    if (!userStore.getLoginStatus) {
+      return { state: 'unlogged', text: '登录后才能使用 AI 图片编辑' }
+    }
     const cost = currentModelCost.value
-    if (cost === 0) return ''
+    if (cost === 0) return { state: '', text: '' }
     const total = cost * selectedConcurrency.value
     if (userStore.credits.balance < total) {
-      return `积分余额不足：本次需 ${total} 积分（${cost} × ${selectedConcurrency.value}），当前 ${userStore.credits.balance}`
+      return {
+        state: 'insufficient',
+        text: `积分余额不足：本次需 ${total} 积分（${cost} × ${selectedConcurrency.value}），当前 ${userStore.credits.balance}`,
+      }
     }
-    return ''
+    return { state: '', text: '' }
   })
 
   // 是否可以生成：批次不在加载、模型就绪、提示词必填、余额足够 N×cost
@@ -216,8 +232,8 @@ export function useGenerate(opts: {
         ElMessage.warning('模型列表加载中，请稍候')
       } else if (modelList.value.length === 0 || !selectedModel.value) {
         ElMessage.error('暂无可用模型，请联系管理员配置')
-      } else if (concurrencyHint.value) {
-        ElMessage.error(concurrencyHint.value)
+      } else if (concurrencyHint.value.text) {
+        ElMessage.error(concurrencyHint.value.text)
       } else {
         ElMessage.warning('请先输入提示词')
       }

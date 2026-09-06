@@ -5,8 +5,6 @@ import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { ElMessage } from 'element-plus'
 import { GlobalWorkerOptions } from "pdfjs-dist"
 import worker from "pdfjs-dist/build/pdf.worker?url"
-import 'viewerjs/dist/viewer.css'
-import { directive as vViewer } from 'v-viewer'
 
 // 设置PDF.js worker
 GlobalWorkerOptions.workerSrc = worker
@@ -307,7 +305,7 @@ const clearResults = () => {
         </div>
         
         <!-- 图片列表 - 添加v-viewer指令 -->
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3" v-viewer>
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
           <div 
             v-for="(imageUrl, index) in convertedImages" 
             :key="index"

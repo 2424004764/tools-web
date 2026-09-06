@@ -3,8 +3,6 @@ import { reactive, ref, computed, watch, onUnmounted, onMounted, nextTick } from
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { copy } from '@/utils/string'
-import 'viewerjs/dist/viewer.css'
-import { directive as vViewer } from 'v-viewer'
 import ArrowDown from '~icons/ep/arrowDown'
 import ArrowRight from '~icons/ep/arrowRight'
 import Menu from '~icons/ep/menu'
@@ -754,7 +752,7 @@ const handleActionAndClose = (prompt: string, type: string) => {
             </div>
 
             <!-- 效果图展示 -->
-            <div v-if="item.sampleImage" class="mb-4" v-viewer>
+            <div v-if="item.sampleImage" class="mb-4">
               <img 
                 :src="item.sampleImage" 
                 :alt="item.title + '效果图'" 
