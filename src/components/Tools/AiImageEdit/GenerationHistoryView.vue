@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { fetchMyGenerationRecords, fetchMyGenerationRecordImage } from '@/api/me'
 import type { GenerationRecord } from '@/types/admin'
 import { autoDown } from '@/utils/file'
@@ -192,6 +193,28 @@ const getPrompt = (rec: GenerationRecord): string => {
   return (rec.raw_data_parsed as any)?.prompt || ''
 }
 
+// 一键复制提示词：clipboard API 不可用时（非 https / 旧浏览器）退回 execCommand
+const copyPrompt = async (text: string) => {
+  if (!text) return
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text)
+    } else {
+      const ta = document.createElement('textarea')
+      ta.value = text
+      ta.style.position = 'fixed'
+      ta.style.opacity = '0'
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    }
+    ElMessage.success('已复制提示词')
+  } catch {
+    ElMessage.error('复制失败，请手动复制')
+  }
+}
+
 const downloadResult = async (id: string, fallbackUrl: string | null) => {
   try {
     const { blob, filename } = await fetchMyGenerationRecordImage(id)
@@ -302,22 +325,37 @@ const handleThumbClick = (row: GenerationRecord) => {
         </span>
       </template>
     </el-table-column>
-    <el-table-column label="提示词" min-width="160">
+    <el-table-column label="提示词" min-width="180">
       <template #default="{ row }">
-        <el-tooltip
-          v-if="getPrompt(row)"
-          :content="getPrompt(row)"
-          placement="top"
-          :show-after="300"
-        >
-          <span
-            class="text-xs text-ink-700 truncate inline-block align-middle"
-            :class="isMobile ? 'max-w-[120px]' : 'max-w-[200px]'"
+        <div class="flex items-center gap-1 min-w-0">
+          <el-tooltip
+            v-if="getPrompt(row)"
+            :content="getPrompt(row)"
+            placement="top"
+            :show-after="300"
           >
-            {{ getPrompt(row) }}
-          </span>
-        </el-tooltip>
-        <span v-else class="text-xs text-ink-400">-</span>
+            <span
+              class="text-xs text-ink-700 truncate inline-block align-middle"
+              :class="isMobile ? 'max-w-[110px]' : 'max-w-[180px]'"
+            >
+              {{ getPrompt(row) }}
+            </span>
+          </el-tooltip>
+          <span v-else class="text-xs text-ink-400">-</span>
+          <!-- 复制提示词：把提示词一键复制，方便去 AI 图片编辑里微调重试 -->
+          <button
+            v-if="getPrompt(row)"
+            type="button"
+            class="shrink-0 w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+            title="复制提示词"
+            aria-label="复制提示词"
+            @click="copyPrompt(getPrompt(row))"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2v-2m-6-2h8a2 2 0 002-2V5a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+          </button>
+        </div>
       </template>
     </el-table-column>
     <el-table-column label="操作" width="100" fixed="right">

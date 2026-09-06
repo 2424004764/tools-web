@@ -1,4 +1,4 @@
-// 删除整组 AI 创作（含所有 image）
+// 删除整组 AI 创作（含所有 image）/ 收藏星标切换
 //   DELETE /api/ai-creations/groups/:id
 //     鉴权（必须登录）
 //     校验 group.uid === 当前 uid（越权防护）
@@ -7,12 +7,15 @@
 //       2) 并发调 R2 DELETE 清理对象（失败不阻断 D1 删除，孤儿 key 由后续清理脚本处理）
 //       3) DELETE FROM ai_creation_groups WHERE id=? AND uid=?（ON DELETE CASCADE 删 images）
 //     Resp: { deleted: { group_id, images: number, r2_deleted: number, r2_failed: number } }
+//
+//   PATCH /api/ai-creations/groups/:id   收藏切换，body: { favorited: 0|1|true|false }
+//     Resp: { group_id, favorited: boolean }（依赖 073 迁移的 favorited 列）
 
 import { extractUidFromRequest } from '../../_lib/model-resolver.js'
 import { deleteR2Object } from '../../../services/r2.js'
 
 const corsHeaders = {
-  'Access-Control-Allow-Methods': 'DELETE, OPTIONS',
+  'Access-Control-Allow-Methods': 'DELETE, PATCH, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 }
 
@@ -37,7 +40,7 @@ export async function onRequest(context) {
     return new Response(null, { headers: corsHeaders })
   }
 
-  if (request.method !== 'DELETE') {
+  if (request.method !== 'DELETE' && request.method !== 'PATCH') {
     return jsonError('不支持的请求方法', 405)
   }
 
@@ -55,6 +58,40 @@ export async function onRequest(context) {
   if (!Number.isFinite(groupId) || groupId <= 0) {
     return jsonError('group_id 不合法', 400)
   }
+
+  // ---------- PATCH：收藏星标切换 ----------
+  if (request.method === 'PATCH') {
+    const body = await request.json().catch(() => null)
+    const raw = body?.favorited
+    if (typeof raw !== 'boolean' && raw !== 0 && raw !== 1) {
+      return jsonError('favorited 必须是 0 / 1 / true / false', 400)
+    }
+    const favVal = raw === true || raw === 1 ? 1 : 0
+    try {
+      const row = await db
+        .prepare('SELECT id, uid FROM ai_creation_groups WHERE id = ?')
+        .bind(groupId)
+        .first()
+      if (!row) return jsonError('group 不存在', 404)
+      if (row.uid !== uid) return jsonError('无权访问该 group', 403)
+
+      // updated_at 沿用表里 'YYYY-MM-DD HH:mm:ss' UTC 格式
+      const nowStr = new Date().toISOString().slice(0, 19).replace('T', ' ')
+      await db
+        .prepare('UPDATE ai_creation_groups SET favorited = ?, updated_at = ? WHERE id = ? AND uid = ?')
+        .bind(favVal, nowStr, groupId, uid)
+        .run()
+      return json({ group_id: groupId, favorited: favVal === 1 })
+    } catch (e) {
+      // favorited 列不存在（073 迁移未应用）会走到这里
+      console.error('[ai-creations/groups/:id PATCH] error:', e?.message || e)
+      return jsonError(e?.message?.includes('no such column')
+        ? 'favorited 列不存在，请先应用 073 迁移'
+        : (e?.message || '服务器错误'), 500)
+    }
+  }
+
+  // ---------- DELETE：删除整组 ----------
 
   try {
     // 1) 校验归属 + 列出所有 image 的 r2_key

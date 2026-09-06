@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, onUnmounted, computed, watch, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import JSZip from 'jszip'
 import { useUserStore } from '@/store/modules/user'
+import { autoDown } from '@/utils/file'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import {
@@ -14,6 +16,8 @@ import {
   unclaimImage,
   unclaimByImage,
   unclaimByImages,
+  toggleAiCreationGroupFavorite,
+  batchDeleteAiCreationGroups,
   type AiCreationGroup,
   type AiCreationImage,
   type AiCreationCategory,
@@ -21,6 +25,8 @@ import {
 import ClaimDialog from './ClaimDialog.vue'
 import Expand from '~icons/ep/expand'
 import Fold from '~icons/ep/fold'
+import Star from '~icons/ep/star'
+import StarFilled from '~icons/ep/star-filled'
 import { Swiper, SwiperSlide } from 'swiper/vue'
 import { Pagination } from 'swiper/modules'
 import 'swiper/css'
@@ -28,8 +34,17 @@ import 'swiper/css/pagination'
 import 'swiper/css/navigation'
 
 const router = useRouter()
+const route = useRoute()
 
 const info = reactive({ title: '我的 AI 创作' })
+
+// ============ 列表筛选状态（分类 / 页码 / 搜索 / 只看收藏）============
+// 这四项都会同步到 URL query（category/page/q/fav），刷新或分享链接后状态可恢复。
+const activeCategory = ref<string>('')
+const searchQ = ref<string>('')
+const favOnly = ref<boolean>(false)
+// 输入框即时绑定值；回车/点搜索才真正触发请求（searchQ 同步成它）
+const searchInput = ref<string>('')
 
 // 用 group_id（首选）或 prompt_id 作为列表里的查找 key
 const groupKeyOf = (g: AiCreationGroup): string => {
@@ -42,8 +57,6 @@ const groupKeyOf = (g: AiCreationGroup): string => {
 const loading = ref(false)
 const groups = ref<AiCreationGroup[]>([])
 const categories = ref<AiCreationCategory[]>([])
-
-const activeCategory = ref<string>('')
 
 const pagination = ref({
   total: 0,
@@ -58,6 +71,223 @@ const pagination = ref({
 // 已加载封面的组 id（淡入淡出控制）
 const loadedCoverIds = reactive(new Set<number>())
 const failedIds = reactive(new Set<number>())
+
+// ============ URL query 同步 ============
+// 把 category/page/q/fav 写进 URL（replace 不产生历史记录），刷新/分享后可恢复筛选状态。
+const syncUrl = () => {
+  const query: Record<string, string> = {}
+  if (activeCategory.value) query.category = activeCategory.value
+  if (pagination.value.page > 1) query.page = String(pagination.value.page)
+  if (searchQ.value.trim()) query.q = searchQ.value.trim()
+  if (favOnly.value) query.fav = '1'
+  router.replace({ query }).catch(() => {
+    /* 重复导航静默 */
+  })
+}
+
+// 从 URL query 恢复筛选状态（onMounted 时、loadGroups 之前调用）
+const restoreFromUrl = () => {
+  const { category, page, q, fav } = route.query
+  if (typeof category === 'string' && category) activeCategory.value = category
+  if (typeof page === 'string') {
+    const p = parseInt(page, 10)
+    if (Number.isFinite(p) && p > 0) pagination.value.page = p
+  }
+  if (typeof q === 'string' && q.trim()) {
+    searchQ.value = q.trim()
+    searchInput.value = q.trim()
+  }
+  if (fav === '1') favOnly.value = true
+}
+
+// ============ 批量操作（按合集为单位：批量删除 / 打包下载）============
+const batchMode = ref(false)
+const selectedGroupIds = reactive(new Set<number>())
+const batchDeleting = ref(false)
+const batchDownloading = ref(false)
+
+const toggleBatchMode = () => {
+  batchMode.value = !batchMode.value
+  selectedGroupIds.clear()
+  if (batchMode.value) {
+    // 展开态下卡片按单图展示，批量操作以合集为单位语义混乱：进批量模式强制收起
+    showAllImages.value = false
+  }
+}
+
+const isSelectedGroup = (id: number) => selectedGroupIds.has(id)
+
+const toggleSelectGroup = (g: AiCreationGroup) => {
+  if (selectedGroupIds.has(g.id)) selectedGroupIds.delete(g.id)
+  else selectedGroupIds.add(g.id)
+}
+
+const selectAllOnPage = () => {
+  for (const g of groups.value) selectedGroupIds.add(g.id)
+}
+
+const clearSelection = () => selectedGroupIds.clear()
+
+/** 批量删除：confirm → 调 batch API → 本地移除 + 清理认领缓存 */
+const handleBatchDelete = async () => {
+  const ids = Array.from(selectedGroupIds)
+  if (ids.length === 0 || batchDeleting.value) return
+  const selGroups = groups.value.filter((g) => ids.includes(g.id))
+  const totalImages = selGroups.reduce((s, g) => s + g.image_count, 0)
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除选中的 ${ids.length} 个合集（共 ${totalImages} 张图）吗？将同时删除 R2 存储中的对象，无法撤销。`,
+      '批量删除',
+      {
+        type: 'warning',
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+        confirmButtonClass: 'el-button--danger',
+      },
+    )
+  } catch {
+    return
+  }
+  batchDeleting.value = true
+  try {
+    const res = await batchDeleteAiCreationGroups(ids)
+    // 本地移除已删的组 + 清理认领缓存
+    const deletedIds = new Set(ids.filter((id) => !res.skipped_ids.includes(id)))
+    const removedImgs: number[] = []
+    for (const g of selGroups) {
+      if (deletedIds.has(g.id)) removedImgs.push(...g.images.map((i) => i.id))
+    }
+    groups.value = groups.value.filter((g) => !deletedIds.has(g.id))
+    pagination.value.total = Math.max(0, pagination.value.total - res.groups_deleted)
+    pagination.value.totalImages = Math.max(0, pagination.value.totalImages - res.images)
+    void unclaimByImages(removedImgs).catch((e) =>
+      console.warn('[my-ai-creations] batch cleanup claims failed', e),
+    )
+    for (const id of removedImgs) claimsByImageId.delete(id)
+    selectedGroupIds.clear()
+    const skippedNote = res.skipped_ids.length ? `，跳过 ${res.skipped_ids.length} 个（不存在或无权限）` : ''
+    ElMessage.success(`已删除 ${res.groups_deleted} 个合集（R2 ${res.r2_deleted}/${res.images}）${skippedNote}`)
+    if (groups.value.length === 0 && pagination.value.hasNext) {
+      loadGroups()
+    }
+  } catch (e: any) {
+    console.error('[my-ai-creations] batch delete error:', e)
+    ElMessage.error(e?.response?.data?.error || e?.message || '批量删除失败')
+  } finally {
+    batchDeleting.value = false
+  }
+}
+
+/** 批量打包下载：选中合集的所有图走 image-proxy 拉回来，JSZip 打包成 zip 下载。
+ *  拉图并发 4，单张失败跳过并计数，最后统一提示。 */
+const handleBatchDownload = async () => {
+  const ids = Array.from(selectedGroupIds)
+  if (ids.length === 0 || batchDownloading.value) return
+  const selGroups = groups.value.filter((g) => ids.includes(g.id))
+  const zip = new JSZip()
+  batchDownloading.value = true
+  try {
+    // 组装任务列表：[folderName, fileName, url]
+    type ZipTask = { folder: JSZip | null; name: string; url: string }
+    const tasks: ZipTask[] = []
+    for (const g of selGroups) {
+      // 文件夹名：组 id + 标题片段；去掉文件系统非法字符
+      const safeTitle = (groupTitle(g) || '').replace(/[\\/:*?"<>|\s]+/g, '_').slice(0, 30)
+      const folder = zip.folder(`${g.id}-${safeTitle || 'untitled'}`)
+      g.images.forEach((img, idx) => {
+        const ext = extFromUrlOrType(img.media_url)
+        tasks.push({ folder, name: `${String(idx + 1).padStart(2, '0')}-${img.id}.${ext}`, url: img.media_url })
+      })
+    }
+    if (tasks.length === 0) {
+      ElMessage.warning('所选合集没有可下载的图片')
+      return
+    }
+    let done = 0
+    let failed = 0
+    // 简易并发池：4 路并发拉图
+    const queue = [...tasks]
+    const worker = async () => {
+      while (queue.length > 0) {
+        const t = queue.shift()!
+        try {
+          const resp = await fetch(`/api/image-proxy?url=${encodeURIComponent(t.url)}`)
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+          const blob = await resp.blob()
+          t.folder?.file(t.name, blob)
+          done++
+        } catch {
+          failed++
+        }
+      }
+    }
+    await Promise.all(Array.from({ length: 4 }, worker))
+    if (done === 0) {
+      ElMessage.error('图片全部拉取失败，无法打包')
+      return
+    }
+    const blob = await zip.generateAsync({ type: 'blob' })
+    const objUrl = URL.createObjectURL(blob)
+    autoDown(objUrl, `ai-creations-${new Date().toISOString().slice(0, 10)}.zip`)
+    setTimeout(() => URL.revokeObjectURL(objUrl), 1000)
+    ElMessage.success(
+      failed > 0 ? `已打包 ${done} 张图（${failed} 张拉取失败已跳过）` : `已打包 ${done} 张图`,
+    )
+  } catch (e: any) {
+    console.error('[my-ai-creations] batch download error:', e)
+    ElMessage.error('打包下载失败：' + (e?.message || '未知错误'))
+  } finally {
+    batchDownloading.value = false
+  }
+}
+
+// 从 URL / dataURL 推断图片扩展名（打包 zip 里的文件名用）
+const extFromUrlOrType = (url: string): string => {
+  const m = /\.(jpe?g|png|webp|gif)(?:[?#]|$)/i.exec(url || '')
+  if (m) return m[1]!.toLowerCase().replace('jpeg', 'jpg')
+  return 'png'
+}
+
+// ============ 收藏 / 星标 ============
+// 乐观更新：先改本地，PATCH 失败再回滚。
+const toggleFavorite = async (g: AiCreationGroup) => {
+  const target = !g.favorited
+  g.favorited = target
+  try {
+    await toggleAiCreationGroupFavorite(g.id, target)
+    // 「只看收藏」模式下取消收藏后该组会从筛选里消失，直接本地移除
+    if (!target && favOnly.value) {
+      groups.value = groups.value.filter((x) => x.id !== g.id)
+      pagination.value.total = Math.max(0, pagination.value.total - 1)
+    }
+  } catch (e: any) {
+    g.favorited = !target
+    ElMessage.error(e?.response?.data?.error || '收藏操作失败')
+  }
+}
+
+// ============ 通用复制（提示词 / URL 共用）============
+const copyText = async (text?: string | null, successMsg = '已复制') => {
+  if (!text) return
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text)
+    } else {
+      // 非 https / 旧浏览器没有 clipboard API，退回 execCommand
+      const ta = document.createElement('textarea')
+      ta.value = text
+      ta.style.position = 'fixed'
+      ta.style.opacity = '0'
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    }
+    ElMessage.success(successMsg)
+  } catch {
+    ElMessage.error('复制失败，请手动复制')
+  }
+}
 
 // ============ 认领记录 ============
 // claimsByImageId：image_id → 已认领的平台名数组（仅当前列表可见的图）
@@ -312,27 +542,7 @@ const enterFullscreenViewer = (startIndex: number, group?: AiCreationGroup | nul
   openViewer(list, startIndex)
 }
 
-const copyImageUrl = async (url?: string | null) => {
-  if (!url) return
-  try {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(url)
-    } else {
-      // 非 https / 旧浏览器没有 clipboard API，退回 execCommand
-      const ta = document.createElement('textarea')
-      ta.value = url
-      ta.style.position = 'fixed'
-      ta.style.opacity = '0'
-      document.body.appendChild(ta)
-      ta.select()
-      document.execCommand('copy')
-      document.body.removeChild(ta)
-    }
-    ElMessage.success('已复制图片链接')
-  } catch {
-    ElMessage.error('复制失败，请手动复制')
-  }
-}
+const copyImageUrl = (url?: string | null) => copyText(url, '已复制图片链接')
 
 // ============ 删除 ============
 // 列表局部状态：保存每行是否在删除中（避免重复点击）
@@ -493,6 +703,8 @@ const loadGroups = async () => {
       page: pagination.value.page,
       pageSize: pagination.value.pageSize,
       category: activeCategory.value || undefined,
+      q: searchQ.value.trim() || undefined,
+      favOnly: favOnly.value || undefined,
     })
     loadedCoverIds.clear()
     failedIds.clear()
@@ -514,12 +726,34 @@ const handleCategoryChange = (name: string) => {
   activeCategory.value = name
   pagination.value.page = 1
   loadGroups()
+  syncUrl()
 }
 
 const handlePageChange = (p: number) => {
   pagination.value.page = p
   loadGroups()
+  syncUrl()
   window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+// ============ 搜索 / 收藏筛选 ============
+const handleSearch = () => {
+  searchQ.value = searchInput.value.trim()
+  pagination.value.page = 1
+  loadGroups()
+  syncUrl()
+}
+
+const clearSearch = () => {
+  searchInput.value = ''
+  handleSearch()
+}
+
+const toggleFavOnly = () => {
+  favOnly.value = !favOnly.value
+  pagination.value.page = 1
+  loadGroups()
+  syncUrl()
 }
 
 // ============ 展示辅助 ============
@@ -575,6 +809,7 @@ const goCreate = () => {
 onMounted(() => {
   updateIsMobile()
   window.addEventListener('resize', updateIsMobile)
+  restoreFromUrl()
   loadCategories()
   loadGroups()
 })
@@ -612,40 +847,107 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- 分类筛选 -->
-    <div v-if="categories.length > 0" class="px-4 mt-3">
+    <!-- 搜索 / 收藏筛选 / 分类 / 批量操作 -->
+    <div class="px-4 mt-3">
       <div class="rounded-2xl bg-white p-3">
-        <div class="flex items-center gap-2 mb-2">
-          <span class="text-sm text-gray-500">分类</span>
-          <span class="text-xs text-gray-400">当前：{{ currentCategoryName }}</span>
-          <span class="ml-auto text-xs text-gray-400">
-            共 {{ pagination.total }} 个任务 · {{ pagination.totalImages }} 张图
-          </span>
-        </div>
-        <div class="flex flex-wrap gap-2">
-          <button
-            class="px-3 py-1 rounded-full text-xs transition-all"
-            :class="!activeCategory ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
-            @click="handleCategoryChange('')"
+        <!-- 搜索 + 只看收藏 + 批量管理入口 -->
+        <div class="flex items-center gap-2 mb-2 flex-wrap">
+          <el-input
+            v-model="searchInput"
+            placeholder="搜索提示词 / 标题 / 模型 / 分类"
+            clearable
+            class="!w-60"
+            @keyup.enter="handleSearch"
+            @clear="clearSearch"
+          />
+          <el-button size="default" @click="handleSearch">搜索</el-button>
+          <el-button
+            size="default"
+            :type="favOnly ? 'warning' : 'default'"
+            :plain="!favOnly"
+            @click="toggleFavOnly"
           >
-            全部
-          </button>
-          <button
-            v-for="c in categories"
-            :key="c.name"
-            class="px-3 py-1 rounded-full text-xs transition-all"
-            :class="activeCategory === c.name ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
-            @click="handleCategoryChange(c.name)"
+            <el-icon class="mr-1">
+              <StarFilled v-if="favOnly" />
+              <Star v-else />
+            </el-icon>
+            只看收藏
+          </el-button>
+          <el-button
+            class="!ml-auto"
+            size="default"
+            :type="batchMode ? 'danger' : 'default'"
+            :plain="!batchMode"
+            @click="toggleBatchMode"
           >
-            {{ c.name }}
-            <span class="opacity-60 ml-1">{{ c.count }}</span>
-          </button>
+            {{ batchMode ? '退出批量管理' : '批量管理' }}
+          </el-button>
         </div>
-        <!-- 顶部工具栏：仅在页面有多图合集时显示。
+
+        <!-- 批量操作条：批量操作以「合集」为单位 -->
+        <div
+          v-if="batchMode"
+          class="flex items-center gap-2 mb-2 flex-wrap rounded-lg bg-amber-50 border border-amber-200 px-3 py-2"
+        >
+          <span class="text-xs text-amber-700 font-medium">已选 {{ selectedGroupIds.size }} 个合集</span>
+          <el-button size="small" :disabled="groups.length === 0" @click="selectAllOnPage">全选本页</el-button>
+          <el-button size="small" :disabled="selectedGroupIds.size === 0" @click="clearSelection">清空</el-button>
+          <el-button
+            size="small"
+            type="primary"
+            plain
+            :disabled="selectedGroupIds.size === 0"
+            :loading="batchDownloading"
+            @click="handleBatchDownload"
+          >
+            打包下载 ZIP
+          </el-button>
+          <el-button
+            size="small"
+            type="danger"
+            :disabled="selectedGroupIds.size === 0"
+            :loading="batchDeleting"
+            @click="handleBatchDelete"
+          >
+            删除所选
+          </el-button>
+          <span class="ml-auto text-[11px] text-amber-600">批量操作以「合集」为单位，打包下载走 image-proxy 拉原图</span>
+        </div>
+
+        <!-- 分类 -->
+        <template v-if="categories.length > 0">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-sm text-gray-500">分类</span>
+            <span class="text-xs text-gray-400">当前：{{ currentCategoryName }}</span>
+            <span class="ml-auto text-xs text-gray-400">
+              共 {{ pagination.total }} 个任务 · {{ pagination.totalImages }} 张图
+            </span>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button
+              class="px-3 py-1 rounded-full text-xs transition-all"
+              :class="!activeCategory ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+              @click="handleCategoryChange('')"
+            >
+              全部
+            </button>
+            <button
+              v-for="c in categories"
+              :key="c.name"
+              class="px-3 py-1 rounded-full text-xs transition-all"
+              :class="activeCategory === c.name ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+              @click="handleCategoryChange(c.name)"
+            >
+              {{ c.name }}
+              <span class="opacity-60 ml-1">{{ c.count }}</span>
+            </button>
+          </div>
+        </template>
+        <!-- 顶部工具栏：仅在页面有多图合集时显示（批量模式下隐藏，避免与批量选择语义冲突）。
              默认：合集卡片用横向 swiper 显示全部图（不拆分）。
              一键展开后：多图合集拆成 N 个独立单图卡片混排在 grid 里。 -->
         <div
-          v-if="hasMultiImageGroup"
+          v-if="hasMultiImageGroup && !batchMode"
           class="flex items-center gap-2 mt-2 pt-2 border-t border-gray-100"
         >
           <span class="text-xs text-gray-500">
@@ -743,9 +1045,23 @@ onUnmounted(() => {
                   </span>
                   <span class="text-[11px] text-gray-400 shrink-0">{{ formatTime(item.parent.created_at) }}</span>
                 </div>
-                <h3 class="text-sm font-semibold text-gray-800 truncate" :title="groupTitle(item.parent)">
-                  {{ groupTitle(item.parent) }}
-                </h3>
+                <!-- 标题 + 复制提示词按钮（同合集卡片：提示词与标题重复时正文不渲染，入口固定在标题旁） -->
+                <div class="flex items-center gap-1 min-w-0">
+                  <h3 class="text-sm font-semibold text-gray-800 min-w-0 truncate" :title="groupTitle(item.parent)">
+                    {{ groupTitle(item.parent) }}
+                  </h3>
+                  <button
+                    v-if="groupPromptText(item.parent)"
+                    type="button"
+                    class="mac-copy-prompt shrink-0 w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                    title="复制提示词"
+                    @click="copyText(groupPromptText(item.parent), '已复制提示词')"
+                  >
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2v-2m-6-2h8a2 2 0 002-2V5a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  </button>
+                </div>
                 <p
                   v-if="groupPromptText(item.parent) && groupPromptText(item.parent).trim() !== groupTitle(item.parent).trim()"
                   class="text-xs text-gray-600 mt-1 line-clamp-3 leading-snug"
@@ -757,6 +1073,25 @@ onUnmounted(() => {
                   <span v-if="item.parent.model_name" class="text-[11px] text-indigo-500 truncate max-w-[40%]">
                     {{ item.parent.model_name }}
                   </span>
+                  <!-- 收藏 / 星标（收藏的是所属合集） -->
+                  <button
+                    type="button"
+                    class="text-xs px-2 py-1 rounded-md border transition-all flex items-center gap-1"
+                    :class="[
+                      item.parent.favorited
+                        ? 'bg-amber-50 text-amber-600 border-amber-300 hover:bg-amber-100'
+                        : 'border-gray-200 text-gray-500 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-600',
+                      item.parent.model_name ? '' : 'mr-auto',
+                    ]"
+                    :title="item.parent.favorited ? '取消收藏该合集' : '收藏该合集'"
+                    @click="toggleFavorite(item.parent)"
+                  >
+                    <el-icon>
+                      <StarFilled v-if="item.parent.favorited" />
+                      <Star v-else />
+                    </el-icon>
+                    {{ item.parent.favorited ? '已收藏' : '收藏' }}
+                  </button>
                   <button
                     type="button"
                     class="ml-auto text-xs px-2 py-1 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-indigo-300 hover:text-indigo-600 transition-all flex items-center gap-1"
@@ -921,8 +1256,27 @@ onUnmounted(() => {
             <div
               v-else-if="item.kind === 'group'"
               class="rounded-xl overflow-hidden border border-gray-100 hover:border-indigo-300 hover:shadow-lg transition-all bg-white relative"
-              :class="{ 'is-deleting-group': deletingGroupIds.has(item.group.id) }"
+              :class="{
+                'is-deleting-group': deletingGroupIds.has(item.group.id),
+                '!border-indigo-400 ring-2 ring-indigo-200': batchMode && isSelectedGroup(item.group.id),
+              }"
             >
+              <!-- 批量选择圆框（批量模式下显示；@click.stop 避免触发看图） -->
+              <button
+                v-if="batchMode"
+                type="button"
+                class="absolute top-2 left-2 w-6 h-6 rounded-full z-20 flex items-center justify-center border-2 backdrop-blur transition-all"
+                :class="isSelectedGroup(item.group.id)
+                  ? 'bg-indigo-500 border-indigo-500 text-white'
+                  : 'bg-white/85 border-gray-300 text-transparent hover:border-indigo-400'"
+                :title="isSelectedGroup(item.group.id) ? '取消选择该合集' : '选择该合集'"
+                :aria-label="isSelectedGroup(item.group.id) ? '取消选择该合集' : '选择该合集'"
+                @click.stop="toggleSelectGroup(item.group)"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </button>
               <!-- 封面区：>1 张图时用 swiper 组件横向滑动；单图时 aspect-video 占满 -->
               <div
                 v-if="item.group.image_count > 1"
@@ -964,10 +1318,11 @@ onUnmounted(() => {
                   </SwiperSlide>
                 </Swiper>
 
-                <!-- 左上角认领 tag（只标封面图） -->
+                <!-- 左上角认领 tag（只标封面图）；批量模式下右移避开勾选框 -->
                 <div
                   v-if="item.group.cover && claimsOf(item.group.cover.id).length > 0"
-                  class="absolute top-2 left-2 flex flex-wrap items-center gap-1 max-w-[calc(100%-1rem)] z-10"
+                  class="absolute top-2 flex flex-wrap items-center gap-1 max-w-[calc(100%-1rem)] z-10"
+                  :style="{ left: batchMode ? '2.5rem' : '0.5rem' }"
                 >
                   <span
                     v-for="p in claimsOf(item.group.cover.id)"
@@ -1009,7 +1364,8 @@ onUnmounted(() => {
                 </div>
                 <div
                   v-if="claimsOf(item.group.cover.id).length > 0"
-                  class="absolute top-2 left-2 flex flex-wrap items-center gap-1 max-w-[calc(100%-1rem)]"
+                  class="absolute top-2 flex flex-wrap items-center gap-1 max-w-[calc(100%-1rem)]"
+                  :style="{ left: batchMode ? '2.5rem' : '0.5rem' }"
                 >
                   <span
                     v-for="p in claimsOf(item.group.cover.id)"
@@ -1030,9 +1386,24 @@ onUnmounted(() => {
                   </span>
                   <span class="text-[11px] text-gray-400 shrink-0">{{ formatTime(item.group.created_at) }}</span>
                 </div>
-                <h3 class="text-sm font-semibold text-gray-800 truncate" :title="groupTitle(item.group)">
-                  {{ groupTitle(item.group) }}
-                </h3>
+                <!-- 标题 + 复制提示词按钮：提示词与标题重复时正文段落不渲染，
+                     所以复制入口固定放标题旁 -->
+                <div class="flex items-center gap-1 min-w-0">
+                  <h3 class="text-sm font-semibold text-gray-800 min-w-0 truncate" :title="groupTitle(item.group)">
+                    {{ groupTitle(item.group) }}
+                  </h3>
+                  <button
+                    v-if="groupPromptText(item.group)"
+                    type="button"
+                    class="mac-copy-prompt shrink-0 w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                    title="复制提示词"
+                    @click="copyText(groupPromptText(item.group), '已复制提示词')"
+                  >
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2v-2m-6-2h8a2 2 0 002-2V5a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  </button>
+                </div>
                 <p
                   v-if="groupPromptText(item.group) && groupPromptText(item.group).trim() !== groupTitle(item.group).trim()"
                   class="text-xs text-gray-600 mt-1 line-clamp-3 leading-snug"
@@ -1044,6 +1415,25 @@ onUnmounted(() => {
                   <span v-if="item.group.model_name" class="text-[11px] text-indigo-500 truncate max-w-[40%]">
                     {{ item.group.model_name }}
                   </span>
+                  <!-- 收藏 / 星标：乐观切换，失败回滚 -->
+                  <button
+                    type="button"
+                    class="text-xs px-2 py-1 rounded-md border transition-all flex items-center gap-1"
+                    :class="[
+                      item.group.favorited
+                        ? 'bg-amber-50 text-amber-600 border-amber-300 hover:bg-amber-100'
+                        : 'border-gray-200 text-gray-500 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-600',
+                      item.group.model_name ? '' : 'mr-auto',
+                    ]"
+                    :title="item.group.favorited ? '取消收藏该合集' : '收藏该合集'"
+                    @click="toggleFavorite(item.group)"
+                  >
+                    <el-icon>
+                      <StarFilled v-if="item.group.favorited" />
+                      <Star v-else />
+                    </el-icon>
+                    {{ item.group.favorited ? '已收藏' : '收藏' }}
+                  </button>
                   <button
                     v-if="item.group.cover"
                     type="button"
@@ -1190,11 +1580,36 @@ onUnmounted(() => {
               <el-tag v-if="selectedGroup.scene" size="small" type="info" effect="plain">
                 {{ selectedGroup.scene }}
               </el-tag>
+              <!-- 收藏切换：点击 tag 直接收藏 / 取消收藏 -->
+              <el-tag
+                size="small"
+                :type="selectedGroup.favorited ? 'warning' : 'info'"
+                :effect="selectedGroup.favorited ? 'light' : 'plain'"
+                class="cursor-pointer select-none"
+                :title="selectedGroup.favorited ? '点击取消收藏' : '点击收藏该合集'"
+                @click="toggleFavorite(selectedGroup)"
+              >
+                {{ selectedGroup.favorited ? '★ 已收藏' : '☆ 收藏' }}
+              </el-tag>
             </div>
 
-            <h3 class="text-sm font-semibold text-gray-800 mb-2">
-              {{ groupTitle(selectedGroup) }}
-            </h3>
+            <!-- 标题 + 复制提示词：提示词与标题重复时下方文本块不渲染，入口固定放标题旁 -->
+            <div class="flex items-center gap-1 mb-2 min-w-0">
+              <h3 class="text-sm font-semibold text-gray-800 min-w-0 truncate">
+                {{ groupTitle(selectedGroup) }}
+              </h3>
+              <button
+                v-if="groupPromptText(selectedGroup)"
+                type="button"
+                class="shrink-0 w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                title="复制提示词"
+                @click="copyText(groupPromptText(selectedGroup), '已复制提示词')"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2v-2m-6-2h8a2 2 0 002-2V5a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              </button>
+            </div>
 
             <!-- 当前主图的「已认领平台」标签：selectedImage 变化实时跟随。
                  每个 tag 有 hover-× 一键取消认领（不用打开弹窗）。 -->
@@ -1227,11 +1642,21 @@ onUnmounted(() => {
                 + 标记已发布的平台
               </button>
             </div>
-            <!-- 描述：与标题完全一致时省略，避免视觉重复 -->
+            <!-- 描述：与标题完全一致时省略，避免视觉重复；右上角复制按钮一键复制提示词 -->
             <div
               v-if="groupPromptText(selectedGroup) && groupPromptText(selectedGroup).trim() !== groupTitle(selectedGroup).trim()"
-              class="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-lg p-3 mb-4 whitespace-pre-wrap break-words"
+              class="relative text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-lg p-3 pr-10 mb-4 whitespace-pre-wrap break-words"
             >
+              <button
+                type="button"
+                class="absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded-md text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                title="复制提示词"
+                @click="copyText(groupPromptText(selectedGroup), '已复制提示词')"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2v-2m-6-2h8a2 2 0 002-2V5a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              </button>
               {{ groupPromptText(selectedGroup) }}
             </div>
 
@@ -1280,6 +1705,9 @@ onUnmounted(() => {
               </el-descriptions-item>
               <el-descriptions-item label="图片数">
                 {{ selectedGroup.image_count }}
+              </el-descriptions-item>
+              <el-descriptions-item v-if="selectedImage?.width && selectedImage?.height" label="图片尺寸">
+                {{ selectedImage.width }} × {{ selectedImage.height }}
               </el-descriptions-item>
               <el-descriptions-item label="创建时间">
                 {{ formatTime(selectedGroup.created_at) }}
@@ -1404,7 +1832,21 @@ onUnmounted(() => {
               🏷 已认领 {{ galleryClaimTotalCount }} 个平台
             </el-tag>
           </div>
-          <h3 class="text-base font-semibold text-gray-800">{{ groupTitle(galleryGroup) }}</h3>
+          <div class="flex items-center gap-1 min-w-0">
+            <h3 class="text-base font-semibold text-gray-800 min-w-0 truncate">{{ groupTitle(galleryGroup) }}</h3>
+            <!-- 复制提示词：只要取得到提示词就显示（与卡片/详情弹窗入口一致） -->
+            <button
+              v-if="groupPromptText(galleryGroup)"
+              type="button"
+              class="shrink-0 w-7 h-7 flex items-center justify-center rounded text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+              title="复制提示词"
+              @click="copyText(groupPromptText(galleryGroup), '已复制提示词')"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2v-2m-6-2h8a2 2 0 002-2V5a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+            </button>
+          </div>
         </header>
 
         <!-- 图片网格：flex 流式布局 + 高度基准反算宽度。
@@ -1661,6 +2103,10 @@ onUnmounted(() => {
   }
   .mac-img-copy {
     opacity: 0.9 !important;
+  }
+  /* 卡片提示词上的复制按钮：触屏没有 hover，常显 */
+  .mac-copy-prompt {
+    opacity: 1 !important;
   }
 }
 

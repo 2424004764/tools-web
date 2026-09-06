@@ -27,6 +27,7 @@ export interface AiCreationGroup {
   category: string | null
   model_name: string | null
   title: string | null
+  favorited: boolean
   created_at: string
   image_count: number
   cover: { id: number; media_url: string; thumbnail_url: string | null } | null
@@ -53,12 +54,19 @@ export interface ListAiCreationsParams {
   page?: number
   pageSize?: number
   category?: string
+  /** 关键词搜索（标题 / 模型 / 分类 / 图片提示词 / 关联提示词内容） */
+  q?: string
+  /** 只看收藏 */
+  favOnly?: boolean
 }
 
 export async function fetchAiCreations(
   params: ListAiCreationsParams = {},
 ): Promise<{ groups: AiCreationGroup[]; pagination: GroupPagination }> {
-  const res = await functionsRequest.get('/api/ai-creations', { params })
+  const { favOnly, ...rest } = params
+  const res = await functionsRequest.get('/api/ai-creations', {
+    params: { ...rest, ...(favOnly ? { fav: 1 } : {}) },
+  })
   return res.data.data
 }
 
@@ -184,6 +192,35 @@ export async function deleteAiCreationImage(
   imageId: number,
 ): Promise<DeleteImageResponse> {
   const res = await functionsRequest.delete(`/api/ai-creations/images/${imageId}`)
+  return res.data.data
+}
+
+// ============ 收藏 / 星标 ============
+/** 切换合集收藏状态（favorited 列由 073 迁移提供） */
+export async function toggleAiCreationGroupFavorite(
+  groupId: number,
+  favorited: boolean,
+): Promise<{ group_id: number; favorited: boolean }> {
+  const res = await functionsRequest.patch(`/api/ai-creations/groups/${groupId}`, {
+    favorited: favorited ? 1 : 0,
+  })
+  return res.data.data
+}
+
+// ============ 批量删除 ============
+export interface BatchDeleteGroupsResponse {
+  groups_deleted: number
+  images: number
+  r2_deleted: number
+  r2_failed: number
+  skipped_ids: number[]
+}
+
+/** 批量删除整组（一次最多 50 个）；不存在的 id / 越权 id 会进 skipped_ids */
+export async function batchDeleteAiCreationGroups(
+  ids: number[],
+): Promise<BatchDeleteGroupsResponse> {
+  const res = await functionsRequest.post('/api/ai-creations/groups/batch-delete', { ids })
   return res.data.data
 }
 
