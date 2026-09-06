@@ -415,9 +415,90 @@ const openInImgCut = (slot: ResultSlot) => {
 }
 
 // ============ 生命周期编排 ============
+
+// 生成中拦截页面关闭/刷新：AI 生图要 30s~5 分钟，误关会导致请求终止且积分不返还。
+// preventDefault + returnValue 让浏览器弹原生确认框（文案由浏览器决定，前端无法自定义）。
+const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+  if (isBatchLoading.value) {
+    e.preventDefault()
+    e.returnValue = ''
+  }
+}
+
+// ============ 生成完成浏览器通知 ============
+// 场景：生成要几分钟，用户切到别的标签页等待。页面隐藏且授权过通知时，
+// 批次结束弹系统通知；点击通知聚焦回本页。权限在「触发生成」的用户手势里申请。
+const requestNotifyPermission = async () => {
+  if (typeof window === 'undefined' || !('Notification' in window)) return
+  try {
+    if (Notification.permission === 'default') {
+      await Notification.requestPermission()
+    }
+  } catch {
+    /* 部分浏览器（iOS Safari 等）不支持，静默 */
+  }
+}
+
+const notifyBatchDone = () => {
+  if (typeof document === 'undefined' || !document.hidden) return
+  if (typeof window === 'undefined' || !('Notification' in window)) return
+  if (Notification.permission !== 'granted') return
+  const okCount = results.filter((r) => r.status === 'success').length
+  const failCount = results.filter((r) => r.status === 'failed').length
+  try {
+    const n = new Notification('AI 图片生成完成', {
+      body: failCount > 0 ? `成功 ${okCount} 张，失败 ${failCount} 张` : `成功 ${okCount} 张`,
+      tag: 'ai-image-edit-batch', // 同 tag 合并，避免并发多次通知堆叠
+    })
+    n.onclick = () => {
+      window.focus()
+      n.close()
+    }
+  } catch {
+    /* 通知失败不影响主流程 */
+  }
+}
+
+watch(isBatchLoading, (val, oldVal) => {
+  // 批次从「进行中」→「结束」（整批或最后一张重试收尾）时尝试通知
+  if (oldVal && !val) notifyBatchDone()
+})
+
+// 统一生成入口：按钮点击 / Ctrl+Enter 都走这里。
+// 触发生成时顺手申请通知权限（必须是用户手势内调用才能弹授权框）。
+const handleGenerateTrigger = () => {
+  if (!canGenerate.value) {
+    promptTouched.value = true
+    return
+  }
+  void requestNotifyPermission()
+  generateImage()
+}
+
+// ============ 输出尺寸联动推荐 ============
+// 上传了参考图时，按第一张图的实际宽高比推荐尺寸选项；用户点「采用」一键切换。
+// 只推荐不改选择：尺寸偏好已 localStorage 记忆，自动覆盖会打扰。
+const sizeSuggestion = computed(() => {
+  const first = imageAspectStyles.value[0]?.aspectRatio // 形如 "1024 / 1792"
+  if (!first) return null
+  const m = /^(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)$/.exec(first)
+  if (!m) return null
+  const ratio = Number(m[1]) / Number(m[2])
+  if (ratio >= 1.85) return { value: '2048x1024', label: '2:1 宽屏' }
+  if (ratio >= 1.35) return { value: '1792x1024', label: '16:9 横版' }
+  if (ratio <= 0.55) return { value: '1024x1792', label: '9:16 竖版' }
+  if (ratio >= 0.8 && ratio <= 1.25) return { value: '1024x1024', label: '1:1 正方形' }
+  return null
+})
+
+const applySizeSuggestion = () => {
+  if (sizeSuggestion.value) selectedSize.value = sizeSuggestion.value.value
+}
+
 onMounted(() => {
   updateIsMobile()
   window.addEventListener('resize', updateIsMobile)
+  window.addEventListener('beforeunload', handleBeforeUnload)
   fetchModelList()
   // URL 带 prompt 参数时优先用它（从 AI 提示词工具跳转过来）
   const urlPrompt = route.query.prompt
@@ -436,6 +517,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', updateIsMobile)
+  window.removeEventListener('beforeunload', handleBeforeUnload)
   slotVisuals.stopAllSlotVisuals()
   gen.stopBtnAnim()
   // 兜底：预览开着时直接离开页面（路由切换），viewer 随组件卸载不会恢复 body 滚动锁
@@ -610,6 +692,8 @@ onUnmounted(() => {
                 class="w-full p-4 pr-10 pb-7 border rounded-lg focus:ring-2 focus:ring-blue-500 min-h-[120px] resize-y"
                 :class="{ 'border-red-400': promptTouched && !prompt.trim() }"
                 @blur="promptTouched = true"
+                @keydown.ctrl.enter.prevent="handleGenerateTrigger"
+                @keydown.meta.enter.prevent="handleGenerateTrigger"
               ></textarea>
               <button
                 v-if="prompt"
@@ -633,6 +717,9 @@ onUnmounted(() => {
             </span>
             <span v-else class="text-caption text-gray-400 mt-1 block">
               {{ imageFiles.length > 0 ? `已上传 ${imageFiles.length} 张参考图 + 描述修改效果 = 图生图；仅描述不传图 = 文生图` : '输入文字描述，AI为你生成图片' }}
+              <span class="ml-1 text-gray-300">|</span>
+              <kbd class="inline-block px-1 rounded border border-gray-300 text-gray-400">Ctrl</kbd>+<kbd class="inline-block px-1 rounded border border-gray-300 text-gray-400">Enter</kbd>
+              快速生成
             </span>
           </div>
 
@@ -658,6 +745,18 @@ onUnmounted(() => {
               >
                 <option v-for="s in sizeOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
               </select>
+                <!-- 尺寸联动推荐：按第一张参考图的宽高比推荐，点「采用」一键切换（不自动覆盖用户偏好） -->
+                <span
+                  v-if="sizeSuggestion && selectedSize !== sizeSuggestion.value"
+                  class="text-caption mt-1 flex items-center gap-1 text-amber-600"
+                >
+                  参考图比例接近 {{ sizeSuggestion.label }}
+                  <button
+                    type="button"
+                    class="px-1.5 py-0.5 rounded border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors"
+                    @click="applySizeSuggestion"
+                  >采用</button>
+                </span>
               </div>
               <div>
                 <label class="block text-body-sm font-medium text-gray-700 mb-2">并发数</label>
@@ -719,7 +818,7 @@ onUnmounted(() => {
 
             <button
               ref="btnRef"
-              @click="generateImage"
+              @click="handleGenerateTrigger"
               :disabled="!canGenerate"
               :title="isBatchLoading ? '已有请求在进行中，请等待完成' : (!canGenerate ? '请先填写提示词并确保有可用模型' : '开始生成')"
               class="relative w-full py-4 rounded-xl font-semibold text-white flex items-center justify-center gap-2 overflow-hidden shadow-lg transition-all duration-300 ease-out group"

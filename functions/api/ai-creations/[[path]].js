@@ -2,6 +2,9 @@
 // 全部路由必须登录；WHERE 强制带 uid，避免任何越权访问。
 //
 //   GET /api/ai-creations          按 group 分页列出当前 uid 的创作组
+//                                  可选参数：category / page / pageSize
+//                                  q=关键词（搜标题/模型/分类/图片提示词/关联提示词内容）
+//                                  fav=1（只看收藏，依赖 073 迁移的 favorited 列）
 //   GET /api/ai-creations/categories  当前 uid 出现的分类聚合
 //
 // 不在本次范围内：
@@ -79,6 +82,10 @@ export async function onRequest(context) {
     const page = clampInt(url.searchParams.get('page'), 1, 9999, 1)
     const pageSize = clampInt(url.searchParams.get('pageSize'), 1, 60, 12)
     const category = (url.searchParams.get('category') || '').trim()
+    // q：关键词搜索（组标题 / 模型 / 分类 / 组内图片提示词 / 关联提示词库内容）
+    const q = (url.searchParams.get('q') || '').trim()
+    // fav=1：只看收藏（ai_creation_groups.favorited = 1，依赖 073 迁移）
+    const favOnly = url.searchParams.get('fav') === '1'
     const offset = (page - 1) * pageSize
 
     const where = [`g.uid = ?`]
@@ -87,21 +94,34 @@ export async function onRequest(context) {
       where.push('g.category = ?')
       args.push(category)
     }
+    if (favOnly) {
+      where.push('g.favorited = 1')
+    }
+    if (q) {
+      const like = `%${q}%`
+      where.push(
+        `(g.title LIKE ? OR g.model_name LIKE ? OR g.category LIKE ?
+          OR EXISTS (SELECT 1 FROM ai_creation_images qi WHERE qi.group_id = g.id AND qi.prompt LIKE ?)
+          OR EXISTS (SELECT 1 FROM user_tool_prompts up WHERE up.id = g.prompt_id AND up.uid = g.uid AND up.content LIKE ?))`,
+      )
+      args.push(like, like, like, like, like)
+    }
     const whereSql = `WHERE ${where.join(' AND ')}`
 
-    // 总组数 + 当前 uid 的总图片数（一次 JOIN 拿两个聚合，避免参数个数对不齐）
-    // 关键：image_count 按 i.uid 过滤后再按 category 过滤，
-    // 因为 image 表里只有 group_id，没有 category，所以需要 JOIN groups。
+    // 总组数 + 当前 uid 的总图片数（一次 JOIN 拿两个聚合，避免参数个数对不齐）。
+    // 两个子查询各自独立 bind 一份 args；图片数子查询 JOIN groups 后直接复用 whereSql
+    // （whereSql 自带 WHERE 关键字，这里不能再写一遍），保证「分类/搜索/收藏」筛选下
+    // group_count 和 image_count 的口径一致。
     const statsRow = await db
       .prepare(
         `SELECT
             (SELECT COUNT(*) FROM ai_creation_groups g ${whereSql}) AS group_count,
             (SELECT COUNT(*) FROM ai_creation_images i
               INNER JOIN ai_creation_groups g ON g.id = i.group_id
-              WHERE i.uid = ? ${category ? 'AND g.category = ?' : ''}) AS image_count
+              ${whereSql}) AS image_count
         `,
       )
-      .bind(...args, ...(category ? [uid, category] : [uid]))
+      .bind(...args, ...args)
       .first()
     const totalGroups = statsRow?.group_count || 0
     const totalImages = statsRow?.image_count || 0
@@ -109,7 +129,7 @@ export async function onRequest(context) {
     // 当前页的组
     const groupsRaw = await db
       .prepare(
-        `SELECT g.id, g.uid, g.prompt_id, g.scene, g.category, g.model_name, g.title,
+        `SELECT g.id, g.uid, g.prompt_id, g.scene, g.category, g.model_name, g.title, g.favorited,
                 g.created_at, g.updated_at,
                 (SELECT COUNT(*) FROM ai_creation_images i WHERE i.group_id = g.id) AS image_count,
                 (SELECT media_url FROM ai_creation_images WHERE group_id = g.id ORDER BY id ASC LIMIT 1) AS cover_url,
@@ -117,7 +137,7 @@ export async function onRequest(context) {
                 (SELECT id FROM ai_creation_images WHERE group_id = g.id ORDER BY id ASC LIMIT 1) AS cover_id
          FROM ai_creation_groups g
          ${whereSql}
-         ORDER BY g.created_at DESC, g.id DESC
+         ORDER BY g.favorited DESC, g.created_at DESC, g.id DESC
          LIMIT ? OFFSET ?`,
       )
       .bind(...args, pageSize, offset)
@@ -179,6 +199,7 @@ export async function onRequest(context) {
         category: g.category,
         model_name: g.model_name,
         title: g.title,
+        favorited: Number(g.favorited) === 1,
         created_at: g.created_at,
         image_count: Number(g.image_count) || images.length,
         cover: g.cover_id

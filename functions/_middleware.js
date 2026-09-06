@@ -6,6 +6,8 @@
  *  2. OPTIONS 预检统一走 cors.js 的 handleCORSPreflight
  *  3. 给所有响应添加 X-Content-Type-Options / X-Frame-Options / Referrer-Policy
  *  4. 统一捕获 /api/* 的失败响应（status >= 400）并落库到 api_error_logs
+ *  5. 兜底捕获 /api/* 里未捕获异常（异常会从 context.next() 抛上来，不会变成失败响应）：
+ *     落库（带异常堆栈）+ 返回统一 JSON 500
  *
  * 设计说明：
  *  - 中间件不会向同源请求（无 Origin 头）注入 CORS 头，避免污染响应
@@ -48,9 +50,12 @@ function shouldLogError(path, status) {
  * Response body 是一次性流，直接 .text() 会消费掉它，
  * 导致后续返回给客户端的响应变成空体。
  *
+ * overrides：未捕获异常场景下，合成响应体里只有笼统文案，
+ * 调用方通过它传入真实的 errorMessage / errorStack。
+ *
  * 返回 Promise，由调用方交给 context.waitUntil()，不阻塞响应返回。
  */
-async function captureApiError(context, response, path, startedAt) {
+async function captureApiError(context, response, path, startedAt, overrides = {}) {
   const { request, env } = context
 
   let errorMessage = null
@@ -77,6 +82,10 @@ async function captureApiError(context, response, path, startedAt) {
   } catch (e) {
     console.error('captureApiError: read body failed:', e)
   }
+
+  // 未捕获异常场景：用真实异常信息覆盖从合成响应体里读到的笼统文案
+  if (overrides.errorMessage != null) errorMessage = overrides.errorMessage
+  if (overrides.errorStack != null) errorStack = overrides.errorStack
 
   // 业务代码通过 attachUpstreamError() 挂上来的上游细节（中间件自身看不到）
   const detail = (context.data && context.data[UPSTREAM_ERROR_KEY]) || {}
@@ -156,11 +165,27 @@ export async function onRequest(context) {
     return handleCORSPreflight(origin)
   }
 
-  const response = await context.next()
+  // 统一响应出口：同源不注入 CORS 只加安全头；跨源用白名单覆盖 CORS 头
+  const finalize = (resp) => {
+    if (!origin) return withSecurityHeaders(resp)
+    const corsHeaders = getCORSHeaders(origin)
+    const headers = new Headers(resp.headers)
+    for (const [k, v] of Object.entries(corsHeaders)) {
+      headers.set(k, v)
+    }
+    // 兜底覆盖：无论端点是否手写了 CORS 头，middleware 都强制走白名单
+    headers.set('X-Content-Type-Options', 'nosniff')
+    headers.set('X-Frame-Options', 'DENY')
+    headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+    return new Response(resp.body, {
+      status: resp.status,
+      statusText: resp.statusText,
+      headers,
+    })
+  }
 
-  // 失败请求统一落库（异步，不阻塞响应；内部已吞掉所有异常）
-  if (shouldLogError(path, response.status)) {
-    const task = captureApiError(context, response, path, startedAt)
+  // 把错误日志任务交给 waitUntil（内部已吞掉所有异常，失败只记控制台）
+  const scheduleErrorLog = (task) => {
     if (typeof context.waitUntil === 'function') {
       context.waitUntil(task)
     } else {
@@ -169,22 +194,34 @@ export async function onRequest(context) {
     }
   }
 
-  // 同源请求（无 Origin 头）：不注入 CORS，但保留安全头
-  if (!origin) return withSecurityHeaders(response)
-
-  // 跨源请求：用白名单统一覆盖 Access-Control-Allow-Origin
-  const corsHeaders = getCORSHeaders(origin)
-  const headers = new Headers(response.headers)
-  for (const [k, v] of Object.entries(corsHeaders)) {
-    headers.set(k, v)
+  let response
+  try {
+    response = await context.next()
+  } catch (err) {
+    // ⚠️ 未捕获异常不会走「失败响应」路径：异常会从 context.next() 直接抛上来
+    // 穿透本中间件，由平台错误处理器返回 500 —— 必须在这里兜住：
+    // 1) 落库到 api_error_logs（带真实异常堆栈）
+    // 2) 返回统一的 JSON 500，不让平台默认错误页直接暴露给前端
+    console.error(`[middleware] uncaught error on ${request.method} ${path}:`, err)
+    response = new Response(
+      JSON.stringify({ success: false, error: '服务器内部错误' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } },
+    )
+    if (shouldLogError(path, 500)) {
+      const task = captureApiError(context, response, path, startedAt, {
+        errorMessage: err?.message || String(err),
+        errorStack: err?.stack || null,
+        stage: 'uncaught-exception',
+      })
+      scheduleErrorLog(task)
+    }
+    return finalize(response)
   }
-  // 兜底覆盖：无论端点是否手写了 CORS 头，middleware 都强制走白名单
-  headers.set('X-Content-Type-Options', 'nosniff')
-  headers.set('X-Frame-Options', 'DENY')
-  headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
-  return new Response(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers,
-  })
+
+  // 失败请求统一落库（异步，不阻塞响应；内部已吞掉所有异常）
+  if (shouldLogError(path, response.status)) {
+    scheduleErrorLog(captureApiError(context, response, path, startedAt))
+  }
+
+  return finalize(response)
 }
