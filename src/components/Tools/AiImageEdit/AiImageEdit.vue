@@ -669,12 +669,27 @@ onUnmounted(() => {
               </select>
                 <span
                   class="text-caption mt-1 block"
-                  :class="concurrencyHint ? 'text-red-500' : 'text-gray-400'"
+                  :class="concurrencyHint.state === 'insufficient' ? 'text-red-500' : 'text-gray-400'"
                 >
-                  {{ concurrencyHint || `同时生成 ${selectedConcurrency} 个变体，可挑最满意的一张` }}
+                  {{ concurrencyHint.text || `同时生成 ${selectedConcurrency} 个变体，可挑最满意的一张` }}
                 </span>
               </div>
             </div>
+          </div>
+
+          <!-- 未登录时：在生成按钮上方显示醒目提示 + 去登录按钮 -->
+          <div
+            v-if="!userStore.getLoginStatus"
+            class="rounded-lg border border-accent-300 bg-accent-50 px-3 py-2 flex items-center gap-2 text-sm text-accent-800"
+          >
+            <span class="flex-1">登录后才能使用 AI 图片编辑</span>
+            <button
+              type="button"
+              class="text-xs px-2.5 py-1 rounded-md bg-accent-500 text-white hover:bg-accent-600 active:scale-95 transition-all"
+              @click="router.push('/login?redirect=' + encodeURIComponent(router.currentRoute.value.fullPath))"
+            >
+              去登录
+            </button>
           </div>
 
           <!-- 生成按钮 + 悬浮模式徽章 -->

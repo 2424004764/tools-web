@@ -393,7 +393,7 @@ onUnmounted(() => {
               class="w-6 h-6 rounded-full flex items-center justify-center text-white text-caption font-medium flex-shrink-0"
               :class="msg.isSelf ? 'bg-blue-500' : 'bg-green-500'"
             >
-              {{ msg.nickname.charAt(0) }}
+              {{ (msg.nickname || '匿').charAt(0) }}
             </div>
 
             <!-- 消息内容 -->

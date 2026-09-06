@@ -137,6 +137,9 @@ importers:
       sortablejs:
         specifier: ^1.15.7
         version: 1.15.7
+      swiper:
+        specifier: ^14.2.0
+        version: 14.2.0
       terser:
         specifier: ^5.31.1
         version: 5.43.1
@@ -5804,6 +5807,10 @@ packages:
     resolution: {integrity: sha512-+N/Q9kV1+F+UeWYoSiULYo4xYSDQlTgb+ayMobAXPwMnLvop7oxKMo9OzIrX5x3eS4L4f2UHhc9axXwY8DpChg==, tarball: https://registry.npmmirror.com/svgo/-/svgo-2.8.0.tgz}
     engines: {node: '>=10.13.0'}
     hasBin: true
+
+  swiper@14.2.0:
+    resolution: {integrity: sha512-GsL4M9Fq7Sg22OyL3SjdNj/0bxTfIxPJJHHW394Li0u5vYtExi0a09iBUc8CuLafJi5pAlH2AHUe1PocxHl45g==, tarball: https://registry.npmmirror.com/swiper/-/swiper-14.2.0.tgz}
+    engines: {node: '>= 4.7.0'}
 
   symbol-tree@3.2.4:
     resolution: {integrity: sha512-9QNk5KwDF+Bvz+PyObkmSYjI5ksVUYtjW7AU22r2NKcfLJcXp96hkDWU3+XndOsUb+AQ9QhfzfCT2O+CNWT5Tw==, tarball: https://registry.npmmirror.com/symbol-tree/-/symbol-tree-3.2.4.tgz}
@@ -12932,6 +12939,8 @@ snapshots:
       csso: 4.2.0
       picocolors: 1.1.1
       stable: 0.1.8
+
+  swiper@14.2.0: {}
 
   symbol-tree@3.2.4:
     optional: true

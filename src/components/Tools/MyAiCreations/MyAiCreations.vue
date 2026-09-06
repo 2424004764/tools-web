@@ -19,6 +19,13 @@ import {
   type AiCreationCategory,
 } from '@/api/ai-creations'
 import ClaimDialog from './ClaimDialog.vue'
+import Expand from '~icons/ep/expand'
+import Fold from '~icons/ep/fold'
+import { Swiper, SwiperSlide } from 'swiper/vue'
+import { Pagination } from 'swiper/modules'
+import 'swiper/css'
+import 'swiper/css/pagination'
+import 'swiper/css/navigation'
 
 const router = useRouter()
 
@@ -63,6 +70,59 @@ const claimsLoading = ref(false)
 const claimDialogImageId = ref<number | null>(null)
 const claimDialogRef = ref<InstanceType<typeof ClaimDialog> | null>(null)
 const userStore = useUserStore()
+
+// ============ 合集图片展示模式 ============
+// 默认 false：合集卡片默认显示全部图片（多图合集用横向 swiper 轨道，单图合集 1 张占满）。
+// 顶部"一键全部展开"按下后切到 true：多图合集拆成 N 张独立单图卡片，混排在 grid 里。
+// 这是页面级开关，不影响认领 / 删除等操作。
+const showAllImages = ref(false)
+const toggleShowAllImages = () => {
+  showAllImages.value = !showAllImages.value
+}
+
+// 顶部按钮可见性：只要页面上有一个多图合集就显示按钮。
+const hasMultiImageGroup = computed(
+  () => groups.value.some(g => g.image_count > 1),
+)
+
+// 展开态下：按合集 id 生成稳定的浅色 hsl 边框色。
+// 同一合集永远同色（跨页一致），不同合集颜色互异。
+const colorForGroup = (id: number): string => {
+  const hue = (Math.abs(id * 47) + (id % 7) * 13) % 360
+  return `hsl(${hue}, 65%, 75%)`
+}
+
+// 展开态下需要渲染的卡片列表：
+// - showAllImages = false → 所有合集渲染为 `kind:'group'`（默认态：封面 swiper + 正文按钮）
+// - showAllImages = true  →
+//     · 单图合集 → `kind:'image'`（混排在 grid，跟其他单图合集一样）
+//     · 多图合集 → `kind:'group-expanded'`（跨整列容器，内部 grid + 颜色边框圈住所有图）
+type DisplayItem =
+  | { kind: 'group'; group: AiCreationGroup }
+  | { kind: 'group-expanded'; group: AiCreationGroup }
+  | { kind: 'image'; parent: AiCreationGroup; image: AiCreationImage }
+const displayItems = computed<DisplayItem[]>(() => {
+  const out: DisplayItem[] = []
+  for (const g of groups.value) {
+    if (showAllImages.value) {
+      if (g.images.length > 1) {
+        out.push({ kind: 'group-expanded', group: g })
+      } else {
+        // 单图合集展开后当成单图卡片
+        out.push({ kind: 'image', parent: g, image: g.images[0] })
+      }
+    } else {
+      out.push({ kind: 'group', group: g })
+    }
+  }
+  return out
+})
+
+// 展开态下临时用 image.id 作为 :key，保证每个"拆开后的单图卡片"有稳定 key
+const itemKey = (item: DisplayItem): number | string => {
+  if (item.kind === 'group' || item.kind === 'group-expanded') return `g-${item.group.id}`
+  return `i-${item.image.id}`
+}
 
 /** 把当前列表里所有 image 的 id 拍平，调一次批量接口 */
 const loadClaimsForCurrentList = async () => {
@@ -166,8 +226,9 @@ const viewerIndex = ref(0)
 
 const openViewer = (list: string[], index: number) => {
   if (!list || list.length === 0) return
-  // 进入全屏 viewer 前先关闭组详情弹窗，避免两层 modal 重叠导致点击被遮挡
+  // 进入全屏 viewer 前先关闭组详情弹窗和画廊弹窗，避免两层 modal 重叠导致点击被遮挡
   closeGroupDetail()
+  closeGallery()
   viewerList.value = list
   viewerIndex.value = Math.max(0, Math.min(index, list.length - 1))
   viewerVisible.value = true
@@ -251,10 +312,26 @@ const enterFullscreenViewer = (startIndex: number, group?: AiCreationGroup | nul
   openViewer(list, startIndex)
 }
 
-const copyImageUrl = (url?: string | null) => {
+const copyImageUrl = async (url?: string | null) => {
   if (!url) return
-  navigator.clipboard?.writeText(url)
-  ElMessage.success('已复制链接')
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(url)
+    } else {
+      // 非 https / 旧浏览器没有 clipboard API，退回 execCommand
+      const ta = document.createElement('textarea')
+      ta.value = url
+      ta.style.position = 'fixed'
+      ta.style.opacity = '0'
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    }
+    ElMessage.success('已复制图片链接')
+  } catch {
+    ElMessage.error('复制失败，请手动复制')
+  }
 }
 
 // ============ 删除 ============
@@ -564,6 +641,30 @@ onUnmounted(() => {
             <span class="opacity-60 ml-1">{{ c.count }}</span>
           </button>
         </div>
+        <!-- 顶部工具栏：仅在页面有多图合集时显示。
+             默认：合集卡片用横向 swiper 显示全部图（不拆分）。
+             一键展开后：多图合集拆成 N 个独立单图卡片混排在 grid 里。 -->
+        <div
+          v-if="hasMultiImageGroup"
+          class="flex items-center gap-2 mt-2 pt-2 border-t border-gray-100"
+        >
+          <span class="text-xs text-gray-500">
+            {{ showAllImages ? '已拆为独立图片卡片' : '默认合集横向滑动展示' }}
+          </span>
+          <el-button
+            class="!ml-auto"
+            size="small"
+            :type="showAllImages ? 'default' : 'primary'"
+            plain
+            @click="toggleShowAllImages"
+          >
+            <el-icon class="mr-1">
+              <Fold v-if="showAllImages" />
+              <Expand v-else />
+            </el-icon>
+            {{ showAllImages ? '一键收起' : '一键全部展开' }}
+          </el-button>
+        </div>
       </div>
     </div>
 
@@ -582,174 +683,439 @@ onUnmounted(() => {
           </button>
         </div>
 
+        <!-- 合集列表。
+         - 默认态：每张合集卡片，封面区根据 image_count 选择横滚轨道（>1张）或单图占满。
+         - 一键展开后：多图合集被拆成 N 张独立单图卡片（kind:'image'）混排在 grid 里；
+                       单图合集（kind:'group' 且 image_count<=1）保持原样。
+         - 展开态下点"删除"调 handleDeleteImage（只删这一张）；
+           默认态下点"删除"调 handleDeleteGroup（删整个合集）。 -->
         <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          <div
-            v-for="g in groups"
-            :key="g.id"
-            class="rounded-xl overflow-hidden border border-gray-100 hover:border-indigo-300 hover:shadow-lg transition-all bg-white relative"
-            :class="{ 'is-deleting-group': deletingGroupIds.has(g.id) }"
-          >
-            <!-- 缩略图区：1 大 + 堆叠小图。点击封面进画廊弹窗，看所有图；
-     想看单张大图可在画廊内点击进入全屏 viewer。 -->
+          <template v-for="item in displayItems" :key="itemKey(item)">
+            <!-- 单图卡片（展开态拆出来的） -->
             <div
-              v-if="g.cover"
-              class="relative aspect-video bg-gray-100 overflow-hidden cursor-pointer"
-              @click="openGallery(g)"
+              v-if="item.kind === 'image'"
+              class="rounded-xl overflow-hidden border border-gray-100 hover:border-indigo-300 hover:shadow-lg transition-all bg-white relative"
+              :class="{ 'is-deleting-group': deletingImageIds.has(item.image.id) }"
             >
-              <img
-                :src="g.cover.thumbnail_url || g.cover.media_url"
-                :alt="groupPromptText(g)"
-                loading="lazy"
-                class="w-full h-full object-cover transition-opacity duration-300"
-                :class="loadedCoverIds.has(g.cover.id) ? 'opacity-100' : 'opacity-0'"
-                @load="markCoverLoaded(g.cover.id)"
-                @error="onImageError($event, g.cover.id)"
-                @click.stop="openGallery(g)"
-              />
-
-              <!-- 加载骨架 -->
+              <!-- 封面区：单图占满 -->
               <div
-                v-if="!loadedCoverIds.has(g.cover.id)"
-                class="cover-skeleton absolute inset-0 flex items-center justify-center pointer-events-none"
-                aria-hidden="true"
+                class="relative aspect-video bg-gray-100 overflow-hidden cursor-pointer"
+                @click="openViewer(item.parent.images.map(i => i.media_url), item.parent.images.findIndex(i => i.id === item.image.id))"
               >
-                <span class="cover-loading-dot"></span>
-                <span class="ml-2 text-xs font-medium text-gray-400">封面加载中</span>
-              </div>
-
-              <!-- 左上角：认领平台 tag 列表（已认领的图显示在最显眼位置）
-                   - 背景半透明黑 + 白字 + backdrop-blur，跟右上角「4 张」徽标视觉一致
-                   - 多 tag 时 flex-wrap 自动换行，不会溢出卡片
-                   - 已认领 N=0 时整段不渲染（不占视觉空间） -->
-              <div
-                v-if="g.cover && claimsOf(g.cover.id).length > 0"
-                class="absolute top-2 left-2 flex flex-wrap items-center gap-1 max-w-[calc(100%-1rem)]"
-              >
-                <span
-                  v-for="p in claimsOf(g.cover.id)"
-                  :key="p"
-                  class="bg-blue-600/85 text-white text-[10px] px-1.5 py-0.5 rounded backdrop-blur font-medium shadow-sm"
-                  :title="`已认领平台：${p}`"
+                <img
+                  :src="item.image.thumbnail_url || item.image.media_url"
+                  :alt="groupTitle(item.parent)"
+                  loading="lazy"
+                  class="w-full h-full object-cover transition-opacity duration-300"
+                  :class="loadedCoverIds.has(item.image.id) ? 'opacity-100' : 'opacity-0'"
+                  @load="markCoverLoaded(item.image.id)"
+                  @error="onImageError($event, item.image.id)"
+                />
+                <div
+                  v-if="!loadedCoverIds.has(item.image.id)"
+                  class="cover-skeleton absolute inset-0 flex items-center justify-center pointer-events-none"
+                  aria-hidden="true"
                 >
-                  🏷 {{ p }}
-                </span>
-              </div>
-
-              <!-- 右上角：图片数徽标 -->
-              <div class="absolute top-2 right-2 flex flex-col items-end gap-1">
-                <span
-                  v-if="g.image_count > 1"
-                  class="bg-black/60 text-white text-xs px-1.5 py-0.5 rounded backdrop-blur"
+                  <span class="cover-loading-dot"></span>
+                  <span class="ml-2 text-xs font-medium text-gray-400">封面加载中</span>
+                </div>
+                <!-- 左上角：认领 tag -->
+                <div
+                  v-if="claimsOf(item.image.id).length > 0"
+                  class="absolute top-2 left-2 flex flex-wrap items-center gap-1 max-w-[calc(100%-1rem)]"
                 >
-                  🖼 {{ g.image_count }} 张
-                </span>
+                  <span
+                    v-for="p in claimsOf(item.image.id)"
+                    :key="p"
+                    class="bg-blue-600/85 text-white text-[10px] px-1.5 py-0.5 rounded backdrop-blur font-medium shadow-sm"
+                    :title="`已认领平台：${p}`"
+                  >
+                    🏷 {{ p }}
+                  </span>
+                </div>
               </div>
 
-              <!-- 右下角：剩余图缩略图堆叠 -->
-              <div
-                v-if="g.image_count > 1"
-                class="absolute bottom-2 right-2 flex items-center -space-x-3"
-                @click.stop
-              >
-                <button
-                  v-for="(img, idx) in g.images.slice(1, 4)"
+              <!-- 正文区 -->
+              <div class="p-3">
+                <div class="flex items-center justify-between gap-2 mb-1.5">
+                  <span class="text-xs px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 truncate">
+                    {{ item.parent.category || '未分类' }}
+                  </span>
+                  <span class="text-[11px] text-gray-400 shrink-0">{{ formatTime(item.parent.created_at) }}</span>
+                </div>
+                <h3 class="text-sm font-semibold text-gray-800 truncate" :title="groupTitle(item.parent)">
+                  {{ groupTitle(item.parent) }}
+                </h3>
+                <p
+                  v-if="groupPromptText(item.parent) && groupPromptText(item.parent).trim() !== groupTitle(item.parent).trim()"
+                  class="text-xs text-gray-600 mt-1 line-clamp-3 leading-snug"
+                  :title="groupPromptText(item.parent)"
+                >
+                  {{ groupPromptText(item.parent) }}
+                </p>
+                <div class="flex items-center justify-between mt-2 gap-2 flex-wrap">
+                  <span v-if="item.parent.model_name" class="text-[11px] text-indigo-500 truncate max-w-[40%]">
+                    {{ item.parent.model_name }}
+                  </span>
+                  <button
+                    type="button"
+                    class="ml-auto text-xs px-2 py-1 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-indigo-300 hover:text-indigo-600 transition-all flex items-center gap-1"
+                    title="复制这张图的 URL"
+                    @click="copyImageUrl(item.image.media_url)"
+                  >
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2v-2m-6-2h8a2 2 0 002-2V5a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    复制URL
+                  </button>
+                  <!-- 发送至「图片切割」：单图卡片没有画廊/详情弹窗入口，操作栏直接给一个 -->
+                  <button
+                    type="button"
+                    class="text-xs px-2 py-1 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-indigo-300 hover:text-indigo-600 transition-all flex items-center gap-1"
+                    title="把这张图发送到「图片切割」工具"
+                    @click="openInImgCut(item.image)"
+                  >
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121M12 12l2.879-2.879M12 12L9.121 14.879M21 3v6h-6M3 21v-6h6" />
+                    </svg>
+                    分割
+                  </button>
+                  <button
+                    type="button"
+                    :class="[
+                      'text-xs px-2 py-1 rounded-md transition-all flex items-center gap-1',
+                      claimsOf(item.image.id).length > 0
+                        ? 'bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100'
+                        : 'border border-blue-200 text-blue-600 hover:bg-blue-50',
+                    ]"
+                    :title="claimsOf(item.image.id).length > 0
+                      ? `已认领：${claimsOf(item.image.id).join('、')}`
+                      : '标记这张图已发布到哪些平台'"
+                    @click="openClaimDialog(item.image)"
+                  >
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                    </svg>
+                    认领<span v-if="claimsOf(item.image.id).length > 0"> ({{ claimsOf(item.image.id).length }})</span>
+                  </button>
+                  <!-- 展开态下不显示「查看 N 张图」(单图本身就是) -->
+                  <button
+                    type="button"
+                    class="mac-card-del text-xs px-2 py-1 rounded-md text-red-500 hover:bg-red-50 border border-red-200 hover:border-red-400 transition-all"
+                    :disabled="deletingImageIds.has(item.image.id)"
+                    title="只删除这张图"
+                    @click="handleDeleteImage(item.image, item.parent)"
+                  >
+                    {{ deletingImageIds.has(item.image.id) ? '删除中…' : '删除' }}
+                  </button>
+                </div>
+              </div>
+              <div v-if="deletingImageIds.has(item.image.id)" class="mac-del-overlay" role="status" aria-live="polite">
+                <div class="mac-del-spinner" aria-hidden="true"></div>
+                <span class="text-xs font-medium text-gray-700 mt-2">正在删除…</span>
+              </div>
+            </div>
+
+            <!-- 展开态下的多图合集：跨整列容器，内部 grid 列数跟主 grid 一致（1/2/3 列），
+                 这样图片大小跟单图卡片一致，视觉上连贯；多行自动换行，外框完整圈住整体。 -->
+            <div
+              v-if="item.kind === 'group-expanded'"
+              class="col-span-full rounded-xl p-2 transition-all"
+              :style="{
+                border: `2px solid ${colorForGroup(item.group.id)}`,
+                backgroundColor: `${colorForGroup(item.group.id)}10`,
+              }"
+            >
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div
+                  v-for="img in item.group.images"
                   :key="img.id"
-                  type="button"
-                  class="mac-thumb-pile block w-10 h-10 rounded-md overflow-hidden border-2 border-white shadow ring-1 ring-black/10 transition-transform hover:scale-110 active:scale-95"
-                  :title="`第 ${idx + 2} 张`"
-                  @click.stop="openViewer(g.images.map(i => i.media_url), idx + 1)"
+                  class="group/img relative aspect-video rounded-lg overflow-hidden bg-gray-100 border border-gray-200 hover:border-indigo-400 active:scale-95 transition-all cursor-pointer"
+                  :class="{ 'is-deleting-group': deletingImageIds.has(img.id) }"
+                  @click="openViewer(item.group.images.map(i => i.media_url), item.group.images.findIndex(i => i.id === img.id))"
                 >
                   <img
                     :src="img.thumbnail_url || img.media_url"
-                    :alt="`${idx + 2}`"
+                    :alt="`${img.id}`"
                     loading="lazy"
-                    class="w-full h-full object-cover"
+                    class="w-full h-full object-cover transition-opacity duration-300"
+                    :class="loadedCoverIds.has(img.id) ? 'opacity-100' : 'opacity-0'"
+                    @load="markCoverLoaded(img.id)"
                     @error="onImageError($event, img.id)"
                   />
-                </button>
-                <button
-                  v-if="g.image_count > 4"
-                  type="button"
-                  class="mac-thumb-more w-10 h-10 rounded-md border-2 border-white shadow ring-1 ring-black/10 bg-black/65 text-white text-xs font-semibold flex items-center justify-center active:scale-95"
-                  :title="`还有 ${g.image_count - 4} 张`"
-                  @click.stop="enterFullscreenViewer(4)"
-                >
-                  +{{ g.image_count - 4 }}
-                </button>
+                  <!-- 加载骨架：图片未加载完时显示 -->
+                  <div
+                    v-if="!loadedCoverIds.has(img.id)"
+                    class="absolute inset-0 flex items-center justify-center pointer-events-none"
+                    aria-hidden="true"
+                  >
+                    <span class="cover-loading-dot"></span>
+                    <span class="ml-2 text-[10px] font-medium text-gray-400">封面加载中</span>
+                  </div>
+                  <!-- 认领 tag（左上角，已有认领时显示） -->
+                  <div
+                    v-if="claimsOf(img.id).length > 0"
+                    class="absolute top-1 left-1 flex flex-wrap items-center gap-1 max-w-[calc(100%-0.5rem)] z-10"
+                  >
+                    <span
+                      v-for="p in claimsOf(img.id)"
+                      :key="p"
+                      class="bg-blue-600/85 text-white text-[9px] px-1 py-0.5 rounded backdrop-blur font-medium shadow-sm"
+                      :title="`已认领平台：${p}`"
+                    >
+                      🏷 {{ p }}
+                    </span>
+                  </div>
+                  <!-- 右上角删除按钮：只删这一张图 -->
+                  <button
+                    type="button"
+                    class="mac-card-del absolute top-1 right-1 w-6 h-6 flex items-center justify-center rounded-full bg-black/55 hover:bg-red-500 text-white text-xs backdrop-blur active:scale-90 transition-all z-10"
+                    :disabled="deletingImageIds.has(img.id)"
+                    title="只删除这张图"
+                    @click.stop="handleDeleteImage(img, item.group)"
+                  >
+                    <span v-if="deletingImageIds.has(img.id)">…</span>
+                    <span v-else>×</span>
+                  </button>
+                  <!-- 左下角复制 URL 按钮：复制这张图的 media_url -->
+                  <button
+                    type="button"
+                    class="mac-img-copy absolute bottom-1 left-1 text-[10px] px-1.5 py-0.5 rounded bg-black/55 text-white border border-gray-200/40 backdrop-blur hover:bg-indigo-500 active:scale-95 transition-all z-10 flex items-center gap-0.5 opacity-0 group-hover/img:opacity-100"
+                    title="复制这张图的 URL"
+                    @click.stop="copyImageUrl(img.media_url)"
+                  >
+                    <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2v-2m-6-2h8a2 2 0 002-2V5a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    复制URL
+                  </button>
+                  <!-- 右下角认领操作按钮：打开认领弹窗 -->
+                  <button
+                    type="button"
+                    :class="[
+                      'absolute bottom-1 right-1 text-[10px] px-1.5 py-0.5 rounded backdrop-blur active:scale-95 transition-all z-10 flex items-center gap-0.5',
+                      claimsOf(img.id).length > 0
+                        ? 'bg-blue-500/85 text-white border border-blue-200 hover:bg-blue-600'
+                        : 'bg-black/55 text-white border border-blue-200 hover:bg-blue-500',
+                    ]"
+                    :title="claimsOf(img.id).length > 0
+                      ? `已认领：${claimsOf(img.id).join('、')}`
+                      : '标记这张图已发布到哪些平台'"
+                    @click.stop="openClaimDialog(img)"
+                  >
+                    <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    认领<span v-if="claimsOf(img.id).length > 0"> ({{ claimsOf(img.id).length }})</span>
+                  </button>
+                </div>
+              </div>
+              <!-- 删除整组遮罩 -->
+              <div v-if="deletingGroupIds.has(item.group.id)" class="mac-del-overlay" role="status" aria-live="polite">
+                <div class="mac-del-spinner" aria-hidden="true"></div>
+                <span class="text-xs font-medium text-gray-700 mt-2">正在删除…</span>
               </div>
             </div>
 
-            <!-- 正文区 -->
-            <div class="p-3">
-              <div class="flex items-center justify-between gap-2 mb-1.5">
-                <span class="text-xs px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 truncate">
-                  {{ g.category || '未分类' }}
-                </span>
-                <span class="text-[11px] text-gray-400 shrink-0">{{ formatTime(g.created_at) }}</span>
+            <!-- 合集卡片（默认态） -->
+            <div
+              v-else-if="item.kind === 'group'"
+              class="rounded-xl overflow-hidden border border-gray-100 hover:border-indigo-300 hover:shadow-lg transition-all bg-white relative"
+              :class="{ 'is-deleting-group': deletingGroupIds.has(item.group.id) }"
+            >
+              <!-- 封面区：>1 张图时用 swiper 组件横向滑动；单图时 aspect-video 占满 -->
+              <div
+                v-if="item.group.image_count > 1"
+                class="relative bg-gray-100 overflow-hidden group/swiper"
+              >
+                <Swiper
+                  :modules="[Pagination]"
+                  :pagination="{ clickable: true }"
+                  :slides-per-view="1"
+                  :loop="false"
+                  class="w-full"
+                  style="aspect-ratio: 16 / 9;"
+                  @click="openGallery(item.group)"
+                >
+                  <SwiperSlide
+                    v-for="(img, idx) in item.group.images"
+                    :key="img.id"
+                    class="cursor-pointer"
+                    @click.stop="openViewer(item.group.images.map(i => i.media_url), idx)"
+                  >
+                    <img
+                      :src="img.thumbnail_url || img.media_url"
+                      :alt="`第 ${idx + 1} 张`"
+                      loading="lazy"
+                      class="w-full h-full object-cover transition-opacity duration-300"
+                      :class="loadedCoverIds.has(img.id) ? 'opacity-100' : 'opacity-0'"
+                      @load="markCoverLoaded(img.id)"
+                      @error="onImageError($event, img.id)"
+                    />
+                    <!-- 加载骨架：每张图独立判断 -->
+                    <div
+                      v-if="!loadedCoverIds.has(img.id)"
+                      class="cover-skeleton absolute inset-0 flex items-center justify-center pointer-events-none"
+                      aria-hidden="true"
+                    >
+                      <span class="cover-loading-dot"></span>
+                      <span class="ml-2 text-xs font-medium text-gray-400">封面加载中</span>
+                    </div>
+                  </SwiperSlide>
+                </Swiper>
+
+                <!-- 左上角认领 tag（只标封面图） -->
+                <div
+                  v-if="item.group.cover && claimsOf(item.group.cover.id).length > 0"
+                  class="absolute top-2 left-2 flex flex-wrap items-center gap-1 max-w-[calc(100%-1rem)] z-10"
+                >
+                  <span
+                    v-for="p in claimsOf(item.group.cover.id)"
+                    :key="p"
+                    class="bg-blue-600/85 text-white text-[10px] px-1.5 py-0.5 rounded backdrop-blur font-medium shadow-sm"
+                    :title="`已认领平台：${p}`"
+                  >
+                    🏷 {{ p }}
+                  </span>
+                </div>
+                <!-- 右上角：图数徽标 -->
+                <div class="absolute top-2 right-2 z-10">
+                  <span class="bg-black/60 text-white text-xs px-1.5 py-0.5 rounded backdrop-blur">
+                    🖼 {{ item.group.image_count }} 张
+                  </span>
+                </div>
               </div>
-              <h3
-                class="text-sm font-semibold text-gray-800 truncate"
-                :title="groupTitle(g)"
+              <div
+                v-else-if="item.group.cover"
+                class="relative aspect-video bg-gray-100 overflow-hidden cursor-pointer"
+                @click="openViewer([item.group.cover.media_url], 0)"
               >
-                {{ groupTitle(g) }}
-              </h3>
-              <!-- 描述行：当 prompt 正文与标题完全一致时省略，避免视觉重复 -->
-              <p
-                v-if="groupPromptText(g) && groupPromptText(g).trim() !== groupTitle(g).trim()"
-                class="text-xs text-gray-600 mt-1 line-clamp-3 leading-snug"
-                :title="groupPromptText(g)"
-              >
-                {{ groupPromptText(g) }}
-              </p>
-              <div class="flex items-center justify-between mt-2 gap-2 flex-wrap">
-                <span v-if="g.model_name" class="text-[11px] text-indigo-500 truncate max-w-[40%]">
-                  {{ g.model_name }}
-                </span>
-                <!-- 列表认领：按封面图（单图=该图）打开认领弹窗。
-                     多图卡片只能对封面图认领，要认领其它张需进画廊 -->
-                <button
-                  v-if="g.cover"
-                  type="button"
-                  :class="[
-                    'ml-auto text-xs px-2 py-1 rounded-md transition-all flex items-center gap-1',
-                    claimsOf(g.cover.id).length > 0
-                      ? 'bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100'
-                      : 'border border-blue-200 text-blue-600 hover:bg-blue-50',
-                  ]"
-                  :title="claimsOf(g.cover.id).length > 0
-                    ? `已认领：${claimsOf(g.cover.id).join('、')}`
-                    : '标记这张图已发布到哪些平台'"
-                  @click="openClaimDialog(coverAsImage(g.cover))"
+                <img
+                  :src="item.group.cover.thumbnail_url || item.group.cover.media_url"
+                  :alt="groupPromptText(item.group)"
+                  loading="lazy"
+                  class="w-full h-full object-cover transition-opacity duration-300"
+                  :class="loadedCoverIds.has(item.group.cover.id) ? 'opacity-100' : 'opacity-0'"
+                  @load="markCoverLoaded(item.group.cover.id)"
+                  @error="onImageError($event, item.group.cover.id)"
+                />
+                <div
+                  v-if="!loadedCoverIds.has(item.group.cover.id)"
+                  class="cover-skeleton absolute inset-0 flex items-center justify-center pointer-events-none"
+                  aria-hidden="true"
                 >
-                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                  </svg>
-                  认领<span v-if="claimsOf(g.cover.id).length > 0"> ({{ claimsOf(g.cover.id).length }})</span>
-                </button>
-                <button
-                  type="button"
-                  class="text-xs px-2.5 py-1 rounded-md bg-indigo-500 text-white hover:bg-indigo-600 active:scale-95 transition-all"
-                  @click="openGallery(g)"
+                  <span class="cover-loading-dot"></span>
+                  <span class="ml-2 text-xs font-medium text-gray-400">封面加载中</span>
+                </div>
+                <div
+                  v-if="claimsOf(item.group.cover.id).length > 0"
+                  class="absolute top-2 left-2 flex flex-wrap items-center gap-1 max-w-[calc(100%-1rem)]"
                 >
-                  查看 {{ g.image_count }} 张图 →
-                </button>
-                <button
-                  type="button"
-                  class="mac-card-del text-xs px-2 py-1 rounded-md text-red-500 hover:bg-red-50 border border-red-200 hover:border-red-400 transition-all"
-                  :disabled="deletingGroupIds.has(g.id)"
-                  :title="`删除该组（含 ${g.image_count} 张图）`"
-                  @click="handleDeleteGroup(g)"
+                  <span
+                    v-for="p in claimsOf(item.group.cover.id)"
+                    :key="p"
+                    class="bg-blue-600/85 text-white text-[10px] px-1.5 py-0.5 rounded backdrop-blur font-medium shadow-sm"
+                    :title="`已认领平台：${p}`"
+                  >
+                    🏷 {{ p }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- 正文区 -->
+              <div class="p-3">
+                <div class="flex items-center justify-between gap-2 mb-1.5">
+                  <span class="text-xs px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 truncate">
+                    {{ item.group.category || '未分类' }}
+                  </span>
+                  <span class="text-[11px] text-gray-400 shrink-0">{{ formatTime(item.group.created_at) }}</span>
+                </div>
+                <h3 class="text-sm font-semibold text-gray-800 truncate" :title="groupTitle(item.group)">
+                  {{ groupTitle(item.group) }}
+                </h3>
+                <p
+                  v-if="groupPromptText(item.group) && groupPromptText(item.group).trim() !== groupTitle(item.group).trim()"
+                  class="text-xs text-gray-600 mt-1 line-clamp-3 leading-snug"
+                  :title="groupPromptText(item.group)"
                 >
-                  {{ deletingGroupIds.has(g.id) ? '删除中…' : '删除' }}
-                </button>
+                  {{ groupPromptText(item.group) }}
+                </p>
+                <div class="flex items-center justify-between mt-2 gap-2 flex-wrap">
+                  <span v-if="item.group.model_name" class="text-[11px] text-indigo-500 truncate max-w-[40%]">
+                    {{ item.group.model_name }}
+                  </span>
+                  <button
+                    v-if="item.group.cover"
+                    type="button"
+                    :class="[
+                      'ml-auto text-xs px-2 py-1 rounded-md transition-all flex items-center gap-1',
+                      claimsOf(item.group.cover.id).length > 0
+                        ? 'bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100'
+                        : 'border border-blue-200 text-blue-600 hover:bg-blue-50',
+                    ]"
+                    :title="claimsOf(item.group.cover.id).length > 0
+                      ? `已认领：${claimsOf(item.group.cover.id).join('、')}`
+                      : '标记这张图已发布到哪些平台'"
+                    @click="openClaimDialog(coverAsImage(item.group.cover))"
+                  >
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                    </svg>
+                    认领<span v-if="claimsOf(item.group.cover.id).length > 0"> ({{ claimsOf(item.group.cover.id).length }})</span>
+                  </button>
+                  <!-- 复制封面图 URL -->
+                  <button
+                    v-if="item.group.cover"
+                    type="button"
+                    class="text-xs px-2 py-1 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-indigo-300 hover:text-indigo-600 transition-all flex items-center gap-1"
+                    title="复制封面图的 URL"
+                    @click="copyImageUrl(item.group.cover.media_url)"
+                  >
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2v-2m-6-2h8a2 2 0 002-2V5a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    复制URL
+                  </button>
+                  <!-- 发送至「图片切割」：单图合集点图直接进全屏 viewer，没有画廊/详情里的分割入口，操作栏补一个；
+                       多图合集在画廊里有每张图的分割按钮，这里不重复显示 -->
+                  <button
+                    v-if="item.group.image_count <= 1 && item.group.cover"
+                    type="button"
+                    class="text-xs px-2 py-1 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-indigo-300 hover:text-indigo-600 transition-all flex items-center gap-1"
+                    title="把这张图发送到「图片切割」工具"
+                    @click="openInImgCut(coverAsImage(item.group.cover))"
+                  >
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121M12 12l2.879-2.879M12 12L9.121 14.879M21 3v6h-6M3 21v-6h6" />
+                    </svg>
+                    分割
+                  </button>
+                  <!-- 仅当合集有 >1 张图才显示「查看 N 张图」（单图合集点图片直接进 viewer，不需要这个按钮） -->
+                  <button
+                    v-if="item.group.image_count > 1"
+                    type="button"
+                    class="text-xs px-2.5 py-1 rounded-md bg-indigo-500 text-white hover:bg-indigo-600 active:scale-95 transition-all"
+                    @click="openGallery(item.group)"
+                  >
+                    查看 {{ item.group.image_count }} 张图 →
+                  </button>
+                  <button
+                    type="button"
+                    class="mac-card-del text-xs px-2 py-1 rounded-md text-red-500 hover:bg-red-50 border border-red-200 hover:border-red-400 transition-all"
+                    :disabled="deletingGroupIds.has(item.group.id)"
+                    :title="`删除该组（含 ${item.group.image_count} 张图）`"
+                    @click="handleDeleteGroup(item.group)"
+                  >
+                    {{ deletingGroupIds.has(item.group.id) ? '删除中…' : '删除' }}
+                  </button>
+                </div>
+              </div>
+              <div v-if="deletingGroupIds.has(item.group.id)" class="mac-del-overlay" role="status" aria-live="polite">
+                <div class="mac-del-spinner" aria-hidden="true"></div>
+                <span class="text-xs font-medium text-gray-700 mt-2">正在删除…</span>
               </div>
             </div>
-            <!-- 删除中遮罩：覆盖整张卡片，半透明白 + 居中 spinner + 文字 -->
-            <div v-if="deletingGroupIds.has(g.id)" class="mac-del-overlay" role="status" aria-live="polite">
-              <div class="mac-del-spinner" aria-hidden="true"></div>
-              <span class="text-xs font-medium text-gray-700 mt-2">正在删除…</span>
-            </div>
-          </div>
+          </template>
         </div>
 
         <!-- 分页 -->
@@ -1080,6 +1446,19 @@ onUnmounted(() => {
               <span class="absolute top-1.5 left-1.5 bg-black/55 text-white text-[10px] px-1.5 py-0.5 rounded backdrop-blur pointer-events-none">
                 {{ idx + 1 }}/{{ galleryImages.length }}
               </span>
+              <!-- 复制 URL 按钮：跟在 i/N 角标右侧，hover 才显示 -->
+              <button
+                type="button"
+                class="mac-img-copy absolute top-1.5 left-10 px-1.5 py-0.5 rounded bg-black/55 text-white text-[10px] font-medium backdrop-blur hover:bg-indigo-600 opacity-0 group-hover/img:opacity-100 transition-opacity inline-flex items-center gap-1"
+                :title="`复制第 ${idx + 1} 张的 URL`"
+                :aria-label="`复制第 ${idx + 1} 张的 URL`"
+                @click.stop="copyImageUrl(img.media_url)"
+              >
+                <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2v-2m-6-2h8a2 2 0 002-2V5a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                <span>复制URL</span>
+              </button>
               <!-- 认领按钮：左下角，跟 i/N 角标错开避免重叠。
                    跟其它 hover 按钮一样：触屏上 @media (hover: none) 让按钮始终可见。
                    状态显示：未认领灰色描边 + 「认领」；已认领蓝色填充 + 「认领(N)」。 -->
@@ -1280,6 +1659,9 @@ onUnmounted(() => {
   .mac-img-claim {
     opacity: 0.95 !important;
   }
+  .mac-img-copy {
+    opacity: 0.9 !important;
+  }
 }
 
 /* ============ 删除 loading 反馈 ============
@@ -1330,5 +1712,51 @@ onUnmounted(() => {
     border: 2.5px solid #e0e7ff;
     border-radius: 50%;
   }
+}
+
+/* ============ 合集 swiper 容器 ============
+   把官方 swiper 的左右箭头 / 分页条调成截图里那种低调风格：
+   - 左右箭头：默认半透明，鼠标悬停卡片时显示
+   - 分页条：放卡片底部，白色圆点带阴影 */
+.group\/swiper .swiper-button-prev,
+.group\/swiper .swiper-button-next {
+  color: #1f2937;
+  background: rgba(255, 255, 255, 0.85);
+  width: 22px;
+  height: 22px;
+  border-radius: 9999px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.group\/swiper .swiper-button-prev {
+  left: 4px !important;
+  top: auto !important;
+  bottom: 28px !important;  /* 避开底部分页条 */
+}
+.group\/swiper .swiper-button-next {
+  right: 4px !important;
+  top: auto !important;
+  bottom: 28px !important;
+}
+.group\/swiper:hover .swiper-button-prev,
+.group\/swiper:hover .swiper-button-next {
+  opacity: 1;
+}
+.group\/swiper .swiper-button-prev::after,
+.group\/swiper .swiper-button-next::after {
+  font-size: 10px;
+  font-weight: 700;
+}
+.group\/swiper .swiper-pagination {
+  bottom: 6px !important;
+}
+.group\/swiper .swiper-pagination-bullet {
+  background: rgba(255, 255, 255, 0.7);
+  opacity: 1;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+.group\/swiper .swiper-pagination-bullet-active {
+  background: #6366f1;
 }
 </style>
