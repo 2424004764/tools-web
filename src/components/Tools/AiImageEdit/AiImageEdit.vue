@@ -607,6 +607,7 @@ onUnmounted(() => {
                       v-for="(preview, idx) in imagePreviews"
                       :key="imageIds[idx]"
                       class="upload-thumb"
+                      :class="{ 'is-single-thumb': imageFiles.length === 1 }"
                       :style="imageAspectStyles[idx]
                         ? {
                             aspectRatio: imageAspectStyles[idx].aspectRatio,
@@ -1222,6 +1223,16 @@ onUnmounted(() => {
 /* 单图时让缩略图占更多横向空间（去掉列数限制，按容器宽度自适应） */
 .upload-grid.is-single {
   grid-template-columns: minmax(0, 7fr) auto;
+}
+/* 单图上传时缩略图被 grid 拉爆问题：
+   缩略图默认 width: 100% + 父 grid 是 7fr ≈ 整个上传区，1:1 方形容器会被拉成宽 X 高的细长格，
+   里面图片再被 contain 拉成正常比例后整个区域看起来空且错位。
+   修法：单图模式强制缩略图固定 160x160 + gridColumnSpan=1，干净小巧。*/
+.upload-thumb.is-single-thumb {
+  width: 160px;
+  height: 160px;
+  aspect-ratio: 1 / 1 !important;
+  flex: 0 0 auto;
 }
 .upload-thumb {
   position: relative;
