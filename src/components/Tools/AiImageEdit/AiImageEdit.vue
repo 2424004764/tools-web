@@ -295,7 +295,6 @@ const {
 } = save
 const {
   btnRef, canGenerate, concurrencyHint, generateImage, retrySlot,
-  batchStartAt, batchEndAt, totalElapsedMs, formatBatchDuration,
 } = gen
 const { formatElapsed, phaseText } = slotVisuals
 
@@ -892,13 +891,6 @@ onUnmounted(() => {
               <span v-if="results.length > 1" class="text-caption text-gray-400 ml-1">
                 （{{ results.length }} 张并发）
               </span>
-              <span
-                v-if="batchStartAt && batchEndAt && results.length > 0"
-                class="text-caption text-gray-500 ml-2 tabular-nums"
-                :title="'从点击「开始生成」到最后一个 slot 收尾的总耗时'"
-              >
-                耗时 {{ formatBatchDuration(totalElapsedMs) }}
-              </span>
             </label>
 
             <!-- 自动保存到我的创作（无需手动、无开关）：生成完一张自动存一张 -->
@@ -1024,6 +1016,7 @@ onUnmounted(() => {
                 </div>
                 <!-- 自动保存状态：保存中 / 已保存 / 失败可重试（无需手动也无需勾选，生成完自动全部保存） -->
                 <div class="flex items-center gap-2 px-1 mt-1.5 text-caption">
+                  <span class="text-gray-500 tabular-nums">耗时 {{ formatElapsed(slot.elapsedSeconds) }}</span>
                   <span v-if="slot.saveStatus === 'saving'" class="flex items-center gap-1 text-blue-500 font-medium">
                     <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
                       <circle class="opacity-25" cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" />
@@ -1099,6 +1092,7 @@ onUnmounted(() => {
                   </svg>
                 </div>
                 <p class="slot-failed-title">生成失败</p>
+                <p class="text-caption text-gray-500 tabular-nums">耗时 {{ formatElapsed(slot.elapsedSeconds) }}</p>
                 <p class="slot-failed-msg">{{ slot.errorMsg }}</p>
                 <button
                   @click="retrySlot(slot)"
