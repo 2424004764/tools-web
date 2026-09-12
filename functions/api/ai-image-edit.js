@@ -23,6 +23,7 @@
 
 import { extractUidFromRequest } from './_lib/model-resolver.js'
 import { startGeneration, finalizeGeneration } from './_lib/record-generation.js'
+import { persistGeneratedImage } from '../services/generatedImageStorage.js'
 
 const TOOL_URL = '/ai-image-edit/'
 
@@ -605,20 +606,27 @@ export async function onRequest(context) {
       return await errorJson(db, uid, '上游返回成功但未找到图片数据', 502)
     }
 
-    console.log('[ai-image-edit] 成功:', imageUrl.slice(0, 100) + (imageUrl.length > 100 ? '...' : ''))
+    console.log('[ai-image-edit] 上游图片已提取，开始上传 R2')
+    const storedImage = await persistGeneratedImage(env, {
+      uid,
+      recordId,
+      imageUrl,
+    })
+    const resultUrl = storedImage.publicUrl
+    console.log('[ai-image-edit] R2 持久化成功:', resultUrl)
 
     await finalizeRecord({
       status: 'success',
-      resultUrl: imageUrl,
+      resultUrl,
       upstreamStatus: upstreamResponse.status,
       upstreamDurationMs,
-      rawData: { ...recordBase.rawData, response: data },
+      rawData: { ...recordBase.rawData, response: data, r2_key: storedImage.r2Key },
     })
 
     return json({
       ok: true,
       data: {
-        url: imageUrl,
+        url: resultUrl,
         recordId, // 前端下载走代理 /api/me/generation-records/:id/image 用
         cost,
         txId: txId || null,

@@ -741,7 +741,8 @@ const handleCategoryChange = (name: string) => {
   syncUrl()
 }
 
-const handleSourceChange = (source: 'all' | 'ai_generated' | 'manual_upload') => {
+const handleSourceChange = (source: unknown) => {
+  if (source !== 'all' && source !== 'ai_generated' && source !== 'manual_upload') return
   sourceFilter.value = source
   pagination.value.page = 1
   loadGroups()
@@ -914,11 +915,16 @@ onUnmounted(() => {
           >
             {{ batchMode ? '退出批量管理' : '批量管理' }}
           </el-button>
-          <el-select :model-value="sourceFilter" class="!w-32" aria-label="来源筛选" @update:model-value="handleSourceChange">
-            <el-option label="全部来源" value="all" />
-            <el-option label="AI 生成" value="ai_generated" />
-            <el-option label="手动上传" value="manual_upload" />
-          </el-select>
+          <el-radio-group
+            v-model="sourceFilter"
+            class="source-filter"
+            aria-label="来源筛选"
+            @change="handleSourceChange"
+          >
+            <el-radio-button label="all">全部来源</el-radio-button>
+            <el-radio-button label="ai_generated">AI 生成</el-radio-button>
+            <el-radio-button label="manual_upload">手动上传</el-radio-button>
+          </el-radio-group>
         </div>
 
         <!-- 批量操作条：批量操作以「合集」为单位 -->

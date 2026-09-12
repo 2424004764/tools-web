@@ -43,6 +43,7 @@ const selectedById = ref<Map<number, PickerImage>>(new Map())
 const selectedIds = ref<Set<number>>(new Set())
 const selectedImages = computed(() => Array.from(selectedById.value.values()))
 const sourceParam = computed(() => sourceFilter.value === 'all' ? undefined : sourceFilter.value)
+let loadVersion = 0
 
 // 是否有限制 + 还剩几个可选 + 是否已达上限
 const hasLimit = computed(() => typeof props.maxSelect === 'number' && props.maxSelect > 0)
@@ -68,7 +69,7 @@ const open = () => {
 }
 
 const load = async (reset = false) => {
-  if (loading.value) return
+  const version = ++loadVersion
   loading.value = true
   try {
     const result = await fetchAiCreations({
@@ -77,6 +78,8 @@ const load = async (reset = false) => {
       source: sourceParam.value,
       q: keyword.value.trim() || undefined,
     })
+    // 分类或关键词已变化时，丢弃旧请求结果，避免覆盖当前筛选条件。
+    if (version !== loadVersion) return
     const imgs: PickerImage[] = result.groups.flatMap((g) => (g.images || []).map((img) => ({
       ...img,
       source_type: g.source_type,
@@ -89,9 +92,9 @@ const load = async (reset = false) => {
     selectedById.value = new Map(selectedById.value)
     hasNext.value = result.pagination.hasNext
   } catch {
-    ElMessage.error('加载创作结果失败，请稍后重试')
+    if (version === loadVersion) ElMessage.error('加载创作结果失败，请稍后重试')
   } finally {
-    loading.value = false
+    if (version === loadVersion) loading.value = false
   }
 }
 
@@ -102,8 +105,10 @@ const loadMore = () => {
 }
 
 const refresh = () => {
+  loadVersion += 1
   page.value = 1
   hasNext.value = false
+  items.value = []
   void load(true)
 }
 
@@ -213,8 +218,17 @@ onUnmounted(() => {
         <el-button size="small" :disabled="submitting" @click="uploadVisible = true">上传图片</el-button>
       </div>
 
+      <!-- 首次加载 / 切换筛选条件时：不展示旧列表，避免误以为筛选没有生效 -->
+      <div v-if="loading && items.length === 0" class="flex min-h-[240px] flex-col items-center justify-center gap-3 text-gray-400 text-sm" role="status" aria-live="polite">
+        <svg class="h-8 w-8 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+          <circle class="opacity-25" cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" />
+          <path class="opacity-90" d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
+        </svg>
+        <span>正在加载素材…</span>
+      </div>
+
       <!-- 空状态 -->
-      <div v-if="!loading && items.length === 0" class="py-16 text-center text-gray-400 text-sm">
+      <div v-else-if="!loading && items.length === 0" class="py-16 text-center text-gray-400 text-sm">
         {{ keyword.trim() || sourceFilter !== 'all' ? '没有匹配的创作结果' : '还没有创作结果，先去生成几张吧' }}
       </div>
 
