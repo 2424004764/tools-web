@@ -283,6 +283,21 @@ onUnmounted(() => {
 
     <el-card shadow="never" class="!rounded-xl">
       <el-table :data="list" stripe size="default" @row-click="openDetail" style="cursor: pointer;">
+        <el-table-column label="结果" width="76">
+          <template #default="{ row }">
+            <el-image
+              v-if="row.result_url"
+              :src="row.result_url"
+              :preview-src-list="[row.result_url]"
+              fit="cover"
+              class="w-12 h-12 rounded cursor-zoom-in"
+              preview-teleported
+              alt="生成结果"
+              @click.stop
+            />
+            <span v-else class="text-xs text-ink-400">-</span>
+          </template>
+        </el-table-column>
         <el-table-column label="时间" min-width="160">
           <template #default="{ row }">
             <span class="text-xs text-ink-500">{{ formatTime(row.created_at) }}</span>

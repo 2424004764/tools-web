@@ -17,8 +17,8 @@ const POINT_CATEGORIES = new Set([
 const BASE_LAYERS = new Set(['vec', 'img', 'ter'])
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/
 
-// 单条 INSERT 一次塞多少行（每行 9 列，40 行 = 360 个绑定参数，远低于 SQLite 上限）
-const INSERT_CHUNK = 40
+// 单条 INSERT 一次塞多少行（每行 10 列，8 行 = 80 个绑定参数，低于 D1 单语句变量上限）
+const INSERT_CHUNK = 8
 
 class ValidationError extends Error {}
 
