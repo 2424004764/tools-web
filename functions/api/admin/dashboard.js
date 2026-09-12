@@ -1,6 +1,6 @@
 // Admin 仪表盘统计 API
 // GET /api/admin/dashboard
-// 返回：用户总数、今日新增、禁用用户数、积分总余额、最近流水
+// 返回：用户总数、今日新增、禁用用户数、积分总余额、今日积分消耗、最近流水
 //
 // 中间件 _middleware.js 已确保调用方为管理员，无需再做权限检查。
 
@@ -52,6 +52,16 @@ export async function onRequest(context) {
     const totalBalance = creditsRow?.balance || 0
     const totalEarned = creditsRow?.earned || 0
     const creditUsers = creditsRow?.active_users || 0
+
+    // 今日积分消耗（按 UTC+8 自然日，仅统计实际扣费流水）
+    const todayCreditSpentRow = await db
+      .prepare(
+        `SELECT COALESCE(SUM(ABS(amount)), 0) AS spent
+         FROM credit_transactions
+         WHERE type = 'deduct' AND date(created_at, '+8 hours') = date('now', '+8 hours')`,
+      )
+      .first()
+    const todayCreditSpent = todayCreditSpentRow?.spent || 0
 
     // 最近 10 条流水（join user 取邮箱）
     const recentTx = await db
@@ -185,6 +195,7 @@ export async function onRequest(context) {
       disabledUsers,
       totalBalance,
       totalEarned,
+      todayCreditSpent,
       creditUsers,
       recentTransactions: recentTx.results || [],
       tools: {

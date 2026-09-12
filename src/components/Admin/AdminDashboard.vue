@@ -111,6 +111,8 @@ onMounted(load)
             </div>
             <div class="text-xs text-ink-400 mt-1.5">
               累计发放 {{ data?.totalEarned ?? 0 }}
+              <span class="mx-1">·</span>
+              今日消耗 {{ data?.todayCreditSpent ?? 0 }}
             </div>
           </div>
           <span class="admin-stat-icon bg-amber-50 text-amber-600" aria-hidden="true">

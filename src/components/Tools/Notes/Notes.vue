@@ -780,49 +780,47 @@ onMounted(async () => {
               @click="viewNote(note)"
             >
               <div class="note-card-strip" />
-              <div class="note-header">
-                <h4 class="note-title">{{ note.title }}</h4>
-                <div class="note-actions">
-                  <el-button
-                    class="action-icon copy-icon"
-                    size="small"
-                    type="success"
-                    :icon="CopyDocument"
-                    @click.stop="copyNote(note)"
-                    circle
-                    plain
-                  />
-                  <el-button
-                    class="action-icon"
-                    size="small"
-                    :icon="View"
-                    @click.stop="viewNote(note)"
-                    circle
-                    plain
-                  />
-                  <el-button
-                    class="action-icon edit-icon"
-                    size="small"
-                    type="primary"
-                    :icon="Edit"
-                    :loading="operationLoading"
-                    :disabled="operationLoading"
-                    @click.stop="editNote(note)"
-                    circle
-                    plain
-                  />
-                  <el-button
-                    class="action-icon delete-icon"
-                    size="small"
-                    type="danger"
-                    :icon="Delete"
-                    :loading="operationLoading"
-                    :disabled="operationLoading"
-                    @click.stop="deleteNote(note)"
-                    circle
-                    plain
-                  />
-                </div>
+              <h4 class="note-title" :title="note.title">{{ note.title }}</h4>
+              <div class="note-actions">
+                <el-button
+                  class="action-icon copy-icon"
+                  size="small"
+                  type="success"
+                  :icon="CopyDocument"
+                  @click.stop="copyNote(note)"
+                  circle
+                  plain
+                />
+                <el-button
+                  class="action-icon"
+                  size="small"
+                  :icon="View"
+                  @click.stop="viewNote(note)"
+                  circle
+                  plain
+                />
+                <el-button
+                  class="action-icon edit-icon"
+                  size="small"
+                  type="primary"
+                  :icon="Edit"
+                  :loading="operationLoading"
+                  :disabled="operationLoading"
+                  @click.stop="editNote(note)"
+                  circle
+                  plain
+                />
+                <el-button
+                  class="action-icon delete-icon"
+                  size="small"
+                  type="danger"
+                  :icon="Delete"
+                  :loading="operationLoading"
+                  :disabled="operationLoading"
+                  @click.stop="deleteNote(note)"
+                  circle
+                  plain
+                />
               </div>
 
               <div class="note-content">
@@ -1452,40 +1450,40 @@ onMounted(async () => {
   background: rgba(255, 255, 255, 0.98);
 }
 
-.note-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 16px;
-  margin-top: 4px;
-}
-
 .note-title {
   font-size: 18px;
   font-weight: 600;
   color: #1a202c;
-  margin: 0;
-  flex: 1;
+  margin: 0 0 8px 0;
   line-height: 1.4;
   word-break: break-word;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .note-actions {
   display: flex;
-  gap: 8px;
-  opacity: 0;
-  transition: all 0.3s ease;
-}
-
-.note-card:hover .note-actions {
-  opacity: 1;
+  gap: 2px;
+  justify-content: flex-end;
+  margin-bottom: 8px;
 }
 
 .action-icon {
-  width: 32px;
-  height: 32px;
+  width: 22px;
+  height: 22px;
+  min-height: 22px;
+  padding: 0;
   border: none;
-  transition: all 0.3s ease;
+  background: transparent;
+  transition: all 0.2s ease;
+}
+
+.action-icon :deep(.el-icon) {
+  font-size: 13px;
 }
 
 .action-icon:hover {
@@ -2203,6 +2201,8 @@ onMounted(async () => {
 
   .note-actions {
     opacity: 1;
+    max-height: 32px;
+    margin-top: 0;
   }
 
   :deep(.note-dialog .el-dialog__body),

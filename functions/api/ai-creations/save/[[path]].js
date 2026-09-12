@@ -44,7 +44,8 @@ function genUuid() {
   }
 }
 
-const ALLOWED_SCENES = new Set(['ai-image-edit', 'ai-outfit'])
+const ALLOWED_SCENES = new Set(['ai-image-edit', 'ai-outfit', 'manual-upload'])
+const ALLOWED_SOURCES = new Set(['ai_generated', 'manual_upload'])
 const MAX_TITLE = 100
 const MAX_PROMPT = 4000
 const MAX_CATEGORY = 64
@@ -112,6 +113,8 @@ async function handleInit(db, uid, body, env) {
   const category = body.category ? String(body.category).trim().slice(0, MAX_CATEGORY) : null
   const modelName = body.model_name ? String(body.model_name).trim().slice(0, MAX_MODEL) : null
   const title = body.title ? String(body.title).trim().slice(0, MAX_TITLE) : null
+  const sourceType = body.source_type ? String(body.source_type).trim() : (scene === 'manual-upload' ? 'manual_upload' : 'ai_generated')
+  if (!ALLOWED_SOURCES.has(sourceType)) return jsonError('source_type 不合法', 400)
   const images = Array.isArray(body.images) ? body.images : []
   if (images.length === 0) {
     return jsonError('images 不能为空', 400)
@@ -120,8 +123,8 @@ async function handleInit(db, uid, body, env) {
     return jsonError(`单次最多保存 ${MAX_IMAGES_PER_BATCH} 张图片`, 400)
   }
   for (const img of images) {
-    if (!img || typeof img !== 'object' || !img.upstream_url || !img.prompt) {
-      return jsonError('images 每项必须包含 upstream_url 与 prompt', 400)
+    if (!img || typeof img !== 'object' || (!img.upstream_url && sourceType !== 'manual_upload') || !img.prompt) {
+      return jsonError('images 每项必须包含 prompt，生成素材还需要 upstream_url', 400)
     }
     if (String(img.prompt).length > MAX_PROMPT) {
       return jsonError(`单条 prompt 不能超过 ${MAX_PROMPT} 字符`, 400)
@@ -142,13 +145,14 @@ async function handleInit(db, uid, body, env) {
       await db
         .prepare(
           `UPDATE ai_creation_groups
-           SET title = COALESCE(NULLIF(?, ''), title),
+           SET source_type = ?,
+               title = COALESCE(NULLIF(?, ''), title),
                category = COALESCE(NULLIF(?, ''), category),
                model_name = COALESCE(NULLIF(?, ''), model_name),
                updated_at = ?
            WHERE id = ? AND uid = ?`,
         )
-        .bind(title || '', category || '', modelName || '', nowSql(), groupId, uid)
+        .bind(sourceType, title || '', category || '', modelName || '', nowSql(), groupId, uid)
         .run()
     }
   }
@@ -157,10 +161,10 @@ async function handleInit(db, uid, body, env) {
     const ins = await db
       .prepare(
         `INSERT INTO ai_creation_groups
-           (uid, prompt_id, scene, category, model_name, title, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+           (uid, prompt_id, scene, source_type, category, model_name, title, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .bind(uid, promptId, scene, category, modelName, title, now, now)
+      .bind(uid, promptId, scene, sourceType, category, modelName, title, now, now)
       .run()
     groupId = ins.meta?.last_row_id || 0
     if (!groupId) return jsonError('创建 group 失败', 500)
@@ -176,9 +180,8 @@ async function handleInit(db, uid, body, env) {
     const ext = extFromContentType(img.content_type || img.mime || '')
     const uuid = genUuid()
     const r2Key = `ai-creations/${uid}/${groupId}/${uuid}.${ext}`
-    // 强制锁定为 image/png（与 SigV4 签名一致）；PNG 是浏览器原生支持的通用格式
-    // 真实格式以 PUT 时 Content-Type 为准（这里统一用 image/png 简化）
-    const contentType = 'image/png'
+    // 使用客户端声明的图片类型签名，避免手动上传被强制改成 PNG。
+    const contentType = String(img.content_type || img.mime || 'image/png').toLowerCase()
     const { uploadUrl, expiresAt } = await signR2PutUrl(env, bucket, r2Key, contentType)
     const publicUrl = buildR2PublicUrl(env, r2Key)
     plan.push({
@@ -188,7 +191,8 @@ async function handleInit(db, uid, body, env) {
       content_type: contentType,
       public_url: publicUrl, // R2_PUBLIC_HOST 未配置时为 ''
       expires_at: expiresAt,
-      upstream_url: String(img.upstream_url),
+      upstream_url: String(img.upstream_url || ''),
+      filename: String(img.filename || `image.${ext}`).slice(0, 255),
       prompt: String(img.prompt),
       width: Number.isFinite(img.width) ? Number(img.width) : null,
       height: Number.isFinite(img.height) ? Number(img.height) : null,
@@ -245,15 +249,16 @@ async function handleConfirm(db, uid, body, env) {
       const ins = await db
         .prepare(
           `INSERT INTO ai_creation_images
-             (group_id, uid, media_type, media_url, thumbnail_url, prompt,
+             (group_id, uid, media_type, media_url, thumbnail_url, filename, prompt,
               width, height, file_size, created_at, updated_at)
-           VALUES (?, ?, 'image', ?, ?, ?, ?, ?, ?, ?, ?)`,
+           VALUES (?, ?, 'image', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .bind(
           groupId,
           uid,
           mediaUrl,
           null, // thumbnail_url 暂存空，未来可由图像处理函数回填
+          String(img.filename || 'image.png').slice(0, 255),
           String(img.prompt).slice(0, MAX_PROMPT),
           width,
           height,

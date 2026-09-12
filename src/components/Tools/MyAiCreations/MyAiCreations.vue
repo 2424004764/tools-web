@@ -23,6 +23,7 @@ import {
   type AiCreationCategory,
 } from '@/api/ai-creations'
 import ClaimDialog from './ClaimDialog.vue'
+import ManualUploadDialog from './ManualUploadDialog.vue'
 import Expand from '~icons/ep/expand'
 import Fold from '~icons/ep/fold'
 import Star from '~icons/ep/star'
@@ -41,6 +42,7 @@ const info = reactive({ title: '我的 AI 创作' })
 // ============ 列表筛选状态（分类 / 页码 / 搜索 / 只看收藏）============
 // 这四项都会同步到 URL query（category/page/q/fav），刷新或分享链接后状态可恢复。
 const activeCategory = ref<string>('')
+const sourceFilter = ref<'all' | 'ai_generated' | 'manual_upload'>('all')
 const searchQ = ref<string>('')
 const favOnly = ref<boolean>(false)
 // 输入框即时绑定值；回车/点搜索才真正触发请求（searchQ 同步成它）
@@ -77,6 +79,7 @@ const failedIds = reactive(new Set<number>())
 const syncUrl = () => {
   const query: Record<string, string> = {}
   if (activeCategory.value) query.category = activeCategory.value
+  if (sourceFilter.value !== 'all') query.source = sourceFilter.value
   if (pagination.value.page > 1) query.page = String(pagination.value.page)
   if (searchQ.value.trim()) query.q = searchQ.value.trim()
   if (favOnly.value) query.fav = '1'
@@ -87,8 +90,9 @@ const syncUrl = () => {
 
 // 从 URL query 恢复筛选状态（onMounted 时、loadGroups 之前调用）
 const restoreFromUrl = () => {
-  const { category, page, q, fav } = route.query
+  const { category, page, q, fav, source } = route.query
   if (typeof category === 'string' && category) activeCategory.value = category
+  if (source === 'ai_generated' || source === 'manual_upload') sourceFilter.value = source
   if (typeof page === 'string') {
     const p = parseInt(page, 10)
     if (Number.isFinite(p) && p > 0) pagination.value.page = p
@@ -194,9 +198,10 @@ const handleBatchDownload = async () => {
       // 文件夹名：组 id + 标题片段；去掉文件系统非法字符
       const safeTitle = (groupTitle(g) || '').replace(/[\\/:*?"<>|\s]+/g, '_').slice(0, 30)
       const folder = zip.folder(`${g.id}-${safeTitle || 'untitled'}`)
-      g.images.forEach((img, idx) => {
+      g.images.forEach((img) => {
         const ext = extFromUrlOrType(img.media_url)
-        tasks.push({ folder, name: `${String(idx + 1).padStart(2, '0')}-${img.id}.${ext}`, url: img.media_url })
+        const filename = safeZipFilename(img.filename || `${img.id}.${ext}`)
+        tasks.push({ folder, name: filename, url: img.media_url })
       })
     }
     if (tasks.length === 0) {
@@ -246,6 +251,11 @@ const extFromUrlOrType = (url: string): string => {
   const m = /\.(jpe?g|png|webp|gif)(?:[?#]|$)/i.exec(url || '')
   if (m) return m[1]!.toLowerCase().replace('jpeg', 'jpg')
   return 'png'
+}
+
+const safeZipFilename = (filename: string): string => {
+  const safe = filename.replace(/[\\/:*?"<>|\s]+/g, '_').trim()
+  return safe || 'image.png'
 }
 
 // ============ 收藏 / 星标 ============
@@ -403,6 +413,7 @@ const coverAsImage = (cover: NonNullable<AiCreationGroup['cover']>): AiCreationI
   id: cover.id,
   media_url: cover.media_url,
   thumbnail_url: cover.thumbnail_url,
+  filename: '',
   prompt: '',
   width: null,
   height: null,
@@ -705,6 +716,7 @@ const loadGroups = async () => {
       category: activeCategory.value || undefined,
       q: searchQ.value.trim() || undefined,
       favOnly: favOnly.value || undefined,
+      source: sourceFilter.value === 'all' ? undefined : sourceFilter.value,
     })
     loadedCoverIds.clear()
     failedIds.clear()
@@ -727,6 +739,23 @@ const handleCategoryChange = (name: string) => {
   pagination.value.page = 1
   loadGroups()
   syncUrl()
+}
+
+const handleSourceChange = (source: 'all' | 'ai_generated' | 'manual_upload') => {
+  sourceFilter.value = source
+  pagination.value.page = 1
+  loadGroups()
+  syncUrl()
+}
+
+const uploadDialogVisible = ref(false)
+const openUploadDialog = () => { uploadDialogVisible.value = true }
+const handleUploadSuccess = async () => {
+  uploadDialogVisible.value = false
+  sourceFilter.value = 'manual_upload'
+  pagination.value.page = 1
+  syncUrl()
+  await loadGroups()
 }
 
 const handlePageChange = (p: number) => {
@@ -801,6 +830,8 @@ const currentCategoryName = computed(() => {
   return c ? c.name : activeCategory.value
 })
 
+const sourceLabel = (source: AiCreationGroup['source_type']) => source === 'manual_upload' ? '手动上传' : 'AI 生成'
+
 // 跳转到 /ai-image-edit/ 任务入口
 const goCreate = () => {
   router.push('/ai-image-edit/')
@@ -834,16 +865,17 @@ onUnmounted(() => {
           <h2 class="text-base font-semibold text-gray-800">我的 AI 创作素材</h2>
         </div>
         <p class="text-sm text-gray-600 leading-relaxed">
-          仅展示当前登录用户在 AI 工具中生成的图片素材，按提示词任务分组浏览。
+          仅展示当前登录用户在 AI 工具中生成或上传的图片素材，按任务分组浏览。
           点击任意图片可全屏查看与切换。
         </p>
-        <button
-          type="button"
-          class="mt-3 inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md bg-indigo-500 text-white hover:bg-indigo-600 active:scale-95 transition-all"
-          @click="goCreate"
-        >
-          去 AI 图片编辑 →
-        </button>
+          <button
+            type="button"
+            class="mt-3 inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md bg-indigo-500 text-white hover:bg-indigo-600 active:scale-95 transition-all"
+            @click="goCreate"
+          >
+            去 AI 图片编辑 →
+          </button>
+          <el-button class="mt-3 !ml-2" type="primary" plain @click="openUploadDialog">上传图片</el-button>
       </div>
     </div>
 
@@ -882,6 +914,11 @@ onUnmounted(() => {
           >
             {{ batchMode ? '退出批量管理' : '批量管理' }}
           </el-button>
+          <el-select :model-value="sourceFilter" class="!w-32" aria-label="来源筛选" @update:model-value="handleSourceChange">
+            <el-option label="全部来源" value="all" />
+            <el-option label="AI 生成" value="ai_generated" />
+            <el-option label="手动上传" value="manual_upload" />
+          </el-select>
         </div>
 
         <!-- 批量操作条：批量操作以「合集」为单位 -->
@@ -975,14 +1012,16 @@ onUnmounted(() => {
       <div v-loading="loading" class="rounded-2xl bg-white p-4">
         <div v-if="groups.length === 0 && !loading" class="py-16 text-center text-gray-400">
           <div class="text-5xl mb-2">📭</div>
-          <p class="mb-3">还没有任何记录</p>
+          <p class="mb-3">{{ sourceFilter === 'manual_upload' ? '还没有手动上传的图片' : sourceFilter === 'ai_generated' ? '还没有 AI 生成的图片' : '还没有任何创作记录' }}</p>
           <button
+            v-if="sourceFilter !== 'manual_upload'"
             type="button"
             class="text-sm px-4 py-2 rounded-lg bg-indigo-500 text-white hover:bg-indigo-600 active:scale-95 transition-all"
             @click="goCreate"
           >
             去 AI 图片编辑生成一张
           </button>
+          <el-button v-if="sourceFilter === 'manual_upload'" type="primary" plain @click="openUploadDialog">上传图片</el-button>
         </div>
 
         <!-- 合集列表。
@@ -1043,6 +1082,7 @@ onUnmounted(() => {
                   <span class="text-xs px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 truncate">
                     {{ item.parent.category || '未分类' }}
                   </span>
+                  <span class="text-[11px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 shrink-0">{{ sourceLabel(item.parent.source_type) }}</span>
                   <span class="text-[11px] text-gray-400 shrink-0">{{ formatTime(item.parent.created_at) }}</span>
                 </div>
                 <!-- 标题 + 复制提示词按钮（同合集卡片：提示词与标题重复时正文不渲染，入口固定在标题旁） -->
@@ -1070,6 +1110,7 @@ onUnmounted(() => {
                   {{ groupPromptText(item.parent) }}
                 </p>
                 <div class="flex items-center justify-between mt-2 gap-2 flex-wrap">
+                  <span v-if="item.image.filename" class="text-[11px] text-gray-500 truncate max-w-full" :title="item.image.filename">{{ item.image.filename }}</span>
                   <span v-if="item.parent.model_name" class="text-[11px] text-indigo-500 truncate max-w-[40%]">
                     {{ item.parent.model_name }}
                   </span>
@@ -1384,6 +1425,7 @@ onUnmounted(() => {
                   <span class="text-xs px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 truncate">
                     {{ item.group.category || '未分类' }}
                   </span>
+                  <span class="text-[11px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 shrink-0">{{ sourceLabel(item.group.source_type) }}</span>
                   <span class="text-[11px] text-gray-400 shrink-0">{{ formatTime(item.group.created_at) }}</span>
                 </div>
                 <!-- 标题 + 复制提示词按钮：提示词与标题重复时正文段落不渲染，
@@ -1577,6 +1619,9 @@ onUnmounted(() => {
               <el-tag size="small" type="success" effect="plain">
                 🖼 {{ selectedGroup.image_count }} 张
               </el-tag>
+              <el-tag size="small" type="info" effect="plain">
+                {{ sourceLabel(selectedGroup.source_type) }}
+              </el-tag>
               <el-tag v-if="selectedGroup.scene" size="small" type="info" effect="plain">
                 {{ selectedGroup.scene }}
               </el-tag>
@@ -1706,6 +1751,9 @@ onUnmounted(() => {
               <el-descriptions-item label="图片数">
                 {{ selectedGroup.image_count }}
               </el-descriptions-item>
+              <el-descriptions-item v-if="selectedImage?.filename" label="文件名">
+                {{ selectedImage.filename }}
+              </el-descriptions-item>
               <el-descriptions-item v-if="selectedImage?.width && selectedImage?.height" label="图片尺寸">
                 {{ selectedImage.width }} × {{ selectedImage.height }}
               </el-descriptions-item>
@@ -1819,6 +1867,7 @@ onUnmounted(() => {
           <div class="flex items-center gap-2 mb-1.5 flex-wrap">
             <el-tag size="small" type="primary" effect="plain">{{ galleryGroup.category || '未分类' }}</el-tag>
             <el-tag size="small" type="success" effect="plain">🖼 {{ galleryImages.length }} 张</el-tag>
+            <el-tag size="small" type="info" effect="plain">{{ sourceLabel(galleryGroup.source_type) }}</el-tag>
             <el-tag v-if="galleryGroup.scene" size="small" type="info" effect="plain">{{ galleryGroup.scene }}</el-tag>
             <!-- 整组的认领统计：聚合所有图的所有平台去重后的数量。
                  0 时整段不渲染，不打扰未认领的组。 -->
@@ -1888,6 +1937,7 @@ onUnmounted(() => {
               <span class="absolute top-1.5 left-1.5 bg-black/55 text-white text-[10px] px-1.5 py-0.5 rounded backdrop-blur pointer-events-none">
                 {{ idx + 1 }}/{{ galleryImages.length }}
               </span>
+              <span v-if="img.filename" class="absolute bottom-1.5 left-1.5 max-w-[calc(100%-3rem)] truncate bg-black/55 text-white text-[10px] px-1.5 py-0.5 rounded backdrop-blur pointer-events-none" :title="img.filename">{{ img.filename }}</span>
               <!-- 复制 URL 按钮：跟在 i/N 角标右侧，hover 才显示 -->
               <button
                 type="button"
@@ -1965,6 +2015,11 @@ onUnmounted(() => {
     <!-- 认领弹窗：标记当前图已发布到哪些平台。
          claimDialogImageId 通过 openClaimDialog() 设置，nextTick 后再调 open()。
          saved 事件触发后用本地缓存 updateLocalClaims 同步，避免再发请求。 -->
+    <ManualUploadDialog
+      v-model="uploadDialogVisible"
+      @success="handleUploadSuccess"
+    />
+
     <ClaimDialog
       ref="claimDialogRef"
       :image-id="claimDialogImageId ?? 0"
@@ -1986,7 +2041,7 @@ onUnmounted(() => {
 
     <ToolDetail title="关于">
       <el-text>
-        本页面仅展示当前登录用户自己在 AI 工具中生成的图片素材，按提示词任务分组。
+        本页面仅展示当前登录用户自己在 AI 工具中生成或上传的图片素材，按任务分组浏览。
         数据保存在 Cloudflare D1 中，严格按用户隔离，跨用户完全不可见。
       </el-text>
     </ToolDetail>
