@@ -50,6 +50,7 @@ const phaseText = (s: number) => {
 export function useSlotVisuals() {
   // 计时器存 Map，避免 Vue 把 setInterval id 视为响应式字段
   const slotTimers = new Map<string, ReturnType<typeof setInterval>>()
+  const slotTimerStarts = new Map<string, number>()
   const slotCanvasAnims = new Map<string, number>()
   const slotCanvasResizers = new Map<string, (() => void) | null>()
 
@@ -180,11 +181,14 @@ export function useSlotVisuals() {
 
   const startSlotTimer = (slot: ResultSlot) => {
     stopSlotTimer(slot)
+    const startedAt = Date.now()
+    slotTimerStarts.set(slot.id, startedAt)
+    slot.elapsedSeconds = 0
     slotTimers.set(
       slot.id,
       setInterval(() => {
-        slot.elapsedSeconds++
-      }, 1000),
+        slot.elapsedSeconds = Math.max(0, Math.floor((Date.now() - startedAt) / 1000))
+      }, 250),
     )
     // 启动 canvas 粒子动画（等 Vue 把 DOM 渲染完）
     startSlotCanvasByDataAttr(slot.id)
@@ -196,6 +200,11 @@ export function useSlotVisuals() {
       clearInterval(t)
       slotTimers.delete(slot.id)
     }
+    const startedAt = slotTimerStarts.get(slot.id)
+    if (startedAt != null) {
+      slot.elapsedSeconds = Math.max(0, Math.floor((Date.now() - startedAt) / 1000))
+      slotTimerStarts.delete(slot.id)
+    }
     // 计时停了就顺手停 canvas（fireOneRequest 走这条路径级联生效）
     stopSlotCanvas(slot.id)
   }
@@ -203,6 +212,7 @@ export function useSlotVisuals() {
   const stopAllSlotTimers = () => {
     for (const t of slotTimers.values()) clearInterval(t)
     slotTimers.clear()
+    slotTimerStarts.clear()
   }
 
   // 同时停掉每格的 canvas 动画（批量结束 / 组件卸载时调用）
