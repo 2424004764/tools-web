@@ -142,7 +142,7 @@ const creationPickerRef = ref<InstanceType<typeof CreationPickerDialog> | null>(
 const preselectedCreationIds = computed<number[]>(() => {
   const ids: number[] = []
   for (const name of uploadedFileNames.value) {
-    const m = /^creation-(\d+)\.[^.]+$/.exec(name || '')
+    const m = /^creation-(\d+)(?:-[^.]+)?\.[^.]+$/.exec(name || '')
     if (m) ids.push(Number(m[1]))
   }
   return ids
@@ -179,14 +179,14 @@ const handlePickCreationImage = async (imgs: AiCreationImage[]) => {
             const retryResp = await fetch(`/api/image-proxy?url=${encodeURIComponent(img.media_url)}`)
             if (retryResp.ok) {
               const blob = await retryResp.blob()
-              return makeFileFromBlob(blob, img.id)
+              return makeFileFromBlob(blob, img.id, img.filename)
             }
           }
           const text = await resp.text().catch(() => '')
           throw new Error(`HTTP ${resp.status}${text ? `: ${text}` : ''}`)
         }
         const blob = await resp.blob()
-        return makeFileFromBlob(blob, img.id)
+        return makeFileFromBlob(blob, img.id, img.filename)
       } catch (err) {
         console.error('[creation-pick] fetch failed', img.id, err)
         return null
@@ -213,7 +213,7 @@ const handlePickCreationImage = async (imgs: AiCreationImage[]) => {
 }
 
 // 从 blob + 创建 Creation File（命名沿用 creation-${id}.${ext} 让父组件 computed 能识别）
-function makeFileFromBlob(blob: Blob, id: number): File {
+function makeFileFromBlob(blob: Blob, id: number, filename?: string): File {
   const type = blob.type || 'image/png'
   const ext = type.includes('jpeg') || type.includes('jpg')
     ? 'jpg'
@@ -222,7 +222,8 @@ function makeFileFromBlob(blob: Blob, id: number): File {
       : type.includes('gif')
         ? 'gif'
         : 'png'
-  return new File([blob], `creation-${id}.${ext}`, { type })
+  const originalBase = (filename || '').replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '')
+  return new File([blob], `creation-${id}${originalBase ? `-${originalBase}` : ''}.${ext}`, { type })
 }
 
 // 响应式：< 640px 视为手机端 → 「我的历史」改走独立页面 /ai-image-edit/history

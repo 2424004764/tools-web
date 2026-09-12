@@ -6,6 +6,10 @@ import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import * as echarts from 'echarts'
 import type { ECharts } from 'echarts'
 import { fixedExpenseApi } from './api'
+import FixedExpensesSharePoster from './FixedExpensesSharePoster.vue'
+import SharePreviewDialog from './SharePreviewDialog.vue'
+import { captureSharePoster } from './sharePoster'
+import type { FixedExpensesPosterSnapshot } from './FixedExpensesSharePoster.vue'
 import type { FixedExpense, FixedExpenseStatistics } from './types'
 import { EXPENSE_CATEGORIES, getCategoryMeta } from './types'
 import { useUserStore } from '@/store/modules/user'
@@ -32,6 +36,12 @@ const statistics = ref<FixedExpenseStatistics>(defaultStatistics)
 
 const notLoggedIn = ref(false)
 const loading = ref(false)
+const shareLoading = ref(false)
+const sharePreviewVisible = ref(false)
+const sharePreviewUrl = ref('')
+const sharePreviewBlob = ref<Blob | null>(null)
+const posterRef = ref<InstanceType<typeof FixedExpensesSharePoster>>()
+const posterSnapshot = ref<FixedExpensesPosterSnapshot>({ statistics: defaultStatistics, items: [], toolLink: '', shareDate: '' })
 const submitLoading = ref(false)
 const toggleLoadingId = ref<string | null>(null)
 
@@ -71,6 +81,19 @@ const formatMoneyShort = (val: number | null | undefined): string => {
 }
 
 const parseAmount = (s: string): number => parseFloat(String(s).replace(/,/g, ''))
+
+// 分享海报底部日期
+const formatShareDate = (): string => {
+  const d = new Date()
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
+
+// 当前工具页面 URL（用于分享海报底部二维码）
+const toolLink = computed(() => {
+  if (typeof window === 'undefined') return ''
+  return `${window.location.origin}/fixed-expenses/`
+})
 
 // 列表（应用筛选 + 排序）
 const filteredItems = computed(() => {
@@ -309,28 +332,40 @@ const handleToggleActive = async (item: FixedExpense) => {
   }
 }
 
+const closeSharePreview = () => {
+  sharePreviewVisible.value = false
+  if (sharePreviewUrl.value) URL.revokeObjectURL(sharePreviewUrl.value)
+  sharePreviewUrl.value = ''
+  sharePreviewBlob.value = null
+}
+
 const handleShare = async () => {
-  const card = document.querySelector('.fe-share-card') as HTMLElement
+  const card = posterRef.value?.getElement()
   if (!card) {
     ElMessage.warning('请先生成汇总卡片')
     return
   }
+  shareLoading.value = true
   try {
-    const { default: html2canvas } = await import('html2canvas')
-    const canvas = await html2canvas(card)
-    canvas.toBlob(blob => {
-      if (blob) {
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `每月固定开销_${statistics.value.currentMonth || ''}.png`
-        a.click()
-        URL.revokeObjectURL(url)
-        ElMessage.success('图片已保存')
-      }
-    })
-  } catch {
+    const snapshot: FixedExpensesPosterSnapshot = JSON.parse(JSON.stringify({
+      statistics: statistics.value,
+      items: items.value,
+      toolLink: toolLink.value,
+      shareDate: formatShareDate()
+    }))
+    posterSnapshot.value = snapshot
+    await nextTick()
+    const blob = await captureSharePoster(card)
+    if (sharePreviewUrl.value) URL.revokeObjectURL(sharePreviewUrl.value)
+    sharePreviewBlob.value = blob
+    sharePreviewUrl.value = URL.createObjectURL(blob)
+    sharePreviewVisible.value = true
+    ElMessage.success('图片已生成')
+  } catch (err) {
+    console.error('分享失败', err)
     ElMessage.error('分享失败，请稍后重试')
+  } finally {
+    shareLoading.value = false
   }
 }
 
@@ -368,6 +403,7 @@ onMounted(async () => {
 
 // 卸载
 onBeforeUnmount(() => {
+  closeSharePreview()
   window.removeEventListener('resize', handleResize)
   chartInstance?.dispose()
 })
@@ -390,7 +426,7 @@ onBeforeUnmount(() => {
     <div v-else class="px-3 sm:px-0 pb-6 space-y-4 sm:space-y-6">
       <!-- 月度总开销大卡片 -->
       <div class="glass-card-dark rounded-3xl p-4 sm:p-6">
-        <div class="fe-share-card p-6 rounded-2xl bg-gradient-to-br from-rose-500 via-pink-500 to-fuchsia-500 text-white shadow-lg relative overflow-hidden">
+        <div class="fe-hero-card p-6 rounded-2xl bg-gradient-to-br from-rose-500 via-pink-500 to-fuchsia-500 text-white shadow-lg relative overflow-hidden">
           <div class="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
           <div class="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2"></div>
           <div class="relative">
@@ -449,7 +485,7 @@ onBeforeUnmount(() => {
               <span class="text-h3">🥧</span>
               <span class="font-semibold text-gray-700">分类占比</span>
             </div>
-            <el-button link class="!text-rose-600 !font-medium" :loading="loading" @click="handleShare">
+            <el-button link class="!text-rose-600 !font-medium" :loading="shareLoading" @click="handleShare">
               <el-icon><Share /></el-icon> 分享汇总
             </el-button>
           </div>
@@ -594,6 +630,14 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </div>
+
+    <FixedExpensesSharePoster v-if="!notLoggedIn" ref="posterRef" :snapshot="posterSnapshot" />
+
+    <SharePreviewDialog
+      v-model="sharePreviewVisible"
+      :image-url="sharePreviewUrl"
+      @closed="closeSharePreview"
+    />
 
     <!-- 添加对话框 -->
     <el-dialog v-model="showAddDialog" title="添加固定开销" width="92%" :style="{ maxWidth: '480px' }" :close-on-click-modal="false">
@@ -782,6 +826,48 @@ export default {
   font-weight: 500;
 }
 
+:deep(.fe-share-preview-dialog) {
+  max-width: calc(100vw - 24px) !important;
+  margin: 12px auto;
+}
+:deep(.fe-share-preview-dialog .fe-share-preview) {
+  width: 100%;
+  max-height: 72vh;
+  overflow: auto;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 12px;
+  background: #f8fafc;
+  box-sizing: border-box;
+}
+:deep(.fe-share-preview-dialog .fe-share-preview-image) {
+  display: block;
+  width: min(750px, 100%);
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.fe-share-preview {
+  width: 100%;
+  max-height: 72vh;
+  overflow: auto;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 12px;
+  background: #f8fafc;
+  box-sizing: border-box;
+}
+.fe-share-preview-image {
+  display: block;
+  width: min(750px, 100%);
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
 :deep(.el-dialog) {
   border-radius: 16px !important;
 }
@@ -815,4 +901,5 @@ export default {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
 }
+
 </style>

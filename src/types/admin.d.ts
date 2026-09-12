@@ -171,6 +171,7 @@ export interface AdminDashboard {
   disabledUsers: number
   totalBalance: number
   totalEarned: number
+  todayCreditSpent: number
   creditUsers: number
   recentTransactions: CreditTransaction[]
   tools: { total: number; enabled: number }

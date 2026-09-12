@@ -5,7 +5,7 @@
 //     GET /api/ai-creations/categories   当前 uid 出现的分类聚合
 //
 // 所有请求都强制要求登录（后端 uid 校验），未登录返回 401。
-// 写入侧（图片入库）后续由 /ai-image-edit/ 等工具完成；本次仅做展示。
+// 写入侧（图片入库）由 /ai-image-edit/ 等工具或手动上传组件完成。
 
 import { functionsRequest } from '@/utils/functionsRequest'
 
@@ -13,6 +13,7 @@ export interface AiCreationImage {
   id: number
   media_url: string
   thumbnail_url: string | null
+  filename: string
   prompt: string
   width: number | null
   height: number | null
@@ -24,6 +25,7 @@ export interface AiCreationGroup {
   prompt_id: string | null
   prompt: { id: string; title: string | null; content: string } | null
   scene: string
+  source_type: 'ai_generated' | 'manual_upload'
   category: string | null
   model_name: string | null
   title: string | null
@@ -58,6 +60,8 @@ export interface ListAiCreationsParams {
   q?: string
   /** 只看收藏 */
   favOnly?: boolean
+  /** 来源筛选 */
+  source?: 'ai_generated' | 'manual_upload'
 }
 
 export async function fetchAiCreations(
@@ -100,13 +104,16 @@ export interface InitSaveRequest {
   /** 可选；来自 user_tool_prompts.id；非空时按 (uid, prompt_id) 复用 group */
   prompt_id?: string | null
   /** 来源场景，如 'ai-image-edit' */
-  scene: 'ai-image-edit' | 'ai-outfit'
+  scene: 'ai-image-edit' | 'ai-outfit' | 'manual-upload'
   category?: string
   model_name?: string
   title?: string
+  /** 来源类型 */
+  source_type?: 'ai_generated' | 'manual_upload'
   images: Array<{
-    upstream_url: string
+    upstream_url?: string
     prompt: string
+    filename?: string
     width?: number
     height?: number
     content_type?: string
@@ -135,6 +142,7 @@ export interface ConfirmSaveRequest {
     width?: number
     height?: number
     file_size?: number
+    filename?: string
   }>
 }
 
@@ -292,4 +300,70 @@ export async function unclaimByImages(
     params: { image_ids: imageIds.join(',') },
   })
   return res.data.data
+}
+
+// ============ 手动上传（本地图片 → 我的创作）============
+export interface ManualUploadFile {
+  file: File
+  filename?: string
+  width?: number
+  height?: number
+}
+
+export interface ManualUploadOptions {
+  title?: string
+  category?: string
+}
+
+export interface ManualUploadResult {
+  group_id: number
+  inserted: number
+  ids: number[]
+}
+
+/**
+ * 使用 init → R2 PUT → confirm 流程保存本地图片。
+ * filename 由调用方传入，适合在上传前让用户编辑名称。
+ */
+export async function saveManualAiCreationFiles(
+  files: ManualUploadFile[],
+  options: ManualUploadOptions = {},
+): Promise<ManualUploadResult> {
+  if (files.length === 0) throw new Error('至少选择一张图片')
+  const init = await initAiCreationSave({
+    scene: 'manual-upload',
+    source_type: 'manual_upload',
+    title: options.title,
+    category: options.category,
+    images: files.map(({ file, filename, width, height }) => ({
+      prompt: '(手动上传)',
+      filename: filename || file.name,
+      width,
+      height,
+      content_type: file.type || 'image/png',
+    })),
+  })
+
+  await Promise.all(init.plan.map(async (plan) => {
+    const item = files[plan.index]
+    if (!item) throw new Error(`上传计划缺少第 ${plan.index + 1} 张图片`)
+    await uploadImageBlobToR2(plan.upload_url, item.file, plan.content_type)
+  }))
+
+  const confirmed = await confirmAiCreationSave({
+    group_id: init.group_id,
+    images: init.plan.map((plan) => {
+      const item = files[plan.index]
+      return {
+        r2_key: plan.r2_key,
+        public_url: plan.public_url || undefined,
+        prompt: '(手动上传)',
+        width: item.width,
+        height: item.height,
+        file_size: item.file.size,
+        filename: item.filename || item.file.name,
+      }
+    }),
+  })
+  return { group_id: init.group_id, ...confirmed }
 }

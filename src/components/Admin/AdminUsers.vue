@@ -25,6 +25,7 @@ import {
   ArrowDown,
 } from '@element-plus/icons-vue'
 import { formatLocation } from '@/utils/geo-name'
+import defaultAvatar from '@/assets/default_avatar.png'
 
 const loading = ref(false)
 const list = ref<AdminUser[]>([])
@@ -47,6 +48,17 @@ const formatTime = (s: string | null) => {
   const d = new Date(s.replace(' ', 'T') + 'Z')
   if (Number.isNaN(d.getTime())) return s
   return d.toLocaleString('zh-CN', { hour12: false })
+}
+
+// 头像加载失败时回落到本地默认头像，并清掉 onerror，
+// 避免 fallback URL 自身也加载失败时陷入「反复触发 error」的死循环。
+const onAvatarError = (e: Event) => {
+  const img = e.target as HTMLImageElement | null
+  if (!img) return
+  if (img.dataset.fallback === '1') return
+  img.dataset.fallback = '1'
+  img.onerror = null
+  img.src = defaultAvatar
 }
 
 const load = async () => {
@@ -625,7 +637,19 @@ const updateIsMobile = () => {
           width="48"
           :selectable="isSelectable"
         />
-<el-table-column label="邮箱 / UID" min-width="220">
+<el-table-column label="头像" width="68" align="center">
+          <template #default="{ row }">
+            <img
+              :src="row.avatar || defaultAvatar"
+              :alt="row.username || row.email"
+              :title="row.username || row.email"
+              class="w-9 h-9 rounded-full object-cover border border-border-default bg-ink-50"
+              loading="lazy"
+              @error="onAvatarError"
+            />
+          </template>
+        </el-table-column>
+        <el-table-column label="邮箱 / UID" min-width="220">
           <template #default="{ row }">
             <div class="flex flex-col gap-0.5 leading-snug">
               <span class="text-ink-900 break-all">{{ row.email || '-' }}</span>

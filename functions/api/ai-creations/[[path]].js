@@ -86,6 +86,7 @@ export async function onRequest(context) {
     const q = (url.searchParams.get('q') || '').trim()
     // fav=1：只看收藏（ai_creation_groups.favorited = 1，依赖 073 迁移）
     const favOnly = url.searchParams.get('fav') === '1'
+    const source = (url.searchParams.get('source') || '').trim()
     const offset = (page - 1) * pageSize
 
     const where = [`g.uid = ?`]
@@ -96,6 +97,10 @@ export async function onRequest(context) {
     }
     if (favOnly) {
       where.push('g.favorited = 1')
+    }
+    if (source === 'ai_generated' || source === 'manual_upload') {
+      where.push('g.source_type = ?')
+      args.push(source)
     }
     if (q) {
       const like = `%${q}%`
@@ -129,7 +134,7 @@ export async function onRequest(context) {
     // 当前页的组
     const groupsRaw = await db
       .prepare(
-        `SELECT g.id, g.uid, g.prompt_id, g.scene, g.category, g.model_name, g.title, g.favorited,
+        `SELECT g.id, g.uid, g.prompt_id, g.scene, g.source_type, g.category, g.model_name, g.title, g.favorited,
                 g.created_at, g.updated_at,
                 (SELECT COUNT(*) FROM ai_creation_images i WHERE i.group_id = g.id) AS image_count,
                 (SELECT media_url FROM ai_creation_images WHERE group_id = g.id ORDER BY id ASC LIMIT 1) AS cover_url,
@@ -137,7 +142,7 @@ export async function onRequest(context) {
                 (SELECT id FROM ai_creation_images WHERE group_id = g.id ORDER BY id ASC LIMIT 1) AS cover_id
          FROM ai_creation_groups g
          ${whereSql}
-         ORDER BY g.favorited DESC, g.created_at DESC, g.id DESC
+         ORDER BY g.created_at DESC, g.id DESC
          LIMIT ? OFFSET ?`,
       )
       .bind(...args, pageSize, offset)
@@ -150,7 +155,7 @@ export async function onRequest(context) {
       const placeholders = groupIds.map(() => '?').join(',')
       const imgs = await db
         .prepare(
-          `SELECT id, group_id, media_url, thumbnail_url, prompt, width, height, created_at
+          `SELECT id, group_id, media_url, thumbnail_url, filename, prompt, width, height, created_at
            FROM ai_creation_images
            WHERE uid = ? AND group_id IN (${placeholders})
            ORDER BY id ASC`,
@@ -186,6 +191,7 @@ export async function onRequest(context) {
         id: img.id,
         media_url: img.media_url,
         thumbnail_url: img.thumbnail_url,
+        filename: img.filename || 'image.png',
         prompt: img.prompt,
         width: img.width,
         height: img.height,
@@ -196,6 +202,7 @@ export async function onRequest(context) {
         prompt_id: g.prompt_id,
         prompt: g.prompt_id ? promptMap.get(g.prompt_id) || null : null,
         scene: g.scene,
+        source_type: g.source_type || 'ai_generated',
         category: g.category,
         model_name: g.model_name,
         title: g.title,

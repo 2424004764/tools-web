@@ -3,6 +3,7 @@ import { onMounted } from "vue";
 import { useUserStore } from "@/store/modules/user";
 import { useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
+import defaultAvatar from "@/assets/default_avatar.png";
 
 const userStore = useUserStore();
 const router = useRouter();
@@ -14,6 +15,17 @@ onMounted(() => {
     return;
   }
 });
+
+// 头像加载失败时回落到本地默认头像，并清掉 onerror，
+// 避免 fallback URL 自身也加载失败时陷入「反复触发 error」的死循环。
+const onAvatarError = (e: Event) => {
+  const img = e.target as HTMLImageElement | null;
+  if (!img) return;
+  if (img.dataset.fallback === "1") return;
+  img.dataset.fallback = "1";
+  img.onerror = null;
+  img.src = defaultAvatar;
+};
 
 // 退出登录
 const handleLogout = async () => {
@@ -85,10 +97,11 @@ const goToTodos = () => {
           <div class="text-center mb-4 c-sm:mb-6">
             <img
               :src="
-                userStore.getUserInfo.avatar || '/src/assets/default_avatar.png'
+                userStore.getUserInfo.avatar || defaultAvatar
               "
               :alt="userStore.getUserInfo.username"
               class="w-20 h-20 c-sm:w-24 c-sm:h-24 rounded-full mx-auto border-4 border-border-default shadow-lg"
+              @error="onAvatarError"
             />
           </div>
 

@@ -60,8 +60,8 @@ export async function onRequest(context) {
     }
 
     const email = payload.email;
-    const avatar = payload.picture || '';
-    const username = payload.name || email.split('@')[0];
+    const googleAvatar = payload.picture || '';
+    const googleUsername = payload.name || email.split('@')[0];
     const thirdPartyUid = payload.sub;
 
     // D1: user 表写入/更新
@@ -70,13 +70,18 @@ export async function onRequest(context) {
 
     // 优先通过邮箱查找用户（统一账号）
     let found = await db.prepare(`
-      SELECT id FROM user WHERE email = ?
+      SELECT id, username, avatar FROM user WHERE email = ?
     `).bind(email).first();
 
     let userId;
+    let avatar = googleAvatar;
+    let username = googleUsername;
     if (found && found.id) {
       userId = found.id;
-      // 更新用户信息，关联第三方账号
+      // 已存在用户：username / avatar 已存在则不覆盖（保留管理员改名/改头像的改动），
+      // 仅在当前为空或为空字符串时使用 Google 返回值填充。
+      avatar = (found.avatar && found.avatar.trim()) ? found.avatar : googleAvatar;
+      username = (found.username && found.username.trim()) ? found.username : googleUsername;
       await db.prepare(`
         UPDATE user SET
           avatar = ?,

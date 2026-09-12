@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { fetchAiCreations, type AiCreationImage } from '@/api/ai-creations'
+import ManualUploadDialog from '@/components/Tools/MyAiCreations/ManualUploadDialog.vue'
 
 // 从「我的 AI 创作」里选择图片作为上传素材（复用 fetchAiCreations 数据源）。
 // 支持多选：用户勾选 N 张 → 点「确认」一次性 emit 数组给父组件，
@@ -27,17 +28,21 @@ const emit = defineEmits<{
 }>()
 
 const visible = ref(false)
+const uploadVisible = ref(false)
 const loading = ref(false)
-const items = ref<AiCreationImage[]>([])
+type PickerImage = AiCreationImage & { source_type: 'ai_generated' | 'manual_upload' }
+
+const items = ref<PickerImage[]>([])
 const page = ref(1)
 const hasNext = ref(false)
 const PAGE_SIZE = 24
+const sourceFilter = ref<'all' | 'ai_generated' | 'manual_upload'>('all')
+const keyword = ref('')
+const selectedById = ref<Map<number, PickerImage>>(new Map())
 
-// 多选状态：用 Set 保证查找/去重 O(1)。id 类型是 number（AICreationImage.id）。
 const selectedIds = ref<Set<number>>(new Set())
-const selectedImages = computed(() =>
-  items.value.filter((img) => selectedIds.value.has(img.id)),
-)
+const selectedImages = computed(() => Array.from(selectedById.value.values()))
+const sourceParam = computed(() => sourceFilter.value === 'all' ? undefined : sourceFilter.value)
 
 // 是否有限制 + 还剩几个可选 + 是否已达上限
 const hasLimit = computed(() => typeof props.maxSelect === 'number' && props.maxSelect > 0)
@@ -55,23 +60,33 @@ const updateIsMobile = () => {
 
 const open = () => {
   visible.value = true
-  items.value = []
+  selectedIds.value = new Set(props.preselectedIds ?? [])
+  selectedById.value = new Map()
   page.value = 1
   hasNext.value = false
-  // 用父组件传入的预选 id 初始化。这样第二次打开弹窗时，已被加入上传区的
-  // 创作素材会保持选中态，让用户清楚「哪些已经选过了」。
-  selectedIds.value = new Set(props.preselectedIds ?? [])
-  void load()
+  void load(true)
 }
 
-const load = async () => {
+const load = async (reset = false) => {
   if (loading.value) return
   loading.value = true
   try {
-    const result = await fetchAiCreations({ page: page.value, pageSize: PAGE_SIZE })
-    // 把分组的图片拍平成列表
-    const imgs = result.groups.flatMap((g) => g.images || [])
-    items.value.push(...imgs)
+    const result = await fetchAiCreations({
+      page: page.value,
+      pageSize: PAGE_SIZE,
+      source: sourceParam.value,
+      q: keyword.value.trim() || undefined,
+    })
+    const imgs: PickerImage[] = result.groups.flatMap((g) => (g.images || []).map((img) => ({
+      ...img,
+      source_type: g.source_type,
+    })))
+    if (reset) items.value = imgs
+    else items.value.push(...imgs.filter((img) => !items.value.some((existing) => existing.id === img.id)))
+    imgs.forEach((img) => {
+      if (selectedIds.value.has(img.id)) selectedById.value.set(img.id, img)
+    })
+    selectedById.value = new Map(selectedById.value)
     hasNext.value = result.pagination.hasNext
   } catch {
     ElMessage.error('加载创作结果失败，请稍后重试')
@@ -86,16 +101,34 @@ const loadMore = () => {
   void load()
 }
 
+const refresh = () => {
+  page.value = 1
+  hasNext.value = false
+  void load(true)
+}
+
+const onUploadSuccess = async (payload: { refresh: () => Promise<unknown> }) => {
+  await payload.refresh()
+  uploadVisible.value = false
+  refresh()
+  ElMessage.success('创作列表已刷新')
+}
+
+watch([sourceFilter, keyword], () => {
+  if (visible.value) refresh()
+})
+
 // 切换选中态：单击图片不再立刻 emit，而是切换 selectedIds。
 // 选中态通过右上角 ✓ 徽标 + 边框高亮反馈，桌面端 + 移动端都能看清。
 //
 // 限制逻辑：有 maxSelect 且已达上限时，**禁止再勾选新图**（已选的可以取消）。
 // 阻止用户选了又被上传区拒掉——体验上比给个 error 提示更直接。
-const togglePick = (img: AiCreationImage) => {
+const togglePick = (img: PickerImage) => {
   const isSelected = selectedIds.value.has(img.id)
   if (isSelected) {
     // 取消选中永远允许
     selectedIds.value.delete(img.id)
+    selectedById.value.delete(img.id)
   } else {
     // 新勾选：达上限则拦截
     if (hasLimit.value && selectedIds.value.size >= (props.maxSelect as number)) {
@@ -103,9 +136,10 @@ const togglePick = (img: AiCreationImage) => {
       return
     }
     selectedIds.value.add(img.id)
+    selectedById.value.set(img.id, img)
   }
-  // 触发响应式：Set 没有被 Vue 当成 reactive，需要重新赋值才会刷新
   selectedIds.value = new Set(selectedIds.value)
+  selectedById.value = new Map(selectedById.value)
 }
 
 // 确认选择：emit 数组给父组件，进入"提交中"态等父组件处理完手动调 close()。
@@ -136,7 +170,10 @@ const cancelSubmitting = () => {
 
 // 关闭弹窗时清掉选中残留
 watch(visible, (v) => {
-  if (!v) selectedIds.value = new Set()
+  if (!v) {
+    selectedIds.value = new Set()
+    selectedById.value = new Map()
+  }
 })
 
 defineExpose({ open, close, cancelSubmitting })
@@ -158,10 +195,27 @@ onUnmounted(() => {
     :close-on-click-modal="true"
     append-to-body
   >
-    <div class="flex flex-col">
+    <div class="flex flex-col gap-3">
+      <div class="flex flex-wrap items-center gap-2">
+        <el-radio-group v-model="sourceFilter" size="small" :disabled="submitting">
+          <el-radio-button label="all">全部</el-radio-button>
+          <el-radio-button label="ai_generated">AI 生成</el-radio-button>
+          <el-radio-button label="manual_upload">手动上传</el-radio-button>
+        </el-radio-group>
+        <el-input
+          v-model="keyword"
+          clearable
+          size="small"
+          class="min-w-[180px] flex-1"
+          placeholder="搜索文件名、提示词或标题"
+          :disabled="submitting"
+        />
+        <el-button size="small" :disabled="submitting" @click="uploadVisible = true">上传图片</el-button>
+      </div>
+
       <!-- 空状态 -->
       <div v-if="!loading && items.length === 0" class="py-16 text-center text-gray-400 text-sm">
-        还没有创作结果，先去生成几张吧
+        {{ keyword.trim() || sourceFilter !== 'all' ? '没有匹配的创作结果' : '还没有创作结果，先去生成几张吧' }}
       </div>
 
       <!-- 图片网格：桌面 3 列 + h-56，移动 2 列 + h-40 让每张图清晰可辨 -->
@@ -193,9 +247,10 @@ onUnmounted(() => {
           @keyup.enter="togglePick(img)"
           @keyup.space.prevent="togglePick(img)"
         >
-          <img
-            :src="img.thumbnail_url || img.media_url"
-            :alt="img.prompt || '创作素材'"
+            <img
+              :src="img.thumbnail_url || img.media_url"
+              :alt="img.filename || img.prompt || '创作素材'"
+
             loading="lazy"
             :class="[
               'w-full object-contain transition-transform duration-200 group-hover:scale-105',
@@ -203,7 +258,15 @@ onUnmounted(() => {
             ]"
           />
 
-          <!-- 选中态徽标（右上角 ✓ 圆圈）——比单选时移动端的"选择"文字更清晰 -->
+            <div class="absolute left-2 top-2 flex gap-1">
+              <span class="rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
+                {{ img.source_type === 'manual_upload' ? '手动上传' : 'AI 生成' }}
+              </span>
+            </div>
+            <div class="absolute bottom-0 left-0 right-0 truncate bg-black/60 px-2 py-1 text-xs text-white">
+              {{ img.filename || '未命名图片' }}
+            </div>
+
           <div
             class="absolute top-2 right-2 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all shadow-sm"
             :class="selectedIds.has(img.id)
@@ -274,4 +337,5 @@ onUnmounted(() => {
       </div>
     </template>
   </el-dialog>
+  <ManualUploadDialog v-model="uploadVisible" @success="onUploadSuccess" />
 </template>
