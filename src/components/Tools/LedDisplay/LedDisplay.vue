@@ -294,6 +294,14 @@ onBeforeUnmount(() => document.removeEventListener('fullscreenchange', onFsChang
   text-shadow: 0 0 10px var(--color), 0 0 20px var(--color);
 }
 
+/* 走马灯是页面的主要内容，不能被全局减弱动效规则压成一次性动画。 */
+@media (prefers-reduced-motion: reduce) {
+  .led-text {
+    animation-duration: var(--speed) !important;
+    animation-iteration-count: infinite !important;
+  }
+}
+
 .led-screen.dot::before {
   content: '';
   position: absolute;
