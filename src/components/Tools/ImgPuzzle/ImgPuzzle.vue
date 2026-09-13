@@ -61,6 +61,10 @@ interface Template {
   slots: Slot[]
   /** collage 模板专用：卡片元素列表 */
   elements?: CardElement[]
+  /** 模板图片形状；未指定时为矩形 */
+  shape?: 'rectangle' | 'circle'
+  /** 聊天头像模板：绘制左右聊天气泡 */
+  chat?: boolean
 }
 
 // ========== 模板生成器 ==========
@@ -463,6 +467,19 @@ const buildTemplates = (): Template[] => {
         { slotId: 's4', x: 72, y: 72, width: 32, height: 32, rotation: -10, zIndex: 4, borderWidth: 10, borderColor: '#ffffff', shadow: true },
       ],
     },
+    {
+      key: 'chat-avatars',
+      type: 'collage',
+      shape: 'circle',
+      chat: true,
+      gridCols: 2,
+      gridRows: 1,
+      slots: [s(0, 0), s(1, 0)],
+      elements: [
+        { slotId: 's1', x: 12, y: 28, width: 18, height: 24, zIndex: 2 },
+        { slotId: 's2', x: 88, y: 52, width: 18, height: 24, zIndex: 2 },
+      ],
+    },
   )
 
   return result
@@ -476,9 +493,12 @@ const selectedCategory = ref<'grid' | 'collage'>('grid')
 const slotImages = ref<Record<string, string>>({})
 const slotPositions = ref<Record<string, { x: number; y: number }>>({})
 const gap = ref(8) // 拼图块间隙
-const bgColor = ref('#f5f5f7')
+const bgColor = ref('#fff7f8')
+const chatLeftText = ref('换个情侣头像吗')
+const chatRightText = ref('好呀 换上')
 const filledCount = computed(() => Object.keys(slotImages.value).length)
 
+const getImageShape = () => currentTemplate.value.shape || 'rectangle'
 const getSlotPosition = (slotId: string) => slotPositions.value[slotId] || { x: 50, y: 50 }
 
 // === 上传处理：每个槽位独立 ===
@@ -603,17 +623,18 @@ watch(selectedCategory, (cat) => {
 const renderToDataURL = async (): Promise<string> => {
   if (filledCount.value === 0) return ''
   const tpl = currentTemplate.value
-  // 强制 1:1 正方形（与上传区一致）
+  // 普通拼图保持正方形；聊天模板使用横向画布，避免下载后被固定成正方形
   const L = 1200
+  const canvasHeight = tpl.chat ? 900 : L
   const canvas = document.createElement('canvas')
   canvas.width = L
-  canvas.height = L
+  canvas.height = canvasHeight
   const ctx = canvas.getContext('2d')!
   ctx.fillStyle = bgColor.value
-  ctx.fillRect(0, 0, L, L)
+  ctx.fillRect(0, 0, L, canvasHeight)
 
   if (tpl.type === 'collage' && tpl.elements) {
-    await renderCollage(ctx, tpl.elements, L)
+    await renderCollage(ctx, tpl.elements, L, canvasHeight)
   } else {
     await renderGrid(ctx, tpl, L)
   }
@@ -638,7 +659,14 @@ const renderGrid = async (ctx: CanvasRenderingContext2D, tpl: Template, L: numbe
           const w = cw * slot.colSpan + gapVal * Math.max(0, slot.colSpan - 1)
           const h = ch * slot.rowSpan + gapVal * Math.max(0, slot.rowSpan - 1)
           const pos = getSlotPosition(slot.id)
-          drawImageCover(ctx, img, x, y, w, h, pos.x, pos.y)
+          if (getImageShape() === 'circle') {
+            ctx.save()
+            clipEllipse(ctx, x, y, w, h)
+            drawImageCover(ctx, img, x, y, w, h, pos.x, pos.y)
+            ctx.restore()
+          } else {
+            drawImageCover(ctx, img, x, y, w, h, pos.x, pos.y)
+          }
           resolve()
         }
         img.src = dataUrl
@@ -649,18 +677,20 @@ const renderGrid = async (ctx: CanvasRenderingContext2D, tpl: Template, L: numbe
 }
 
 // === 拼贴模板渲染：按 elements 列表绘制卡片（旋转/边框/阴影/叠加） ===
-const renderCollage = async (ctx: CanvasRenderingContext2D, elements: CardElement[], L: number) => {
+const renderCollage = async (ctx: CanvasRenderingContext2D, elements: CardElement[], L: number, canvasHeight = L) => {
   const sorted = [...elements].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0))
+  const isChat = currentTemplate.value.chat
+  if (isChat) drawChatBubbles(ctx, L, canvasHeight)
   for (const el of sorted) {
     const dataUrl = slotImages.value[el.slotId]
     if (!dataUrl) continue
     await new Promise<void>((resolve) => {
       const img = new Image()
       img.onload = () => {
-        const cx = (el.x / 100) * L         // 元素中心 X（与 DOM transform-origin center center 一致）
-        const cy = (el.y / 100) * L         // 元素中心 Y
+        const cx = (el.x / 100) * L
+        const cy = (el.y / 100) * canvasHeight
         const w = (el.width / 100) * L
-        const h = (el.height / 100) * L
+        const h = (el.height / 100) * canvasHeight
         ctx.save()
         ctx.translate(cx, cy)
         if (el.rotation) {
@@ -684,13 +714,62 @@ const renderCollage = async (ctx: CanvasRenderingContext2D, elements: CardElemen
         ctx.shadowOffsetX = 0
         ctx.shadowOffsetY = 0
         const pos = getSlotPosition(el.slotId)
-        drawImageCover(ctx, img, -w / 2, -h / 2, w, h, pos.x, pos.y, el.crop)
+        if (getImageShape() === 'circle') {
+          ctx.save()
+          clipEllipse(ctx, -w / 2, -h / 2, w, h)
+          drawImageCover(ctx, img, -w / 2, -h / 2, w, h, pos.x, pos.y, el.crop)
+          ctx.restore()
+        } else {
+          drawImageCover(ctx, img, -w / 2, -h / 2, w, h, pos.x, pos.y, el.crop)
+        }
         ctx.restore()
         resolve()
       }
       img.src = dataUrl
     })
   }
+}
+
+const clipEllipse = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) => {
+  ctx.beginPath()
+  ctx.ellipse(x + w / 2, y + h / 2, Math.abs(w / 2), Math.abs(h / 2), 0, 0, Math.PI * 2)
+  ctx.clip()
+}
+
+const drawChatBubbles = (ctx: CanvasRenderingContext2D, L: number, canvasHeight: number) => {
+  const sx = L / 1200
+  const sy = canvasHeight / 900
+  ctx.save()
+  ctx.fillStyle = '#fff7f8'
+  ctx.fillRect(0, 0, L, canvasHeight)
+  ctx.fillStyle = 'rgba(236, 72, 153, 0.34)'
+  ctx.font = `${36 * sx}px sans-serif`
+  ctx.textAlign = 'center'
+  ;[
+    [110, 120], [1060, 150], [1000, 760], [160, 780], [610, 110],
+  ].forEach(([x, y]) => ctx.fillText('♡', x * sx, y * sy))
+  ctx.fillStyle = '#f3f4f6'
+  roundRect(ctx, 288 * sx, 189 * sy, 480 * sx, 126 * sy, 24 * sx)
+  ctx.fill()
+  ctx.fillStyle = '#f9a8d4'
+  roundRect(ctx, 432 * sx, 405 * sy, 480 * sx, 126 * sy, 24 * sx)
+  ctx.fill()
+  ctx.fillStyle = '#111827'
+  ctx.font = `${30 * sx}px sans-serif`
+  ctx.fillText(chatLeftText.value, 528 * sx, 267 * sy)
+  ctx.fillText(chatRightText.value, 672 * sx, 483 * sy)
+  ctx.restore()
+}
+
+const roundRect = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) => {
+  const radius = Math.min(r, w / 2, h / 2)
+  ctx.beginPath()
+  ctx.moveTo(x + radius, y)
+  ctx.arcTo(x + w, y, x + w, y + h, radius)
+  ctx.arcTo(x + w, y + h, x, y + h, radius)
+  ctx.arcTo(x, y + h, x, y, radius)
+  ctx.arcTo(x, y, x + w, y, radius)
+  ctx.closePath()
 }
 
 // === 保持比例的 cover 绘制（支持 object-position 偏移与可选 crop 源区域） ===
@@ -904,26 +983,35 @@ const groupedTemplates = computed(() => {
                   <!-- 拼贴模板：按 elements 绝对定位，旋转/边框/阴影，允许溢出 -->
                   <div
                     v-else
-                    class="relative w-full bg-gray-100 rounded overflow-hidden"
-                    style="aspect-ratio: 1 / 1;"
+                    class="relative w-full rounded overflow-hidden"
+                    :style="{ aspectRatio: t.chat ? '4 / 3' : '1 / 1', backgroundColor: t.chat ? bgColor : '#f3f4f6' }"
                   >
-                    <div
-                      v-for="(el, idx) in (t.elements || [])"
-                      :key="el.slotId"
-                      class="absolute bg-gray-300 rounded-sm"
-                      :style="{
-                        left: `calc(${el.x}% - ${el.width / 2}%)`,
-                        top: `calc(${el.y}% - ${el.height / 2}%)`,
-                        width: `${el.width}%`,
-                        height: `${el.height}%`,
-                        transform: el.rotation ? `rotate(${el.rotation}deg)` : 'none',
-                        transformOrigin: 'center center',
-                        zIndex: el.zIndex ?? idx,
-                        boxShadow: el.shadow ? '0 4px 8px rgba(0,0,0,0.18)' : 'none',
-                        outline: (el.borderWidth && el.borderColor) ? `${Math.max(1, el.borderWidth / 6)}px solid ${el.borderColor}` : 'none',
-                        outlineOffset: el.borderWidth ? `-${Math.max(1, el.borderWidth / 6)}px` : '0',
-                      }"
-                    ></div>
+                    <template v-if="t.chat">
+                      <div class="absolute left-[24%] top-[28%] w-[40%] h-[18%] -translate-y-1/2 rounded-md bg-gray-300" />
+                      <div class="absolute left-[36%] top-[52%] w-[40%] h-[18%] -translate-y-1/2 rounded-md bg-green-300" />
+                      <div class="absolute left-[7%] top-[28%] w-[14%] aspect-square -translate-y-1/2 rounded-full bg-gray-400" />
+                      <div class="absolute right-[7%] top-[52%] w-[14%] aspect-square -translate-y-1/2 rounded-full bg-gray-400" />
+                    </template>
+                    <template v-else>
+                      <div
+                        v-for="(el, idx) in (t.elements || [])"
+                        :key="el.slotId"
+                        class="absolute bg-gray-300"
+                        :class="t.shape === 'circle' ? 'rounded-full' : 'rounded-sm'"
+                        :style="{
+                          left: `calc(${el.x}% - ${el.width / 2}%)`,
+                          top: `calc(${el.y}% - ${el.height / 2}%)`,
+                          width: `${el.width}%`,
+                          height: `${el.height}%`,
+                          transform: el.rotation ? `rotate(${el.rotation}deg)` : 'none',
+                          transformOrigin: 'center center',
+                          zIndex: el.zIndex ?? idx,
+                          boxShadow: el.shadow ? '0 4px 8px rgba(0,0,0,0.18)' : 'none',
+                          outline: (el.borderWidth && el.borderColor) ? `${Math.max(1, el.borderWidth / 6)}px solid ${el.borderColor}` : 'none',
+                          outlineOffset: el.borderWidth ? `-${Math.max(1, el.borderWidth / 6)}px` : '0',
+                        }"
+                      ></div>
+                    </template>
                   </div>
                 </div>
               </div>
@@ -975,8 +1063,8 @@ const groupedTemplates = computed(() => {
                 v-for="slot in currentTemplate.slots"
                 :key="slot.id"
                 :data-slot-id="slot.id"
-                class="relative group rounded-lg overflow-hidden border-2 border-dashed border-gray-300 hover:border-blue-400 transition bg-white flex items-center justify-center"
-                :class="slotImages[slot.id] ? 'cursor-move' : ''"
+                class="relative group overflow-hidden border-2 border-dashed border-gray-300 hover:border-blue-400 transition bg-white flex items-center justify-center"
+                :class="[slotImages[slot.id] ? 'cursor-move' : '', getImageShape() === 'circle' ? 'rounded-full' : 'rounded-lg']"
                 :style="{
                   gridColumn: `${slot.col + 1} / span ${slot.colSpan}`,
                   gridRow: `${slot.row + 1} / span ${slot.rowSpan}`,
@@ -1047,17 +1135,34 @@ const groupedTemplates = computed(() => {
               v-else
               class="slot-canvas relative"
               :style="{
-                aspectRatio: '1 / 1',
+                aspectRatio: currentTemplate.chat ? '4 / 3' : '1 / 1',
                 width: 'min(100%, calc(100vh - 280px))',
                 alignSelf: 'center',
+                backgroundColor: bgColor,
               }"
             >
+              <div
+                v-if="currentTemplate.chat"
+                class="absolute inset-0"
+                :style="{ backgroundColor: bgColor }"
+              >
+                <span class="absolute left-[8%] top-[12%] text-pink-500/70 text-2xl">♡</span>
+                <span class="absolute right-[8%] top-[16%] text-pink-500/70 text-2xl">♡</span>
+                <span class="absolute right-[12%] bottom-[10%] text-pink-500/70 text-2xl">♡</span>
+                <span class="absolute left-[12%] bottom-[8%] text-pink-500/70 text-2xl">♡</span>
+                <div class="absolute left-[24%] top-[28%] w-[40%] h-[14%] -translate-y-1/2 rounded-2xl bg-gray-100 flex items-center justify-center text-[3%] text-gray-900">
+                  {{ chatLeftText }}
+                </div>
+                <div class="absolute left-[36%] top-[52%] w-[40%] h-[14%] -translate-y-1/2 rounded-2xl bg-pink-300 flex items-center justify-center text-[3%] text-gray-900">
+                  {{ chatRightText }}
+                </div>
+              </div>
               <div
                 v-for="(el, idx) in (currentTemplate.elements || [])"
                 :key="el.slotId"
                 :data-slot-id="el.slotId"
-                class="absolute group rounded-lg overflow-hidden bg-white flex items-center justify-center"
-                :class="slotImages[el.slotId] ? 'cursor-move' : ''"
+                class="absolute group overflow-hidden flex items-center justify-center"
+                :class="[slotImages[el.slotId] ? 'cursor-move' : '', getImageShape() === 'circle' ? 'rounded-full' : 'rounded-lg']"
                 :style="{
                   left: `calc(${el.x}% - ${el.width / 2}%)`,
                   top: `calc(${el.y}% - ${el.height / 2}%)`,
@@ -1119,6 +1224,13 @@ const groupedTemplates = computed(() => {
           </div>
 
           <!-- 拼贴模板专用：独立的槽位操作面板（避免被叠加的卡片遮挡 hover 按钮） -->
+          <div
+            v-if="currentTemplate.chat"
+            class="mb-3 grid grid-cols-1 md:grid-cols-2 gap-2"
+          >
+            <el-input v-model="chatLeftText" placeholder="左侧消息" maxlength="30" show-word-limit />
+            <el-input v-model="chatRightText" placeholder="右侧消息" maxlength="30" show-word-limit />
+          </div>
           <div
             v-if="currentTemplate.type === 'collage' && currentTemplate.elements"
             class="mt-3 bg-white border rounded-xl p-3"
