@@ -10,6 +10,7 @@ import ElementPlus from 'unplugin-element-plus/vite'
 import AutoImport from 'unplugin-auto-import/vite'
 import Icons from 'unplugin-icons/vite'
 import viteCompression from 'vite-plugin-compression'
+import { VitePWA } from 'vite-plugin-pwa'
 
 /**
  * build time 把两类「写死在 index.html 但本应是变量」的内容替换为真实值：
@@ -201,6 +202,41 @@ export default defineConfig(({command, mode}) => {
             whitespace: 'condense', // 压缩模板空格
           }
         }
+      }),
+      VitePWA({
+        registerType: 'prompt',
+        injectRegister: 'auto',
+        includeAssets: ['favicon.ico', 'logo192.png', 'logo512.png'],
+        manifest: {
+          name: '开发者工具箱',
+          short_name: '工具箱',
+          description: '开发者工具箱离线工具集合',
+          start_url: '/shopping-list/',
+          scope: '/shopping-list/',
+          display: 'standalone',
+          theme_color: '#ffffff',
+          background_color: '#ffffff',
+          icons: [
+            { src: '/logo192.png', sizes: '192x192', type: 'image/png' },
+            { src: '/logo512.png', sizes: '512x512', type: 'image/png' },
+          ],
+        },
+        workbox: {
+          cacheId: 'tools-web-pwa',
+          navigateFallback: '/shopping-list/',
+          navigateFallbackDenylist: [/^\/api\//, /^\/(?!shopping-list(?:\/|$))/],
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+          runtimeCaching: [
+            {
+              urlPattern: ({ request }) => request.destination === 'image',
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'tools-web-pwa-images',
+                expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              },
+            },
+          ],
+        },
       }),
       createSvgIconsPlugin({
         iconDirs: [path.resolve(process.cwd(), 'src/assets/icons')],

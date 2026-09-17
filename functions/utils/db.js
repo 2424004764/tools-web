@@ -1447,7 +1447,96 @@ export class PriceComparisonEntryModel extends Model {
   }
 }
 
-// 食物记录模型（单用户，无成员维度）
+// ShoppingList 模型 - 购物清单模型
+export class ShoppingListModel extends Model {
+  constructor(db, env = null, waitUntil = null) {
+    super(db, env, waitUntil)
+    this.config = {
+      tableName: 'shopping_lists',
+      fields: {
+        id: { type: 'string', primaryKey: true },
+        uid: { type: 'string' },
+        name: { type: 'string' },
+        description: { type: 'text' },
+        budget: { type: 'real' },
+        purchaseMethod: { type: 'string', dbField: 'purchase_method' },
+        purchaseLocation: { type: 'string', dbField: 'purchase_location' },
+        priority: { type: 'integer' },
+        note: { type: 'text' },
+        status: { type: 'integer' },
+        createTime: { type: 'datetime', dbField: 'create_time' },
+        updateTime: { type: 'datetime', dbField: 'update_time' }
+      }
+    }
+  }
+}
+
+// ShoppingListItem 模型 - 购物清单条目模型
+export class ShoppingListItemModel extends Model {
+  constructor(db, env = null, waitUntil = null) {
+    super(db, env, waitUntil)
+    this.config = {
+      tableName: 'shopping_list_items',
+      fields: {
+        id: { type: 'string', primaryKey: true },
+        listId: { type: 'string', dbField: 'list_id' },
+        uid: { type: 'string' },
+        name: { type: 'string' },
+        quantity: { type: 'real' },
+        unit: { type: 'string' },
+        weight: { type: 'string' },
+        estimatedPrice: { type: 'real', dbField: 'estimated_price' },
+        actualPrice: { type: 'real', dbField: 'actual_price' },
+        category: { type: 'string' },
+        brand: { type: 'string' },
+        purchaseLocation: { type: 'string', dbField: 'purchase_location' },
+        priority: { type: 'integer' },
+        isRequired: { type: 'integer', dbField: 'is_required' },
+        actualQuantity: { type: 'real', dbField: 'actual_quantity' },
+        actualWeight: { type: 'string', dbField: 'actual_weight' },
+        imageUrl: { type: 'text', dbField: 'image_url' },
+        note: { type: 'text' },
+        checked: { type: 'integer' },
+        purchasedAt: { type: 'datetime', dbField: 'purchased_at' },
+        createTime: { type: 'datetime', dbField: 'create_time' },
+        updateTime: { type: 'datetime', dbField: 'update_time' }
+      }
+    }
+  }
+}
+
+// Shopping list template model
+export class ShoppingListTemplateModel extends Model {
+  constructor(db, env = null, waitUntil = null) {
+    super(db, env, waitUntil)
+    this.config = { tableName: 'shopping_list_templates', fields: {
+      id: { type: 'string', primaryKey: true }, uid: { type: 'string' }, name: { type: 'string' },
+      description: { type: 'text' }, budget: { type: 'real' },
+      purchaseMethod: { type: 'string', dbField: 'purchase_method' },
+      purchaseLocation: { type: 'string', dbField: 'purchase_location' }, priority: { type: 'integer' },
+      itemsJson: { type: 'text', dbField: 'items_json' },
+      createTime: { type: 'datetime', dbField: 'create_time' }, updateTime: { type: 'datetime', dbField: 'update_time' }
+    }}
+  }
+}
+
+// Purchase history model
+export class ShoppingPurchaseHistoryModel extends Model {
+  constructor(db, env = null, waitUntil = null) {
+    super(db, env, waitUntil)
+    this.config = { tableName: 'shopping_purchase_history', fields: {
+      id: { type: 'string', primaryKey: true }, uid: { type: 'string' }, listId: { type: 'string', dbField: 'list_id' },
+      itemId: { type: 'string', dbField: 'item_id' }, purchaseKey: { type: 'string', dbField: 'purchase_key' },
+      name: { type: 'string' }, brand: { type: 'string' }, category: { type: 'string' }, unit: { type: 'string' },
+      quantity: { type: 'real' }, weight: { type: 'string' }, actualQuantity: { type: 'real', dbField: 'actual_quantity' },
+      actualWeight: { type: 'string', dbField: 'actual_weight' }, actualPrice: { type: 'real', dbField: 'actual_price' },
+      purchaseLocation: { type: 'string', dbField: 'purchase_location' }, purchasedAt: { type: 'datetime', dbField: 'purchased_at' },
+      createTime: { type: 'datetime', dbField: 'create_time' }
+    }}
+  }
+}
+
+
 export class FoodLogModel extends Model {
   constructor(db) {
     super(db)

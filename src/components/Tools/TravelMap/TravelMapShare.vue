@@ -10,7 +10,7 @@ import {
   POINT_CATEGORIES, DEFAULT_CENTER, DEFAULT_ZOOM,
   getCategory, formatDistance, formatElevation,
 } from './constants'
-import type { SharedMapDetail, MapPoint, PointCategory } from './types'
+import type { SharedMapDetail, MapPoint, PointCategory, TravelMapDay } from './types'
 
 const route = useRoute()
 const router = useRouter()
@@ -20,9 +20,20 @@ const detail = ref<SharedMapDetail | null>(null)
 const loading = ref(true)
 const errorMsg = ref('')
 const categoryFilter = ref<PointCategory | 'all'>('all')
+const activeDayId = ref('all')
+const days = computed<TravelMapDay[]>(() => detail.value?.days?.length ? detail.value.days : [{ id: 'legacy-day', dayNumber: 1, title: '第 1 天', date: '', startTime: '', startLocation: '', lodgingPointId: '', lodgingName: '', note: '' }])
+const activeDay = computed(() => days.value.find((d) => d.id === activeDayId.value))
+const visiblePoints = computed(() => {
+  const all = detail.value?.points ?? []
+  return activeDayId.value === 'all' ? all : all.filter((p) => !p.dayId || p.dayId === activeDayId.value)
+})
+const visibleRoutes = computed(() => {
+  const all = detail.value?.routes ?? []
+  return activeDayId.value === 'all' ? all : all.filter((r) => !r.dayId || r.dayId === activeDayId.value)
+})
 
 const filteredPoints = computed(() => {
-  const points = detail.value?.points ?? []
+  const points = visiblePoints.value
   return categoryFilter.value === 'all'
     ? points
     : points.filter((p) => p.category === categoryFilter.value)
@@ -201,7 +212,19 @@ function flyToPoi(p: PoiItem) {
         </div>
       </div>
 
-      <!-- 周边搜索（只读页只用来导航，搜到的不能保存到这张图） -->
+      <!-- 行程日程 -->
+      <div class="p-3 rounded-2xl bg-white">
+        <div class="flex items-center gap-2 overflow-x-auto">
+          <button type="button" class="shrink-0 px-3 py-1.5 rounded-lg text-sm border" :class="activeDayId === 'all' ? 'bg-accent-600 text-white border-accent-600' : 'border-border-subtle'" @click="activeDayId = 'all'">全部天数</button>
+          <button v-for="day in days" :key="day.id" type="button" class="shrink-0 px-3 py-1.5 rounded-lg text-sm border" :class="activeDayId === day.id ? 'bg-accent-600 text-white border-accent-600' : 'border-border-subtle'" @click="activeDayId = day.id">{{ day.title }}</button>
+        </div>
+        <div v-if="activeDay" class="mt-3 text-sm text-ink-700 grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <span>出发：{{ activeDay.startTime || '未设置' }} · {{ activeDay.startLocation || '未设置地点' }}</span>
+          <span>住宿：{{ activeDay.lodgingName || '未设置' }}</span>
+          <span>{{ activeDay.note || '当天暂无备注' }}</span>
+        </div>
+      </div>
+
       <div class="p-3 rounded-2xl bg-white">
         <div class="flex items-center gap-2">
           <div class="relative flex-1">
@@ -287,16 +310,16 @@ function flyToPoi(p: PoiItem) {
                 <span class="flex-1 min-w-0 truncate text-body-sm text-ink-900">{{ p.name }}</span>
                 <span class="shrink-0 text-xs text-ink-500">{{ formatElevation(p.elevation) }}</span>
               </div>
-              <p v-if="p.note" class="mt-0.5 text-xs text-ink-500 line-clamp-2">{{ p.note }}</p>
+              <div v-if="p.stayMinutes" class="mt-1 text-xs text-ink-500">停留 {{ p.stayMinutes }} 分钟</div>
             </button>
           </div>
         </div>
 
-        <div v-if="detail.routes.length" class="p-3 rounded-2xl bg-white">
+        <div v-if="visibleRoutes.length" class="p-3 rounded-2xl bg-white">
           <h3 class="text-body-sm font-semibold text-ink-900 mb-2">路线</h3>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-72 overflow-y-auto pr-1">
             <div
-              v-for="r in detail.routes"
+              v-for="r in visibleRoutes"
               :key="r.id"
               class="p-2 rounded-lg border border-border-subtle flex items-center gap-2"
             >
@@ -305,7 +328,7 @@ function flyToPoi(p: PoiItem) {
                 :style="{ backgroundColor: r.color }"
               ></span>
               <span class="flex-1 min-w-0 truncate text-body-sm text-ink-900">{{ r.name }}</span>
-              <span class="shrink-0 text-xs text-ink-500">{{ formatDistance(r.distance) }}</span>
+              <span class="shrink-0 text-xs text-ink-500">{{ formatDistance(r.distance) }}<span v-if="r.durationSeconds"> · 约 {{ Math.round(r.durationSeconds / 60) }} 分钟</span></span>
             </div>
           </div>
         </div>
@@ -315,8 +338,8 @@ function flyToPoi(p: PoiItem) {
       <div class="w-full h-[420px] sm:h-[560px] lg:h-[640px] rounded-2xl overflow-hidden border border-border-subtle">
         <TiandituMap
           ref="mapRef"
-          :points="detail.points"
-          :routes="detail.routes"
+          :points="visiblePoints"
+          :routes="visibleRoutes"
           :center="detail.center || DEFAULT_CENTER"
           :zoom="detail.zoom || DEFAULT_ZOOM"
           :base-layer="detail.baseLayer"

@@ -17,7 +17,7 @@ import {
   getCategory, pathDistance, formatDistance, formatElevation, simplifyPath,
   countSharpTurns, SHARP_TURN_DEFAULTS,
 } from './constants'
-import type { MapPoint, MapRoute, BaseLayer, LngLat, PointCategory, RouteProfile } from './types'
+import type { MapPoint, MapRoute, TravelMapDay, BaseLayer, LngLat, PointCategory, RouteProfile } from './types'
 
 const info = {
   title: '旅游地图',
@@ -39,11 +39,30 @@ const baseLayer = ref<BaseLayer>('vec')
 const isPublic = ref(false)
 const points = ref<MapPoint[]>([])
 const routes = ref<MapRoute[]>([])
+const days = ref<TravelMapDay[]>([])
+const activeDayId = ref('')
+const activeDay = computed(() => days.value.find((d) => d.id === activeDayId.value) || days.value[0])
+const dayPoints = computed(() => points.value.filter((p) => !p.dayId || p.dayId === activeDay.value?.id))
+const dayRoutes = computed(() => routes.value.filter((r) => !r.dayId || r.dayId === activeDay.value?.id))
+const dayLodgings = computed(() => points.value.filter((p) => p.category === 'lodging' && (!p.dayId || p.dayId === activeDay.value?.id)))
+const dateRange = computed(() => {
+  const dates = days.value.map((d) => d.date).filter(Boolean)
+  if (!dates.length) return '尚未设置日期'
+  if (dates.length === 1) return dates[0]
+  return `${dates[0]} - ${dates[dates.length - 1]}`
+})
+const activeDaySummary = computed(() => ({
+  pointCount: dayPoints.value.length,
+  routeCount: dayRoutes.value.length,
+  distance: dayRoutes.value.reduce((sum, r) => sum + r.distance, 0),
+}))
 
 const loading = ref(true)
 const saving = ref(false)
 const dirty = ref(false)
 const drawerVisible = ref(false)
+const itineraryCollapsed = ref(false)
+const titleEditing = ref(false)
 
 // ---------- 交互模式 ----------
 const mode = ref<'browse' | 'point' | 'route' | 'route-osrm'>('browse')
@@ -63,6 +82,7 @@ const pointDialogVisible = ref(false)
 const editingPoint = ref<MapPoint | null>(null)
 const pendingLng = ref(0)
 const pendingLat = ref(0)
+const contextMenu = ref<{ visible: boolean; x: number; y: number; lng: number; lat: number }>({ visible: false, x: 0, y: 0, lng: 0, lat: 0 })
 
 // draft 路径颜色：route-osrm 模式按当前 profile 给色，其他模式默认红
 const draftColor = computed(() => {
@@ -78,10 +98,31 @@ const categoryFilter = ref<PointCategory | 'all'>('all')
 const isLoggedIn = computed(() => userStore.getLoginStatus)
 
 const filteredPoints = computed(() =>
-  categoryFilter.value === 'all'
-    ? points.value
-    : points.value.filter((p) => p.category === categoryFilter.value)
+  (categoryFilter.value === 'all' ? dayPoints.value : dayPoints.value.filter((p) => p.category === categoryFilter.value))
 )
+
+function startTitleEditing() {
+  titleEditing.value = true
+}
+
+function finishTitleEditing() {
+  title.value = title.value.trim() || '我的旅游地图'
+  titleEditing.value = false
+}
+
+function createDay() {
+  const number = days.value.length + 1
+  const day: TravelMapDay = { id: `local-day-${Date.now()}`, dayNumber: number, title: `第 ${number} 天`, date: '', startTime: '', startLocation: '', lodgingPointId: '', lodgingName: '', note: '' }
+  days.value = [...days.value, day]
+  activeDayId.value = day.id
+}
+
+function removeDay() {
+  if (days.value.length <= 1) return
+  const id = activeDayId.value
+  days.value = days.value.filter((d) => d.id !== id).map((d, i) => ({ ...d, dayNumber: i + 1, title: d.title || `第 ${i + 1} 天` }))
+  activeDayId.value = days.value[0].id
+}
 
 const totalDistance = computed(() =>
   routes.value.reduce((sum, r) => sum + r.distance, 0)
@@ -262,6 +303,8 @@ function addPoiAsPoint(p: PoiItem) {
       lat: p.lat,
       elevation: null,
       note: p.address || '',
+      dayId: activeDay.value?.id || '',
+      stayMinutes: 0,
     },
   ]
   ElMessage.success(`已添加：${p.name}`)
@@ -404,6 +447,9 @@ function applyDetail(detail: any) {
   applyingDetail.value = true
   try {
     if (mapId.value !== detail.id) mapId.value = detail.id
+    const nextDays = detail.days?.length ? detail.days : [{ id: `legacy-day-${detail.id}`, dayNumber: 1, title: '第 1 天', date: '', startTime: '', startLocation: '', lodgingPointId: '', lodgingName: '', note: '' }]
+    days.value = nextDays
+    if (!nextDays.some((d: TravelMapDay) => d.id === activeDayId.value)) activeDayId.value = nextDays[0].id
     if (slug.value !== detail.slug) slug.value = detail.slug
     // title / description：字符串相等就直接跳过赋值，避免 el-input 重渲染失焦
     if (title.value !== detail.title) title.value = detail.title
@@ -461,16 +507,20 @@ onMounted(bootstrap)
 
 // ---------- 地图交互 ----------
 
+function openNewPointDialog(ll: { lng: number; lat: number }) {
+  if (points.value.length >= LIMITS.points) {
+    ElMessage.warning(`单张地图最多 ${LIMITS.points} 个点位`)
+    return
+  }
+  editingPoint.value = null
+  pendingLng.value = ll.lng
+  pendingLat.value = ll.lat
+  pointDialogVisible.value = true
+}
+
 function handleMapClick(ll: { lng: number; lat: number }) {
   if (mode.value === 'point') {
-    if (points.value.length >= LIMITS.points) {
-      ElMessage.warning(`单张地图最多 ${LIMITS.points} 个点位`)
-      return
-    }
-    editingPoint.value = null
-    pendingLng.value = ll.lng
-    pendingLat.value = ll.lat
-    pointDialogVisible.value = true
+    openNewPointDialog(ll)
   } else if (mode.value === 'route') {
     if (draftPath.value.length >= LIMITS.routeNodes) {
       ElMessage.warning(`单条路线最多 ${LIMITS.routeNodes} 个节点`)
@@ -478,6 +528,20 @@ function handleMapClick(ll: { lng: number; lat: number }) {
     }
     draftPath.value = [...draftPath.value, [ll.lng, ll.lat]]
   }
+}
+
+function handleMapRightClick(payload: { lng: number; lat: number; x: number; y: number }) {
+  contextMenu.value = { visible: true, x: payload.x, y: payload.y, lng: payload.lng, lat: payload.lat }
+}
+
+function closeContextMenu() {
+  contextMenu.value.visible = false
+}
+
+function addPointFromContextMenu() {
+  const { lng, lat } = contextMenu.value
+  closeContextMenu()
+  openNewPointDialog({ lng, lat })
 }
 
 function handleViewChange(payload: { center: LngLat; zoom: number }) {
@@ -542,7 +606,7 @@ function handlePointSubmit(payload: Omit<MapPoint, 'id'> & { id?: string }) {
   } else {
     points.value = [
       ...points.value,
-      { ...payload, id: `local-point-${Date.now()}-${points.value.length}` },
+      { ...payload, id: `local-point-${Date.now()}-${points.value.length}`, dayId: payload.dayId || activeDay.value?.id || '', stayMinutes: payload.stayMinutes || 0 },
     ]
   }
   // 改动会被上面的 watch 监到，1.5s 后自动保存
@@ -605,7 +669,7 @@ function finishDrawRoute() {
   // 路线类型：route-osrm 模式下是「沿道路画路线」（OSRM 算的真实道路），
   // 其他模式（route）都是用户在地图上点出来的直线段。
   const routeKind: 'straight' | 'road' = mode.value === 'route-osrm' ? 'road' : 'straight'
-  routes.value = [
+    routes.value = [
     ...routes.value,
     {
       id: `local-route-${Date.now()}-${index}`,
@@ -615,6 +679,10 @@ function finishDrawRoute() {
       distance: routeDistance,
       note: '',
       kind: routeKind,
+      dayId: activeDay.value?.id || '',
+      alternativeGroup: '',
+      profile: mode.value === 'route-osrm' ? osrmProfile.value : undefined,
+      durationSeconds: Number((window as any).__travelMapRouteDuration || 0),
     },
   ]
   draftPath.value = []
@@ -685,6 +753,7 @@ function startDrawOsrmRoute() {
     ElMessage.warning('地图上还没有点位，先标几个点再来连')
     return
   }
+  ;(window as any).__travelMapRouteDuration = 0
   mode.value = 'route-osrm'
   draftPath.value = []
   osrmAnchorPoints.value = []
@@ -754,6 +823,7 @@ async function handleOsrmRouteFromPoint(payload: { id: string; lng: number; lat:
       : rawTail
     draftPath.value = [...draftPath.value.slice(0, -1), ...tail]
     osrmSegmentDistances.value = [...osrmSegmentDistances.value, result.distance]
+    ;(window as any).__travelMapRouteDuration = ((window as any).__travelMapRouteDuration || 0) + result.duration
     ElMessage.success(`已算路 ${formatDistance(result.distance)}`)
   } catch (error: any) {
     // 先判断是不是"被更新点击打断了"——这种情况属于用户主动连点，
@@ -829,6 +899,7 @@ async function handleSave(opts: { silent?: boolean } = {}): Promise<boolean> {
       // 后端会重新分配 id，这里把本地临时 id 去掉
       points: points.value.map(({ id, ...rest }) => rest),
       routes: routes.value.map(({ id, ...rest }) => rest),
+      days: days.value,
     })
     applyDetail(detail)
     dirty.value = false
@@ -926,8 +997,102 @@ function goPlaza() {
       </div>
     </div>
 
-    <div class="px-4 mt-3 space-y-3">
-      <!-- 地图信息 -->
+    <div class="travel-map-workspace" @click="closeContextMenu" @keydown.esc="closeContextMenu">
+      <div class="travel-map-floating-panel" :class="{ collapsed: itineraryCollapsed }">
+        <div class="travel-map-floating-header">
+          <div class="travel-map-floating-title-row" @click.stop>
+            <div v-if="!titleEditing" class="travel-map-floating-title">{{ title || '我的旅游地图' }}</div>
+            <el-input
+              v-else
+              v-model="title"
+              maxlength="60"
+              placeholder="地图名称"
+              aria-label="地图名称"
+              class="travel-map-floating-title-input"
+              autofocus
+              @blur="finishTitleEditing"
+              @keyup.enter="finishTitleEditing"
+            />
+            <button
+              v-if="!titleEditing"
+              type="button"
+              class="travel-map-title-edit-button"
+              title="编辑地图名称"
+              aria-label="编辑地图名称"
+              @click="startTitleEditing"
+            >编辑</button>
+          </div>
+          <button type="button" class="travel-map-collapse-button" :aria-label="itineraryCollapsed ? '展开行程' : '收起行程'" @click="itineraryCollapsed = !itineraryCollapsed"><span class="travel-map-collapse-glyph">{{ itineraryCollapsed ? '›' : '‹' }}</span></button>
+          <div class="travel-map-floating-date">{{ dateRange }}</div>
+          <div v-if="!itineraryCollapsed" class="travel-map-floating-actions">
+            <button type="button" @click="mapRef?.fitAll()">◉ 总览</button>
+            <button type="button" @click="drawerVisible = true">▣ 我的地图</button>
+            <button type="button" @click="handleSave()">↗ 分享</button>
+          </div>
+          <div v-if="!itineraryCollapsed" class="travel-map-layer-switcher" @click.stop>
+            <span>底图</span>
+            <button
+              v-for="layer in BASE_LAYERS"
+              :key="layer.value"
+              type="button"
+              :class="{ active: baseLayer === layer.value }"
+              :title="layer.desc"
+              @click="baseLayer = layer.value"
+            >{{ layer.label }}</button>
+          </div>
+        </div>
+        <div v-if="!itineraryCollapsed" class="travel-map-floating-days">
+          <div v-for="day in days" :key="day.id" class="travel-map-floating-day" :class="{ active: activeDayId === day.id }">
+            <button type="button" class="travel-map-day-head" @click="activeDayId = activeDayId === day.id ? '' : day.id">
+              <span>第{{ day.dayNumber }}天 <span v-if="day.startLocation">◎ {{ day.startLocation }}</span><span v-if="activeDayId === day.id" class="travel-map-day-count"> · {{ activeDaySummary.pointCount }}个点 · {{ activeDaySummary.routeCount }}条路线</span></span>
+              <span>{{ activeDayId === day.id ? '⌃' : '⌄' }}</span>
+            </button>
+            <div v-if="activeDayId === day.id" class="travel-map-day-body">
+              <div class="travel-map-day-date-field">
+                <span class="travel-map-day-date-label">日期</span>
+                <el-input
+                  v-model="day.date"
+                  type="date"
+                  size="small"
+                  :aria-label="`第${day.dayNumber}天日期`"
+                  class="travel-map-day-date-input"
+                />
+              </div>
+              <div v-if="day.startTime || day.startLocation" class="travel-map-day-meta">出发 {{ day.startTime || '--:--' }} · {{ day.startLocation || '未设置地点' }}</div>
+              <button v-for="(p, index) in dayPoints" :key="p.id" type="button" class="travel-map-stop" @click="locatePoint(p)">
+                <span class="travel-map-stop-index">{{ index + 1 }}</span>
+                <span class="travel-map-stop-name">{{ p.name }}</span>
+                <span class="travel-map-stop-time">{{ p.stayMinutes ? `停留 ${p.stayMinutes} 分钟` : '' }}</span>
+              </button>
+              <div v-for="r in dayRoutes" :key="r.id" class="travel-map-route-summary">
+                <span class="travel-map-route-dot" :style="{ backgroundColor: r.color }"></span>
+                <span>{{ r.name }}</span>
+                <span class="travel-map-stop-time">{{ formatDistance(r.distance) }}<template v-if="r.durationSeconds"> · 约{{ Math.round(r.durationSeconds / 60) }}分钟</template></span>
+              </div>
+              <button type="button" class="travel-map-add-stop" @click="setMode('point')">⌕ 搜索添加新的目的地</button>
+            </div>
+          </div>
+        </div>
+        <button v-if="!itineraryCollapsed" type="button" class="travel-map-add-day" @click="createDay">＋ 添加一天</button>
+      </div>
+      <div class="p-3 rounded-2xl bg-white border border-border-subtle">
+        <div class="flex items-center gap-2 overflow-x-auto pb-2">
+          <button v-for="day in days" :key="day.id" type="button" class="shrink-0 px-3 py-1.5 rounded-lg text-sm border" :class="activeDayId === day.id ? 'bg-accent-600 text-white border-accent-600' : 'border-border-subtle text-ink-700'" @click="activeDayId = day.id">{{ day.title }}</button>
+          <el-button size="small" @click="createDay">+ 新增一天</el-button>
+          <el-button v-if="days.length > 1" size="small" type="danger" plain @click="removeDay">删除当天</el-button>
+        </div>
+        <div v-if="activeDay" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+          <el-input v-model="activeDay.title" placeholder="当天名称" />
+          <el-input v-model="activeDay.date" type="date" placeholder="日期" />
+          <el-input v-model="activeDay.startTime" type="time" placeholder="出发时间" />
+          <el-input v-model="activeDay.startLocation" placeholder="出发地点" />
+          <el-select v-model="activeDay.lodgingPointId" clearable placeholder="选择住宿" class="w-full">
+            <el-option v-for="p in dayLodgings" :key="p.id" :value="p.id" :label="p.name" />
+          </el-select>
+          <el-input v-model="activeDay.lodgingName" placeholder="住宿名称（也可手填）" />
+          <el-input v-model="activeDay.note" class="sm:col-span-2" placeholder="当天安排 / 备注" />
+        </div>
+      </div>
       <div class="p-4 rounded-2xl bg-white">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
@@ -1225,12 +1390,34 @@ function goPlaza() {
         </div>
       </div>
 
-      <!-- 地图（满宽 100%） -->
-      <div class="w-full h-[420px] sm:h-[560px] lg:h-[640px] rounded-2xl overflow-hidden border border-border-subtle">
+      <div
+        v-if="contextMenu.visible"
+        class="travel-map-context-menu"
+        :style="{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }"
+        @click.stop
+      >
+        <button type="button" @click="addPointFromContextMenu">新增点位</button>
+      </div>
+      <div class="travel-map-map-shell">
+        <aside class="absolute z-10 left-3 top-3 bottom-3 w-[min(360px,calc(100%-24px))] overflow-y-auto rounded-xl bg-white/95 shadow-lg border border-border-subtle p-3 hidden md:block">
+          <h3 class="font-semibold text-ink-900 mb-2">{{ activeDay?.title || '行程' }} · 行程点位</h3>
+          <div class="space-y-2">
+            <div v-for="p in filteredPoints" :key="p.id" class="p-2 rounded-lg border border-border-subtle">
+              <div class="flex items-center gap-2"><span>{{ getCategory(p.category).emoji }}</span><span class="font-medium truncate">{{ p.name }}</span><span class="ml-auto text-xs text-ink-500">{{ p.stayMinutes ? `${p.stayMinutes} 分钟` : '未设停留' }}</span></div>
+              <div v-if="p.note" class="text-xs text-ink-500 mt-1 line-clamp-2">{{ p.note }}</div>
+              <div class="mt-1 flex gap-2"><button class="text-xs text-accent-600" @click="locatePoint(p)">定位</button><button class="text-xs text-accent-600" @click="handlePointClick(p.id)">编辑</button></div>
+            </div>
+            <div v-for="r in dayRoutes" :key="r.id" class="p-2 rounded-lg border border-border-subtle">
+              <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full" :style="{ backgroundColor: r.color }"></span><span class="font-medium truncate">{{ r.name }}</span><span class="ml-auto text-xs text-ink-500">{{ formatDistance(r.distance) }}</span></div>
+              <div class="text-xs text-ink-500 mt-1">{{ r.alternativeGroup ? `备选：${r.alternativeGroup}` : '主路线' }}<span v-if="r.durationSeconds"> · 约 {{ Math.round(r.durationSeconds / 60) }} 分钟</span></div>
+            </div>
+          </div>
+        </aside>
+        <div class="w-full h-[640px] sm:h-[720px] rounded-2xl overflow-hidden border border-border-subtle">
         <TiandituMap
           ref="mapRef"
-          :points="points"
-          :routes="routes"
+          :points="dayPoints"
+          :routes="dayRoutes"
           :center="center"
           :zoom="zoom"
           :base-layer="baseLayer"
@@ -1240,23 +1427,29 @@ function goPlaza() {
           :selected-point-id="selectedPointId"
           :selected-route-id="selectedRouteId"
           @map-click="handleMapClick"
+          @map-right-click="handleMapRightClick"
           @map-blank-click="handleMapBlankClick"
           @point-click="handlePointClick"
           @route-click="handleRouteClick"
           @route-osrm-point="handleOsrmRouteFromPoint"
           @view-change="handleViewChange"
         />
+        </div>
       </div>
     </div>
 
     <ToolDetail title="使用说明">
+
+
       <div class="space-y-3 text-body-sm text-ink-800">
-        <p><strong>标点：</strong>点击工具条的「标点」，然后在地图上点击想标注的位置，填写名称、分类（露营地 / 商店超市 / 水源 / 观景点等）、海拔和备注。</p>
+        <p><strong>标点：</strong>点击工具条的「标点」，然后在地图上点击想标注的位置，填写名称、分类（露营地 / 商店超市 / 水源 / 观景点等）、海拔和备注；也可以在「标点」模式下右键地图直接新增。</p>
         <p><strong>海拔：</strong>天地图官方没有提供「经纬度查海拔」的接口，因此海拔需要手动填写，可参考户外 App 或地形图等高线。把底图切到「地形」可以直观看到山势起伏。</p>
         <p><strong>画直线：</strong>点击「画直线」后在地图上依次点击各个节点，系统会实时显示累计里程；点「结束绘制」保存这条路线。节点之间是直线段，不依赖路网，适合徒步、越野和自驾的概略规划。</p>
         <p><strong>多张地图：</strong>登录后可以在「我的地图」里创建、切换和删除多张地图，每次出行一张互不干扰。</p>
         <p><strong>分享：</strong>打开「分享到地图广场」开关后会生成公开链接，任何人无需登录都能查看；同时这张地图会出现在「地图广场」。关掉开关后链接立即失效，广场里也不再显示。</p>
         <p class="text-ink-500">上限：单张地图最多 {{ LIMITS.points }} 个点位、{{ LIMITS.routes }} 条路线，单条路线最多 {{ LIMITS.routeNodes }} 个节点。</p>
+        <p>高德官方路书：可在高德地图规划更完整的驾车/公共交通路线。</p>
+        <a href="https://www.amap.com/plan" target="_blank" rel="noopener noreferrer" class="text-accent-600 hover:underline">打开高德官方路书</a>
       </div>
     </ToolDetail>
 
@@ -1265,6 +1458,8 @@ function goPlaza() {
       :point="editingPoint"
       :lng="pendingLng"
       :lat="pendingLat"
+      :days="days"
+      :active-day-id="activeDayId"
       @submit="handlePointSubmit"
       @delete="handlePointDelete"
     />
@@ -1281,3 +1476,73 @@ function goPlaza() {
     />
   </div>
 </template>
+
+<style scoped>
+.travel-map-workspace { position: relative; isolation: isolate; z-index: 0; height: calc(100vh - 118px); min-height: 620px; margin-top: 12px; overflow: hidden; background: #eaf0f6; }
+.travel-map-workspace > .p-3, .travel-map-workspace > .p-4, .travel-map-workspace > .grid { display: none; }
+.travel-map-workspace > .travel-map-map-shell { position: absolute; inset: 0; display: block; height: 100%; min-height: 100%; z-index: 0; }
+.travel-map-workspace > .relative { position: static; }
+.travel-map-map-shell { position: absolute; inset: 0; height: 100%; min-height: 100%; z-index: 0; isolation: isolate; }
+.travel-map-map-shell > aside { display: none; }
+.travel-map-map-shell > div:last-child { position: relative; z-index: 0; height: 100%; min-height: 100%; border: 0; border-radius: 0; }
+.travel-map-canvas > .p-3, .travel-map-canvas > .p-4, .travel-map-canvas > .grid { display: none; }
+.travel-map-canvas > .relative { display: block; height: 100%; min-height: 100%; }
+.travel-map-canvas > .relative > aside { display: none; }
+.travel-map-canvas > .relative > div:last-child { height: 100%; min-height: 100%; border: 0; border-radius: 0; }
+.travel-map-floating-panel { position: absolute !important; z-index: 10; isolation: isolate; top: 40px; left: 52px; right: 12px; bottom: 52px; width: min(338px, calc(100vw - 64px)); display: flex; flex-direction: column; overflow: hidden; border: 1px solid rgba(148,163,184,.35); border-radius: 4px; background: rgba(255,255,255,.98); box-shadow: 0 8px 24px rgba(15,23,42,.18); pointer-events: auto; }
+.travel-map-floating-header { flex: none; padding: 14px 14px 10px; color: white; background: #347fdc; }
+.travel-map-floating-title-row { display: flex; align-items: center; gap: 8px; min-height: 38px; padding-right: 54px; }
+.travel-map-floating-title { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 17px; font-weight: 650; text-align: left; }
+.travel-map-title-edit-button { flex: none; padding: 4px 0; color: rgba(255,255,255,.78); font-size: 12px; border: 0; background: transparent; cursor: pointer; transition: color .15s ease; }
+.travel-map-title-edit-button:hover { color: white; text-decoration: underline; }
+.travel-map-floating-title-input { flex: 1; min-width: 0; }
+.travel-map-floating-title-input :deep(.el-input__wrapper) { min-height: 34px; padding: 0 9px; background: rgba(255,255,255,.14); box-shadow: inset 0 0 0 1px rgba(255,255,255,.45); border-radius: 7px; transition: background-color .15s ease, box-shadow .15s ease; }
+.travel-map-floating-title-input :deep(.el-input__wrapper:hover) { background: rgba(255,255,255,.2); }
+.travel-map-floating-title-input :deep(.el-input__inner) { height: 34px; color: white; font-size: 16px; font-weight: 650; text-align: left; }
+.travel-map-floating-title-input :deep(.el-input__inner::placeholder) { color: rgba(255,255,255,.76); }
+.travel-map-floating-title-input :deep(.el-input__wrapper.is-focus) { background: rgba(255,255,255,.22); box-shadow: inset 0 0 0 1px rgba(255,255,255,.86), 0 0 0 3px rgba(255,255,255,.14); }
+.travel-map-context-menu { position: absolute; z-index: 30; min-width: 116px; padding: 4px; border: 1px solid #dbe3ee; border-radius: 6px; background: white; box-shadow: 0 8px 22px rgba(15,23,42,.2); }
+.travel-map-context-menu button { width: 100%; padding: 8px 12px; color: #1e293b; font-size: 13px; text-align: left; border: 0; border-radius: 4px; background: transparent; cursor: pointer; }
+.travel-map-context-menu button:hover { color: #1769d2; background: #eff6ff; }
+.travel-map-collapse-button { position: absolute; top: 0; right: 0; width: 54px; height: 58px; display: flex; align-items: center; justify-content: center; padding: 0; color: rgba(255,255,255,.9); font-size: 22px; line-height: 1; border: 0; border-left: 1px solid rgba(255,255,255,.16); border-radius: 0; background: rgba(14,55,117,.12); cursor: pointer; }
+.travel-map-collapse-glyph { display: block; transform: translateY(-1px); font-size: 22px; line-height: 1; }
+.travel-map-floating-panel.collapsed { width: 62px !important; height: 62px !important; top: 40px !important; left: 52px !important; right: auto !important; bottom: auto !important; min-width: 62px !important; max-width: 62px !important; min-height: 62px !important; max-height: 62px !important; overflow: hidden !important; padding: 0 !important; }
+.travel-map-floating-panel.collapsed > .travel-map-floating-header { position: relative; width: 62px !important; height: 62px !important; min-height: 62px !important; display: block; padding: 0 !important; }
+.travel-map-floating-panel.collapsed > .travel-map-floating-header ~ * { display: none !important; visibility: hidden !important; }
+.travel-map-floating-panel.collapsed .travel-map-floating-title, .travel-map-floating-panel.collapsed .travel-map-floating-date { display: none; }
+.travel-map-floating-panel.collapsed .travel-map-collapse-button { position: absolute; top: 50%; left: 50%; display: flex; width: 34px; height: 34px; margin: 0; padding: 0; align-items: center; justify-content: center; transform: translate(-50%, -50%); border: 1px solid rgba(255,255,255,.75); border-radius: 50%; background: rgba(0,0,0,.12); }
+.travel-map-floating-date { margin-top: 6px; font-size: 12px; text-align: center; opacity: .9; }
+.travel-map-floating-actions { display: grid; grid-template-columns: repeat(3,1fr); margin: 14px -16px 0; border-top: 1px solid rgba(255,255,255,.25); }
+.travel-map-floating-actions button { padding: 10px 4px; color: white; font-size: 12px; border: 0; border-right: 1px solid rgba(255,255,255,.25); background: transparent; cursor: pointer; }
+.travel-map-floating-actions button:last-child { border-right: 0; }
+.travel-map-floating-actions button:hover { background: rgba(255,255,255,.12); }
+.travel-map-layer-switcher { display: flex; align-items: center; gap: 3px; margin: 12px 12px 0; padding: 4px; color: rgba(255,255,255,.82); font-size: 12px; background: rgba(15,57,125,.22); border: 1px solid rgba(255,255,255,.22); border-radius: 9px; }
+.travel-map-layer-switcher span { flex: none; padding: 0 6px 0 4px; color: rgba(255,255,255,.86); font-size: 11px; font-weight: 600; letter-spacing: .02em; }
+.travel-map-layer-switcher button { flex: 1; min-width: 0; padding: 6px 5px; color: rgba(255,255,255,.86); font-size: 12px; line-height: 1.2; border: 0; border-radius: 6px; background: transparent; cursor: pointer; transition: color .15s ease, background-color .15s ease, box-shadow .15s ease; }
+.travel-map-layer-switcher button:hover { color: white; background: rgba(255,255,255,.14); }
+.travel-map-layer-switcher button.active { color: #1769d2; background: white; box-shadow: 0 1px 4px rgba(15,23,42,.18); font-weight: 600; }
+.travel-map-floating-days { flex: 1; overflow-y: auto; background: #fff; }
+.travel-map-floating-day { border-bottom: 1px solid #e2e8f0; }
+.travel-map-floating-day.active { background: #f5f9ff; }
+.travel-map-day-head { width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 11px 14px; color: #475569; font-size: 14px; text-align: left; border: 0; background: transparent; cursor: pointer; }
+.travel-map-floating-day.active .travel-map-day-head { color: #1769d2; font-weight: 600; }
+.travel-map-day-count { color: #64748b; font-size: 11px; font-weight: 400; }
+.travel-map-day-body { padding: 0 14px 12px; }
+.travel-map-day-date-field { display: flex; align-items: center; gap: 8px; padding: 4px 0 9px 30px; }
+.travel-map-day-date-label { flex: none; color: #64748b; font-size: 12px; }
+.travel-map-day-date-input { flex: 1; min-width: 0; }
+.travel-map-day-date-input :deep(.el-input__wrapper) { min-height: 30px; padding: 0 8px; box-shadow: inset 0 0 0 1px #dbe3ee; border-radius: 6px; }
+.travel-map-day-date-input :deep(.el-input__inner) { height: 30px; color: #334155; font-size: 12px; }
+.travel-map-day-meta { padding: 2px 0 8px 30px; color: #64748b; font-size: 12px; }
+.travel-map-stop, .travel-map-route-summary { width: 100%; display: flex; align-items: center; gap: 8px; min-height: 38px; color: #475569; font-size: 13px; text-align: left; border: 0; background: transparent; }
+.travel-map-stop { cursor: pointer; }
+.travel-map-stop:hover { color: #1769d2; }
+.travel-map-stop-index { width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; flex: none; color: white; border-radius: 50%; background: #1595ed; font-size: 12px; }
+.travel-map-stop-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.travel-map-stop-time { flex: none; color: #1689e7; font-size: 11px; }
+.travel-map-route-summary { padding-left: 30px; }
+.travel-map-route-dot { width: 9px; height: 9px; flex: none; border-radius: 50%; }
+.travel-map-add-stop { width: 100%; padding: 12px 0 4px 30px; color: #1689e7; font-size: 12px; text-align: left; border: 0; background: transparent; cursor: pointer; }
+.travel-map-add-day { flex: none; margin: 0 6px 6px; padding: 10px; color: #1689e7; font-size: 13px; border: 1px dashed #1698f0; background: white; cursor: pointer; }
+@media (max-width: 767px) { .travel-map-workspace { height: calc(100vh - 96px); min-height: 560px; margin-top: 0; } .travel-map-floating-panel { top: 40px; left: 52px; right: 12px; bottom: 52px; width: min(338px, calc(100vw - 64px)); } }
+</style>

@@ -32,6 +32,22 @@ export interface MapPoint {
   /** 海拔（米），手动填写，可留空 */
   elevation: number | null
   note: string
+  /** 所属日程 */
+  dayId?: string
+  /** 停留时长（分钟） */
+  stayMinutes?: number
+}
+
+export interface TravelMapDay {
+  id: string
+  dayNumber: number
+  title: string
+  date: string
+  startTime: string
+  startLocation: string
+  lodgingPointId: string
+  lodgingName: string
+  note: string
 }
 
 export interface MapRoute {
@@ -50,6 +66,14 @@ export interface MapRoute {
    * 老数据没这个字段时默认为 'straight'（见 travelMapsService.routeFromRow）。
    */
   kind?: 'straight' | 'road'
+  /** 所属日程 */
+  dayId?: string
+  /** 备选路线组名称，例如晴天/雨天 */
+  alternativeGroup?: string
+  /** OSRM 出行方式 */
+  profile?: RouteProfile
+  /** 预计/计算耗时（秒） */
+  durationSeconds?: number
 }
 
 /** 地图元信息（不含点位与路线） */
@@ -74,6 +98,7 @@ export interface TravelMapMeta {
 export interface TravelMapDetail extends TravelMapMeta {
   points: MapPoint[]
   routes: MapRoute[]
+  days: TravelMapDay[]
 }
 
 export interface MapAuthor {
@@ -102,6 +127,7 @@ export interface SharedMapDetail extends Omit<TravelMapMeta, 'id'> {
   author: MapAuthor
   points: MapPoint[]
   routes: MapRoute[]
+  days: TravelMapDay[]
 }
 
 /** 全量保存的请求体 */
@@ -112,6 +138,7 @@ export interface SaveMapPayload {
   zoom: number
   baseLayer: BaseLayer
   isPublic: boolean
+  days: TravelMapDay[]
   points: Array<Omit<MapPoint, 'id'>>
   routes: Array<Omit<MapRoute, 'id'>>
 }

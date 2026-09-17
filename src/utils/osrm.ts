@@ -27,6 +27,8 @@ export type OsrmProfile = 'foot' | 'cycling' | 'driving'
 export interface OsrmRouteResult {
   /** 总里程（米） */
   distance: number
+  /** 路径耗时（秒） */
+  duration: number
   /** 路径节点数组 [lng, lat] */
   path: [number, number][]
 }
@@ -117,5 +119,5 @@ export async function routeAlongRoad(
   const path: [number, number][] = route.geometry.coordinates.map(
     (c) => [c[0], c[1]] as [number, number]
   )
-  return { distance: route.distance, path }
+  return { distance: route.distance, duration: route.duration, path }
 }

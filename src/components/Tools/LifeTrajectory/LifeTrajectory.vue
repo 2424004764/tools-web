@@ -57,9 +57,11 @@ const form = reactive({
   mood: '🌱',
 })
 
-// 已登录用户可发布/删除自己的轨迹
+// 已登录用户可发布、编辑、删除自己的轨迹
 const isLoggedIn = computed(() => userStore.getLoginStatus)
 const myUid = computed(() => userStore.getUserInfo?.uid || '')
+const editingId = ref<string | null>(null)
+const isEditing = computed(() => editingId.value !== null)
 
 const goToLogin = () => {
   router.push(`/login?redirect=${encodeURIComponent('/life-trajectory/')}`)
@@ -90,9 +92,24 @@ const openCompose = () => {
     goToLogin()
     return
   }
+  editingId.value = null
   form.content = ''
   form.mood = '🌱'
   showCompose.value = true
+}
+
+const openEdit = (item: Trajectory) => {
+  if (!isMine(item)) return
+  editingId.value = item.id
+  form.content = item.content
+  form.mood = MOOD_OPTIONS.includes(item.mood) ? item.mood : '🌱'
+  showCompose.value = true
+}
+
+const resetForm = () => {
+  editingId.value = null
+  form.content = ''
+  form.mood = '🌱'
 }
 
 const submit = async () => {
@@ -106,16 +123,20 @@ const submit = async () => {
     return
   }
   sending.value = true
+  const targetId = editingId.value
   try {
-    const res = await functionsRequest.post('/api/life-trajectories', {
+    const payload = {
       content,
       mood: form.mood,
-    })
-    if (res.status === 201) {
-      ElMessage.success('已记下这一刻 ✨')
+    }
+    const res = targetId
+      ? await functionsRequest.put(`/api/life-trajectories/${targetId}`, payload)
+      : await functionsRequest.post('/api/life-trajectories', payload)
+    if (res.status === (targetId ? 200 : 201)) {
+      ElMessage.success(targetId ? '已更新' : '已记下这一刻 ✨')
       showCompose.value = false
-      // 重新拉第一页，让新发布的轨迹出现在最上面
-      await fetchList(1)
+      resetForm()
+      await fetchList(targetId ? pagination.value.page : 1)
     }
   } catch (err) {
     // 401 等错误由拦截器统一处理
@@ -249,16 +270,25 @@ onMounted(() => {
               <p class="lx-card-content">{{ item.content }}</p>
               <div class="lx-card-foot">
                 <span class="lx-card-time">{{ formatTime(item.createTime) }}</span>
-                <el-button
-                  v-if="isMine(item)"
-                  class="lx-card-delete"
-                  size="small"
-                  type="danger"
-                  :icon="Delete"
-                  plain
-                  circle
-                  @click="confirmDelete(item)"
-                />
+                <div v-if="isMine(item)" class="lx-card-actions">
+                  <el-button
+                    class="lx-card-edit"
+                    size="small"
+                    :icon="EditPen"
+                    plain
+                    circle
+                    @click="openEdit(item)"
+                  />
+                  <el-button
+                    class="lx-card-delete"
+                    size="small"
+                    type="danger"
+                    :icon="Delete"
+                    plain
+                    circle
+                    @click="confirmDelete(item)"
+                  />
+                </div>
               </div>
             </div>
           </li>
@@ -288,7 +318,7 @@ onMounted(() => {
     <!-- 发布弹窗 -->
     <el-dialog
       v-model="showCompose"
-      title="记一笔"
+      :title="isEditing ? '编辑轨迹' : '记一笔'"
       width="92%"
       max-width="520px"
       :close-on-click-modal="false"
@@ -324,14 +354,14 @@ onMounted(() => {
         <p class="lx-form-tip">⚠️ 只能发布文字和表情，不支持图片/链接/HTML</p>
       </div>
       <template #footer>
-        <el-button @click="showCompose = false">取消</el-button>
+        <el-button @click="showCompose = false; resetForm()">取消</el-button>
         <el-button
           type="primary"
           :loading="sending"
           :disabled="!form.content.trim() || sending || charCount > 500"
           @click="submit"
         >
-          发布
+          {{ isEditing ? '保存' : '发布' }}
         </el-button>
       </template>
     </el-dialog>
@@ -345,7 +375,7 @@ onMounted(() => {
         <br />• <strong>极简输入</strong>：只能发文字 + 单个表情 emoji，没有富文本、没有图片、没有链接，专注于「这一刻」
         <br />• <strong>最新优先</strong>：列表按发布时间倒序，新发布的轨迹永远在最上面
         <br />• <strong>公开可见</strong>：所有人可浏览所有轨迹，无需登录也能围观
-        <br />• <strong>权限隔离</strong>：必须登录才能发布；只能删除自己的轨迹（其他用户的轨迹看不到删除按钮）
+        <br />• <strong>权限隔离</strong>：必须登录才能发布；只能编辑或删除自己的轨迹（其他用户的轨迹看不到操作按钮）
         <br />• <strong>云端存储</strong>：数据持久化在 Cloudflare D1 数据库，跨设备同步
         <br /><br />
         <strong>使用场景：</strong>
@@ -359,13 +389,13 @@ onMounted(() => {
         <br />2. 选择一个心情 emoji（12 选 1）
         <br />3. 在文本框写下这一刻的想法（最多 500 字）
         <br />4. 点击发布，新轨迹就会出现在列表最上方
-        <br />5. 想删除自己发布的轨迹？鼠标移到卡片右下角，点击红色删除按钮
+        <br />5. 想修改或删除自己发布的轨迹？点击卡片右下角的编辑或删除按钮
         <br /><br />
         <strong>技术实现：</strong>
         <br />• <strong>后端</strong>：Cloudflare Pages Functions + D1 数据库
         <br />• <strong>表结构</strong>：life_trajectories（id / uid / content / mood / create_time）
         <br />• <strong>鉴权</strong>：复用项目自身的 JWT（Bearer Token）机制，与其他用户态工具保持一致
-        <br />• <strong>权限</strong>：删除时双重校验 id + uid，确保只能删自己的记录
+        <br />• <strong>权限</strong>：编辑和删除时双重校验 id + uid，确保只能操作自己的记录
         <br />• <strong>建表 SQL</strong>：见项目根目录 <code class="bg-gray-200 px-1 rounded">migrations/create_life_trajectories_table.sql</code>
       </el-text>
     </ToolDetail>
@@ -664,6 +694,12 @@ onMounted(() => {
   color: #a0aec0;
 }
 
+.lx-card-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.lx-card-edit,
 .lx-card-delete {
   width: 28px;
   height: 28px;
@@ -671,12 +707,18 @@ onMounted(() => {
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
+.lx-card:hover .lx-card-edit,
 .lx-card:hover .lx-card-delete {
   opacity: 1;
 }
 
+.lx-card-edit:hover,
 .lx-card-delete:hover {
   transform: scale(1.1);
+}
+
+.lx-card-delete {
+  color: #e53e3e;
 }
 
 /* 淡入动画 */

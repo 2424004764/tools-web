@@ -106,7 +106,7 @@ router.onError((error) => {
     // 多次重试仍失败：直接渲染静态错误提示，不依赖 SPA 路由
     // 提供两个按钮：
     //   ① 「强制刷新」：带 cache-bust 参数跳回原路径，绕开任何 SW / 内存缓存
-    //   ② 「清理缓存」：反注册 SW + 清 Cache API + 清 sessionStorage
+    //   ② 「清理缓存」：仅清理本项目 PWA 注册 + tools-web-pwa-* Cache API + sessionStorage
     //
     // 注意：不要把 JS 字符串拼接进 onclick="" 属性 —— JSON.stringify 路径里的双引号会
     // 提前闭合属性，HTML 解析器会把按钮元素本身吃掉（只剩标题/正文，按钮消失）。
@@ -183,11 +183,20 @@ router.onError((error) => {
       try {
         if (navigator.serviceWorker) {
           navigator.serviceWorker.getRegistrations().then((rs) =>
-            Promise.all(rs.map((r) => r.unregister())),
+            Promise.all(
+              rs
+                .filter((r) => {
+                  const url = new URL(r.active?.scriptURL || r.installing?.scriptURL || r.waiting?.scriptURL || '')
+                  return url.origin === location.origin && /\/(?:dev-)?sw\.js$/.test(url.pathname)
+                })
+                .map((r) => r.unregister()),
+            ),
           )
         }
         if (window.caches) {
-          caches.keys().then((ks) => Promise.all(ks.map((k) => caches.delete(k))))
+          caches.keys().then((ks) =>
+            Promise.all(ks.filter((k) => k.startsWith('tools-web-pwa-')).map((k) => caches.delete(k))),
+          )
         }
         try {
           sessionStorage.clear()

@@ -1585,6 +1585,15 @@ export function getToolsCate() {
           cate: '内容管理',
         },
         {
+          id: 'shopping-list-2026-09-13',
+          title: '购物清单',
+          logo: '',
+          desc: '创建多个购物清单，记录数量、重量、预计与实际花费，随时标记已购买并导出清单',
+          url: '/shopping-list/',
+          cateId: 13,
+          cate: '内容管理',
+        },
+        {
           id: 'food-log-2026-08-28',
           title: '今日吃啥',
           logo: '',

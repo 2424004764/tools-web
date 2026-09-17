@@ -52,6 +52,25 @@ export class LifeTrajectoriesService {
     }
   }
 
+  // 更新一条轨迹（只能更新自己的）
+  async update(id, data, uid) {
+    try {
+      const result = await this.model.db.prepare(
+        'UPDATE life_trajectories SET content = ?, mood = ? WHERE id = ? AND uid = ?'
+      ).bind(data.content.trim(), (data.mood || '🌱').trim(), id, uid).run()
+      const updated = (result.meta?.changes ?? result.changes ?? 0) > 0
+      return {
+        success: true,
+        data: {
+          updated,
+          message: updated ? '更新成功' : '记录不存在或无权限',
+        },
+      }
+    } catch (error) {
+      console.error('更新人生轨迹失败:', error)
+      return { success: false, error: '更新失败' }
+    }
+  }
   // 删除一条轨迹（只能删除自己的）
   async remove(id, uid) {
     try {

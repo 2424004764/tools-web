@@ -15,7 +15,7 @@ export class LifeTrajectoriesRouter {
     const method = request.method
 
     if (method === 'GET') {
-      return await this.controller.index(origin)
+      return await this.controller.index(request, origin)
     }
 
     // POST / DELETE 都需要登录
@@ -28,6 +28,12 @@ export class LifeTrajectoriesRouter {
     if (method === 'POST') {
       const data = await request.json()
       return await this.controller.store(data, user, origin)
+    }
+
+    if (method === 'PUT') {
+      const id = path.replace(/^\//, '').trim()
+      const data = await request.json()
+      return await this.controller.update(id, data, user, origin)
     }
 
     if (method === 'DELETE') {
