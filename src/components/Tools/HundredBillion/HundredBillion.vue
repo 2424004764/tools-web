@@ -242,7 +242,7 @@ const getCategoryName = (categoryId: string) => {
   return categories.find(c => c.id === categoryId)?.name || categoryId
 }
 
-// 导出订单图片
+// 导出订单图片（手机竖版）
 const exportOrderImage = async () => {
   if (gameState.orders.length === 0) {
     ElMessage.warning('没有订单记录可导出')
@@ -252,117 +252,139 @@ const exportOrderImage = async () => {
   try {
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')!
-    
-    // 设置canvas尺寸（增加宽度）
-    canvas.width = 1000
-    const orderHeight = 80
-    const headerHeight = 160
-    const footerHeight = 80
-    canvas.height = headerHeight + gameState.orders.length * orderHeight + footerHeight
-    
-    // 设置字体
-    ctx.fillStyle = '#ffffff'
+
+    // 手机竖版：宽750，高度随订单数量增长，最低保持9:16竖屏比例
+    const W = 750
+    const sideMargin = 24
+    const headerHeight = 240
+    const cardHeight = 104
+    const cardGap = 16
+    const footerHeight = 120
+    const listTop = headerHeight + 20
+    const contentBottom = listTop + gameState.orders.length * (cardHeight + cardGap)
+    canvas.width = W
+    canvas.height = Math.max(contentBottom + footerHeight, 1334)
+
+    // 圆角矩形
+    const drawRoundRect = (x: number, y: number, w: number, h: number, r: number) => {
+      ctx.beginPath()
+      ctx.moveTo(x + r, y)
+      ctx.arcTo(x + w, y, x + w, y + h, r)
+      ctx.arcTo(x + w, y + h, x, y + h, r)
+      ctx.arcTo(x, y + h, x, y, r)
+      ctx.arcTo(x, y, x + w, y, r)
+      ctx.closePath()
+    }
+
+    // 背景
+    ctx.fillStyle = '#f6f7fb'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
-    
+
     // 绘制头部背景
-    const gradient = ctx.createLinearGradient(0, 0, canvas.width, headerHeight)
+    const gradient = ctx.createLinearGradient(0, 0, W, headerHeight)
     gradient.addColorStop(0, '#fef3c7')
     gradient.addColorStop(1, '#fed7aa')
     ctx.fillStyle = gradient
-    ctx.fillRect(0, 0, canvas.width, headerHeight)
-    
+    ctx.fillRect(0, 0, W, headerHeight)
+
     // 绘制标题（使用配置变量）
-    ctx.fillStyle = '#1f2937'
-    ctx.font = 'bold 28px Arial, sans-serif'
     ctx.textAlign = 'center'
-    ctx.fillText(`💰 ${gameConfig.title} - 订单记录`, canvas.width / 2, 50)
-    
+    ctx.fillStyle = '#1f2937'
+    ctx.font = 'bold 34px Arial, sans-serif'
+    ctx.fillText(`💰 ${gameConfig.title} · 订单记录`, W / 2, 76)
+
     // 绘制总消费信息
-    ctx.font = 'bold 22px Arial, sans-serif'
+    ctx.font = 'bold 44px Arial, sans-serif'
     ctx.fillStyle = '#16a34a'
-    ctx.fillText(`总消费：¥${formatMoney(gameState.totalSpent)}`, canvas.width / 2, 85)
-    
-    ctx.font = '16px Arial, sans-serif'
+    ctx.fillText(`总消费：¥${formatMoney(gameState.totalSpent)}`, W / 2, 150)
+
+    ctx.font = '24px Arial, sans-serif'
     ctx.fillStyle = '#6b7280'
-    ctx.fillText(`剩余余额：¥${formatMoney(currentBalance.value)}`, canvas.width / 2, 115)
-    
+    ctx.fillText(`剩余余额：¥${formatMoney(currentBalance.value)}`, W / 2, 200)
+
     // 文字截断函数
-    const truncateText = (text: string, maxWidth: number, fontSize: string) => {
-      ctx.font = fontSize
+    const truncateText = (text: string, maxWidth: number, font: string) => {
+      ctx.font = font
       if (ctx.measureText(text).width <= maxWidth) {
         return text
       }
-      
+
       let truncated = text
       while (ctx.measureText(truncated + '...').width > maxWidth && truncated.length > 0) {
         truncated = truncated.slice(0, -1)
       }
       return truncated + '...'
     }
-    
-    // 绘制订单列表
+
+    // 绘制订单卡片
     gameState.orders.forEach((order, index) => {
-      const y = headerHeight + index * orderHeight
-      
-      // 绘制订单背景（交替颜色）
-      ctx.fillStyle = index % 2 === 0 ? '#f9fafb' : '#ffffff'
-      ctx.fillRect(0, y, canvas.width, orderHeight)
-      
-      // 绘制订单边框
+      const y = listTop + index * (cardHeight + cardGap)
+      const innerLeft = sideMargin + 24
+      const innerRight = W - sideMargin - 24
+
+      // 卡片背景
+      ctx.fillStyle = '#ffffff'
+      drawRoundRect(sideMargin, y, W - sideMargin * 2, cardHeight, 16)
+      ctx.fill()
       ctx.strokeStyle = '#e5e7eb'
       ctx.lineWidth = 1
-      ctx.strokeRect(0, y, canvas.width, orderHeight)
-      
-      // 绘制商品名称和数量（每次都重置对齐方式）
-      ctx.textAlign = 'left'  // 明确重置
+      ctx.stroke()
+
+      // 商品名称、数量与总价
+      ctx.font = 'bold 28px Arial, sans-serif'
+      const priceText = `¥${formatMoney(order.price * order.quantity)}`
+      const priceWidth = ctx.measureText(priceText).width
+      const productName = order.quantity > 1 ? `${order.name} ×${order.quantity}` : order.name
+      const displayName = truncateText(productName, W - sideMargin * 2 - 48 - priceWidth - 24, 'bold 28px Arial, sans-serif')
+
+      ctx.textAlign = 'left'
       ctx.fillStyle = '#1f2937'
-      ctx.font = 'bold 16px Arial, sans-serif'
-      const productName = order.quantity > 1 ? `${order.name} × ${order.quantity}` : order.name
-      const maxNameWidth = canvas.width - 300 // 为价格预留空间
-      const displayName = truncateText(productName, maxNameWidth, 'bold 16px Arial, sans-serif')
-      ctx.fillText(displayName, 30, y + 30)
-      
-      // 绘制总价
-      ctx.textAlign = 'right'  // 明确设置
+      ctx.font = 'bold 28px Arial, sans-serif'
+      ctx.fillText(displayName, innerLeft, y + 44)
+
+      ctx.textAlign = 'right'
       ctx.fillStyle = '#ef4444'
-      ctx.font = 'bold 16px Arial, sans-serif'
-      const totalPrice = order.price * order.quantity
-      ctx.fillText(`¥${formatMoney(totalPrice)}`, canvas.width - 30, y + 30)
-      
-      // 绘制分类
-      ctx.textAlign = 'left'  // 明确重置
+      ctx.fillText(priceText, innerRight, y + 44)
+
+      // 分类、单价与时间
+      ctx.font = '22px Arial, sans-serif'
       ctx.fillStyle = '#6b7280'
-      ctx.font = '12px Arial, sans-serif'
-      ctx.fillText(`[${getCategoryName(order.category)}]`, 30, y + 55)
-      
-      // 绘制单价（如果数量>1）
-      if (order.quantity > 1) {
-        ctx.textAlign = 'center'  // 明确设置
-        ctx.fillText(`单价 ¥${formatMoney(order.price)}`, canvas.width / 2, y + 55)
-      }
-      
-      // 绘制时间
-      ctx.textAlign = 'right'  // 明确设置
-      ctx.fillText(order.time, canvas.width - 30, y + 55)
+      ctx.textAlign = 'left'
+      const metaText = order.quantity > 1
+        ? `[${getCategoryName(order.category)}] · 单价 ¥${formatMoney(order.price)}`
+        : `[${getCategoryName(order.category)}]`
+      ctx.fillText(metaText, innerLeft, y + 82)
+
+      ctx.textAlign = 'right'
+      ctx.fillText(order.time, innerRight, y + 82)
     })
-    
-    // 绘制底部信息
-    const footerY = headerHeight + gameState.orders.length * orderHeight
+
+    // 绘制底部信息（固定在图片底部）
+    const footerY = canvas.height - footerHeight
+
+    // 订单较少时中部留白提示
+    if (footerY - contentBottom > 200) {
+      ctx.textAlign = 'center'
+      ctx.fillStyle = '#9ca3af'
+      ctx.font = '26px Arial, sans-serif'
+      ctx.fillText(`💸 余额还剩 ¥${formatMoney(currentBalance.value)}，继续买买买！`, W / 2, (contentBottom + footerY) / 2)
+    }
+
     ctx.fillStyle = '#f3f4f6'
-    ctx.fillRect(0, footerY, canvas.width, footerHeight)
-    
+    ctx.fillRect(0, footerY, W, footerHeight)
+
     ctx.fillStyle = '#6b7280'
-    ctx.font = '14px Arial, sans-serif'
+    ctx.font = '22px Arial, sans-serif'
     ctx.textAlign = 'center'
-    ctx.fillText(`生成时间：${new Date().toLocaleString()}`, canvas.width / 2, footerY + 35)
-    ctx.fillText(`共 ${gameState.orders.length} 笔订单`, canvas.width / 2, footerY + 60)
-    
+    ctx.fillText(`生成时间：${new Date().toLocaleString()}`, W / 2, footerY + 48)
+    ctx.fillText(`共 ${gameState.orders.length} 笔订单`, W / 2, footerY + 86)
+
     // 下载图片（文件名也使用配置变量）
     const link = document.createElement('a')
     link.download = `${gameConfig.title}-订单记录-${new Date().toISOString().slice(0, 10)}.png`
     link.href = canvas.toDataURL('image/png')
     link.click()
-    
+
     ElMessage.success('订单图片导出成功！')
   } catch (error) {
     console.error('导出图片失败:', error)
