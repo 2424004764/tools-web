@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive } from "vue"
+import { ref, reactive, onMounted, onUnmounted } from "vue"
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { UploadProps, UploadInstance, UploadRawFile, genFileId } from 'element-plus'
@@ -29,6 +29,8 @@ const videoSettings = reactive({
 
 const currentTime = ref(0)
 const videoDuration = ref(0)
+const isDragging = ref(false)
+const dropZone = ref<HTMLElement>()
 
 const formatTime = (seconds: number): string => {
   const mins = Math.floor(seconds / 60)
@@ -36,27 +38,114 @@ const formatTime = (seconds: number): string => {
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
 }
 
-const uploadChange: UploadProps['onChange'] = async (file) => {
-  const rawFile = file.raw
-  if (!rawFile) return
+const isVideoFile = (file: File) => {
+  if (file.type.startsWith('video/')) return true
+  // 部分系统复制/拖入文件时不带 MIME，按扩展名兜底
+  return /\.(mp4|webm|mov|avi|mkv|m4v|ogv|mpeg|mpg|3gp|wmv)$/i.test(file.name)
+}
 
-  if (!rawFile.type.startsWith('video/')) {
+const pickVideoFile = (files: FileList | File[] | null | undefined): File | null => {
+  if (!files || files.length === 0) return null
+  return Array.from(files).find(isVideoFile) || null
+}
+
+const applyVideoFile = (file: File) => {
+  if (!isVideoFile(file)) {
     ElMessage.warning('请选择视频文件')
     return
   }
 
-  if (rawFile.size > 50 * 1024 * 1024) {
+  if (file.size > 50 * 1024 * 1024) {
     ElMessage.warning('视频文件不能超过50MB')
     return
   }
 
-  videoFile.value = rawFile
-  videoUrl.value = URL.createObjectURL(rawFile)
+  if (videoUrl.value) URL.revokeObjectURL(videoUrl.value)
+  if (generatedGifUrl.value) URL.revokeObjectURL(generatedGifUrl.value)
+
+  videoFile.value = file
+  videoUrl.value = URL.createObjectURL(file)
   generatedGifUrl.value = ''
   generatedGifBlob.value = null
   isVideoLoaded.value = false
   videoDuration.value = 0
 }
+
+const uploadChange: UploadProps['onChange'] = (file) => {
+  const rawFile = file.raw
+  if (!rawFile) return
+  applyVideoFile(rawFile)
+}
+
+const triggerFileSelect = () => {
+  const input = upload.value?.$el?.querySelector('input[type=file]') as HTMLInputElement | undefined
+  input?.click()
+}
+
+const handleDrop = (e: DragEvent) => {
+  e.preventDefault()
+  e.stopPropagation()
+  isDragging.value = false
+  const file = pickVideoFile(e.dataTransfer?.files)
+  if (!file) {
+    ElMessage.warning('请拖入视频文件')
+    return
+  }
+  applyVideoFile(file)
+}
+
+const handleDragOver = (e: DragEvent) => {
+  e.preventDefault()
+  e.stopPropagation()
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'
+  isDragging.value = true
+}
+
+const handleDragLeave = (e: DragEvent) => {
+  e.preventDefault()
+  const related = e.relatedTarget as Node | null
+  if (related && dropZone.value?.contains(related)) return
+  isDragging.value = false
+}
+
+const onPaste = (e: ClipboardEvent) => {
+  const target = e.target as HTMLElement | null
+  if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+    return
+  }
+
+  const fromFiles = pickVideoFile(e.clipboardData?.files)
+  if (fromFiles) {
+    e.preventDefault()
+    applyVideoFile(fromFiles)
+    return
+  }
+
+  const items = e.clipboardData?.items
+  if (!items) return
+  const pasted: File[] = []
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i]
+    if (item.kind !== 'file') continue
+    const file = item.getAsFile()
+    if (file) pasted.push(file)
+  }
+  const file = pickVideoFile(pasted)
+  if (file) {
+    e.preventDefault()
+    applyVideoFile(file)
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('paste', onPaste)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('paste', onPaste)
+  if (videoUrl.value) URL.revokeObjectURL(videoUrl.value)
+  if (generatedGifUrl.value) URL.revokeObjectURL(generatedGifUrl.value)
+})
 
 const uploadExceed: UploadProps['onExceed'] = (files) => {
   upload.value!.clearFiles()
@@ -285,20 +374,40 @@ const downloadGif = () => {
           </el-upload>
         </div>
 
-        <div v-if="videoUrl" class="video-container">
-          <div class="relative bg-black rounded-lg overflow-hidden">
-            <video
-              ref="videoElement"
-              :src="videoUrl"
-              class="w-full max-h-64 mx-auto"
-              controls
-              @loadedmetadata="onVideoLoaded"
-              @timeupdate="onTimeUpdate"
-              crossorigin="anonymous"
-            ></video>
-          </div>
-          <div class="mt-2 text-body-sm text-gray-500 text-center">
-            时长: {{ formatTime(videoDuration) }} | 当前: {{ formatTime(currentTime) }}
+        <div
+          ref="dropZone"
+          @drop="handleDrop"
+          @dragover="handleDragOver"
+          @dragenter.prevent="isDragging = true"
+          @dragleave="handleDragLeave"
+          @click="!videoUrl && triggerFileSelect()"
+          :class="[
+            'border-2 border-dashed rounded-xl p-6 text-center transition-colors',
+            isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400',
+            !videoUrl ? 'cursor-pointer' : '',
+          ]"
+        >
+          <template v-if="!videoUrl">
+            <div class="text-4xl mb-3">🎬</div>
+            <p class="text-body-lg font-medium text-gray-700 mb-1">拖拽视频到此处 / 点击选择 / Ctrl+V 粘贴</p>
+            <p class="text-body-sm text-gray-500">支持 mp4、webm、mov 等格式，建议不超过 50MB</p>
+          </template>
+          <div v-else class="video-container">
+            <div class="relative bg-black rounded-lg overflow-hidden">
+              <video
+                ref="videoElement"
+                :src="videoUrl"
+                class="w-full max-h-64 mx-auto"
+                controls
+                @loadedmetadata="onVideoLoaded"
+                @timeupdate="onTimeUpdate"
+                crossorigin="anonymous"
+              ></video>
+            </div>
+            <div class="mt-2 text-body-sm text-gray-500 text-center">
+              {{ videoFile?.name }} · 时长: {{ formatTime(videoDuration) }} | 当前: {{ formatTime(currentTime) }}
+            </div>
+            <p class="mt-2 text-caption text-gray-400">可继续拖入或粘贴新视频替换</p>
           </div>
         </div>
       </div>
@@ -440,6 +549,7 @@ const downloadGif = () => {
         <p><strong>功能特点：</strong></p>
         <ul class="list-disc list-inside space-y-1">
           <li>纯前端处理，视频不上传服务器</li>
+          <li>支持点击选择、拖拽上传、Ctrl+V 粘贴视频</li>
           <li>支持自定义视频片段选择</li>
           <li>可调节GIF宽度和帧率</li>
         </ul>
