@@ -515,7 +515,13 @@ onMounted(() => {
           <el-table-column label="URL" min-width="180">
             <template #default="{ row }">
               <div class="flex items-center gap-1">
-                <code class="text-xs text-ink-500 truncate max-w-[140px]">{{ row.url }}</code>
+                <a
+                  :href="row.url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-xs text-accent-600 hover:underline truncate max-w-[140px]"
+                  :title="row.url"
+                >{{ row.url }}</a>
                 <el-button link size="small" @click="copyUrl(row.url)">复制</el-button>
               </div>
             </template>
