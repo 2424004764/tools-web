@@ -168,6 +168,13 @@ async function fullReset() {
       <p>
         <el-text>如果您发现了 Bug，或者某些功能未能按预期工作，请在 GitHub 仓库的 <el-link type="primary" target="_blank" :href="gitUrl + '/issues/new'" class="">issues</el-link> 中提交错误报告。</el-text>
       </p>
+      <h1 class="text-h2 font-bold mt-6 mb-6">没找到想要的工具？</h1>
+      <p>
+        <el-text>如果你发现本站没有你想要的工具，可以在本页面最下方的评论区留言，或者直接添加站长微信提需求，我会认真查看每一条建议！</el-text>
+      </p>
+      <p class="mt-2" v-if="siteAddr">
+        <el-text class="text-body-sm text-gray-500">微信入口：扫描下方「站长信息」中的公众号二维码，关注后留言即可。</el-text>
+      </p>
       <template v-if="siteAddr">
       <h1 class="text-h2 font-bold mt-6 mb-6">站长信息</h1>
       <p>
