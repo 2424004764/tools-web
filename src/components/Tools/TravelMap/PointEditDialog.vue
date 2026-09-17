@@ -2,7 +2,7 @@
 import { ref, watch, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { POINT_CATEGORIES } from './constants'
-import type { MapPoint, PointCategory } from './types'
+import type { MapPoint, PointCategory, TravelMapDay } from './types'
 
 const props = defineProps<{
   modelValue: boolean
@@ -11,8 +11,9 @@ const props = defineProps<{
   /** 新建点位的坐标 */
   lng: number
   lat: number
+  days: TravelMapDay[]
+  activeDayId: string
 }>()
-
 const emit = defineEmits<{
   (e: 'update:modelValue', v: boolean): void
   (e: 'submit', payload: Omit<MapPoint, 'id'> & { id?: string }): void
@@ -29,6 +30,8 @@ const form = ref({
   category: 'camp' as PointCategory,
   elevation: '' as string,
   note: '',
+  dayId: '',
+  stayMinutes: '0' as string,
 })
 
 const isEdit = computed(() => Boolean(props.point))
@@ -44,9 +47,11 @@ watch(
         category: props.point.category,
         elevation: props.point.elevation === null ? '' : String(props.point.elevation),
         note: props.point.note,
+        dayId: props.point.dayId || '',
+        stayMinutes: String(props.point.stayMinutes || 0),
       }
     } else {
-      form.value = { name: '', category: 'camp', elevation: '', note: '' }
+      form.value = { name: '', category: 'camp', elevation: '', note: '', dayId: props.activeDayId, stayMinutes: '0' }
     }
   }
 )
@@ -75,12 +80,15 @@ const handleSubmit = () => {
     elevation = n
   }
 
+  const stayMinutes = Math.max(0, Math.min(1440, Math.round(Number(form.value.stayMinutes) || 0)))
   emit('submit', {
     id: props.point?.id,
     name,
     category: form.value.category,
     elevation,
     note: form.value.note.trim(),
+    dayId: form.value.dayId,
+    stayMinutes,
     lng: props.point ? props.point.lng : props.lng,
     lat: props.point ? props.point.lat : props.lat,
   })
@@ -127,14 +135,25 @@ const handleDelete = () => {
       </div>
 
       <div>
+        <label class="block text-body-sm font-medium text-gray-700 mb-1.5">所属日程</label>
+        <el-select v-model="form.dayId" class="w-full">
+          <el-option v-for="day in days" :key="day.id" :value="day.id" :label="day.title" />
+        </el-select>
+      </div>
+
+      <div>
         <label class="block text-body-sm font-medium text-gray-700 mb-1.5">
-          海拔（米）
-          <span class="font-normal text-ink-500">选填</span>
+          海拔（米） <span class="font-normal text-ink-500">选填</span>
         </label>
         <el-input v-model="form.elevation" placeholder="例如：1580" />
         <p class="mt-1 text-xs text-ink-500">
           天地图未提供经纬度查海拔的接口，这里请手动填写（可参考户外 App 或等高线）。
         </p>
+      </div>
+
+      <div>
+        <label class="block text-body-sm font-medium text-gray-700 mb-1.5">停留时间（分钟）</label>
+        <el-input v-model="form.stayMinutes" type="number" min="0" max="1440" placeholder="例如：90" />
       </div>
 
       <div>

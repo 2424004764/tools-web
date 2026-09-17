@@ -29,8 +29,8 @@ onMounted(async () => {
  * 清理缓存并强制刷新（保留登录态）
  *
  * 清理范围：
- *   ① 所有 Service Worker（反注册，老 SW 不会再拦截网络）
- *   ② Cache API 全部缓存（fonts/images/css/js）
+ *   ① 本项目 /shopping-list/ 作用域的 Service Worker
+ *   ② 本项目命名空间（tools-web-pwa-）下的 Cache API 缓存
  *   ③ sessionStorage（仅本次会话的临时数据）
  *
  * 不清理：
@@ -43,21 +43,26 @@ onMounted(async () => {
 async function clearCacheAndReload() {
   const messages: string[] = []
 
-  // ① 反注册所有 Service Worker
+  // ① 仅清理本项目 PWA 作用域下的注册
   if ('serviceWorker' in navigator) {
     try {
       const regs = await navigator.serviceWorker.getRegistrations()
-      await Promise.all(regs.map(r => r.unregister()))
-      messages.push(`SW ×${regs.length}`)
+      const appRegs = regs.filter(r => {
+        const url = new URL(r.active?.scriptURL || r.installing?.scriptURL || r.waiting?.scriptURL || '')
+        return url.origin === location.origin && /\/(?:dev-)?sw\.js$/.test(url.pathname)
+      })
+      await Promise.all(appRegs.map(r => r.unregister()))
+      if (appRegs.length) messages.push(`SW ×${appRegs.length}`)
     } catch (e) { /* ignore */ }
   }
 
-  // ② 清空 Cache API
+  // ② 仅清理 vite-plugin-pwa 为本项目创建的缓存
   if ('caches' in window) {
     try {
       const keys = await caches.keys()
-      await Promise.all(keys.map(k => caches.delete(k)))
-      messages.push(`Cache ×${keys.length}`)
+      const appKeys = keys.filter(k => k.startsWith('tools-web-pwa-'))
+      await Promise.all(appKeys.map(k => caches.delete(k)))
+      if (appKeys.length) messages.push(`Cache ×${appKeys.length}`)
     } catch (e) { /* ignore */ }
   }
 
@@ -104,17 +109,24 @@ async function fullReset() {
     return // 用户取消
   }
 
-  // 先做标准清理
+  // 仅清理本项目 PWA 缓存与 /shopping-list/ 作用域的 SW
   if ('serviceWorker' in navigator) {
     try {
       const regs = await navigator.serviceWorker.getRegistrations()
-      await Promise.all(regs.map(r => r.unregister()))
+      await Promise.all(
+        regs
+          .filter(r => {
+            const url = new URL(r.active?.scriptURL || r.installing?.scriptURL || r.waiting?.scriptURL || '')
+            return url.origin === location.origin && /\/(?:dev-)?sw\.js$/.test(url.pathname)
+          })
+          .map(r => r.unregister()),
+      )
     } catch (e) { /* ignore */ }
   }
   if ('caches' in window) {
     try {
       const keys = await caches.keys()
-      await Promise.all(keys.map(k => caches.delete(k)))
+      await Promise.all(keys.filter(k => k.startsWith('tools-web-pwa-')).map(k => caches.delete(k)))
     } catch (e) { /* ignore */ }
   }
   try { sessionStorage.clear() } catch (e) { /* ignore */ }

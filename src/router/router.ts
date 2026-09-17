@@ -1562,6 +1562,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/shopping-list/',
+    component: () => import('@/components/Tools/ShoppingList/ShoppingList.vue'),
+    name: 'shoppingList',
+    meta: {
+      title: '购物清单',
+      keywords: '购物清单,买菜清单,采购清单,已购买,购物记录,预算',
+      description: '在线购物清单工具，支持创建多个清单，记录数量、重量、预计与实际花费，随时标记已购买并导出清单。'
+    }
+  },
+  {
     path: '/food-log/',
     component: () => import('@/components/Tools/FoodLog/FoodLog.vue'),
     name: 'foodLog',

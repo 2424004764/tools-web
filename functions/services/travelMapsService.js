@@ -8,6 +8,11 @@ const MAX_TITLE = 60
 const MAX_DESC = 500
 const MAX_NOTE = 500
 const MAX_NAME = 60
+const MAX_DAYS = 30
+const MAX_START_LOCATION = 120
+const MAX_LODGING = 120
+const MAX_ALTERNATIVE_GROUP = 40
+const VALID_PROFILES = new Set(['foot', 'cycling', 'driving'])
 
 // 与前端 src/components/Tools/TravelMap/constants.ts 保持一致
 const POINT_CATEGORIES = new Set([
@@ -93,6 +98,20 @@ function mapMetaFromRow(row) {
   }
 }
 
+function dayFromRow(row) {
+  return {
+    id: row.id,
+    dayNumber: row.day_number,
+    title: row.title || `第 ${row.day_number} 天`,
+    date: row.date || '',
+    startTime: row.start_time || '',
+    startLocation: row.start_location || '',
+    lodgingPointId: row.lodging_point_id || '',
+    lodgingName: row.lodging_name || '',
+    note: row.note || '',
+  }
+}
+
 function pointFromRow(row) {
   return {
     id: row.id,
@@ -102,6 +121,8 @@ function pointFromRow(row) {
     lat: row.lat,
     elevation: row.elevation === null || row.elevation === undefined ? null : row.elevation,
     note: row.note || '',
+    dayId: row.day_id || '',
+    stayMinutes: Number(row.stay_minutes || 0),
   }
 }
 
@@ -121,6 +142,10 @@ function routeFromRow(row) {
     path,
     distance: row.distance,
     note: row.note || '',
+    dayId: row.day_id || '',
+    alternativeGroup: row.alternative_group || '',
+    profile: VALID_PROFILES.has(row.profile) ? row.profile : undefined,
+    durationSeconds: Number(row.duration_seconds || 0),
     // 老数据没 kind 字段时默认 'straight'。新数据由前端在保存时传过来。
     kind: row.kind === 'road' ? 'road' : 'straight',
   }
@@ -128,7 +153,31 @@ function routeFromRow(row) {
 
 // ============ 入参校验 ============
 
-function normalizePoints(rawPoints) {
+function normalizeDays(rawDays) {
+  const days = Array.isArray(rawDays) && rawDays.length ? rawDays : [{ dayNumber: 1, title: '第 1 天' }]
+  if (days.length > MAX_DAYS) throw new ValidationError(`最多支持 ${MAX_DAYS} 天行程`)
+  return days.map((d, index) => {
+    const startTime = str(d?.startTime, 5)
+    if (startTime && !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(startTime)) {
+      throw new ValidationError(`第 ${index + 1} 天的出发时间格式不正确`)
+    }
+    const stay = d?.stayMinutes
+    return {
+      id: typeof d?.id === 'string' && d.id ? d.id : crypto.randomUUID(),
+      dayNumber: index + 1,
+      title: str(d?.title, MAX_NAME, `第 ${index + 1} 天`),
+      date: str(d?.date, 20),
+      startTime,
+      startLocation: str(d?.startLocation, MAX_START_LOCATION),
+      lodgingPointId: str(d?.lodgingPointId, 80),
+      lodgingName: str(d?.lodgingName, MAX_LODGING),
+      note: str(d?.note, MAX_NOTE),
+      sortOrder: index,
+    }
+  })
+}
+
+function normalizePoints(rawPoints, days) {
   if (!Array.isArray(rawPoints)) return []
   if (rawPoints.length > MAX_POINTS) {
     throw new ValidationError(`单张地图最多 ${MAX_POINTS} 个点位，当前 ${rawPoints.length} 个`)
@@ -139,6 +188,8 @@ function normalizePoints(rawPoints) {
     const elevation = p?.elevation === null || p?.elevation === undefined || p?.elevation === ''
       ? null
       : finiteNum(p.elevation)
+    const stayMinutes = Math.max(0, Math.min(1440, Math.round(finiteNum(p?.stayMinutes) ?? 0)))
+    const dayId = days.some((d) => d.id === p?.dayId) ? p.dayId : days[0].id
     return {
       id: crypto.randomUUID(),
       name: str(p?.name, MAX_NAME, '未命名点位'),
@@ -147,12 +198,14 @@ function normalizePoints(rawPoints) {
       lat,
       elevation,
       note: str(p?.note, MAX_NOTE),
+      dayId,
+      stayMinutes,
       sortOrder: index,
     }
   })
 }
 
-function normalizeRoutes(rawRoutes) {
+function normalizeRoutes(rawRoutes, days) {
   if (!Array.isArray(rawRoutes)) return []
   if (rawRoutes.length > MAX_ROUTES) {
     throw new ValidationError(`单张地图最多 ${MAX_ROUTES} 条路线，当前 ${rawRoutes.length} 条`)
@@ -168,19 +221,21 @@ function normalizeRoutes(rawRoutes) {
       const lat = Array.isArray(node) ? node[1] : node?.lat
       return requireLngLat(lng, lat, `第 ${index + 1} 条路线的第 ${nodeIndex + 1} 个节点`)
     })
+    const dayId = days.some((d) => d.id === r?.dayId) ? r.dayId : days[0].id
+    const profile = VALID_PROFILES.has(r?.profile) ? r.profile : ''
+    const durationSeconds = Math.max(0, Math.min(86400, Math.round(finiteNum(r?.durationSeconds) ?? 0)))
     return {
       id: crypto.randomUUID(),
       name: str(r?.name, MAX_NAME, '未命名路线'),
       color: HEX_COLOR.test(r?.color) ? r.color : '#2563eb',
       path,
-      // 忽略客户端提交的 distance，按落库的 path 重算
       distance: pathDistance(path),
       note: str(r?.note, MAX_NOTE),
-      // 'straight' = 用户手点直线路线（route / route-from-points）
-      // 'road'     = 沿道路画路线（route-osrm，调 OSRM）
-      // 客户端必须明确传一个，未传或非法值都按 'straight' 兜底，
-      // 避免把 OSRM 路线错标成直线路线影响后续功能（比如未来按类型筛选）。
       kind: r?.kind === 'road' ? 'road' : 'straight',
+      dayId,
+      alternativeGroup: str(r?.alternativeGroup, MAX_ALTERNATIVE_GROUP),
+      profile,
+      durationSeconds,
       sortOrder: index,
     }
   })
@@ -253,6 +308,15 @@ export class TravelMapsService {
         centerLng, centerLat, zoom, baseLayer, ts, ts)
       .run()
 
+    await this.db
+      .prepare(
+        `INSERT INTO travel_map_days
+           (id, map_id, day_number, title, date, start_time, start_location, lodging_point_id, lodging_name, note, sort_order, created_at)
+         VALUES (?, ?, 1, '第 1 天', '', '', '', '', '', '', 0, ?)`
+      )
+      .bind(crypto.randomUUID(), id, ts)
+      .run()
+
     return this.getMapForOwner(id, uid)
   }
 
@@ -265,7 +329,8 @@ export class TravelMapsService {
   }
 
   async loadContent(mapId) {
-    const [pointsRes, routesRes] = await Promise.all([
+    const [daysRes, pointsRes, routesRes] = await Promise.all([
+      this.db.prepare('SELECT * FROM travel_map_days WHERE map_id = ? ORDER BY sort_order ASC').bind(mapId).all(),
       this.db
         .prepare('SELECT * FROM travel_map_points WHERE map_id = ? ORDER BY sort_order ASC')
         .bind(mapId)
@@ -276,6 +341,7 @@ export class TravelMapsService {
         .all(),
     ])
     return {
+      days: (daysRes.results || []).map(dayFromRow),
       points: (pointsRes.results || []).map(pointFromRow),
       routes: (routesRes.results || []).map(routeFromRow),
     }
@@ -285,7 +351,12 @@ export class TravelMapsService {
     const row = await this.findOwnedRow(id, uid)
     if (!row) return null
     const content = await this.loadContent(id)
-    return { ...mapMetaFromRow(row), ...content }
+    const days = content.days.length ? content.days : [{ id: crypto.randomUUID(), dayNumber: 1, title: '第 1 天', date: '', startTime: '', startLocation: '', lodgingPointId: '', lodgingName: '', note: '' }]
+    if (!content.days.length) {
+      content.points = content.points.map((p) => ({ ...p, dayId: days[0].id }))
+      content.routes = content.routes.map((r) => ({ ...r, dayId: days[0].id }))
+    }
+    return { ...mapMetaFromRow(row), ...content, days }
   }
 
   // 全量保存：元信息 + 点位 + 路线，一次 batch 内完成（D1 batch 隐式事务）
@@ -293,8 +364,9 @@ export class TravelMapsService {
     const row = await this.findOwnedRow(id, uid)
     if (!row) return null
 
-    const points = normalizePoints(payload?.points)
-    const routes = normalizeRoutes(payload?.routes)
+    const days = normalizeDays(payload?.days)
+    const points = normalizePoints(payload?.points, days)
+    const routes = normalizeRoutes(payload?.routes, days)
 
     const title = str(payload?.title, MAX_TITLE, row.title)
     const description = str(payload?.description, MAX_DESC)
@@ -317,42 +389,42 @@ export class TravelMapsService {
         )
         .bind(title, description, centerLng, centerLat, zoom, baseLayer, isPublic,
           points.length, routes.length, totalDistance, ts, id, uid),
+      this.db.prepare('DELETE FROM travel_map_days WHERE map_id = ?').bind(id),
       this.db.prepare('DELETE FROM travel_map_points WHERE map_id = ?').bind(id),
       this.db.prepare('DELETE FROM travel_map_routes WHERE map_id = ?').bind(id),
     ]
 
+    for (const group of chunk(days, INSERT_CHUNK)) {
+      const placeholders = group.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ')
+      const binds = []
+      for (const d of group) {
+        binds.push(d.id, id, d.dayNumber, d.title, d.date, d.startTime, d.startLocation, d.lodgingPointId, d.lodgingName, d.note, d.sortOrder, ts)
+      }
+      statements.push(this.db.prepare(`INSERT INTO travel_map_days
+        (id, map_id, day_number, title, date, start_time, start_location, lodging_point_id, lodging_name, note, sort_order, created_at)
+        VALUES ${group.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ')}`).bind(...binds))
+    }
+
     for (const group of chunk(points, INSERT_CHUNK)) {
-      const placeholders = group.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ')
+      const placeholders = group.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ')
       const binds = []
       for (const p of group) {
-        binds.push(p.id, id, p.name, p.category, p.lng, p.lat, p.elevation, p.note, p.sortOrder, ts)
+        binds.push(p.id, id, p.name, p.category, p.lng, p.lat, p.elevation, p.note, p.dayId, p.stayMinutes, p.sortOrder, ts)
       }
-      statements.push(
-        this.db
-          .prepare(
-            `INSERT INTO travel_map_points
-               (id, map_id, name, category, lng, lat, elevation, note, sort_order, created_at)
-             VALUES ${placeholders}`
-          )
-          .bind(...binds)
-      )
+      statements.push(this.db.prepare(`INSERT INTO travel_map_points
+        (id, map_id, name, category, lng, lat, elevation, note, day_id, stay_minutes, sort_order, created_at)
+        VALUES ${placeholders}`).bind(...binds))
     }
 
     for (const group of chunk(routes, INSERT_CHUNK)) {
-      const placeholders = group.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ')
+      const placeholders = group.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ')
       const binds = []
       for (const r of group) {
-        binds.push(r.id, id, r.name, r.color, JSON.stringify(r.path), r.distance, r.note, r.kind, r.sortOrder, ts)
+        binds.push(r.id, id, r.name, r.color, JSON.stringify(r.path), r.distance, r.note, r.kind, r.dayId, r.alternativeGroup, r.profile, r.durationSeconds, r.sortOrder, ts)
       }
-      statements.push(
-        this.db
-          .prepare(
-            `INSERT INTO travel_map_routes
-               (id, map_id, name, color, path, distance, note, kind, sort_order, created_at)
-             VALUES ${placeholders}`
-          )
-          .bind(...binds)
-      )
+      statements.push(this.db.prepare(`INSERT INTO travel_map_routes
+        (id, map_id, name, color, path, distance, note, kind, day_id, alternative_group, profile, duration_seconds, sort_order, created_at)
+        VALUES ${placeholders}`).bind(...binds))
     }
 
     await this.db.batch(statements)
@@ -363,6 +435,7 @@ export class TravelMapsService {
     const row = await this.findOwnedRow(id, uid)
     if (!row) return false
     await this.db.batch([
+      this.db.prepare('DELETE FROM travel_map_days WHERE map_id = ?').bind(id),
       this.db.prepare('DELETE FROM travel_map_points WHERE map_id = ?').bind(id),
       this.db.prepare('DELETE FROM travel_map_routes WHERE map_id = ?').bind(id),
       this.db.prepare('DELETE FROM travel_maps WHERE id = ? AND uid = ?').bind(id, uid),

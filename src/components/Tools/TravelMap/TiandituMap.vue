@@ -42,6 +42,7 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{
   (e: 'map-click', lnglat: { lng: number; lat: number }): void
+  (e: 'map-right-click', payload: { lng: number; lat: number; x: number; y: number }): void
   (e: 'map-blank-click'): void
   (e: 'point-click', pointId: string): void
   (e: 'route-click', routeId: string): void
@@ -205,7 +206,7 @@ function drawPoints() {
           </div>`,
         position: lnglat,
         // 把 label 锚点设在 div 左上角（默认居中），让它"图钉一样"从点位向外延伸
-        offset: new t.Point(-6, isSelected ? -30 : -28),
+        offset: { x: -6, y: isSelected ? -30 : -28 },
       })
       map.addOverLay(label)
       created.push(label)
@@ -321,7 +322,7 @@ function drawRoutes() {
           ${escapeHtml(formatDistance(totalDist))}
         </div>`,
       position: new t.LngLat(labelPos[0], labelPos[1]),
-      offset: new t.Point(0, -10),
+      offset: { x: 0, y: -10 },
     })
     // 距离标签也支持点中 → 选中对应路线（让用户点"距离数字"也能选中，
     // 不用瞄准细线身）。label 上的 div 会被 closest 抓到（见下面的命中逻辑）。
@@ -394,7 +395,7 @@ function drawDraft() {
           ${escapeHtml(formatDistance(totalDist))}
         </div>`,
       position: new t.LngLat(labelPos[0], labelPos[1]),
-      offset: new t.Point(0, -10),
+      offset: { x: 0, y: -10 },
     })
     map.addOverLay(totalLabel)
     created.push(totalLabel)
@@ -485,6 +486,29 @@ function scheduleCheckResize() {
 /** 供父组件在已知会引起布局变化的时机主动调用 */
 function refreshSize() {
   scheduleCheckResize()
+}
+
+function handleContextMenu(event: MouseEvent) {
+  if (props.readonly) return
+  const map = mapInstance.value
+  const mapElVal = mapEl.value
+  if (!map || !mapElVal) return
+
+  const rect = mapElVal.getBoundingClientRect()
+  if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) return
+  event.preventDefault()
+
+  const pixel = { x: event.clientX - rect.left, y: event.clientY - rect.top }
+  const lnglat = map.containerPointToLngLat?.(pixel)
+    || map.pixelToLngLat?.(pixel)
+    || map.layerPointToLngLat?.(pixel)
+  if (!lnglat) return
+  emit('map-right-click', {
+    lng: lnglat.getLng(),
+    lat: lnglat.getLat(),
+    x: event.clientX - rect.left,
+    y: event.clientY - rect.top,
+  })
 }
 
 // ---------- 初始化 ----------
@@ -592,6 +616,7 @@ async function initMap() {
       resizeObserver.observe(mapEl.value)
     }
     window.addEventListener('resize', scheduleCheckResize)
+    document.addEventListener('contextmenu', handleContextMenu, true)
 
     // 全局 click 监听 —— 反查点位命中。
     // 为什么不在 hit layer 上挂 click：之前的方案是 hit layer 设 pointer-events:auto
@@ -623,6 +648,7 @@ onBeforeUnmount(() => {
   resizeObserver?.disconnect()
   resizeObserver = null
   window.removeEventListener('resize', scheduleCheckResize)
+  document.removeEventListener('contextmenu', handleContextMenu, true)
   document.removeEventListener('click', onGlobalClickForHit, true)
   clearOverlays(pointOverlays)
   clearOverlays(routeOverlays)
@@ -685,7 +711,13 @@ function fitAll() {
     new t.LngLat(Math.min(...lngs), Math.min(...lats)),
     new t.LngLat(Math.max(...lngs), Math.max(...lats))
   )
-  map.setViewport ? map.setViewport(bounds) : map.centerAndZoom(bounds.getCenter(), map.getZoom())
+  // 天地图 setViewport 接收 LngLat 数组，而不是 LngLatBounds 对象。
+  // 部分 SDK 版本没有 setViewport，回退到边界中心定位，避免按钮点击无响应。
+  if (typeof map.setViewport === 'function') {
+    map.setViewport(coords.map(([lng, lat]) => new t.LngLat(lng, lat)))
+  } else {
+    map.centerAndZoom(bounds.getCenter(), map.getZoom())
+  }
 }
 
 /** 供父组件保存时取当前地图视野（不依赖父组件的 center/zoom 状态） */

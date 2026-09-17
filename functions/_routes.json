@@ -124,6 +124,13 @@
     "/api/hotlist/*",
     "/api/price-comparison",
     "/api/price-comparison/*",
+    "/api/shopping-lists",
+    "/api/shopping-lists/*",
+    "/api/shopping-lists/templates",
+    "/api/shopping-lists/templates/*",
+    "/api/shopping-lists/history",
+    "/api/shopping-lists/frequent",
+    "/api/shopping-lists/images/sign",
     "/api/music-playlist",
     "/api/music-playlist/*"
   ],
