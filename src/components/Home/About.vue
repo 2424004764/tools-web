@@ -199,6 +199,9 @@ async function fullReset() {
       <p>
         <el-text>linux.do：<el-link href="https://linux.do" type="primary" target="_blank">https://linux.do</el-link></el-text>
       </p>
+      <p class="mt-2">
+        <el-text>想互换友链？可在任意页面底部点击「申请友链」提交，审核通过后会展示在全站页脚。</el-text>
+      </p>
 
       <h1 class="text-h2 font-bold mt-6 mb-6">页面管理</h1>
       <div class="space-y-4">

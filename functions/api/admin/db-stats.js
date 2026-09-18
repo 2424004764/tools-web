@@ -91,6 +91,7 @@ const TABLE_META = {
   qa_pages:                    { comment: 'QA 页面',            timeCol: 'create_time', timeKind: 'text' },
   user_season_scenery:         { comment: '四季景色',           timeCol: 'create_time', timeKind: 'text' },
   hotlist_cache:               { comment: '热榜缓存',           timeCol: 'fetched_at',  timeKind: 'text' },
+  friend_links:                { comment: '友情链接',           timeCol: 'created_at',  timeKind: 'text' },
 }
 
 // 统计口径阈值：今日 / 近7日 / 近30日（含当天）

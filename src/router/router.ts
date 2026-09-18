@@ -1867,6 +1867,16 @@ export const constantRoute = [
         },
       },
       {
+        path: 'friend-links',
+        component: () => import('@/components/Admin/AdminFriendLinks.vue'),
+        name: 'adminFriendLinks',
+        meta: {
+          title: '友链审核',
+          keywords: '后台友情链接,友链审核',
+          description: '审核用户提交的友情链接，通过后展示在全站页脚',
+        },
+      },
+      {
         path: 'db-stats',
         component: () => import('@/components/Admin/AdminDbStats.vue'),
         name: 'adminDbStats',
