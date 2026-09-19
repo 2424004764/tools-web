@@ -6,7 +6,8 @@
 //     Resp: { deleted: { image_id, group_id, r2_deleted, r2_failed } }
 
 import { extractUidFromRequest } from '../../_lib/model-resolver.js'
-import { deleteR2Object } from '../../../services/r2.js'
+import { deleteR2Object, headR2ObjectSize } from '../../../services/r2.js'
+import { refundStorageUsage } from '../../../services/storageQuotaService.js'
 
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'DELETE, OPTIONS',
@@ -61,16 +62,26 @@ export async function onRequest(context) {
     if (!row) return jsonError('image 不存在', 404)
     if (row.uid !== uid) return jsonError('无权访问该 image', 403)
 
-    // best-effort 删 R2
+    // best-effort 删 R2；先 HEAD 拿真实大小（退额度用），对象已 404 → 不退（防刷额度）
     let r2Deleted = false
     let r2Failed = false
+    let refunded = 0
     const bucket = env.R2_BUCKET_NAME
     if (bucket) {
       const key = inferR2Key(env, row.media_url)
       if (key) {
         try {
+          const size = await headR2ObjectSize(env, bucket, key)
           await deleteR2Object(env, bucket, key)
           r2Deleted = true
+          if (size && size > 0) {
+            refunded = size
+            try {
+              await refundStorageUsage(db, uid, size)
+            } catch (e) {
+              console.error('[ai-creations/images/:id DELETE] refundStorageUsage failed:', e?.message || e)
+            }
+          }
         } catch {
           r2Failed = true
         }
@@ -91,6 +102,7 @@ export async function onRequest(context) {
       group_id: row.group_id,
       r2_deleted: r2Deleted,
       r2_failed: r2Failed,
+      refunded_bytes: refunded,
     })
   } catch (e) {
     console.error('[ai-creations/images/:id DELETE] error:', e?.message || e)

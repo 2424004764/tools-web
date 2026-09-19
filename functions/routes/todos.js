@@ -33,6 +33,10 @@ export class TodosRouter {
         }
 
       case 'POST':
+        if (id === 'reorder') {
+          const reorderData = await request.json()
+          return await this.controller.reorder(reorderData, user, origin)
+        }
         if (hasId) {
           return ApiResponse.error('创建待办事项不需要提供ID', origin, 400)
         }

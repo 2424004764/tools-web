@@ -1205,9 +1205,9 @@ export const constantRoute = [
     component: () => import('@/components/User/CreditTransactionsPage.vue'),
     name: 'me-credits',
     meta: {
-      title: "积分消耗明细",
-      keywords: '积分,明细,消耗,流水,获得,退还',
-      description: '查看账户积分余额与流水明细，包括消费、获得、退还等记录',
+      title: "积分与存储空间",
+      keywords: '积分,存储空间,明细,消耗,流水,获得,退还,上传额度',
+      description: '查看账户积分余额、流水明细与存储空间用量，包括消费、获得、退还等记录',
     }
   },
   {

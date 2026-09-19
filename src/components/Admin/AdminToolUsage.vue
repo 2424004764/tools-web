@@ -48,7 +48,7 @@ const filter = reactive({
   uid: '',
   tool_url: '',
   source: '',
-  range: '7d' as '' | 'today' | '7d' | '30d' | 'all',
+  range: 'today' as '' | 'today' | '7d' | '30d' | 'all',
 })
 
 // range → startDate / endDate 转换（YYYY-MM-DD，本地 UTC+8）
@@ -176,7 +176,7 @@ const handleReset = () => {
   filter.uid = ''
   filter.tool_url = ''
   filter.source = ''
-  filter.range = '7d'
+  filter.range = 'today'
   pagination.value.page = 1
   loadList()
 }

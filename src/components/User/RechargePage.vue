@@ -271,7 +271,7 @@ const submitRedeem = async () => {
 
       <!-- 其他 -->
       <div class="pt-3 border-t border-border-subtle text-caption text-ink-500">
-        如兑换异常（兑换码无效、不到账等），请联系站长处理；积分消耗明细请前往「积分消耗明细」页面查看。
+        如兑换异常（兑换码无效、不到账等），请联系站长处理；积分与存储空间情况请前往「积分与存储空间」页面查看。
       </div>
     </div>
   </div>

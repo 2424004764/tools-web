@@ -31,7 +31,7 @@ const tone = computed(() => {
 
 const formattedBalance = computed(() => balanceDisplay.value.toLocaleString('zh-CN'))
 
-// 响应式：< 640px 视为手机端 → "积分消耗明细"直接跳独立页面
+// 响应式：< 640px 视为手机端 → "积分与存储空间"直接跳独立页面
 const MOBILE_BREAKPOINT = 640
 const isMobile = ref(false)
 const updateIsMobile = () => {
@@ -80,7 +80,7 @@ const goRecharge = () => {
   router.push('/me/recharge')
 }
 
-// 菜单项：积分消耗明细（保留原桌面/移动分流逻辑）
+// 菜单项：积分与存储空间（保留原桌面/移动分流逻辑）
 const dialogVisible = ref(false)
 const openTransactionsDialog = () => {
   closeMenu()
@@ -108,7 +108,7 @@ const openTransactions = () => {
           'bg-amber-50 text-amber-700 ring-1 ring-amber-200 hover:bg-amber-100 hover:ring-amber-300': tone === 'warn',
           'bg-rose-50 text-rose-700 ring-1 ring-rose-200 hover:bg-rose-100 hover:ring-rose-300': tone === 'danger',
         }"
-        :title="`总获得 ${userStore.credits.total_earned} · 总消费 ${userStore.credits.total_spent}（点击打开积分菜单）`"
+        :title="`总获得 ${userStore.credits.total_earned} · 总消费 ${userStore.credits.total_spent}（点击打开积分与存储空间菜单）`"
         :aria-haspopup="'menu'"
         :aria-expanded="menuVisible"
         aria-label="积分菜单"
@@ -143,12 +143,12 @@ const openTransactions = () => {
         v-show="menuVisible"
         role="menu"
         aria-label="积分菜单"
-        class="absolute top-full right-0 mt-1 bg-surface-1 border border-border-default rounded-lg shadow-lg py-2 min-w-[160px] z-50"
+        class="absolute top-full right-0 mt-1 bg-surface-1 border border-border-default rounded-lg shadow-lg py-2 min-w-[200px] z-50"
       >
         <div
           role="menuitem"
           tabindex="0"
-          class="px-4 py-2 hover:bg-accent-50 cursor-pointer text-ink-700 hover:text-accent-700 flex items-center gap-2"
+          class="px-4 py-2 hover:bg-accent-50 cursor-pointer text-ink-700 hover:text-accent-700 flex items-center gap-2 whitespace-nowrap"
           @click="goRecharge"
           @keyup.enter="goRecharge"
           @keyup.space.prevent="goRecharge"
@@ -161,7 +161,7 @@ const openTransactions = () => {
         <div
           role="menuitem"
           tabindex="0"
-          class="px-4 py-2 hover:bg-accent-50 cursor-pointer text-ink-700 hover:text-accent-700 flex items-center gap-2"
+          class="px-4 py-2 hover:bg-accent-50 cursor-pointer text-ink-700 hover:text-accent-700 flex items-center gap-2 whitespace-nowrap"
           @click="openTransactions"
           @keyup.enter="openTransactions"
           @keyup.space.prevent="openTransactions"
@@ -169,7 +169,7 @@ const openTransactions = () => {
           <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
           </svg>
-          积分消耗明细
+          积分与存储空间
         </div>
       </div>
 

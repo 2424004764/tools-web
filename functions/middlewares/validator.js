@@ -332,7 +332,30 @@ export class Validator {
     }
   }
 
-  // 验证书签创建数据
+  static validateReorderTodos(data) {
+    const errors = []
+    if (!data || !Array.isArray(data.items) || data.items.length === 0) {
+      errors.push('items必须是非空数组')
+      return { isValid: false, errors }
+    }
+    if (data.items.length > 200) errors.push('单次最多排序200项')
+    const seen = new Set()
+    data.items.forEach(item => {
+      if (!item || typeof item.id !== 'string' || item.id.trim().length === 0) {
+        errors.push('待办ID格式错误')
+      } else if (seen.has(item.id)) {
+        errors.push('待办ID不能重复')
+      } else {
+        seen.add(item.id)
+      }
+      if (!Number.isInteger(item?.sortOrder) || item.sortOrder < 0) {
+        errors.push('排序值必须是非负整数')
+      }
+    })
+    return { isValid: errors.length === 0, errors }
+  }
+
+
   static validateCreateBookmark(data) {
     const errors = []
 

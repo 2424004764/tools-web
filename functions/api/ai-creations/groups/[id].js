@@ -12,7 +12,8 @@
 //     Resp: { group_id, favorited: boolean }（依赖 073 迁移的 favorited 列）
 
 import { extractUidFromRequest } from '../../_lib/model-resolver.js'
-import { deleteR2Object } from '../../../services/r2.js'
+import { deleteR2Object, headR2ObjectSize } from '../../../services/r2.js'
+import { refundStorageUsage } from '../../../services/storageQuotaService.js'
 
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'DELETE, PATCH, OPTIONS',
@@ -122,13 +123,28 @@ export async function onRequest(context) {
           // 推断 r2_key：media_url 可能是 R2 公网 URL（含 R2_PUBLIC_HOST）或已经是 r2_key 字符串。
           // 优先尝试从 media_url 解析 key；否则视为已失效（或本来就只是 r2_key 字符串）。
           const key = inferR2Key(env, img.media_url)
-          if (!key) return Promise.resolve(false)
-          return deleteR2Object(env, bucket, key).then(() => true).catch(() => false)
+          if (!key) return Promise.resolve(0)
+          // 先 HEAD 拿真实大小（退额度用），再删对象；对象已 404 → 不退（防刷额度）
+          return headR2ObjectSize(env, bucket, key)
+            .then((size) => deleteR2Object(env, bucket, key).then(() => size || 0))
+            .catch(() => 0)
         }),
       )
+      let refundedBytes = 0
       for (const r of results) {
-        if (r.status === 'fulfilled' && r.value === true) r2Deleted++
-        else r2Failed++
+        if (r.status === 'fulfilled') {
+          r2Deleted++
+          refundedBytes += r.value || 0
+        } else {
+          r2Failed++
+        }
+      }
+      if (refundedBytes > 0) {
+        try {
+          await refundStorageUsage(db, uid, refundedBytes)
+        } catch (e) {
+          console.error('[ai-creations/groups/:id DELETE] refundStorageUsage failed:', e?.message || e)
+        }
       }
     } else if (imageCount > 0) {
       // R2 未配置：视作删除失败，让前端记日志

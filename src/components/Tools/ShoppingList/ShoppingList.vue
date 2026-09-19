@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import html2canvas from 'html2canvas'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { functionsRequest } from '@/utils/functionsRequest'
 import { useUserStore } from '@/store/modules/user'
+import { releaseStorageReservation } from '@/api/storageQuota'
 import { loadShoppingData, saveShoppingData, type ShoppingData, type ShoppingHistoryEntry, type ShoppingItem, type ShoppingList, type ShoppingTemplate } from '@/utils/shopping-list-storage'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
@@ -21,6 +23,7 @@ import FullScreen from '~icons/ep/full-screen'
 import Star from '~icons/ep/star'
 import Picture from '~icons/ep/picture'
 const userStore = useUserStore()
+const router = useRouter()
 const categories = ['蔬菜', '水果', '肉禽', '水产海鲜', '蛋奶乳品', '米面粮油', '调味料', '饮料', '零食', '速冻冷藏', '熟食烘焙', '日用清洁', '纸品', '个护美妆', '家居用品', '宠物用品', '母婴用品', '药品保健', '文具办公', '五金家电', '服饰鞋包', '其他']
 const categoryColors = ['#2f8f68', '#d97706', '#c2410c', '#1479a6', '#a16207', '#7c5c24', '#b45309', '#2563a8', '#be4778', '#6366a8', '#b4537a', '#4b7260', '#64748b', '#9b4d8c', '#526f8c', '#6b7280', '#8b5e3c', '#8b5cf6', '#0f766e', '#475569', '#a85569', '#6b7280']
 function categoryStyle(category: string) { const index = categories.indexOf(category); const color = categoryColors[index >= 0 ? index : categoryColors.length - 1]; return { color, borderColor: color, backgroundColor: `${color}14` } }
@@ -99,24 +102,42 @@ async function uploadImageFile(file: File) {
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) return ElMessage.warning('请选择 JPG、PNG 或 WebP 图片')
   if (file.size > 5 * 1024 * 1024) return ElMessage.warning('图片不能超过 5MB')
   uploadingImage.value = true
+  const previousImageUrl = editingItem.value.imageUrl
+  let reservationId = ''
   try {
     const blob = await resizeImage(file)
     const contentType = blob.type || 'image/webp'
     const itemId = editingItem.value.id || crypto.randomUUID()
-    const response = await functionsRequest.post<{ uploadUrl: string; publicUrl: string }>('/api/shopping-lists/images/sign', { listId: activeList.value.id, itemId, contentType, size: blob.size })
+    const response = await functionsRequest.post<{ uploadUrl: string; publicUrl: string; r2Key: string; reservationId: string }>('/api/shopping-lists/images/sign', { listId: activeList.value.id, itemId, contentType, size: blob.size })
+    reservationId = response.data.reservationId
     const upload = await fetch(response.data.uploadUrl, { method: 'PUT', headers: { 'Content-Type': contentType }, body: blob })
     if (!upload.ok) throw new Error('图片上传失败')
+    // 按 R2 真实大小结算存储额度并释放预留（失败不阻塞，预留超时自动失效）
+    void functionsRequest.post('/api/shopping-lists/images/confirm', { r2Key: response.data.r2Key, reservationId: response.data.reservationId }).catch(() => {})
     editingItem.value.imageUrl = response.data.publicUrl
+    if (previousImageUrl && previousImageUrl !== response.data.publicUrl) void deleteRemoteImage(previousImageUrl)
     ElMessage.success('商品图片上传成功')
-  } catch { ElMessage.error('图片上传失败，请稍后重试') } finally { uploadingImage.value = false }
+  } catch (error: any) {
+    // 上传没成功：释放签名时预扣的存储额度（幂等，失败静默，1 小时后也会自动失效）
+    if (reservationId) void releaseStorageReservation(reservationId)
+    const message = error?.response?.data?.error || error?.message
+    if (typeof message === 'string' && message.includes('存储空间不足')) {
+      ElMessageBox.confirm(`${message}`, '存储空间不足', { type: 'warning', confirmButtonText: '去购买', cancelButtonText: '取消' })
+        .then(() => { router.push('/me/credits') })
+        .catch(() => {})
+    } else {
+      ElMessage.error(typeof message === 'string' && message.includes('积分') ? message : '图片上传失败，请稍后重试')
+    }
+  } finally { uploadingImage.value = false }
 }
+function deleteRemoteImage(url: string) { if (userStore.getLoginStatus && url) void functionsRequest.post('/api/shopping-lists/images/delete', { url }).catch(() => {}) }
 function handleImageDrop(event: DragEvent) { imageDragActive.value = false; const file = Array.from(event.dataTransfer?.files || []).find((entry) => entry.type.startsWith('image/')); if (file) void uploadImageFile(file) }
 function handleImagePaste(event: ClipboardEvent) { const file = Array.from(event.clipboardData?.files || []).find((entry) => entry.type.startsWith('image/')); if (file) { event.preventDefault(); void uploadImageFile(file) } }
 function onPaste(event: ClipboardEvent) { if (itemDialogVisible.value) handleImagePaste(event) }
-function removeItemImage() { editingItem.value.imageUrl = null }
-async function removeItem(item: ShoppingItem) { try { await ElMessageBox.confirm(`确定删除“${item.name}”吗？`, '删除条目', { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }); activeList.value.items = activeList.value.items.filter((entry) => entry.id !== item.id); touch() } catch { /* cancelled */ } }
+function removeItemImage() { deleteRemoteImage(editingItem.value.imageUrl || ''); editingItem.value.imageUrl = null }
+async function removeItem(item: ShoppingItem) { try { await ElMessageBox.confirm(`确定删除“${item.name}”吗？`, '删除条目', { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }); deleteRemoteImage(item.imageUrl || ''); activeList.value.items = activeList.value.items.filter((entry) => entry.id !== item.id); touch() } catch { /* cancelled */ } }
 function togglePurchased(item: ShoppingItem) { item.purchased = !item.purchased; if (item.purchased) { const purchasedAt = new Date().toISOString(); item.purchasedAt = purchasedAt; history.value.unshift({ id: `${Date.now()}-${item.id}`, listName: activeList.value.name, item: { ...item }, purchasedAt }) } else item.purchasedAt = undefined; touch() }
-function clearPurchased() { if (!purchasedItems.value.length) return ElMessage.info('暂无已购条目'); activeList.value.items = activeList.value.items.filter((item) => !item.purchased); touch() }
+function clearPurchased() { if (!purchasedItems.value.length) return ElMessage.info('暂无已购条目'); purchasedItems.value.forEach((item) => deleteRemoteImage(item.imageUrl || '')); activeList.value.items = activeList.value.items.filter((item) => !item.purchased); touch() }
 function openNewList() { editingListName.value = ''; editingList.value = null; listDialogVisible.value = true }
 function editListDetails() { editingList.value = { ...activeList.value }; listDialogVisible.value = true }
 function saveList() { const name = (editingList.value ? editingList.value.name : editingListName.value).trim(); if (editingList.value) { if (!name) return ElMessage.warning('请填写清单名称'); Object.assign(activeList.value, editingList.value, { name }); listDialogVisible.value = false; touch(); return } if (!name) return ElMessage.warning('请填写清单名称'); const list = makeList(name); lists.value.unshift(list); activeListId.value = list.id; listDialogVisible.value = false; touch() }
@@ -125,6 +146,7 @@ async function deleteList(list: ShoppingList) {
   try {
     await ElMessageBox.confirm(`确定删除“${list.name}”及其全部条目吗？`, '删除清单', { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' })
     if (userStore.getLoginStatus && !offline.value) await functionsRequest.delete(`/api/shopping-lists/${encodeURIComponent(list.id)}`)
+    list.items.forEach((item) => deleteRemoteImage(item.imageUrl || ''))
     lists.value = lists.value.filter((entry) => entry.id !== list.id)
     if (!lists.value.length) {
       const replacement = makeList('本周采购')
@@ -164,7 +186,7 @@ watch(() => userStore.getLoginStatus, (loggedIn) => { if (loggedIn) void loadDat
         <div class="flex flex-col gap-3 border-b border-border-subtle p-4 sm:flex-row sm:items-center sm:p-5"><el-button type="primary" class="!rounded-xl" @click="openNewItem()"><el-icon><Plus /></el-icon>添加条目</el-button><el-input v-model="search" clearable placeholder="搜索商品或备注" class="w-full sm:max-w-xs" /><el-select v-model="categoryFilter" class="w-full sm:w-36"><el-option label="全部分类" value="全部分类" /><el-option v-for="category in categories" :key="category" :label="category" :value="category" /></el-select><el-select v-model="sortBy" class="w-full sm:w-32"><el-option label="手动排序" value="manual" /><el-option label="按优先级" value="priority" /><el-option label="按分类" value="category" /><el-option label="按预计价格" value="price" /></el-select><el-button class="sm:ml-auto" :disabled="!purchasedItems.length" @click="clearPurchased"><el-icon><Delete /></el-icon>清空已购</el-button></div>
         <div class="flex gap-1 overflow-x-auto border-b border-border-subtle px-4 pt-2 sm:px-5"><button v-for="tab in [{ key: 'all', label: '全部' }, { key: 'pending', label: '待购买' }, { key: 'purchased', label: '已购买' }]" :key="tab.key" class="whitespace-nowrap border-b-2 px-2 pb-3 pt-1 text-body-sm" :class="filter === tab.key ? 'border-accent-500 font-semibold text-accent-700' : 'border-transparent text-ink-500 hover:text-ink-800'" @click="filter = tab.key as typeof filter">{{ tab.label }}</button></div>
         <div class="border-b border-border-subtle px-4 py-3 sm:px-5"><div class="mb-2 flex items-center justify-between"><span class="text-caption font-semibold text-ink-700">分类统计</span><span class="text-caption text-ink-400">待购买 {{ pendingItems.length }} 项</span></div><div class="flex flex-wrap gap-2"><button v-for="entry in categoryStats" :key="entry.category" class="rounded-lg border px-2.5 py-1.5 text-caption hover:opacity-80" :style="categoryStyle(entry.category)" @click="categoryFilter = entry.category">{{ entry.category }} {{ entry.count }}</button><span v-if="!categoryStats.length" class="text-caption text-ink-400">暂无待购买分类</span></div></div><div class="border-b border-border-subtle px-4 py-3 sm:px-5"><div class="mb-2 flex items-center justify-between"><span class="text-caption font-semibold text-ink-700">最近/常买</span><el-button text size="small" @click="historyDialogVisible = true">查看历史</el-button></div><div class="flex flex-wrap gap-2"><button v-for="item in [...recentItems, ...frequentItems.filter((entry) => !recentItems.some((recent) => recent.name === entry.name))].slice(0, 8)" :key="item.name" class="rounded-lg border border-border-subtle px-2.5 py-1.5 text-caption text-ink-600 hover:border-accent-300 hover:text-accent-700" @click="addQuickItem(item)">{{ item.name }}</button><span v-if="!recentItems.length && !frequentItems.length" class="text-caption text-ink-400">完成购买后会显示常用商品</span></div></div>
-        <div v-loading="loading" class="min-h-[220px] p-4 sm:p-5"><div v-if="!filteredItems.length" class="flex min-h-[180px] flex-col items-center justify-center text-center"><div class="mb-3 rounded-full bg-surface-1 p-4 text-ink-400"><el-icon :size="28"><Check /></el-icon></div><p class="text-body-sm font-medium text-ink-700">{{ activeList.items.length ? '没有符合条件的条目' : '这份清单还是空的' }}</p><el-button v-if="!activeList.items.length" text type="primary" class="mt-2" @click="openNewItem()">添加第一项</el-button></div><div v-else class="space-y-2"><div v-for="item in filteredItems" :key="item.id" class="group flex items-start gap-3 rounded-xl border border-border-subtle p-3 transition-colors hover:border-accent-200 hover:bg-accent-50/30" :class="item.purchased ? 'opacity-65' : ''"><button class="self-center flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2" :class="item.purchased ? 'border-success-500 bg-success-500 text-white' : 'border-ink-300 hover:border-accent-500'" :aria-label="item.purchased ? '标记为待购买' : '标记为已购买'" @click="togglePurchased(item)"><el-icon v-if="item.purchased" :size="14"><Check /></el-icon></button><el-image v-if="item.imageUrl" :src="item.imageUrl" :alt="`${item.name} 参考图`" :preview-src-list="[item.imageUrl]" preview-teleported fit="cover" class="h-14 w-14 shrink-0 cursor-zoom-in rounded-lg border border-border-subtle" loading="lazy" /><div v-else class="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-surface-1 text-ink-300" title="暂无参考图"><el-icon><Picture /></el-icon></div><div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-x-2 gap-y-1"><span class="text-body font-medium" :class="item.purchased ? 'text-ink-500 line-through' : 'text-ink-900'">{{ item.name }}</span><el-tag size="small" effect="plain" :style="categoryStyle(item.category)">{{ item.category }}</el-tag><el-tag v-if="item.required" size="small" type="danger" effect="plain">必买</el-tag><el-icon v-if="item.priority === 3" class="text-warning-500" title="高优先级"><Star /></el-icon></div><div class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-caption text-ink-500"><span>{{ item.quantity }} {{ item.unit }}</span><span v-if="item.weight">{{ item.weight }}</span><span v-if="item.note" class="max-w-full truncate">{{ item.note }}</span></div></div><div class="hidden shrink-0 text-right sm:block"><p class="text-caption text-ink-400">实际 / 预计</p><p class="text-body-sm font-medium text-ink-700">¥{{ money(item.actualPrice * item.quantity) }} / ¥{{ money(item.estimatedPrice * item.quantity) }}</p></div><div class="flex shrink-0 gap-0.5"><el-button text circle size="small" title="编辑" aria-label="编辑" @click="openNewItem(item)"><el-icon><Edit /></el-icon></el-button><el-button text circle size="small" title="删除" aria-label="删除" class="!text-danger-500" @click="removeItem(item)"><el-icon><Delete /></el-icon></el-button></div></div></div></div>
+        <div v-loading="loading" class="min-h-[220px] p-4 sm:p-5"><div v-if="!filteredItems.length" class="flex min-h-[180px] flex-col items-center justify-center text-center"><div class="mb-3 rounded-full bg-surface-1 p-4 text-ink-400"><el-icon :size="28"><Check /></el-icon></div><p class="text-body-sm font-medium text-ink-700">{{ activeList.items.length ? '没有符合条件的条目' : '这份清单还是空的' }}</p><el-button v-if="!activeList.items.length" text type="primary" class="mt-2" @click="openNewItem()">添加第一项</el-button></div><div v-else class="space-y-2"><div v-for="item in filteredItems" :key="item.id" class="group flex items-start gap-3 rounded-xl border border-border-subtle p-3 transition-colors hover:border-accent-200 hover:bg-accent-50/30" :class="item.purchased ? 'opacity-65' : ''"><button class="self-center flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2" :class="item.purchased ? 'border-success-500 bg-success-500 text-white' : 'border-ink-300 hover:border-accent-500'" :aria-label="item.purchased ? '标记为待购买' : '标记为已购买'" @click="togglePurchased(item)"><el-icon v-if="item.purchased" :size="14"><Check /></el-icon></button><el-image v-if="item.imageUrl" :src="item.imageUrl" :alt="`${item.name} 参考图`" :preview-src-list="[item.imageUrl]" preview-teleported fit="cover" class="h-14 w-14 shrink-0 cursor-zoom-in rounded-lg border border-border-subtle" loading="lazy" /><div v-else class="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-surface-1 text-ink-300" title="暂无参考图"><el-icon><Picture /></el-icon></div><div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-x-2 gap-y-1"><span class="text-body font-medium" :class="item.purchased ? 'text-ink-500 line-through' : 'text-ink-900'">{{ item.name }}</span><el-tag size="small" effect="plain" :style="categoryStyle(item.category)">{{ item.category }}</el-tag><el-tag v-if="item.required" size="small" type="danger" effect="plain">必买</el-tag><el-icon v-if="item.priority === 3" class="text-warning-500" title="高优先级"><Star /></el-icon></div><div class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-caption text-ink-500"><span>{{ item.quantity }} {{ item.unit }}</span><span v-if="item.weight">{{ item.weight }}</span><span v-if="item.note" class="max-w-full line-clamp-2">{{ item.note }}</span></div></div><div class="hidden shrink-0 text-right sm:block"><p class="text-caption text-ink-400">实际 / 预计</p><p class="text-body-sm font-medium text-ink-700">¥{{ money(item.actualPrice * item.quantity) }} / ¥{{ money(item.estimatedPrice * item.quantity) }}</p></div><div class="flex shrink-0 gap-0.5"><el-button text circle size="small" title="编辑" aria-label="编辑" @click="openNewItem(item)"><el-icon><Edit /></el-icon></el-button><el-button text circle size="small" title="删除" aria-label="删除" class="!text-danger-500" @click="removeItem(item)"><el-icon><Delete /></el-icon></el-button></div></div></div></div>
       </main>
     </div>
     <ToolDetail title="使用说明"><p class="text-body-sm text-ink-600">清单会按用户分别保存在 IndexedDB，浏览器不支持时自动使用 localStorage。登录后自动同步，断网时可继续编辑并在恢复网络后重试。</p></ToolDetail>

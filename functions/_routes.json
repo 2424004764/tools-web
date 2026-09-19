@@ -107,6 +107,9 @@
     "/api/admin/redeem-codes/*",
     "/api/me/credits",
     "/api/me/credits/transactions",
+    "/api/me/storage-quota",
+    "/api/storage-quota",
+    "/api/storage-quota/*",
     "/api/me/redeem",
     "/api/me/generation-records",
     "/api/me/generation-records/*",
@@ -131,6 +134,8 @@
     "/api/shopping-lists/history",
     "/api/shopping-lists/frequent",
     "/api/shopping-lists/images/sign",
+    "/api/shopping-lists/images/confirm",
+    "/api/shopping-lists/images/delete",
     "/api/music-playlist",
     "/api/music-playlist/*"
   ],

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, reactive } from 'vue'
+import { useRouter } from 'vue-router'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -31,18 +32,22 @@ import {
   deletePlaylist,
   xhrPutToR2,
   postMySongPlay,
-  quoteUpload,
-  reverseUpload,
 } from '@/api/music-playlist'
+import {
+  getStorageQuota,
+  releaseStorageReservation,
+  formatStorageBytes,
+  type StorageQuotaInfo,
+} from '@/api/storageQuota'
 import {
   ALLOWED_MIME,
   formatDuration,
   formatBytes,
 } from './constants'
-import { functionsRequest } from '@/utils/functionsRequest'
 import type { SongMeta, PlaylistMeta, PlaylistDetail } from './types'
 import type { RequestUploadUrlResult } from '@/api/music-playlist'
 
+const router = useRouter()
 const userStore = useUserStore()
 userStore.initUserState()
 
@@ -328,7 +333,10 @@ const onRenamePlaylist = async () => {
   }
 }
 
-// ============ 上传弹窗（两段式：选文件 → 成本预览 → 二次确认 → 上传）============
+// ============ 上传弹窗（两段式：选文件 → 存储额度预览 → 上传）============
+
+/** 单文件大小上限（字节）—— 与后端 MAX_FILE_SIZE_BYTES 保持一致，前端本地兜底 */
+const MAX_FILE_SIZE_BYTES = 30 * 1024 * 1024
 
 interface UploadingFile {
   key: string
@@ -337,34 +345,17 @@ interface UploadingFile {
   status: 'waiting' | 'hashing' | 'ready' | 'signing' | 'uploading' | 'saving' | 'done' | 'failed' | 'skipped'
   errorMsg?: string
   sha256?: string
-  /** 单文件模式下用于幂等的 key（每次新增条目随机生成） */
-  idempotencyKey?: string
   /** 该文件 SHA-256 在服务端去重命中时复用已有 song，仅展示 */
   existingTitle?: string
-  /** 服务端确认的本次消耗免费额度字节（payer = batchFreeBytes；后续首 = 0） */
-  freePortionBytes?: number
   meta?: { title: string; artist: string; album: string; durationSec: number | null }
 }
 
 const showUploadModal = ref(false)
 const uploadingFiles = ref<UploadingFile[]>([])
 const fileInput = ref<HTMLInputElement | null>(null)
-const currentBalance = ref(0)
-/** 计费比例（多少 MB = 1 积分）—— 必须由 /quote 提供，前端不写死 */
-const mbPerCredit = ref<number | null>(null)
-/** 单文件大小上限（字节）—— 由 /quote 提供，避免与后端 MAX_FILE_SIZE_BYTES 漂移 */
-const maxFileSizeBytes = ref<number | null>(null)
-/** 批次合计扣费积分（按"批次合计"规则：仅对 paidBytes 计费，免费部分不计） */
-const batchTotalCost = ref<number | null>(null)
-/** 本批次走免费额度的字节数（来自 /quote） */
-const batchFreeBytes = ref(0)
-/** 本批次走积分的字节数（来自 /quote） */
-const batchPaidBytes = ref(0)
-/** 用户当前已用免费额度（字节，弹窗打开时刷新） */
-const freeQuotaUsed = ref(0)
-/** 用户终身免费额度上限（字节，来自 /quote） */
-const freeQuotaTotal = ref<number | null>(null)
-/** 批次大小合计（字节），用于每次队列变化后重新 quote */
+/** 当前用户存储额度概况（弹窗打开时拉一次；null = 拉取失败，静默不展示，不阻塞上传） */
+const storageQuotaInfo = ref<StorageQuotaInfo | null>(null)
+/** 批次大小合计（字节），仅用于展示 */
 const batchTotalSize = computed(() =>
   uploadingFiles.value.reduce((sum, u) => sum + u.file.size, 0)
 )
@@ -373,20 +364,14 @@ const phase = ref<'pick' | 'uploading'>('pick')
 const resetUploadModal = () => {
   uploadingFiles.value = []
   phase.value = 'pick'
-  currentBalance.value = 0
-  batchTotalCost.value = 0
-  batchFreeBytes.value = 0
-  batchPaidBytes.value = 0
-  freeQuotaUsed.value = 0
+  storageQuotaInfo.value = null
 }
 
 const openUploadModal = async () => {
   resetUploadModal()
   showUploadModal.value = true
-  // 先拉一次 /quote（空 fileSizes）拿到所有后端配置 + 余额，
-  // 这样 UI 不依赖任何硬编码兜底值就能正确显示。
-  await previewCosts()
-  await refreshBalance()
+  // 拉一次存储额度概况（剩余 / 总量），失败静默降级为不展示
+  await loadStorageQuota()
 }
 
 const closeUploadModal = () => {
@@ -398,16 +383,29 @@ const closeUploadModal = () => {
   showUploadModal.value = false
 }
 
-const refreshBalance = async () => {
+/** 查询存储额度（统一额度口径：上传占用额度，删除歌曲返还额度）；失败静默 */
+const loadStorageQuota = async () => {
   try {
-    const res = await functionsRequest.get('/api/me/credits')
-    const balance = Number(res.data?.balance ?? 0)
-    if (Number.isFinite(balance)) currentBalance.value = balance
+    storageQuotaInfo.value = await getStorageQuota()
   } catch {
-    // 未登录 / 网络异常：余额按 0 处理
-    currentBalance.value = 0
+    // 未登录 / 网络异常：不展示额度概况，不阻塞上传
+    storageQuotaInfo.value = null
   }
 }
+
+/** 存储额度概况文案（quota 为 null 时整块隐藏，不展示） */
+const storageQuotaText = computed(() => {
+  const q = storageQuotaInfo.value
+  if (!q) return ''
+  return `剩余存储空间 ${formatStorageBytes(q.remainingBytes)} / ${formatStorageBytes(q.quotaBytes)}`
+})
+
+/** 存储额度占用进度条（已用 + 未确认预留，0~100） */
+const storageQuotaPercent = computed(() => {
+  const q = storageQuotaInfo.value
+  if (!q || q.quotaBytes <= 0) return 0
+  return Math.min(100, Math.round(((q.usedBytes + q.pendingBytes) / q.quotaBytes) * 100))
+})
 
 const triggerFilePicker = () => fileInput.value?.click()
 
@@ -454,33 +452,6 @@ async function computeSha256(file: File): Promise<string> {
   return out
 }
 
-/** Phase A：拉服务端 /quote，按"批次合计"规则算出 totalCost；
- * 同时记下 mbPerCredit / freeQuotaTotal / maxFileSizeBytes 等所有后端配置。
- * 即使队列为空也调（拿配置 + 余额），UI 不用任何硬编码兜底。
- * 失败时把需要计算的数值置 null，UI 走加载态（canConfirm 会禁用按钮）。 */
-const previewCosts = async () => {
-  const sizes = uploadingFiles.value.map((u) => u.file.size)
-  try {
-    const quote = await quoteUpload(sizes)
-    if (Number.isFinite(quote?.totalCost)) batchTotalCost.value = quote.totalCost
-    else if (sizes.length === 0) batchTotalCost.value = 0
-    if (Number.isFinite(quote?.mbPerCredit)) mbPerCredit.value = quote.mbPerCredit
-    if (Number.isFinite(quote?.maxFileSizeBytes)) maxFileSizeBytes.value = quote.maxFileSizeBytes
-    if (Number.isFinite(quote?.freeBytes)) batchFreeBytes.value = quote.freeBytes
-    else batchFreeBytes.value = 0
-    if (Number.isFinite(quote?.paidBytes)) batchPaidBytes.value = quote.paidBytes
-    else batchPaidBytes.value = 0
-    if (Number.isFinite(quote?.freeQuotaUsed)) freeQuotaUsed.value = quote.freeQuotaUsed
-    if (Number.isFinite(quote?.freeQuotaTotal)) freeQuotaTotal.value = quote.freeQuotaTotal
-  } catch (e: any) {
-    // quote 失败：所有数值置 null，UI 走加载态
-    console.warn('[upload] quote failed, showing loading placeholder:', e?.message || e)
-    if (sizes.length > 0) batchTotalCost.value = null
-    batchFreeBytes.value = 0
-    batchPaidBytes.value = 0
-  }
-}
-
 const handleFileSelect = async (e: Event) => {
   const input = e.target as HTMLInputElement
   if (!input.files || input.files.length === 0) return
@@ -506,13 +477,9 @@ const processFiles = async (files: File[]) => {
       ElMessage.warning(`已跳过不支持的文件：${file.name}（仅支持 mp3 / m4a / wav）`)
       continue
     }
-    // 单文件大小上限由 /quote 给出；null 时不卡前端（让后端在 requestUploadUrl 兜底拒绝）
-    const sizeCap = maxFileSizeBytes.value ?? Number.POSITIVE_INFINITY
-    const sizeCapMB = maxFileSizeBytes.value
-      ? (maxFileSizeBytes.value / 1024 / 1024).toFixed(0)
-      : '?'
-    if (file.size > sizeCap) {
-      ElMessage.warning(`已跳过超大文件：${file.name}（上限 ${sizeCapMB}MB）`)
+    // 单文件大小上限（与后端 MAX_FILE_SIZE_BYTES 一致，本地兜底；后端仍会兜底拒绝）
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      ElMessage.warning(`已跳过超大文件：${file.name}（上限 ${MAX_FILE_SIZE_BYTES / 1024 / 1024}MB）`)
       continue
     }
     accepted.push(file)
@@ -527,7 +494,6 @@ const processFiles = async (files: File[]) => {
         file,
         progress: 0,
         status: 'hashing',
-        idempotencyKey: crypto.randomUUID(),
       }) as UploadingFile
     )
   }
@@ -547,39 +513,33 @@ const processFiles = async (files: File[]) => {
       })
   )
 
-  // 3) 拉服务端 cost + 余额（一次批量）
-  await previewCosts()
+  // SHA-256 就绪后即可确认上传（存储额度在 requestUploadUrl 时由后端校验预留）
 }
 
 /**
  * Phase B：用户点确认后按队列顺序上传。
- * - 命中 dedup → status='skipped'，不扣费、不传 R2
- * - 新文件 → requestUploadUrl（按批次合计扣费 + 签 URL）→ PUT R2 → createSong
- * - 任何步骤异常 → reverseUpload 反向冲销（已扣的还原）
+ * - 命中 dedup → status='skipped'，不占额度、不传 R2
+ * - 新文件 → requestUploadUrl（后端预扣统一存储额度 + 签 URL）→ PUT R2 → createSong（按真实大小结算）
+ * - 任何步骤异常 → releaseStorageReservation 释放预留（超时也会自动失效）
  */
 const confirmUpload = async () => {
-  if (insufficientBalance.value) return
   const targets = uploadingFiles.value.filter((u) => u.status === 'ready')
   if (!targets.length) return
   phase.value = 'uploading'
-  await refreshBalance() // 上传前再拉一次最新余额
+  await loadStorageQuota()
 
-  // 每文件独立计费（含免费额度）：
-  //   服务端只信本次 fileSize（受 30MB 上限约束），按 min(fileSize, freeRemaining) 走免费、
-  //   剩余部分按 2MB/积分扣费。用户看到的「本批合计 N 积分」= sum(per-file cost)。
   let anySucceeded = false
   for (const item of targets) {
-    // txId 提到 try 外：捕获异常时仍可反向冲销
-    let deductedTxId: string | null = null
+    // reservationId 提到 try 外：上传失败时仍可释放预留
+    let reservationId = ''
     try {
-      // 1) 签名 + 扣费（或命中 dedup）
+      // 1) 签名 + 预扣存储额度（或命中 dedup）
       item.status = 'signing'
       const sign = (await requestUploadUrl({
         filename: item.file.name,
         mimeType: item.file.type,
         fileSize: item.file.size,
         sha256: item.sha256!,
-        idempotencyKey: item.idempotencyKey,
       })) as RequestUploadUrlResult
 
       if (sign.exists) {
@@ -588,8 +548,7 @@ const confirmUpload = async () => {
         continue
       }
 
-      deductedTxId = sign.txId
-      item.freePortionBytes = sign.freePortionBytes ?? 0
+      reservationId = sign.reservationId
 
       const durationSec = await probeDuration(item.file)
       const { title, artist, album } = extractArtistAlbum(item.file.name)
@@ -601,7 +560,7 @@ const confirmUpload = async () => {
         item.progress = p.total ? (p.loaded / p.total) * 100 : 0
       })
 
-      // 3) 元数据落库（让 server 二次查重 + 写入 sha256/cost/txId/free_portion_bytes）
+      // 3) 元数据落库（服务端二次查重 + 按 R2 真实大小结算存储额度）
       item.status = 'saving'
       await createSong({
         title: item.meta.title,
@@ -612,46 +571,44 @@ const confirmUpload = async () => {
         fileSize: item.file.size,
         durationSec: item.meta.durationSec,
         sha256: item.sha256!,
-        creditCostPaid: sign.cost,
-        creditTxId: sign.txId,
-        freePortionBytes: item.freePortionBytes,
+        reservationId: sign.reservationId,
       })
 
       item.status = 'done'
       item.progress = 100
       anySucceeded = true
     } catch (err: any) {
-      // 已申请 upload-url 拿到 txId 时反向冲销
-      if (deductedTxId) {
-        try {
-          await reverseUpload(deductedTxId)
-        } catch (reverseErr: any) {
-          console.error('[upload] reverse failed:', reverseErr?.message || reverseErr)
-        }
-      }
+      // 上传没成功：释放签名时预扣的存储额度（幂等、失败静默）
+      if (reservationId) void releaseStorageReservation(reservationId)
       console.error('upload error:', err)
       item.status = 'failed'
       item.errorMsg = err?.response?.data?.error || err?.message || '上传失败'
+      // 存储额度不足（HTTP 402）：引导去购买
+      if (err?.response?.status === 402) {
+        ElMessageBox.confirm(
+          err?.response?.data?.error || '存储空间不足，请先购买存储额度（1 积分 = 100MB）',
+          '存储空间不足',
+          { type: 'warning', confirmButtonText: '去购买', cancelButtonText: '取消' },
+        )
+          .then(() => router.push('/me/credits'))
+          .catch(() => {})
+      }
     }
   }
 
-  await refreshBalance()
+  await loadStorageQuota()
   await loadSongs()
-  phase.value = 'pick' // 允许下一批：选新文件、按新合计扣费
-  // batchTotalCost 保持显示旧值；用户可手动改选后再点"确认上传"会重新 quote
+  phase.value = 'pick' // 允许下一批：选新文件、按新额度预览
   if (anySucceeded) ElMessage.success('上传任务完成')
 }
 
-const dismissUploadItem = async (key: string) => {
+const dismissUploadItem = (key: string) => {
   uploadingFiles.value = uploadingFiles.value.filter((u) => u.key !== key)
-  // 队列变化后重新 quote（合计扣费可能变化）
-  await previewCosts()
 }
 
-/** 一键清空上传队列（不含"已扣费的批次"——只是清队列显示） */
+/** 一键清空上传队列（只是清队列显示，不影响已占用额度） */
 const clearAllUploadingFiles = () => {
   uploadingFiles.value = []
-  batchTotalCost.value = 0
 }
 
 const hasActiveUpload = computed(() =>
@@ -660,103 +617,9 @@ const hasActiveUpload = computed(() =>
   )
 )
 
-/** 待扣费积分（按"批次合计"规则） */
-const totalCost = computed(() => batchTotalCost.value)
-
-/** null 表示「加载中」，统一返回 false 让 canConfirm 走禁用分支；UI 另行展示 */
-const insufficientBalance = computed(() => {
-  if (totalCost.value == null) return false
-  return totalCost.value > currentBalance.value
-})
-
-/** 是否还有"待上传"项（用于切换"扣除后余额"语义：预测 vs 实际） */
-const hasReadyItems = computed(() =>
-  uploadingFiles.value.some((u) => u.status === 'ready')
-)
-
-/** 扣除后余额：
- *  - 有待上传项时 = 当前余额 - 待扣费（预测）
- *  - 全部完成后 = 当前余额（refreshBalance 已拉到扣后真实余额） */
-const deductedBalance = computed(() => {
-  if (!hasReadyItems.value) return currentBalance.value
-  if (totalCost.value == null) return currentBalance.value
-  return Math.max(0, currentBalance.value - totalCost.value)
-})
-
-/** 计费明细：把"为什么扣 N 积分"直接告诉用户
- *  - 例 11.40 MB → "5 × 2MB（10 MB 整）+ 1.40 MB 余数不计费 = 5 积分"
- *  - 例 12 MB    → "6 × 2MB（12 MB 整）= 6 积分"
- *  - 例 0.5 MB   → "0.50 MB（不足 2MB，最低 1 积分）= 1 积分"
- *  - 含免费额度：先展示 "X MB 免费 + Y MB 按 Z MB/积分 计费 = N 积分"
- *  - 配置未加载时（mbPerCredit=null 或 totalCost=null）返回空，UI 走加载态
- */
-const costBreakdown = computed(() => {
-  const totalBytes = batchTotalSize.value
-  if (totalBytes <= 0) return ''
-  if (mbPerCredit.value == null || freeQuotaTotal.value == null) return ''
-  const freeBytes = batchFreeBytes.value
-  const paidBytes = batchPaidBytes.value
-  const freeMB = (freeBytes / 1024 / 1024).toFixed(2)
-  const paidMB = (paidBytes / 1024 / 1024).toFixed(2)
-  const cost = batchTotalCost.value
-  const totalMB = (freeQuotaTotal.value / 1024 / 1024).toFixed(0)
-
-  // 全部免费：直接说"X MB 走免费额度，不扣费"
-  if (freeBytes > 0 && paidBytes === 0) {
-    return `${freeMB} MB 走免费额度（终身 ${totalMB} MB），不扣费`
-  }
-
-  const unitMB = Math.max(1, mbPerCredit.value)
-  const unitBytes = unitMB * 1024 * 1024
-  const fullChunks = Math.floor(paidBytes / unitBytes)
-  const remainderBytes = paidBytes - fullChunks * unitBytes
-
-  // 部分免费 + 部分付费
-  let paidLine = ''
-  if (fullChunks === 0) {
-    if (paidBytes === 0) paidLine = ''
-    else paidLine = `${paidMB} MB（不足 ${unitMB}MB，最低 1 积分）= 1 积分`
-  } else {
-    const remainderMB = (remainderBytes / 1024 / 1024).toFixed(2)
-    const fullPart = `${fullChunks} × ${unitMB}MB（${(fullChunks * unitMB).toFixed(2)} MB 整）`
-    if (remainderBytes === 0) paidLine = `${fullPart} = ${cost} 积分`
-    else paidLine = `${fullPart} + ${remainderMB} MB 余数不计费 = ${cost} 积分`
-  }
-
-  if (freeBytes > 0) {
-    return `${freeMB} MB 走免费额度 + ${paidLine}`
-  }
-  return paidLine
-})
-
 const canConfirm = computed(() => {
   if (phase.value !== 'pick') return false
-  // 配置未加载（mbPerCredit / freeQuotaTotal / batchTotalCost 任一为 null）→ 禁用
-  if (mbPerCredit.value == null) return false
-  if (freeQuotaTotal.value == null) return false
-  if (batchTotalCost.value == null) return false
-  if (insufficientBalance.value) return false
   return uploadingFiles.value.some((u) => u.status === 'ready')
-})
-
-/** 免费额度显示文案：已使用 X / N MB（含本次将消耗的字节） */
-const freeQuotaDisplay = computed(() => {
-  if (freeQuotaTotal.value == null) return '免费额度：加载中…'
-  const usedMB = (freeQuotaUsed.value / 1024 / 1024).toFixed(2)
-  const totalMB = (freeQuotaTotal.value / 1024 / 1024).toFixed(0)
-  return `免费额度：已使用 ${usedMB} / ${totalMB} MB`
-})
-
-/** 本次上传完成后将占用的免费额度字节（弹窗预览用） */
-const freeQuotaAfter = computed(() => {
-  if (freeQuotaTotal.value == null) return 0
-  return Math.min(freeQuotaTotal.value, freeQuotaUsed.value + batchFreeBytes.value)
-})
-
-/** 进度条百分比（0~100） */
-const freeQuotaPercent = computed(() => {
-  if (freeQuotaTotal.value == null || freeQuotaTotal.value <= 0) return 0
-  return Math.min(100, Math.round((freeQuotaAfter.value / freeQuotaTotal.value) * 100))
 })
 
 onMounted(async () => {
@@ -968,19 +831,19 @@ onBeforeUnmount(() => {
       :close-on-press-escape="!hasActiveUpload"
       :before-close="closeUploadModal"
     >
-      <!-- 顶部：免费额度进度条 + 不压缩音质提示 -->
-      <div class="free-quota-bar">
+      <!-- 顶部：存储额度进度条 + 不压缩音质提示 -->
+      <div v-if="storageQuotaInfo" class="free-quota-bar">
         <div class="free-quota-header">
-          <span class="free-quota-label">{{ freeQuotaDisplay }}</span>
-          <span v-if="batchFreeBytes > 0" class="free-quota-delta">
-            本次将消耗 {{ (batchFreeBytes / 1024 / 1024).toFixed(2) }} MB 免费额度
+          <span class="free-quota-label">{{ storageQuotaText }}</span>
+          <span v-if="batchTotalSize > 0" class="free-quota-delta">
+            本次将占用 {{ formatBytes(batchTotalSize) }}
           </span>
         </div>
         <el-progress
-          :percentage="freeQuotaPercent"
+          :percentage="storageQuotaPercent"
           :stroke-width="6"
           :show-text="false"
-          :color="freeQuotaPercent >= 100 ? '#f56c6c' : '#67c23a'"
+          :color="storageQuotaPercent >= 100 ? '#f56c6c' : '#67c23a'"
         />
       </div>
 
@@ -1003,9 +866,9 @@ onBeforeUnmount(() => {
         <el-icon :size="36" color="#ea580c"><Upload /></el-icon>
         <div class="upload-title">点击或拖拽 mp3 / m4a / wav 到此处</div>
         <div class="upload-desc">
-          单文件 ≤ {{ maxFileSizeBytes ? (maxFileSizeBytes / 1024 / 1024).toFixed(0) : '?' }}MB
+          单文件 ≤ {{ MAX_FILE_SIZE_BYTES / 1024 / 1024 }}MB
           · 可多选
-          · 终身 {{ freeQuotaTotal ? (freeQuotaTotal / 1024 / 1024).toFixed(0) : '?' }} MB 免费额度
+          · 占用存储空间，删除歌曲可返还
         </div>
       </div>
 
@@ -1047,7 +910,7 @@ onBeforeUnmount(() => {
               <template v-else-if="u.status === 'saving'">保存元数据…</template>
               <template v-else-if="u.status === 'done'">完成</template>
               <template v-else-if="u.status === 'skipped'">
-                <span class="skipped-text">已存在：「{{ u.existingTitle }}」（跳过，不扣费）</span>
+                <span class="skipped-text">已存在：「{{ u.existingTitle }}」（跳过）</span>
               </template>
               <template v-else-if="u.status === 'failed'">{{ u.errorMsg || '失败' }}</template>
               <template v-else>—</template>
@@ -1063,41 +926,17 @@ onBeforeUnmount(() => {
           />
         </div>
 
-        <!-- 合计 + 余额 footer（按"批次合计"规则） -->
+        <!-- 合计 + 存储额度说明 footer -->
         <div class="upload-summary">
           <div class="summary-row">
             <span class="summary-label">本批合计（{{ formatBytes(batchTotalSize) }}）</span>
             <span class="summary-value">
-              <span class="cost-num">{{ totalCost ?? '—' }}</span>
-              <span class="cost-label">积分</span>
+              <span class="cost-num">{{ formatBytes(batchTotalSize) }}</span>
             </span>
-          </div>
-          <div v-if="costBreakdown" class="summary-breakdown">
-            计费明细：{{ costBreakdown }}
-          </div>
-          <div v-else-if="batchTotalSize > 0 && totalCost == null" class="summary-breakdown">
-            计费明细：加载中…
           </div>
           <div class="summary-row quality-note">
             <span class="quality-icon">🎵</span>
-            <span class="quality-text">不会压缩音质，完全原版上传</span>
-          </div>
-          <div class="summary-row">
-            <span class="summary-label">当前余额</span>
-            <span class="summary-value" :class="{ 'is-low': insufficientBalance }">
-              <span class="cost-num">{{ currentBalance }}</span>
-              <span class="cost-label">积分</span>
-            </span>
-          </div>
-          <div class="summary-row">
-            <span class="summary-label">扣除后余额{{ hasReadyItems ? '（预估）' : '（实际）' }}</span>
-            <span class="summary-value" :class="{ 'is-low': insufficientBalance }">
-              <span class="cost-num">{{ deductedBalance }}</span>
-              <span class="cost-label">积分</span>
-            </span>
-          </div>
-          <div v-if="insufficientBalance && totalCost != null" class="summary-warn">
-            余额不足，还差 <strong>{{ totalCost - currentBalance }}</strong> 积分
+            <span class="quality-text">不会压缩音质，完全原版上传 · 删除歌曲会返还存储空间</span>
           </div>
         </div>
       </div>
@@ -1112,7 +951,7 @@ onBeforeUnmount(() => {
           :disabled="!canConfirm"
           @click="confirmUpload"
         >
-          确认上传<span v-if="uploadingFiles.length">（{{ totalCost ?? '—' }} 积分）</span>
+          确认上传<span v-if="uploadingFiles.length">（{{ uploadingFiles.length }} 个文件）</span>
         </el-button>
       </template>
     </el-dialog>

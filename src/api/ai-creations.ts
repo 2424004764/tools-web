@@ -117,11 +117,15 @@ export interface InitSaveRequest {
     width?: number
     height?: number
     content_type?: string
+    /** 文件大小（字节）：后端据此预留存储额度，confirm 时按 R2 真实大小结算 */
+    file_size?: number
   }>
 }
 
 export interface InitSaveResponse {
   group_id: number
+  /** 存储额度预留 id（init 预扣了 declaredBytes 时返回）；confirm 时回传 */
+  reservation_id?: string
   plan: SavePlanItem[]
 }
 
@@ -135,6 +139,8 @@ export async function initAiCreationSave(
 
 export interface ConfirmSaveRequest {
   group_id: number
+  /** init 返回的存储额度预留 id（按 R2 真实大小结算并释放） */
+  reservation_id?: string
   images: Array<{
     r2_key: string
     public_url?: string
@@ -341,6 +347,7 @@ export async function saveManualAiCreationFiles(
       width,
       height,
       content_type: file.type || 'image/png',
+      file_size: file.size,
     })),
   })
 
@@ -352,6 +359,7 @@ export async function saveManualAiCreationFiles(
 
   const confirmed = await confirmAiCreationSave({
     group_id: init.group_id,
+    reservation_id: init.reservation_id,
     images: init.plan.map((plan) => {
       const item = files[plan.index]
       return {

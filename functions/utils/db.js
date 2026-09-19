@@ -825,6 +825,7 @@ export class TodoModel extends Model {
         priority: { type: 'string' },
         dueDate: { type: 'string', dbField: 'due_date' },
         category: { type: 'string' },
+        sortOrder: { type: 'integer', dbField: 'sort_order' },
         createTime: { type: 'datetime', dbField: 'create_time' },
         updateTime: { type: 'datetime', dbField: 'update_time' }
       }

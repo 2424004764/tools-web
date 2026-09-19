@@ -130,6 +130,76 @@ export async function signR2PutUrl(env, bucket, r2Key, contentType) {
 }
 
 /**
+ * 服务端用 SigV4 HEAD 读取 R2 对象大小（用于上传 confirm 结算 / 删除退额度）。
+ * 返回字节数；对象不存在返回 null。
+ */
+export async function headR2ObjectSize(env, bucket, r2Key) {
+  const accessKeyId = env.R2_ACCESS_KEY_ID
+  const secretAccessKey = env.R2_SECRET_ACCESS_KEY
+  const accountId = env.R2_ACCOUNT_ID
+  if (!accessKeyId || !secretAccessKey || !accountId) {
+    throw new Error('R2 凭据未配置（缺少 R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / R2_ACCOUNT_ID）')
+  }
+  if (!bucket) throw new Error('R2 桶名未配置（缺少 env.R2_BUCKET_NAME）')
+
+  const nowDate = new Date()
+  const amzDate = nowDate.toISOString().replace(/[:-]|\.\d{3}/g, '')
+  const dateStamp = amzDate.substring(0, 8)
+  const host = `${bucket}.${accountId}.r2.cloudflarestorage.com`
+  const canonicalUri = `/${encodeS3Key(r2Key)}`
+  const credentialScope = `${dateStamp}/auto/s3/aws4_request`
+  const signedHeaders = 'host'
+  const canonicalHeaders = `host:${host}\n`
+  const payloadHash = 'UNSIGNED-PAYLOAD'
+
+  const queryParams = new URLSearchParams({
+    'X-Amz-Algorithm': 'AWS4-HMAC-SHA256',
+    'X-Amz-Content-Sha256': 'UNSIGNED-PAYLOAD',
+    'X-Amz-Credential': `${accessKeyId}/${credentialScope}`,
+    'X-Amz-Date': amzDate,
+    'X-Amz-Expires': '300',
+    'X-Amz-SignedHeaders': signedHeaders,
+  })
+  const sortedQuery = [...queryParams.entries()]
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([k, v]) => `${uriEncode(k)}=${uriEncode(v)}`)
+    .join('&')
+
+  const canonicalRequest = [
+    'HEAD',
+    canonicalUri,
+    sortedQuery,
+    canonicalHeaders,
+    signedHeaders,
+    payloadHash,
+  ].join('\n')
+
+  const stringToSign = [
+    'AWS4-HMAC-SHA256',
+    amzDate,
+    credentialScope,
+    await sha256Hex(canonicalRequest),
+  ].join('\n')
+
+  const kSecret = enc.encode(`AWS4${secretAccessKey}`)
+  const kDate = await hmac(kSecret, dateStamp)
+  const kRegion = await hmac(kDate, 'auto')
+  const kService = await hmac(kRegion, 's3')
+  const kSigning = await hmac(kService, 'aws4_request')
+  const signature = toHex(await hmac(kSigning, stringToSign))
+
+  const url = `https://${host}${canonicalUri}?${sortedQuery}&X-Amz-Signature=${signature}`
+  const response = await fetch(url, { method: 'HEAD' })
+
+  if (response.status === 404) return null
+  if (!response.ok) {
+    throw new Error(`R2 head 失败: HTTP ${response.status}`)
+  }
+  const contentLength = Number(response.headers.get('Content-Length'))
+  return Number.isFinite(contentLength) && contentLength >= 0 ? contentLength : null
+}
+
+/**
  * 构造公网可访问 URL（前端可直接放 src= 加载）
  * @param {object} env
  * @param {string} r2Key

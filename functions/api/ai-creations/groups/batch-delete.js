@@ -6,7 +6,8 @@
 //     Resp: { groups_deleted, images, r2_deleted, r2_failed, skipped_ids }
 
 import { extractUidFromRequest } from '../../_lib/model-resolver.js'
-import { deleteR2Object } from '../../../services/r2.js'
+import { deleteR2Object, headR2ObjectSize } from '../../../services/r2.js'
+import { refundStorageUsage } from '../../../services/storageQuotaService.js'
 
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -63,6 +64,7 @@ export async function onRequest(context) {
     let imageCount = 0
     let r2Deleted = 0
     let r2Failed = 0
+    let refundedBytes = 0
     const skippedIds = []
 
     for (const groupId of ids) {
@@ -83,18 +85,24 @@ export async function onRequest(context) {
       const images = imgsResult.results || []
       imageCount += images.length
 
-      // best-effort 删 R2，失败不阻断 D1 删除
+      // best-effort 删 R2，失败不阻断 D1 删除；先 HEAD 拿真实大小（退额度用），404 → 不退（防刷额度）
       if (bucket && images.length > 0) {
         const results = await Promise.allSettled(
           images.map((img) => {
             const key = inferR2Key(env, img.media_url)
-            if (!key) return Promise.resolve(false)
-            return deleteR2Object(env, bucket, key).then(() => true).catch(() => false)
+            if (!key) return Promise.resolve(0)
+            return headR2ObjectSize(env, bucket, key)
+              .then((size) => deleteR2Object(env, bucket, key).then(() => size || 0))
+              .catch(() => 0)
           }),
         )
         for (const r of results) {
-          if (r.status === 'fulfilled' && r.value === true) r2Deleted++
-          else r2Failed++
+          if (r.status === 'fulfilled') {
+            r2Deleted++
+            refundedBytes += r.value || 0
+          } else {
+            r2Failed++
+          }
         }
       } else if (images.length > 0) {
         r2Failed += images.length
@@ -111,11 +119,20 @@ export async function onRequest(context) {
       }
     }
 
+    if (refundedBytes > 0) {
+      try {
+        await refundStorageUsage(db, uid, refundedBytes)
+      } catch (e) {
+        console.error('[ai-creations/groups/batch-delete POST] refundStorageUsage failed:', e?.message || e)
+      }
+    }
+
     return json({
       groups_deleted: groupsDeleted,
       images: imageCount,
       r2_deleted: r2Deleted,
       r2_failed: r2Failed,
+      refunded_bytes: refundedBytes,
       skipped_ids: skippedIds,
     })
   } catch (e) {
