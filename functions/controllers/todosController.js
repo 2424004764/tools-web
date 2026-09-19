@@ -67,6 +67,14 @@ export class TodosController {
     return ApiResponse.success(result.data, origin)
   }
 
+  async reorder(data, user, origin) {
+    const validation = Validator.validateReorderTodos(data)
+    if (!validation.isValid) return Validator.createValidationErrorResponse(validation.errors)
+
+    const result = await this.todosService.reorderTodos(data.items, user.id)
+    if (!result.success) return ApiResponse.error(result.error, origin, 400)
+    return ApiResponse.success(result.data, origin)
+  }
   async destroy(id, user, origin) {
     const validation = Validator.validateId(id)
     if (!validation.isValid) {

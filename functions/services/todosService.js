@@ -22,7 +22,7 @@ export class TodosService {
         queryBuilder.where('category', '=', filters.category)
       }
 
-      queryBuilder.orderBy('createTime', 'DESC')
+      queryBuilder.orderBy('sortOrder', 'ASC').orderBy('createTime', 'DESC').orderBy('id', 'ASC')
 
       pager.applyTo(queryBuilder)
 
@@ -72,6 +72,7 @@ export class TodosService {
         priority: todoData.priority || 'medium',
         dueDate: todoData.dueDate || null,
         category: todoData.category || '默认',
+        sortOrder: Date.now(),
         uid: uid
       })
       return {
@@ -114,6 +115,29 @@ export class TodosService {
     }
   }
 
+  async reorderTodos(items, uid) {
+    try {
+      const ids = items.map(item => item.id)
+      const placeholders = ids.map(() => '?').join(', ')
+      const existing = await this.todoModel.db
+        .prepare(`SELECT id FROM todos WHERE uid = ? AND id IN (${placeholders})`)
+        .bind(uid, ...ids)
+        .all()
+      const existingIds = new Set((existing.results || []).map(row => row.id))
+      if (existingIds.size !== ids.length) {
+        return { success: false, error: '待办事项不存在或无权限' }
+      }
+
+      const statements = items.map(item => this.todoModel.db
+        .prepare('UPDATE todos SET sort_order = ?, update_time = CURRENT_TIMESTAMP WHERE id = ? AND uid = ?')
+        .bind(item.sortOrder, item.id, uid))
+      await this.todoModel.db.batch(statements)
+      return { success: true, data: { updated: items.length } }
+    } catch (error) {
+      console.error('重排待办事项失败:', error)
+      return { success: false, error: '重排待办事项失败' }
+    }
+  }
   async deleteTodo(id, uid) {
     try {
       const queryBuilder = new QueryBuilder()

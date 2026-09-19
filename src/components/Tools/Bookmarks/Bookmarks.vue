@@ -1117,7 +1117,7 @@ onMounted(async () => {
 
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
   gap: 6px;
 }
 
@@ -1125,6 +1125,8 @@ onMounted(async () => {
   display: flex;
   align-items: flex-start;
   gap: 8px;
+  /* 允许卡片在窄屏下收缩，避免长标题把 grid 轨道撑破容器 */
+  min-width: 0;
   background: #fffbeb;
   border: 1.5px solid #fdead5;
   border-radius: 10px;
@@ -1457,6 +1459,10 @@ onMounted(async () => {
 
   .toolbar {
     flex-direction: column;
+  }
+
+  .toolbar-search {
+    width: 100%;
   }
 
   .toolbar-actions {

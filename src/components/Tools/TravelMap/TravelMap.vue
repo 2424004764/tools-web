@@ -9,7 +9,7 @@ import PointEditDialog from './PointEditDialog.vue'
 import MyMapsDrawer from './MyMapsDrawer.vue'
 import { useUserStore } from '@/store/modules/user'
 import { fetchMyMaps, createMap, fetchMap, saveMap } from '@/api/travel-maps'
-import { geocode, searchPoi, type GeocodedPlace, type PoiItem } from '@/utils/tiandituSearch'
+import { searchPoi, type GeocodedPlace, type PoiItem } from '@/utils/tiandituSearch'
 import { routeAlongRoad, OsrmError } from '@/utils/osrm'
 import {
   POINT_CATEGORIES, BASE_LAYERS, ROUTE_COLORS, OSRM_PROFILES, LIMITS,
@@ -43,6 +43,23 @@ const days = ref<TravelMapDay[]>([])
 const activeDayId = ref('')
 const activeDay = computed(() => days.value.find((d) => d.id === activeDayId.value) || days.value[0])
 const dayPoints = computed(() => points.value.filter((p) => !p.dayId || p.dayId === activeDay.value?.id))
+const visibleMapPoints = computed<MapPoint[]>(() => {
+  if (!temporarySearchPlace.value) return dayPoints.value
+  return [
+    ...dayPoints.value,
+    {
+      id: 'temporary-search-place',
+      name: temporarySearchPlace.value.name,
+      category: 'other',
+      lng: temporarySearchPlace.value.lng,
+      lat: temporarySearchPlace.value.lat,
+      elevation: null,
+      note: temporarySearchPlace.value.address || '',
+      dayId: activeDay.value?.id || '',
+      stayMinutes: 0,
+    },
+  ]
+})
 const dayRoutes = computed(() => routes.value.filter((r) => !r.dayId || r.dayId === activeDay.value?.id))
 const dayLodgings = computed(() => points.value.filter((p) => p.category === 'lodging' && (!p.dayId || p.dayId === activeDay.value?.id)))
 const dateRange = computed(() => {
@@ -63,6 +80,13 @@ const dirty = ref(false)
 const drawerVisible = ref(false)
 const itineraryCollapsed = ref(false)
 const titleEditing = ref(false)
+const temporarySearchPlace = ref<GeocodedPlace | null>(null)
+
+const suppressViewSaveUntil = ref(0)
+
+function suppressProgrammaticViewSave() {
+  suppressViewSaveUntil.value = Date.now() + 1200
+}
 
 // ---------- 交互模式 ----------
 const mode = ref<'browse' | 'point' | 'route' | 'route-osrm'>('browse')
@@ -110,9 +134,37 @@ function finishTitleEditing() {
   titleEditing.value = false
 }
 
+function shiftDate(date: string, daysToAdd: number): string {
+  const [year, month, day] = date.split('-').map(Number)
+  if (!year || !month || !day) return ''
+  const next = new Date(year, month - 1, day)
+  next.setDate(next.getDate() + daysToAdd)
+  const yyyy = next.getFullYear()
+  const mm = String(next.getMonth() + 1).padStart(2, '0')
+  const dd = String(next.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
+
+function fillFollowingDates(startIndex: number) {
+  const startDate = days.value[startIndex]?.date
+  if (!startDate) return
+  let previousDate = startDate
+  days.value = days.value.map((day, index) => {
+    if (index <= startIndex || day.date) {
+      if (day.date) previousDate = day.date
+      return day
+    }
+    const nextDate = shiftDate(previousDate, 1)
+    previousDate = nextDate
+    return { ...day, date: nextDate }
+  })
+}
+
 function createDay() {
   const number = days.value.length + 1
-  const day: TravelMapDay = { id: `local-day-${Date.now()}`, dayNumber: number, title: `第 ${number} 天`, date: '', startTime: '', startLocation: '', lodgingPointId: '', lodgingName: '', note: '' }
+  const previousDate = days.value[days.value.length - 1]?.date || ''
+  const date = previousDate ? shiftDate(previousDate, 1) : ''
+  const day: TravelMapDay = { id: `local-day-${Date.now()}`, dayNumber: number, title: `第 ${number} 天`, date, startTime: '', startLocation: '', lodgingPointId: '', lodgingName: '', note: '' }
   days.value = [...days.value, day]
   activeDayId.value = day.id
 }
@@ -122,6 +174,26 @@ function removeDay() {
   const id = activeDayId.value
   days.value = days.value.filter((d) => d.id !== id).map((d, i) => ({ ...d, dayNumber: i + 1, title: d.title || `第 ${i + 1} 天` }))
   activeDayId.value = days.value[0].id
+}
+
+async function deleteDay(day: TravelMapDay) {
+  if (days.value.length <= 1) return
+  try {
+    await ElMessageBox.confirm(`确定删除“${day.title || `第 ${day.dayNumber} 天`}”吗？其中的点位和路线也会从地图中移除。`, '删除行程日', {
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+    days.value = days.value
+      .filter((item) => item.id !== day.id)
+      .map((item, index) => ({ ...item, dayNumber: index + 1, title: item.title || `第 ${index + 1} 天` }))
+    if (activeDayId.value === day.id || !days.value.some((item) => item.id === activeDayId.value)) {
+      activeDayId.value = days.value[0].id
+    }
+    ElMessage.success(`已删除：${day.title || `第 ${day.dayNumber} 天`}`)
+  } catch {
+    // 用户取消删除
+  }
 }
 
 const totalDistance = computed(() =>
@@ -168,6 +240,7 @@ const shareUrl = computed(() =>
 // 点位弹窗期间不抑制，因为弹窗关掉那一刻 handlePointSubmit 才会改 points.value，
 // 此时 dialog 已经 close 了，watch 看到的 state 是稳定可保存的。
 const applyingDetail = ref(false)
+const suppressAutoSaveOnce = ref(false)
 let autoSaveTimer: ReturnType<typeof setTimeout> | null = null
 
 /**
@@ -183,7 +256,12 @@ let autoSaveTimer: ReturnType<typeof setTimeout> | null = null
  * 所以这里不需要先把视野写回响应式状态（也就不存在反馈循环）。
  */
 function scheduleAutoSave() {
+  if (suppressAutoSaveOnce.value) {
+    suppressAutoSaveOnce.value = false
+    return
+  }
   if (loading.value) return
+  if (saving.value) return
   if (applyingDetail.value) return
   if (mode.value === 'route' || mode.value === 'route-osrm') return
   if (!isLoggedIn.value || !mapId.value) return
@@ -194,7 +272,7 @@ function scheduleAutoSave() {
   }, 1500)
 }
 
-watch([title, description, baseLayer, points, routes], scheduleAutoSave, { deep: true })
+watch([title, description, baseLayer, points, routes, days], scheduleAutoSave, { deep: true })
 
 // ---------- 搜索 ----------
 
@@ -203,33 +281,117 @@ const geocodeResults = ref<GeocodedPlace[]>([])
 const geocodeLoading = ref(false)
 const geocodeOpen = ref(false)
 
+let geocodeTimer: ReturnType<typeof setTimeout> | null = null
+let geocodeRequestId = 0
+
+function openGeocodeSearch() {
+  mode.value = 'point'
+  geocodeOpen.value = Boolean(geocodeQuery.value.trim())
+}
+
+function closeGeocodeSearch() {
+  mode.value = 'browse'
+  clearGeocodeSearch()
+}
+
+function clearGeocodeSearch() {
+  if (geocodeTimer) clearTimeout(geocodeTimer)
+  geocodeTimer = null
+  geocodeRequestId += 1
+  geocodeQuery.value = ''
+  geocodeResults.value = []
+  geocodeOpen.value = false
+  geocodeLoading.value = false
+  temporarySearchPlace.value = null
+}
+
+function scheduleGeocodeSearch() {
+  if (geocodeTimer) clearTimeout(geocodeTimer)
+  const query = geocodeQuery.value.trim()
+  if (!query) {
+    geocodeResults.value = []
+    geocodeOpen.value = false
+    return
+  }
+  geocodeTimer = setTimeout(() => { void runGeocode() }, 320)
+}
+
 async function runGeocode() {
   const q = geocodeQuery.value.trim()
-  if (!q) return
+  if (!q) {
+    geocodeResults.value = []
+    geocodeOpen.value = false
+    return
+  }
+  const requestId = ++geocodeRequestId
   geocodeLoading.value = true
   geocodeOpen.value = true
   try {
-    geocodeResults.value = await geocode(q)
-    if (!geocodeResults.value.length) {
-      ElMessage.info('没找到匹配地点，试试更短的关键词')
+    const bounds = mapRef.value?.getBounds()
+    if (!bounds) {
+      geocodeResults.value = []
+      geocodeOpen.value = false
+      return
     }
+    const result = await searchPoi(q, bounds, {
+      count: 10,
+      mapType: baseLayer.value === 'img' ? 'image' : 'vector',
+    })
+    if (requestId !== geocodeRequestId) return
+    geocodeResults.value = result.pois.map((poi) => ({
+      address: poi.address || poi.name,
+      name: poi.name,
+      lng: poi.lng,
+      lat: poi.lat,
+      level: 'poi',
+    }))
+    geocodeOpen.value = geocodeResults.value.length > 0
   } catch (error: any) {
-    const msg = error?.message || '地址搜索失败'
-    ElMessage.error(msg)
+    if (requestId !== geocodeRequestId) return
+    ElMessage.error(error?.message || '地点搜索失败')
     geocodeResults.value = []
+    geocodeOpen.value = false
   } finally {
-    geocodeLoading.value = false
+    if (requestId === geocodeRequestId) geocodeLoading.value = false
   }
 }
 
 function pickGeocodeResult(place: GeocodedPlace) {
-  // 飞过去并放大到能看清周边；同时把编辑器当前 center / zoom 同步上去，否则保存时会覆盖
+  mode.value = 'browse'
+  temporarySearchPlace.value = place
   center.value = { lng: place.lng, lat: place.lat }
   zoom.value = Math.max(zoom.value, 14)
+  suppressProgrammaticViewSave()
   mapRef.value?.panTo(place.lng, place.lat, zoom.value)
-  geocodeOpen.value = false
   geocodeQuery.value = ''
+  geocodeResults.value = []
+  geocodeOpen.value = false
   ElMessage.success(`已定位：${place.name}`)
+}
+
+function addTemporarySearchPlace() {
+  const place = temporarySearchPlace.value
+  if (!place) return
+  if (points.value.length >= LIMITS.points) {
+    ElMessage.warning(`单张地图最多 ${LIMITS.points} 个点位`)
+    return
+  }
+  points.value = [
+    ...points.value,
+    {
+      id: `local-point-${Date.now()}-${points.value.length}`,
+      name: place.name,
+      category: 'other',
+      lng: place.lng,
+      lat: place.lat,
+      elevation: null,
+      note: place.address || '',
+      dayId: activeDay.value?.id || '',
+      stayMinutes: 0,
+    },
+  ]
+  temporarySearchPlace.value = null
+  ElMessage.success(`已加入行程：${place.name}`)
 }
 
 const POI_CATEGORIES: Array<{ keyword: string; emoji: string; label: string; category: PointCategory }> = [
@@ -432,6 +594,26 @@ function routesEqual(a: MapRoute[], b: MapRoute[]): boolean {
   return true
 }
 
+function daysEqual(a: TravelMapDay[], b: TravelMapDay[]): boolean {
+  if (a === b) return true
+  if (a.length !== b.length) return false
+  for (let i = 0; i < a.length; i++) {
+    const x = a[i], y = b[i]
+    if (
+      x.id !== y.id ||
+      x.dayNumber !== y.dayNumber ||
+      x.title !== y.title ||
+      x.date !== y.date ||
+      x.startTime !== y.startTime ||
+      x.startLocation !== y.startLocation ||
+      x.lodgingPointId !== y.lodgingPointId ||
+      x.lodgingName !== y.lodgingName ||
+      x.note !== y.note
+    ) return false
+  }
+  return true
+}
+
 function applyDetail(detail: any) {
   // 整个赋值过程包在 applyingDetail 旗标里：
   //   - 抑制上面的 watch 自动保存（不是用户改动，不能 PUT 回服务器）
@@ -448,7 +630,7 @@ function applyDetail(detail: any) {
   try {
     if (mapId.value !== detail.id) mapId.value = detail.id
     const nextDays = detail.days?.length ? detail.days : [{ id: `legacy-day-${detail.id}`, dayNumber: 1, title: '第 1 天', date: '', startTime: '', startLocation: '', lodgingPointId: '', lodgingName: '', note: '' }]
-    days.value = nextDays
+    if (!daysEqual(days.value, nextDays)) days.value = nextDays
     if (!nextDays.some((d: TravelMapDay) => d.id === activeDayId.value)) activeDayId.value = nextDays[0].id
     if (slug.value !== detail.slug) slug.value = detail.slug
     // title / description：字符串相等就直接跳过赋值，避免 el-input 重渲染失焦
@@ -555,6 +737,7 @@ function handleViewChange(payload: { center: LngLat; zoom: number }) {
   // 既不回写响应式状态（无反馈循环），又能把拖动/缩放后的位置存下来。
   // （POI 搜索要用的视野缓存 currentBounds 由子组件自行维护，不受影响。）
   void payload
+  if (Date.now() < suppressViewSaveUntil.value) return
   scheduleAutoSave()
 }
 
@@ -597,6 +780,11 @@ watch(selectedRouteId, (id) => {
 
 // ---------- 点位增删改 ----------
 
+function updatePointCategory(point: MapPoint, category: PointCategory) {
+  if (point.category === category) return
+  points.value = points.value.map((item) => item.id === point.id ? { ...item, category } : item)
+}
+
 function handlePointSubmit(payload: Omit<MapPoint, 'id'> & { id?: string }) {
   if (payload.id) {
     const index = points.value.findIndex((p) => p.id === payload.id)
@@ -616,7 +804,22 @@ function handlePointDelete(id: string) {
   points.value = points.value.filter((p) => p.id !== id)
 }
 
+async function deletePointFromItinerary(point: MapPoint) {
+  try {
+    await ElMessageBox.confirm(`确定删除“${point.name}”吗？`, '删除节点', {
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+    handlePointDelete(point.id)
+    ElMessage.success(`已删除：${point.name}`)
+  } catch {
+    // 用户取消删除
+  }
+}
+
 function locatePoint(p: MapPoint) {
+  suppressProgrammaticViewSave()
   mapRef.value?.panTo(p.lng, p.lat, Math.max(zoom.value, 14))
 }
 
@@ -717,6 +920,7 @@ function deleteRoute(id: string) {
 /** 点击路线卡片 → panTo 到路线第一个节点位置（比 fitAll 更精准） */
 function locateRoute(r: MapRoute) {
   if (!r.path || r.path.length === 0) return
+  suppressProgrammaticViewSave()
   const [lng, lat] = r.path[0]
   mapRef.value?.panTo(lng, lat, Math.max(zoom.value, 12))
 }
@@ -876,6 +1080,10 @@ async function handleSave(opts: { silent?: boolean } = {}): Promise<boolean> {
   }
 
   saving.value = true
+  if (autoSaveTimer) {
+    clearTimeout(autoSaveTimer)
+    autoSaveTimer = null
+  }
   try {
     // 优先取地图实例的实时视野（用户可能已经拖动 / 缩放过了，center/zoom 父组件
     // 状态不一定是最新的；不直接信父组件状态是为了避免「view-change → 改 center
@@ -902,6 +1110,7 @@ async function handleSave(opts: { silent?: boolean } = {}): Promise<boolean> {
       days: days.value,
     })
     applyDetail(detail)
+    suppressAutoSaveOnce.value = true
     dirty.value = false
     // 自动保存的 toast 静默——每改一个字就弹一次会刷屏；手动点保存才提示
     if (!opts.silent) ElMessage.success('已保存')
@@ -998,6 +1207,40 @@ function goPlaza() {
     </div>
 
     <div class="travel-map-workspace" @click="closeContextMenu" @keydown.esc="closeContextMenu">
+      <div v-if="mode === 'point'" class="travel-map-search-overlay" @click.stop>
+        <div class="travel-map-search-bar">
+          <span class="travel-map-search-region">全国</span>
+          <el-input
+            v-model="geocodeQuery"
+            clearable
+            placeholder="搜索添加新的目的地"
+            aria-label="搜索添加新的目的地"
+            class="travel-map-search-input"
+            @input="scheduleGeocodeSearch"
+            @keyup.enter="runGeocode"
+            @clear="clearGeocodeSearch"
+          />
+          <button type="button" class="travel-map-search-submit" aria-label="搜索" @click="runGeocode">⌕</button>
+          <button type="button" class="travel-map-search-close" aria-label="关闭搜索" @click="closeGeocodeSearch">×</button>
+        </div>
+          <div v-if="geocodeLoading || geocodeResults.length" class="travel-map-search-results">
+          <div v-if="geocodeLoading" class="travel-map-search-state">搜索中…</div>
+          <button v-for="result in geocodeResults" :key="`${result.lng}-${result.lat}-${result.name}`" type="button" class="travel-map-search-result" @click="pickGeocodeResult(result)">
+            <span class="travel-map-search-result-info">
+              <span class="travel-map-search-result-name">{{ result.name }}</span>
+              <span class="travel-map-search-result-address">{{ result.address }}</span>
+            </span>
+            <span
+              class="travel-map-search-result-add"
+              role="button"
+              tabindex="0"
+              aria-label="加入当天行程"
+              @click.stop="temporarySearchPlace = result; addTemporarySearchPlace()"
+            >+</span>
+          </button>
+        </div>
+      </div>
+
       <div class="travel-map-floating-panel" :class="{ collapsed: itineraryCollapsed }">
         <div class="travel-map-floating-header">
           <div class="travel-map-floating-title-row" @click.stop>
@@ -1024,12 +1267,12 @@ function goPlaza() {
           </div>
           <button type="button" class="travel-map-collapse-button" :aria-label="itineraryCollapsed ? '展开行程' : '收起行程'" @click="itineraryCollapsed = !itineraryCollapsed"><span class="travel-map-collapse-glyph">{{ itineraryCollapsed ? '›' : '‹' }}</span></button>
           <div class="travel-map-floating-date">{{ dateRange }}</div>
-          <div v-if="!itineraryCollapsed" class="travel-map-floating-actions">
+          <div v-show="!itineraryCollapsed" class="travel-map-floating-actions">
             <button type="button" @click="mapRef?.fitAll()">◉ 总览</button>
             <button type="button" @click="drawerVisible = true">▣ 我的地图</button>
             <button type="button" @click="handleSave()">↗ 分享</button>
           </div>
-          <div v-if="!itineraryCollapsed" class="travel-map-layer-switcher" @click.stop>
+          <div v-show="!itineraryCollapsed" class="travel-map-layer-switcher" @click.stop>
             <span>底图</span>
             <button
               v-for="layer in BASE_LAYERS"
@@ -1041,12 +1284,29 @@ function goPlaza() {
             >{{ layer.label }}</button>
           </div>
         </div>
-        <div v-if="!itineraryCollapsed" class="travel-map-floating-days">
+        <div v-show="!itineraryCollapsed" class="travel-map-floating-days">
           <div v-for="day in days" :key="day.id" class="travel-map-floating-day" :class="{ active: activeDayId === day.id }">
-            <button type="button" class="travel-map-day-head" @click="activeDayId = activeDayId === day.id ? '' : day.id">
+            <div
+              class="travel-map-day-head"
+              role="button"
+              tabindex="0"
+              @click="activeDayId = activeDayId === day.id ? '' : day.id"
+              @keydown.enter="activeDayId = activeDayId === day.id ? '' : day.id"
+              @keydown.space.prevent="activeDayId = activeDayId === day.id ? '' : day.id"
+            >
               <span>第{{ day.dayNumber }}天 <span v-if="day.startLocation">◎ {{ day.startLocation }}</span><span v-if="activeDayId === day.id" class="travel-map-day-count"> · {{ activeDaySummary.pointCount }}个点 · {{ activeDaySummary.routeCount }}条路线</span></span>
-              <span>{{ activeDayId === day.id ? '⌃' : '⌄' }}</span>
-            </button>
+              <span class="travel-map-day-toggle" :class="{ expanded: activeDayId === day.id }" aria-hidden="true"></span>
+              <button
+                v-if="days.length > 1"
+                type="button"
+                class="travel-map-day-delete"
+                :aria-label="`删除${day.title || `第 ${day.dayNumber} 天`}`"
+                title="删除这一天"
+                @click.stop="deleteDay(day)"
+              >
+                <span class="travel-map-day-delete-icon" aria-hidden="true"></span>
+              </button>
+            </div>
             <div v-if="activeDayId === day.id" class="travel-map-day-body">
               <div class="travel-map-day-date-field">
                 <span class="travel-map-day-date-label">日期</span>
@@ -1056,24 +1316,51 @@ function goPlaza() {
                   size="small"
                   :aria-label="`第${day.dayNumber}天日期`"
                   class="travel-map-day-date-input"
+                  @change="fillFollowingDates(days.findIndex((item) => item.id === day.id))"
                 />
               </div>
               <div v-if="day.startTime || day.startLocation" class="travel-map-day-meta">出发 {{ day.startTime || '--:--' }} · {{ day.startLocation || '未设置地点' }}</div>
               <button v-for="(p, index) in dayPoints" :key="p.id" type="button" class="travel-map-stop" @click="locatePoint(p)">
                 <span class="travel-map-stop-index">{{ index + 1 }}</span>
-                <span class="travel-map-stop-name">{{ p.name }}</span>
+                <span class="travel-map-stop-main">
+                  <span class="travel-map-stop-name">{{ p.name }}</span>
+                  <el-select
+                    :model-value="p.category"
+                    size="small"
+                    class="travel-map-stop-category-select"
+                    :aria-label="`${p.name}点位类型`"
+                    @click.stop
+                    @update:model-value="(category) => updatePointCategory(p, category as PointCategory)"
+                  >
+                    <el-option
+                      v-for="category in POINT_CATEGORIES"
+                      :key="category.value"
+                      :value="category.value"
+                      :label="`${category.emoji} ${category.label}`"
+                    />
+                  </el-select>
+                </span>
                 <span class="travel-map-stop-time">{{ p.stayMinutes ? `停留 ${p.stayMinutes} 分钟` : '' }}</span>
+                <button
+                  type="button"
+                  class="travel-map-stop-delete"
+                  :aria-label="`删除${p.name}`"
+                  title="删除节点"
+                  @click.stop="deletePointFromItinerary(p)"
+                >×</button>
               </button>
               <div v-for="r in dayRoutes" :key="r.id" class="travel-map-route-summary">
                 <span class="travel-map-route-dot" :style="{ backgroundColor: r.color }"></span>
                 <span>{{ r.name }}</span>
                 <span class="travel-map-stop-time">{{ formatDistance(r.distance) }}<template v-if="r.durationSeconds"> · 约{{ Math.round(r.durationSeconds / 60) }}分钟</template></span>
               </div>
-              <button type="button" class="travel-map-add-stop" @click="setMode('point')">⌕ 搜索添加新的目的地</button>
+              <button type="button" class="travel-map-add-stop" :class="{ active: mode === 'point' }" @click.stop="openGeocodeSearch">
+                {{ mode === 'point' ? '＋ 搜索添加新的目的地' : '⌕ 搜索添加新的目的地' }}
+              </button>
             </div>
           </div>
         </div>
-        <button v-if="!itineraryCollapsed" type="button" class="travel-map-add-day" @click="createDay">＋ 添加一天</button>
+        <button v-show="!itineraryCollapsed" type="button" class="travel-map-add-day" @click="createDay">＋ 添加一天</button>
       </div>
       <div class="p-3 rounded-2xl bg-white border border-border-subtle">
         <div class="flex items-center gap-2 overflow-x-auto pb-2">
@@ -1416,7 +1703,7 @@ function goPlaza() {
         <div class="w-full h-[640px] sm:h-[720px] rounded-2xl overflow-hidden border border-border-subtle">
         <TiandituMap
           ref="mapRef"
-          :points="dayPoints"
+          :points="visibleMapPoints"
           :routes="dayRoutes"
           :center="center"
           :zoom="zoom"
@@ -1489,9 +1776,28 @@ function goPlaza() {
 .travel-map-canvas > .relative { display: block; height: 100%; min-height: 100%; }
 .travel-map-canvas > .relative > aside { display: none; }
 .travel-map-canvas > .relative > div:last-child { height: 100%; min-height: 100%; border: 0; border-radius: 0; }
-.travel-map-floating-panel { position: absolute !important; z-index: 10; isolation: isolate; top: 40px; left: 52px; right: 12px; bottom: 52px; width: min(338px, calc(100vw - 64px)); display: flex; flex-direction: column; overflow: hidden; border: 1px solid rgba(148,163,184,.35); border-radius: 4px; background: rgba(255,255,255,.98); box-shadow: 0 8px 24px rgba(15,23,42,.18); pointer-events: auto; }
+.travel-map-search-overlay { position: absolute; z-index: 20; top: 18px; left: 50%; width: min(620px, calc(100% - 420px)); transform: translateX(-50%); }
+.travel-map-search-bar { height: 52px; display: flex; align-items: center; min-height: 52px; padding: 0 8px 0 18px; border: 1px solid rgba(148,163,184,.4); border-radius: 4px; background: rgba(255,255,255,.98); box-shadow: 0 8px 24px rgba(15,23,42,.2); }
+.travel-map-search-region { flex: none; padding-right: 14px; color: #64748b; font-size: 14px; border-right: 1px solid #e2e8f0; }
+.travel-map-search-input { flex: 1; min-width: 0; }
+.travel-map-search-input :deep(.el-input__wrapper) { min-height: 48px; padding: 0 12px; box-shadow: none; background: transparent; }
+.travel-map-search-input :deep(.el-input__inner) { height: 48px; color: #334155; font-size: 16px; }
+.travel-map-search-submit, .travel-map-search-close { flex: none; width: 42px; height: 42px; display: inline-flex; align-items: center; justify-content: center; padding: 0; color: #2589e8; font-size: 25px; line-height: 1; border: 0; background: transparent; cursor: pointer; }
+.travel-map-search-submit:hover { background: #eff6ff; border-radius: 6px; }
+.travel-map-search-close { color: #64748b; font-size: 30px; font-weight: 300; transform: translateY(-1px); }
+.travel-map-search-close:hover { color: #334155; background: #f1f5f9; border-radius: 6px; }
+.travel-map-search-results { max-height: min(430px, calc(100vh - 150px)); margin-top: 4px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 4px; background: rgba(255,255,255,.98); box-shadow: 0 8px 24px rgba(15,23,42,.2); }
+.travel-map-search-result { width: 100%; display: flex; align-items: center; gap: 12px; padding: 13px 18px; color: #334155; text-align: left; border: 0; border-bottom: 1px solid #f1f5f9; background: transparent; cursor: pointer; }
+.travel-map-search-result:hover { background: #eff6ff; }
+.travel-map-search-result-info { min-width: 0; flex: 1; display: flex; align-items: center; gap: 12px; }
+.travel-map-search-result-name { flex: none; color: #0f7bdc; font-size: 15px; font-weight: 650; }
+.travel-map-search-result-address { min-width: 0; overflow: hidden; color: #94a3b8; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.travel-map-search-result-add { flex: none; width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; color: white; font-size: 24px; line-height: 1; border-radius: 3px; background: #168fe8; cursor: pointer; }
+.travel-map-search-result-add:hover { background: #0b78ca; }
+.travel-map-search-state { padding: 18px; color: #94a3b8; font-size: 13px; text-align: center; }
+.travel-map-floating-panel { position: absolute !important; z-index: 10; isolation: isolate; top: 18px; left: 52px; right: 12px; bottom: 52px; width: min(338px, calc(100vw - 64px)); display: flex; flex-direction: column; overflow: hidden; border: 1px solid rgba(148,163,184,.35); border-radius: 4px; background: rgba(255,255,255,.98); box-shadow: 0 8px 24px rgba(15,23,42,.18); pointer-events: auto; transition: width .22s ease, height .22s ease, top .22s ease, left .22s ease, right .22s ease, bottom .22s ease, border-radius .22s ease, box-shadow .22s ease; }
 .travel-map-floating-header { flex: none; padding: 14px 14px 10px; color: white; background: #347fdc; }
-.travel-map-floating-title-row { display: flex; align-items: center; gap: 8px; min-height: 38px; padding-right: 54px; }
+.travel-map-floating-title-row { display: flex; align-items: center; gap: 8px; min-height: 38px; padding-right: 54px; transition: opacity .16s ease; }
 .travel-map-floating-title { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 17px; font-weight: 650; text-align: left; }
 .travel-map-title-edit-button { flex: none; padding: 4px 0; color: rgba(255,255,255,.78); font-size: 12px; border: 0; background: transparent; cursor: pointer; transition: color .15s ease; }
 .travel-map-title-edit-button:hover { color: white; text-decoration: underline; }
@@ -1509,9 +1815,10 @@ function goPlaza() {
 .travel-map-floating-panel.collapsed { width: 62px !important; height: 62px !important; top: 40px !important; left: 52px !important; right: auto !important; bottom: auto !important; min-width: 62px !important; max-width: 62px !important; min-height: 62px !important; max-height: 62px !important; overflow: hidden !important; padding: 0 !important; }
 .travel-map-floating-panel.collapsed > .travel-map-floating-header { position: relative; width: 62px !important; height: 62px !important; min-height: 62px !important; display: block; padding: 0 !important; }
 .travel-map-floating-panel.collapsed > .travel-map-floating-header ~ * { display: none !important; visibility: hidden !important; }
-.travel-map-floating-panel.collapsed .travel-map-floating-title, .travel-map-floating-panel.collapsed .travel-map-floating-date { display: none; }
+.travel-map-floating-panel.collapsed .travel-map-floating-title-row { visibility: hidden; opacity: 0; }
+.travel-map-floating-panel.collapsed .travel-map-floating-date { visibility: hidden; opacity: 0; }
 .travel-map-floating-panel.collapsed .travel-map-collapse-button { position: absolute; top: 50%; left: 50%; display: flex; width: 34px; height: 34px; margin: 0; padding: 0; align-items: center; justify-content: center; transform: translate(-50%, -50%); border: 1px solid rgba(255,255,255,.75); border-radius: 50%; background: rgba(0,0,0,.12); }
-.travel-map-floating-date { margin-top: 6px; font-size: 12px; text-align: center; opacity: .9; }
+.travel-map-floating-date { margin-top: 6px; font-size: 12px; text-align: center; opacity: .9; transition: opacity .16s ease; }
 .travel-map-floating-actions { display: grid; grid-template-columns: repeat(3,1fr); margin: 14px -16px 0; border-top: 1px solid rgba(255,255,255,.25); }
 .travel-map-floating-actions button { padding: 10px 4px; color: white; font-size: 12px; border: 0; border-right: 1px solid rgba(255,255,255,.25); background: transparent; cursor: pointer; }
 .travel-map-floating-actions button:last-child { border-right: 0; }
@@ -1524,7 +1831,21 @@ function goPlaza() {
 .travel-map-floating-days { flex: 1; overflow-y: auto; background: #fff; }
 .travel-map-floating-day { border-bottom: 1px solid #e2e8f0; }
 .travel-map-floating-day.active { background: #f5f9ff; }
-.travel-map-day-head { width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 11px 14px; color: #475569; font-size: 14px; text-align: left; border: 0; background: transparent; cursor: pointer; }
+.travel-map-day-head { width: 100%; height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 14px; color: #475569; font-size: 14px; text-align: left; cursor: pointer; }
+.travel-map-day-head > span:first-child { flex: 1; min-width: 0; }
+.travel-map-day-toggle, .travel-map-day-delete { width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; flex: none; padding: 0; line-height: 1; border-radius: 4px; }
+.travel-map-day-toggle { position: relative; color: #64748b; font-size: 0; transform: none; }
+.travel-map-day-toggle::before, .travel-map-day-toggle::after { content: ''; position: absolute; top: 11px; left: 6px; width: 12px; height: 2px; border-radius: 2px; background: currentColor; transition: transform .18s ease; }
+.travel-map-day-toggle::before { transform: rotate(45deg) translate(2px, -2px); }
+.travel-map-day-toggle::after { transform: rotate(-45deg) translate(-2px, -2px); }
+.travel-map-day-toggle.expanded::before { transform: rotate(-45deg) translate(2px, 2px); }
+.travel-map-day-toggle.expanded::after { transform: rotate(45deg) translate(-2px, 2px); }
+.travel-map-day-delete { color: #94a3b8; font-size: 0; transform: none; border: 0; background: transparent; cursor: pointer; }
+.travel-map-day-delete-icon { position: relative; display: block; width: 14px; height: 14px; }
+.travel-map-day-delete-icon::before, .travel-map-day-delete-icon::after { content: ''; position: absolute; top: 6px; left: 0; width: 14px; height: 2px; border-radius: 2px; background: currentColor; }
+.travel-map-day-delete-icon::before { transform: rotate(45deg); }
+.travel-map-day-delete-icon::after { transform: rotate(-45deg); }
+.travel-map-day-delete:hover { color: #dc2626; background: #fef2f2; }
 .travel-map-floating-day.active .travel-map-day-head { color: #1769d2; font-weight: 600; }
 .travel-map-day-count { color: #64748b; font-size: 11px; font-weight: 400; }
 .travel-map-day-body { padding: 0 14px 12px; }
@@ -1535,14 +1856,34 @@ function goPlaza() {
 .travel-map-day-date-input :deep(.el-input__inner) { height: 30px; color: #334155; font-size: 12px; }
 .travel-map-day-meta { padding: 2px 0 8px 30px; color: #64748b; font-size: 12px; }
 .travel-map-stop, .travel-map-route-summary { width: 100%; display: flex; align-items: center; gap: 8px; min-height: 38px; color: #475569; font-size: 13px; text-align: left; border: 0; background: transparent; }
+.travel-map-stop-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 7px; min-height: 28px; }
+.travel-map-stop-category-select { flex: none; width: 108px; }
+.travel-map-stop-category-select :deep(.el-select__wrapper) { min-height: 28px; padding: 0 7px; color: #64748b; background: transparent; box-shadow: none; }
+.travel-map-stop-category-select :deep(.el-select__selected-item) { font-size: 11px; }
+.travel-map-stop-category-select :deep(.el-select__caret) { color: #94a3b8; font-size: 12px; }
+.travel-map-stop-category-select :deep(.el-select__wrapper:hover), .travel-map-stop-category-select :deep(.el-select__wrapper.is-focused) { background: #eef5ff; box-shadow: inset 0 0 0 1px #bfdbfe; }
 .travel-map-stop { cursor: pointer; }
 .travel-map-stop:hover { color: #1769d2; }
 .travel-map-stop-index { width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; flex: none; color: white; border-radius: 50%; background: #1595ed; font-size: 12px; }
-.travel-map-stop-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.travel-map-stop-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 28px; }
 .travel-map-stop-time { flex: none; color: #1689e7; font-size: 11px; }
+.travel-map-stop-delete { flex: none; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; padding: 0; color: #94a3b8; font-size: 19px; line-height: 1; border: 0; border-radius: 4px; background: transparent; cursor: pointer; }
+.travel-map-stop-delete:hover { color: #dc2626; background: #fef2f2; }
 .travel-map-route-summary { padding-left: 30px; }
 .travel-map-route-dot { width: 9px; height: 9px; flex: none; border-radius: 50%; }
 .travel-map-add-stop { width: 100%; padding: 12px 0 4px 30px; color: #1689e7; font-size: 12px; text-align: left; border: 0; background: transparent; cursor: pointer; }
+.travel-map-add-stop.active { color: #1769d2; font-weight: 600; }
+.travel-map-inline-search { margin: 8px 0 0 30px; padding: 8px; border: 1px solid #dbeafe; border-radius: 8px; background: #f8fbff; }
+.travel-map-inline-search-row { display: flex; align-items: center; gap: 5px; }
+.travel-map-inline-search-row .el-input { min-width: 0; flex: 1; }
+.travel-map-inline-cancel { flex: none; padding: 4px 2px; color: #64748b; font-size: 12px; border: 0; background: transparent; cursor: pointer; }
+.travel-map-inline-cancel:hover { color: #1769d2; }
+.travel-map-inline-results { max-height: 150px; margin-top: 6px; overflow-y: auto; border-top: 1px solid #e2e8f0; }
+.travel-map-inline-result { width: 100%; display: flex; flex-direction: column; gap: 2px; padding: 7px 2px; color: #334155; font-size: 12px; text-align: left; border: 0; border-bottom: 1px solid #eef2f7; background: transparent; cursor: pointer; }
+.travel-map-inline-result:hover { color: #1769d2; background: #eff6ff; }
+.travel-map-inline-result small { overflow: hidden; color: #94a3b8; text-overflow: ellipsis; white-space: nowrap; }
+.travel-map-inline-empty { padding: 8px 2px 2px; color: #94a3b8; font-size: 12px; }
 .travel-map-add-day { flex: none; margin: 0 6px 6px; padding: 10px; color: #1689e7; font-size: 13px; border: 1px dashed #1698f0; background: white; cursor: pointer; }
-@media (max-width: 767px) { .travel-map-workspace { height: calc(100vh - 96px); min-height: 560px; margin-top: 0; } .travel-map-floating-panel { top: 40px; left: 52px; right: 12px; bottom: 52px; width: min(338px, calc(100vw - 64px)); } }
+@media (min-width: 768px) { .travel-map-search-overlay { top: 18px; left: 400px; right: auto; width: min(338px, calc(100% - 412px)); transform: none; } }
+@media (max-width: 767px) { .travel-map-workspace { height: calc(100vh - 96px); min-height: 560px; margin-top: 0; } .travel-map-floating-panel { top: 40px; left: 52px; right: 12px; bottom: 52px; width: min(338px, calc(100vw - 64px)); } .travel-map-search-overlay { top: 12px; left: 12px; right: 12px; width: auto; transform: none; } .travel-map-search-region { display: none; } .travel-map-search-bar { padding-left: 8px; } }
 </style>

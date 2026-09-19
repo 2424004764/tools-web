@@ -683,6 +683,26 @@ watch(
   }
 )
 
+function getBounds() {
+  if (currentBounds.value) return currentBounds.value
+  const map = mapInstance.value
+  if (!map) return null
+  try {
+    const b = map.getBounds?.()
+    if (!b) return null
+    const sw = b.getSouthWest()
+    const ne = b.getNorthEast()
+    const bounds = {
+      minLng: sw.getLng(), minLat: sw.getLat(),
+      maxLng: ne.getLng(), maxLat: ne.getLat(),
+    }
+    currentBounds.value = bounds
+    return bounds
+  } catch {
+    return null
+  }
+}
+
 /** 供父组件调用：把视野移到指定坐标 */
 function panTo(lng: number, lat: number, zoom?: number) {
   const map = mapInstance.value
@@ -732,7 +752,7 @@ const getView = (): { center: LngLat; zoom: number } | null => {
   }
 }
 
-defineExpose({ panTo, fitAll, refreshSize, getBounds: () => currentBounds.value, getView })
+defineExpose({ panTo, fitAll, refreshSize, getBounds, getView })
 </script>
 
 <template>

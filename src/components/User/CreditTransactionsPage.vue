@@ -3,6 +3,7 @@ import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/store/modules/user'
 import CreditTransactionsView from './CreditTransactionsView.vue'
+import StorageQuotaCard from './StorageQuotaCard.vue'
 import ArrowLeft from '~icons/ep/arrowLeft'
 
 const router = useRouter()
@@ -35,8 +36,12 @@ const goBack = () => {
         <span class="text-body-sm font-medium">返回</span>
       </button>
       <h1 class="text-h3 font-semibold text-ink-900 flex-1 min-w-0 truncate">
-        积分消耗明细
+        积分与存储空间
       </h1>
+    </div>
+
+    <div class="p-4 rounded-2xl bg-white mb-3">
+      <StorageQuotaCard />
     </div>
 
     <div class="p-4 rounded-2xl bg-white">

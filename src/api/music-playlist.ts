@@ -7,7 +7,6 @@ import type {
   PlaylistDetail,
   UploadUrlExistingResponse,
   UploadUrlNewResponse,
-  QuoteResponse,
   PublicSong,
   PublicPlaylist,
   PagedResponse,
@@ -23,18 +22,11 @@ const EMPTY_PAGINATION: Pagination = {
 
 // ============ 鉴权 API ============
 
-/** 上传前的 cost 预览（不扣费，仅算账 + 拿余额）。fileSize 单位：字节 */
-export async function quoteUpload(fileSizes: number[]): Promise<QuoteResponse> {
-  const params = new URLSearchParams()
-  for (const s of fileSizes) params.append('fileSizes', String(s))
-  const res = await functionsRequest.get(`/api/music-playlist/songs/quote?${params.toString()}`)
-  return res.data as QuoteResponse
-}
-
-/** 申请 SigV4 预签名 PUT URL（用于浏览器直传 R2）
- * - 同一用户 SHA-256 命中已有歌曲 → 返回 { exists: true, song }，不扣费，不签 URL
- * - 新文件 → 每文件独立计费（含免费额度拆分）：先走免费额度，剩余部分按 2MB/积分
- * - 返回的 txId 可在上传失败时通过 reverseUpload 反向冲销（积分 + 免费额度同时退还） */
+/** 申请 SigV4 预签名 PUT URL（用于浏览器直传 R2，统一存储额度口径）
+ * - 同一用户 SHA-256 命中已有歌曲 → 返回 { exists: true, song }，不占用额度，不签 URL
+ * - 新文件 → 按 fileSize 预留存储额度并签 URL；额度不足时后端返回 HTTP 402
+ * - 返回的 reservationId 必须回传给 createSong；上传放弃/失败时用
+ *   releaseStorageReservation 释放预留（预留超时也会自动失效） */
 export async function requestUploadUrl(payload: {
   filename: string
   mimeType: string
@@ -46,8 +38,8 @@ export async function requestUploadUrl(payload: {
   return res.data as RequestUploadUrlResult
 }
 
-/** 创建歌曲元数据（R2 上传成功后调用）
- * - sha256/creditCostPaid/creditTxId/freePortionBytes 由 requestUploadUrl 返回或前端持有 */
+/** 创建歌曲元数据（R2 上传成功后调用，confirm 上传预留）
+ * - r2Key/reservationId 均由 requestUploadUrl 返回，前端原样回传 */
 export async function createSong(payload: {
   title: string
   artist?: string
@@ -57,19 +49,10 @@ export async function createSong(payload: {
   fileSize: number
   durationSec?: number | null
   sha256: string
-  creditCostPaid: number
-  creditTxId: string
-  /** 本首歌消耗的免费额度字节（payer 名下整批 freeBytes；后续首 = 0） */
-  freePortionBytes?: number
+  reservationId: string
 }): Promise<Song> {
   const res = await functionsRequest.post('/api/music-playlist/songs', payload)
   return res.data as Song
-}
-
-/** 上传失败时反向冲销扣费（type='reverse'，不走 deleteSong 的 type='refund'） */
-export async function reverseUpload(txId: string): Promise<{ reversed: boolean; amount: number }> {
-  const res = await functionsRequest.post(`/api/music-playlist/songs/${encodeURIComponent(txId)}/reverse`)
-  return res.data as { reversed: boolean; amount: number; txId: string }
 }
 
 export interface ListSongsParams { page?: number; pageSize?: number; keyword?: string }

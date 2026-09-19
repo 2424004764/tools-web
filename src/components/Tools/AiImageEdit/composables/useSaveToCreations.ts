@@ -7,6 +7,7 @@
 //   - 只保存「勾选」的图（saveChecked）
 import { ref, computed } from 'vue'
 import type { Ref } from 'vue'
+import { ElMessage } from 'element-plus'
 import { fetchMyGenerationRecordImage } from '@/api/me'
 import {
   initAiCreationSave,
@@ -72,20 +73,22 @@ export function useSaveToCreations(opts: {
     slot.saveStatus = 'saving'
     savingSlotIds.add(slot.id)
     try {
+      // 先取 blob（拿到真实大小，用于存储额度预留），再 init 签上传 URL
+      const blob = await fetchSlotBlob(slot)
       const init = await initAiCreationSave({
         prompt_id: promptId || undefined,
         scene: 'ai-image-edit',
         category: 'AI图片',
         ...(selectedModel.value ? { model_name: selectedModel.value } : {}),
         ...(promptTextStr.trim() ? { title: promptTextStr.trim().slice(0, 100) } : {}),
-        images: [{ upstream_url: slot.url, prompt: promptTextStr || '(空提示词)' }],
+        images: [{ upstream_url: slot.url, prompt: promptTextStr || '(空提示词)', file_size: blob.size }],
       })
 
       const planItem = init.plan[0]
-      const blob = await fetchSlotBlob(slot)
       await uploadImageBlobToR2(planItem.upload_url, blob, planItem.content_type)
       const confirm = await confirmAiCreationSave({
         group_id: init.group_id,
+        reservation_id: init.reservation_id,
         images: [{
           r2_key: planItem.r2_key,
           public_url: planItem.public_url,
@@ -101,6 +104,10 @@ export function useSaveToCreations(opts: {
     } catch (e: any) {
       slot.saveStatus = 'failed'
       console.error('[save-to-creations] save failed:', e)
+      // 存储额度不足（402）：明确引导去购买
+      if (e?.response?.status === 402) {
+        ElMessage.error(e?.response?.data?.error || '存储空间不足，请先购买存储额度')
+      }
       // 单张失败只标记，不打断其它并行保存；页面格子显示「保存失败·重试」
     } finally {
       savingSlotIds.delete(slot.id)

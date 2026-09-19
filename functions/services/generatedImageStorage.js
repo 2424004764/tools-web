@@ -1,4 +1,5 @@
 import { buildR2PublicUrl, signR2PutUrl } from './r2.js'
+import { commitStorageUsage } from './storageQuotaService.js'
 
 const MAX_IMAGE_BYTES = 50 * 1024 * 1024
 const DEFAULT_CONTENT_TYPE = 'image/png'
@@ -95,5 +96,15 @@ export async function persistGeneratedImage(env, { uid, recordId, imageUrl }) {
 
   const publicUrl = buildR2PublicUrl(env, r2Key)
   if (!publicUrl) throw new Error('R2 公网地址构造失败')
+
+  // 生成图占用统一存储额度；失败仅记日志，不阻塞已完成的持久化
+  if (uid) {
+    try {
+      await commitStorageUsage(env.DB, uid, body.byteLength)
+    } catch (error) {
+      console.error('[generatedImageStorage] commitStorageUsage failed:', error?.message || error)
+    }
+  }
+
   return { publicUrl, r2Key, contentType, size: body.byteLength }
 }

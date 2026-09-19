@@ -11,7 +11,8 @@
 //     Resp: { inserted: number, ids: number[] }
 
 import { extractUidFromRequest } from '../../_lib/model-resolver.js'
-import { signR2PutUrl, buildR2PublicUrl } from '../../../services/r2.js'
+import { signR2PutUrl, buildR2PublicUrl, headR2ObjectSize } from '../../../services/r2.js'
+import { reserveStorage, settleReservation } from '../../../services/storageQuotaService.js'
 
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -170,7 +171,22 @@ async function handleInit(db, uid, body, env) {
     if (!groupId) return jsonError('创建 group 失败', 500)
   }
 
-  // 2) 给每个 image 签 R2 PUT URL
+  // 2) 存储额度预留：按前端声明的 file_size 合计预扣（confirm 时按 R2 真实大小结算，多退少补）。
+  //    未声明 file_size 的批次不预留（恶意少报会在 confirm 被真实大小修正）。
+  let reservationId = ''
+  const declaredBytes = images.reduce((sum, img) => {
+    const n = Number(img?.file_size)
+    return sum + (Number.isFinite(n) && n > 0 ? Math.floor(n) : 0)
+  }, 0)
+  if (declaredBytes > 0) {
+    const rid = await reserveStorage(db, uid, declaredBytes)
+    if (!rid) {
+      return jsonError('存储空间不足，请先购买存储额度（1 积分 = 100MB）', 402)
+    }
+    reservationId = rid
+  }
+
+  // 3) 给每个 image 签 R2 PUT URL
   const bucket = env.R2_BUCKET_NAME
   if (!bucket) return jsonError('R2 桶名未配置', 500)
 
@@ -201,6 +217,7 @@ async function handleInit(db, uid, body, env) {
 
   return json({
     group_id: groupId,
+    reservation_id: reservationId,
     plan,
   })
 }
@@ -237,12 +254,32 @@ async function handleConfirm(db, uid, body, env) {
     }
   }
 
+  // 以 R2 真实大小为准结算存储额度（HEAD 失败/对象缺失回退前端声明值），并释放 init 时的预留
+  const reservationId = body.reservation_id ? String(body.reservation_id).trim() : ''
+  const bucket = env.R2_BUCKET_NAME
+  const actualSizes = await Promise.all(images.map(async (img) => {
+    const declared = Number(img.file_size)
+    const fallback = Number.isFinite(declared) && declared > 0 ? Math.floor(declared) : 0
+    if (!bucket || !img.r2_key) return fallback
+    try {
+      const actual = await headR2ObjectSize(env, bucket, String(img.r2_key))
+      return actual === null ? fallback : actual
+    } catch {
+      return fallback
+    }
+  }))
+  const totalBytes = actualSizes.reduce((s, x) => s + x, 0)
+  if (totalBytes > 0 || reservationId) {
+    await settleReservation(db, uid, reservationId, totalBytes)
+  }
+
   // 逐行 INSERT（避免 batch 死锁；同时每条独立错误也只影响自己）
   const now = nowSql()
   const ids = []
-  for (const img of images) {
+  for (let i = 0; i < images.length; i++) {
+    const img = images[i]
     const mediaUrl = String(img.public_url || img.r2_key) // 没配 R2_PUBLIC_HOST 时回退到 r2_key
-    const fileSize = Number.isFinite(img.file_size) ? Number(img.file_size) : null
+    const fileSize = actualSizes[i] || null
     const width = Number.isFinite(img.width) ? Number(img.width) : null
     const height = Number.isFinite(img.height) ? Number(img.height) : null
     try {

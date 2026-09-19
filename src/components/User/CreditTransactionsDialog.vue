@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import CreditTransactionsView from './CreditTransactionsView.vue'
+import StorageQuotaCard from './StorageQuotaCard.vue'
 
 /**
  * 公共：用户积分流水弹窗（薄壳包装）
@@ -11,7 +12,7 @@ import CreditTransactionsView from './CreditTransactionsView.vue'
  *
  * Props:
  *   modelValue: 是否显示（v-model）
- *   title?: 弹窗标题，默认 "积分消耗明细"
+ *   title?: 弹窗标题，默认 "积分与存储空间"
  *   toolUrl?: 可选。若指定，则只展示该工具的流水
  *   pageSize?: 每页条数，默认 15
  */
@@ -23,7 +24,7 @@ const props = withDefaults(
     pageSize?: number
   }>(),
   {
-    title: '积分消耗明细',
+    title: '积分与存储空间',
     toolUrl: '',
     pageSize: 15,
   },
@@ -62,6 +63,9 @@ onUnmounted(() => {
     align-center
     destroy-on-close
   >
+    <div v-if="!toolUrl" class="mb-3">
+      <StorageQuotaCard />
+    </div>
     <CreditTransactionsView :tool-url="toolUrl" :page-size="pageSize" />
   </el-dialog>
 </template>

@@ -59,10 +59,18 @@ interface GeocoderRaw {
 }
 
 interface SearchRaw {
-  /** 真实接口里 status 是 { cndesc, infocode } 对象；infocode=1000 表示成功，2003=参数错误 */
-  status?: { cndesc?: string; infocode?: number }
+  /** 不同版本返回结构可能是顶层字段，也可能包在 data 中。 */
+  status?: { cndesc?: string; infocode?: number } | string
   msg?: string
-  /** 成功时 data 是个对象，不是一组数组 */
+  count?: string | number
+  pois?: Array<{
+    name: string
+    address: string
+    lonlat: string
+    phone?: string
+    hotPointID?: string
+    poiType?: string
+  }>
   data?: {
     keyWord?: string
     count?: string | number
@@ -139,18 +147,18 @@ export async function searchPoi(
   if (!res.ok) throw new Error(`POI 搜索失败：HTTP ${res.status}`)
 
   const raw = (await res.json()) as SearchRaw
-  const code = raw.status?.infocode
+  const code = typeof raw.status === 'object' ? raw.status?.infocode : undefined
   // 1000 = 成功；2003 = 参数错误；其他非 1000 的也是失败
   if (code !== undefined && code !== 1000) {
-    if (raw.data && (raw.data.count === 0 || raw.data.count === '0')) {
+    const rawCount = raw.count ?? raw.data?.count
+    if (rawCount === 0 || rawCount === '0') {
       return { total: 0, pois: [] }
     }
-    throw new Error(raw.status?.cndesc || raw.msg || `POI 搜索失败（infocode ${code}）`)
+    const statusMessage = typeof raw.status === 'object' ? raw.status?.cndesc : raw.status
+    throw new Error(statusMessage || raw.msg || `POI 搜索失败（infocode ${code}）`)
   }
-  if (!raw.data) return { total: 0, pois: [] }
-
-  const list = raw.data.pois ?? []
-  const total = Number(raw.data.count ?? list.length)
+  const list = raw.pois ?? raw.data?.pois ?? []
+  const total = Number(raw.count ?? raw.data?.count ?? list.length)
   const pois: PoiItem[] = []
   for (const p of list) {
     // lonlat 形如 "116.4074,39.9042"

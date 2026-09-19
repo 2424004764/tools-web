@@ -1,6 +1,7 @@
 import { ApiResponse, initDatabase, QueryBuilder, ShoppingListModel } from '../../../utils/db.js'
 import { AuthMiddleware } from '../../../middlewares/auth.js'
 import { buildR2PublicUrl, signR2PutUrl } from '../../../services/r2.js'
+import { reserveStorage } from '../../../services/storageQuotaService.js'
 
 const TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
 const MAX_BYTES = 5 * 1024 * 1024
@@ -25,12 +26,17 @@ export async function onRequest(context) {
     if (!Number.isInteger(size) || size <= 0 || size > MAX_BYTES) return ApiResponse.error('图片大小不能超过 5MB', origin, 400)
     const list = await new ShoppingListModel(init.db, init.env, init.waitUntil).findOne(new QueryBuilder().where('id', '=', listId).where('uid', '=', auth.user.id))
     if (!list) return ApiResponse.error('清单不存在或无权限', origin, 404)
+    // 上传前预扣存储额度；额度不足（含未购买）返回 402 引导购买
+    const reservationId = await reserveStorage(init.db, auth.user.id, size)
+    if (!reservationId) {
+      return ApiResponse.error('存储空间不足，请先在「积分」页购买存储额度（1 积分 = 100MB）', origin, 402)
+    }
     const extension = contentType === 'image/jpeg' ? 'jpg' : contentType.slice('image/'.length)
     const r2Key = `shopping-list/${auth.user.id}/${listId}/${itemId}-${crypto.randomUUID()}.${extension}`
     const signed = await signR2PutUrl(env, env.R2_BUCKET_NAME, r2Key, contentType)
     const publicUrl = buildR2PublicUrl(env, r2Key)
     if (!publicUrl) return ApiResponse.error('图片公网地址未配置', origin, 503)
-    return ApiResponse.success({ ...signed, publicUrl }, origin)
+    return ApiResponse.success({ ...signed, publicUrl, r2Key, reservationId }, origin)
   } catch (error) {
     console.error('Shopping list image signing error:', error)
     return ApiResponse.error('图片上传服务暂不可用', origin, 503)

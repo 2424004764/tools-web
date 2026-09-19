@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { reactive, ref, onMounted, computed, watch } from 'vue'
+import { reactive, ref, onMounted, onBeforeUnmount, computed, watch, nextTick } from 'vue'
+import Sortable from 'sortablejs'
 import functionsRequest from '@/utils/functionsRequest'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
@@ -17,6 +18,7 @@ interface Todo {
   priority: string
   dueDate: string | null
   category: string
+  sortOrder: number
   createTime: string
   updateTime: string
 }
@@ -64,8 +66,78 @@ const formData = reactive({
 
 const loading = ref(false)
 const operationLoading = ref(false)
+const collapsedCategories = ref<Set<string>>(new Set())
+const groupElements = new Map<string, HTMLElement>()
+const sortableInstances = new Map<string, Sortable>()
 
-// 从现有待办事项中提取分类列表
+interface TodoGroup {
+  category: string
+  todos: Todo[]
+}
+
+const groupedTodos = computed<TodoGroup[]>(() => {
+  const groups = new Map<string, Todo[]>()
+  todos.value.forEach(todo => {
+    const category = todo.category || '默认'
+    if (!groups.has(category)) groups.set(category, [])
+    groups.get(category)!.push(todo)
+  })
+  if (!groups.has('默认')) groups.set('默认', [])
+  return Array.from(groups.entries()).map(([category, groupTodos]) => ({ category, todos: groupTodos }))
+})
+
+const isCategoryCollapsed = (category: string) => collapsedCategories.value.has(category)
+const toggleCategory = (category: string) => {
+  const next = new Set(collapsedCategories.value)
+  next.has(category) ? next.delete(category) : next.add(category)
+  collapsedCategories.value = next
+}
+
+const destroySortables = () => {
+  sortableInstances.forEach(instance => instance.destroy())
+  sortableInstances.clear()
+  groupElements.clear()
+}
+
+const reorderGroup = async (category: string, oldIndex: number, newIndex: number) => {
+  if (oldIndex === newIndex) return
+  const group = groupedTodos.value.find(item => item.category === category)
+  if (!group) return
+  const moved = group.todos.splice(oldIndex, 1)[0]
+  group.todos.splice(newIndex, 0, moved)
+  const reorderedTodos = groupedTodos.value.flatMap(item => item.todos)
+  todos.value = reorderedTodos.map((todo, index) => ({ ...todo, sortOrder: index }))
+  try {
+    const response = await functionsRequest.post('/api/todos/reorder', {
+      items: group.todos.map((todo, index) => ({ id: todo.id, sortOrder: index }))
+    })
+    if (response.status !== 200) throw new Error('排序保存失败')
+    ElMessage.success('排序已保存')
+  } catch (error) {
+    console.error('保存待办排序失败:', error)
+    ElMessage.error('排序保存失败')
+    await fetchTodos(pagination.value.page, pagination.value.pageSize)
+  }
+}
+
+const initSortables = async () => {
+  await nextTick()
+  destroySortables()
+  groupedTodos.value.forEach(group => {
+    const element = document.querySelector(`[data-todo-group="${CSS.escape(group.category)}"] .todo-sortable`) as HTMLElement | null
+    if (!element || group.todos.length < 2 || isCategoryCollapsed(group.category)) return
+    groupElements.set(group.category, element)
+    sortableInstances.set(group.category, Sortable.create(element, {
+      animation: 150,
+      handle: '.todo-drag-handle',
+      ghostClass: 'todo-drag-ghost',
+      chosenClass: 'todo-drag-chosen',
+      onEnd: event => reorderGroup(group.category, event.oldIndex ?? 0, event.newIndex ?? 0)
+    }))
+  })
+}
+
+
 const userCategories = computed(() => {
   const categories = new Set<string>()
   categories.add('默认')
@@ -100,6 +172,7 @@ const fetchTodos = async (page = 1, pageSize = 10) => {
       if (data.pagination) {
         pagination.value = data.pagination
       }
+      await initSortables()
     }
   } catch (error) {
     console.error('获取待办事项失败:', error)
@@ -287,6 +360,10 @@ watch(() => [filterData.title, filterData.priority, filterData.category], () => 
 onMounted(() => {
   fetchTodos()
 })
+
+onBeforeUnmount(() => {
+  destroySortables()
+})
 </script>
 
 <template>
@@ -381,44 +458,57 @@ onMounted(() => {
       <div v-if="todos.length === 0" class="text-center py-12 text-gray-500">
         暂无待办事项
       </div>
-      <div v-else class="space-y-2">
-        <div v-for="todo in todos" :key="todo.id"
-          class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:shadow-md transition-shadow"
-          :class="{ 'bg-gray-50': todo.completed === 1 }">
-          <el-checkbox :model-value="todo.completed === 1" @change="toggleComplete(todo)" />
-          <div class="flex-1 min-w-0">
-            <div class="flex flex-wrap items-center gap-2">
-              <span :class="{ 'line-through text-gray-400': todo.completed === 1 }" class="font-medium">
-                {{ todo.title }}
-              </span>
-              <span class="text-caption px-2 py-0.5 rounded-full bg-opacity-20"
-                :class="[
-                  getPriorityColor(todo.priority),
-                  {
-                    'bg-green-100': todo.priority === 'low',
-                    'bg-yellow-100': todo.priority === 'medium',
-                    'bg-red-100': todo.priority === 'high'
-                  }
-                ]">
-                {{ getPriorityText(todo.priority) }}
-              </span>
-              <span v-if="todo.category && todo.category !== '默认'" class="text-caption px-2 py-0.5 rounded-full bg-blue-100 text-blue-600">
-                {{ todo.category }}
-              </span>
-            </div>
-            <div class="flex flex-wrap items-center gap-3 text-caption text-gray-500 mt-1">
-              <span v-if="todo.dueDate" class="flex items-center gap-1">
-                <el-icon><Clock /></el-icon>
-                {{ todo.dueDate }}
-              </span>
-              <span>创建于 {{ new Date(todo.createTime).toLocaleString('zh-CN') }}</span>
+      <div v-else class="space-y-4">
+        <section v-for="group in groupedTodos" :key="group.category" :data-todo-group="group.category" class="todo-group">
+          <button type="button" class="w-full flex items-center justify-between gap-3 px-3 py-2 rounded-md bg-gray-50 hover:bg-gray-100 text-left" @click="toggleCategory(group.category)">
+            <span class="flex items-center gap-2 font-semibold text-gray-800">
+              <span class="text-xs text-gray-500">{{ isCategoryCollapsed(group.category) ? '▶' : '▼' }}</span>
+              <span>{{ group.category }}</span>
+              <span class="text-caption font-normal text-gray-500">{{ group.todos.length }}</span>
+            </span>
+            <span class="text-caption text-gray-500">拖动调整组内顺序</span>
+          </button>
+          <div v-show="!isCategoryCollapsed(group.category)" class="todo-sortable space-y-2 mt-2">
+            <div v-for="todo in group.todos" :key="todo.id"
+              class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:shadow-md transition-shadow"
+              :class="{ 'bg-gray-50': todo.completed === 1 }">
+              <span class="todo-drag-handle cursor-grab text-gray-400 select-none" title="拖动排序" aria-label="拖动排序">⋮⋮</span>
+              <el-checkbox :model-value="todo.completed === 1" @change="toggleComplete(todo)" />
+              <div class="flex-1 min-w-0">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span :class="{ 'line-through text-gray-400': todo.completed === 1 }" class="font-medium">
+                    {{ todo.title }}
+                  </span>
+                  <span class="text-caption px-2 py-0.5 rounded-full bg-opacity-20"
+                    :class="[
+                      getPriorityColor(todo.priority),
+                      {
+                        'bg-green-100': todo.priority === 'low',
+                        'bg-yellow-100': todo.priority === 'medium',
+                        'bg-red-100': todo.priority === 'high'
+                      }
+                    ]">
+                    {{ getPriorityText(todo.priority) }}
+                  </span>
+                  <span v-if="todo.category && todo.category !== '默认'" class="text-caption px-2 py-0.5 rounded-full bg-blue-100 text-blue-600">
+                    {{ todo.category }}
+                  </span>
+                </div>
+                <div class="flex flex-wrap items-center gap-3 text-caption text-gray-500 mt-1">
+                  <span v-if="todo.dueDate" class="flex items-center gap-1">
+                    <el-icon><Clock /></el-icon>
+                    {{ todo.dueDate }}
+                  </span>
+                  <span>创建于 {{ new Date(todo.createTime).toLocaleString('zh-CN') }}</span>
+                </div>
+              </div>
+              <div class="flex gap-1">
+                <el-button :icon="Edit" size="small" @click="showEditForm(todo)" />
+                <el-button :icon="Delete" size="small" type="danger" @click="deleteTodo(todo.id)" />
+              </div>
             </div>
           </div>
-          <div class="flex gap-1">
-            <el-button :icon="Edit" size="small" @click="showEditForm(todo)" />
-            <el-button :icon="Delete" size="small" type="danger" @click="deleteTodo(todo.id)" />
-          </div>
-        </div>
+        </section>
       </div>
     </div>
 
@@ -441,7 +531,16 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.el-checkbox {
-  margin-right: 0;
+.todo-drag-handle {
+  touch-action: none;
+}
+
+.todo-drag-ghost {
+  opacity: 0.45;
+  background: #eff6ff;
+}
+
+.todo-drag-chosen {
+  cursor: grabbing;
 }
 </style>
