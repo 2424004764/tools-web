@@ -28,40 +28,59 @@ const userStore = useUserStore()
 // 保存工具所属的分类ID
 const toolCateId = ref<number>(0)
 
+const pathMatchesTool = (toolUrl: string, currentPath: string) => {
+  const toolPath = rtrim(toolUrl || '', '/')
+  if (!toolPath) return false
+  return toolPath === currentPath || currentPath.startsWith(toolPath + '/')
+}
+
 //根据路由查找工具所属的分类ID
 const findToolCateId = () => {
   const currentPath = rtrim(route.path, '/')
 
-  // 遍历所有分类，查找当前路由对应的工具
   for (const cate of toolsStore.cates) {
-    if (cate.list) {
-      const tool = cate.list.find((t: any) => rtrim(t.url, '/') === currentPath)
-      if (tool) {
-        toolCateId.value = cate.id
-        console.log('Found tool:', tool.title, 'in category:', cate.title, 'cateId:', cate.id)
-        return
-      }
+    const tool = (cate.list || []).find((t: any) => pathMatchesTool(t.url, currentPath))
+    if (tool) {
+      toolCateId.value = cate.id
+      return
     }
   }
 
-  // 如果没找到，使用第一个分类
-  if (toolsStore.cates.length > 0) {
-    toolCateId.value = toolsStore.cates[0].id
-    console.log('Tool not found, using default category:', toolCateId.value)
+  const fallback = toolsStore.list.find((t: any) => pathMatchesTool(t.url, currentPath))
+  if (fallback?.cateId) {
+    toolCateId.value = fallback.cateId
+    return
   }
 }
 
-// 返回到工具对应的分类
-const goBack = () => {
-  // 如果有分类ID，跳转到对应分类；否则跳转到首页
-  if (toolCateId.value > 0) {
-    router.push({
-      path: '/',
-      query: { value: `cate_${toolCateId.value}` }
-    })
-  } else {
-    router.push('/')
+const ensureToolCateId = async () => {
+  if (toolCateId.value > 0) return toolCateId.value
+  if (toolsStore.cates.length === 0) {
+    try {
+      await toolsStore.getToolCate()
+    } catch {
+      // store 内部会回退到本地 tools.ts
+    }
   }
+  findToolCateId()
+  return toolCateId.value
+}
+
+// 返回到工具对应的分类
+const goBack = async () => {
+  const cateId = await ensureToolCateId()
+  if (cateId > 0) {
+    // 与侧边栏点分类同一条路径：首页按锚点滚到对应分区，
+    // 而不是恢复离开首页前的滚动位置（那会停在热门资讯顶部）。
+    componentStore.setAnchorNavFromMenu(true)
+    componentStore.setNavClickLockUntil(Date.now() + 1600)
+    await router.push({
+      path: '/',
+      query: { value: `cate_${cateId}` },
+    })
+    return
+  }
+  await router.push('/')
 }
 
 const showQrcode = ref(false)
@@ -142,7 +161,7 @@ const toggleSidebar = (value: string | number | boolean) => {
 }
 
 onMounted(() => {
-  findToolCateId()
+  void ensureToolCateId()
   loadFavoriteState()
 
   // 从 URL 恢复专注模式
@@ -151,16 +170,21 @@ onMounted(() => {
   }
 })
 
+watch(() => toolsStore.cates.length, (len) => {
+  if (len > 0 && toolCateId.value === 0) findToolCateId()
+})
+
 // 路由变化（不同工具页之间切换）时刷新收藏状态
 watch(() => route.path, () => {
   favorited.value = false
+  findToolCateId()
   loadFavoriteState()
 })
 
 </script>
 
 <template>
-  <div class="flex flex-col sm:flex-row sm:items-center rounded-2xl bg-white border border-border-subtle p-4 mt-5 mb-5 gap-3">
+  <div class="flex flex-col sm:flex-row sm:items-center rounded-2xl bg-white dark:bg-surface-0 border border-border-subtle p-4 mt-5 mb-5 gap-3">
     <!-- 返回按钮 -->
     <button
       @click="goBack"
@@ -228,7 +252,7 @@ watch(() => route.path, () => {
   </div>
 
   <div v-if="showQrcode" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click="toggleQrcode">
-    <div class="bg-white rounded-2xl p-5 max-w-sm w-full mx-4" @click.stop>
+    <div class="bg-white dark:bg-surface-0 rounded-2xl p-5 max-w-sm w-full mx-4" @click.stop>
       <div class="flex justify-between items-center mb-4">
         <div>
           <div class="text-body-lg font-semibold">扫码访问</div>
@@ -237,7 +261,7 @@ watch(() => route.path, () => {
         <el-button text size="small" @click="toggleQrcode">关闭</el-button>
       </div>
       <div class="flex flex-col items-center gap-4">
-        <div class="bg-white p-4 rounded-2xl border border-border-default">
+        <div class="bg-white dark:bg-surface-0 p-4 rounded-2xl border border-border-default">
           <QrcodeVue3 :value="toolLink" :size="200" :margin="2" :level="'M'" />
         </div>
         <div class="w-full bg-surface-1 rounded-2xl border border-border-default p-4 text-body-sm text-ink-700 break-words whitespace-pre-wrap">

@@ -68,25 +68,24 @@ const openLink = (url: string) => {
 </script>
 
 <template>
-  <div class="flex flex-col mt-3 ml-4 flex-1 mr-3">
+  <div class="qrcode-scan-page flex flex-col mt-3 ml-4 flex-1 mr-3 min-w-0">
     <DetailHeader :title="info.title"></DetailHeader>
 
-    <div class="p-6 rounded-2xl bg-white shadow-sm">
+    <div class="p-6 rounded-2xl bg-white dark:bg-surface-0 border border-transparent dark:border-border-default shadow-sm min-w-0">
       <!-- 识别方式选择 -->
       <el-tabs v-model="info.activeTab" class="mb-6">
         <el-tab-pane label="图片识别" name="upload">
           <div class="text-center">
-            <h3 class="text-body-lg font-medium text-gray-900 mb-4">图片识别</h3>
+            <h3 class="text-body-lg font-medium text-gray-900 dark:text-ink-900 mb-4">图片识别</h3>
             
-            <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 max-w-md mx-auto">
+            <label class="upload-zone block border-2 border-dashed border-gray-300 dark:border-border-strong rounded-lg p-8 max-w-md mx-auto cursor-pointer">
               <!-- 使用 QrcodeCapture 处理文件上传 -->
               <QrcodeCapture
+                class="sr-only"
                 @decode="handleScan"
                 @error="handleError"
-                class="w-full"
-              >
-                <!-- 自定义上传界面 -->
-                <div class="text-center py-8">
+              />
+              <div class="text-center py-8">
                   <el-icon class="text-4xl text-gray-400 mb-4">
                     <Upload />
                   </el-icon>
@@ -94,26 +93,25 @@ const openLink = (url: string) => {
                     <p>点击选择图片或拖拽图片到此处</p>
                     <p class="text-body-sm">支持 PNG、JPG、JPEG 等格式</p>
                   </div>
-                </div>
-              </QrcodeCapture>
-              
-              <!-- 拖拽区域 -->
-              <QrcodeDropZone
+              </div>
+            </label>
+
+            <!-- 拖拽区域 -->
+            <QrcodeDropZone
                 @decode="handleScan"
                 @error="handleError"
-                class="w-full h-32 mt-4 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center"
+                class="drop-zone w-full h-32 mt-4 border-2 border-dashed border-gray-300 dark:border-border-strong rounded-lg flex items-center justify-center"
               >
                 <div class="text-center">
-                  <p class="text-gray-500 text-body-sm">或拖拽图片到此处</p>
+                  <p class="text-gray-500 dark:text-ink-500 text-body-sm">或拖拽图片到此处</p>
                 </div>
               </QrcodeDropZone>
             </div>
-          </div>
         </el-tab-pane>
 
         <el-tab-pane label="摄像头扫描" name="camera">
           <div class="text-center">
-            <h3 class="text-body-lg font-medium text-gray-900 mb-4">摄像头扫描识别</h3>
+            <h3 class="text-body-lg font-medium text-gray-900 dark:text-ink-900 mb-4">摄像头扫描识别</h3>
             
             <!-- 扫描区域 -->
             <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 mb-4 max-w-md mx-auto">
@@ -127,7 +125,7 @@ const openLink = (url: string) => {
                 <el-icon class="text-4xl text-gray-400 mb-4">
                   <Camera />
                 </el-icon>
-                <p class="text-gray-500">点击开始扫描按钮开始识别二维码</p>
+                <p class="text-gray-500 dark:text-ink-500">点击开始扫描按钮开始识别二维码</p>
               </div>
             </div>
 
@@ -152,9 +150,9 @@ const openLink = (url: string) => {
       </el-tabs>
 
       <!-- 识别结果 -->
-      <div v-if="scanResult" class="border-t pt-6">
+      <div v-if="scanResult" class="border-t border-border-default pt-6">
         <div class="flex items-center justify-between mb-4">
-          <h4 class="text-body-lg font-medium text-gray-900">识别结果：</h4>
+          <h4 class="text-body-lg font-medium text-gray-900 dark:text-ink-900">识别结果：</h4>
           <div class="space-x-2">
             <el-button 
               size="small" 
@@ -175,8 +173,8 @@ const openLink = (url: string) => {
           </div>
         </div>
         
-        <div class="bg-gray-50 rounded-lg p-4">
-          <p class="text-body-sm text-gray-700 break-all whitespace-pre-wrap">{{ scanResult }}</p>
+        <div class="bg-gray-50 dark:bg-surface-1 border border-border-default rounded-lg p-4">
+          <p class="text-body-sm text-gray-700 dark:text-ink-800 break-all whitespace-pre-wrap">{{ scanResult }}</p>
         </div>
         
         <!-- 如果是链接，提供打开链接的按钮 -->
@@ -205,10 +203,14 @@ const openLink = (url: string) => {
   </div>
 </template>
 
-<style scoped>
-/* 拖拽区域样式 */
-.border-dashed:hover {
-  border-color: #409eff;
-  background-color: #f0f9ff;
+<style>
+html.dark .qrcode-scan-page .upload-zone:hover,
+html.dark .qrcode-scan-page .drop-zone:hover {
+  border-color: rgb(var(--accent-400));
+  background-color: rgb(var(--surface-2));
 }
-</style> 
+html.dark .qrcode-scan-page .upload-zone,
+html.dark .qrcode-scan-page .drop-zone {
+  color: rgb(var(--ink-800));
+}
+</style>

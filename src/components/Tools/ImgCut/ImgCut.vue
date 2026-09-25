@@ -309,10 +309,10 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="flex flex-col mt-3 flex-1">
+  <div class="imgcut-page flex flex-col mt-3 flex-1">
     <DetailHeader :title="info.title"></DetailHeader>
 
-    <div class="p-4 rounded-2xl bg-white">
+    <div class="p-4 rounded-2xl bg-white dark:bg-surface-0">
       <el-upload
         v-model:file-list="fileList"
         class="dataFileRef flex flex-col md:flex-row gap-2 md:gap-3 w-full"
@@ -383,7 +383,7 @@ onUnmounted(() => {
              min-h-md 保证「image 还没加载出来」时空状态也有合理高度，蒙层不会塌成 0 -->
         <div
           v-if="isLoadingFromUrl"
-          class="absolute inset-0 z-10 min-h-md flex flex-col items-center justify-center gap-3 rounded-lg bg-white/80 backdrop-blur-sm"
+          class="absolute inset-0 z-10 min-h-md flex flex-col items-center justify-center gap-3 rounded-lg bg-white/80 dark:bg-surface-0/80 backdrop-blur-sm"
           role="status"
           aria-live="polite"
         >
@@ -426,5 +426,31 @@ onUnmounted(() => {
   border-top-color: #6366f1;
   border-radius: 50%;
   will-change: transform;
+}
+</style>
+
+<style>
+/* ============ 暗色适配（html.dark 由 useTheme 切换）============
+   参照 Qrcode.vue 的做法：html.dark 特例放非 scoped 块，用页面根类名限作用域 */
+
+/* el-empty 默认插画是白色系（--el-empty-fill-color-0~9 为 #fff→#d5d7de 阶梯），
+   在深底上是一块亮斑；这里按表面色阶梯重映射为暗色纸箱配色 */
+html.dark .imgcut-page .el-empty {
+  --el-empty-fill-color-0: #30323a;
+  --el-empty-fill-color-1: #2c2e35;
+  --el-empty-fill-color-2: #34363f;
+  --el-empty-fill-color-3: #33353e;
+  --el-empty-fill-color-4: #3d3f49;
+  --el-empty-fill-color-5: #3c3e48;
+  --el-empty-fill-color-6: #42444e;
+  --el-empty-fill-color-7: #464852;
+  --el-empty-fill-color-8: #4a4c56;
+  --el-empty-fill-color-9: #525461;
+}
+
+/* 加载蒙层里的 spinner：浅色版的描边在深底下偏刺眼，换暗色描边 + 亮一档的顶色 */
+html.dark .imgcut-page .url-loading-spinner {
+  border-color: rgb(var(--border-strong));
+  border-top-color: rgb(var(--accent-400));
 }
 </style>

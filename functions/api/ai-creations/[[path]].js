@@ -2,15 +2,17 @@
 // 全部路由必须登录；WHERE 强制带 uid，避免任何越权访问。
 //
 //   GET /api/ai-creations          按 group 分页列出当前 uid 的创作组
-//                                  可选参数：category / page / pageSize
-//                                  q=关键词（搜标题/模型/分类/图片提示词/关联提示词内容）
+//                                  可选参数：category / page / pageSize / tag（按标签精确筛选，081）
+//                                  q=关键词（搜标题/模型/分类/标签/图片提示词/关联提示词内容）
 //                                  fav=1（只看收藏，依赖 073 迁移的 favorited 列）
 //   GET /api/ai-creations/categories  当前 uid 出现的分类聚合
+//   GET /api/ai-creations/tags        当前 uid 的标签聚合（{ name, count }，供筛选 chips + 编辑建议）
 //
 // 不在本次范围内：
 //   POST（写入侧由 /ai-image-edit/ 等工具在生成完成后自行调用；后续扩展）
 
 import { extractUidFromRequest } from '../_lib/model-resolver.js'
+import { normalizeTagInput, exactTagLike } from '../_lib/ai-creation-tags.js'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
@@ -77,6 +79,28 @@ export async function onRequest(context) {
     })
   }
 
+  // ---------- GET /api/ai-creations/tags ----------
+  // 单 uid 合集量级有限，把非空 tags 行全拉回来在 JS 里拆分计数即可，避免 SQLite 递归 CTE 拆串。
+  if (path === 'tags') {
+    const result = await db
+      .prepare(
+        `SELECT tags FROM ai_creation_groups
+         WHERE uid = ? AND tags IS NOT NULL AND tags <> ''`,
+      )
+      .bind(uid)
+      .all()
+    const counts = new Map()
+    for (const row of result.results || []) {
+      for (const tag of normalizeTagInput(row.tags)) {
+        counts.set(tag, (counts.get(tag) || 0) + 1)
+      }
+    }
+    const data = Array.from(counts.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'zh-CN'))
+    return json({ success: true, data })
+  }
+
   // ---------- GET /api/ai-creations (列表) ----------
   if (path === '') {
     const page = clampInt(url.searchParams.get('page'), 1, 9999, 1)
@@ -87,6 +111,8 @@ export async function onRequest(context) {
     // fav=1：只看收藏（ai_creation_groups.favorited = 1，依赖 073 迁移）
     const favOnly = url.searchParams.get('fav') === '1'
     const source = (url.searchParams.get('source') || '').trim()
+    // tag：按标签精确筛选（081 迁移的 tags 逗号分隔列）
+    const tag = (url.searchParams.get('tag') || '').trim()
     const offset = (page - 1) * pageSize
 
     const where = [`g.uid = ?`]
@@ -94,6 +120,11 @@ export async function onRequest(context) {
     if (category) {
       where.push('g.category = ?')
       args.push(category)
+    }
+    if (tag) {
+      // (',' || tags || ',') LIKE '%,tag,%' 精确命中单个标签，避免「头像」误中「头像框」
+      where.push(`(',' || g.tags || ',') LIKE ? ESCAPE '\\'`)
+      args.push(exactTagLike(tag))
     }
     if (favOnly) {
       where.push('g.favorited = 1')
@@ -105,11 +136,11 @@ export async function onRequest(context) {
     if (q) {
       const like = `%${q}%`
       where.push(
-        `(g.title LIKE ? OR g.model_name LIKE ? OR g.category LIKE ?
+        `(g.title LIKE ? OR g.model_name LIKE ? OR g.category LIKE ? OR g.tags LIKE ?
           OR EXISTS (SELECT 1 FROM ai_creation_images qi WHERE qi.group_id = g.id AND qi.prompt LIKE ?)
           OR EXISTS (SELECT 1 FROM user_tool_prompts up WHERE up.id = g.prompt_id AND up.uid = g.uid AND up.content LIKE ?))`,
       )
-      args.push(like, like, like, like, like)
+      args.push(like, like, like, like, like, like)
     }
     const whereSql = `WHERE ${where.join(' AND ')}`
 
@@ -134,7 +165,7 @@ export async function onRequest(context) {
     // 当前页的组
     const groupsRaw = await db
       .prepare(
-        `SELECT g.id, g.uid, g.prompt_id, g.scene, g.source_type, g.category, g.model_name, g.title, g.favorited,
+        `SELECT g.id, g.uid, g.prompt_id, g.scene, g.source_type, g.category, g.model_name, g.title, g.favorited, g.tags,
                 g.created_at, g.updated_at,
                 (SELECT COUNT(*) FROM ai_creation_images i WHERE i.group_id = g.id) AS image_count,
                 (SELECT media_url FROM ai_creation_images WHERE group_id = g.id ORDER BY id ASC LIMIT 1) AS cover_url,
@@ -206,6 +237,7 @@ export async function onRequest(context) {
         category: g.category,
         model_name: g.model_name,
         title: g.title,
+        tags: normalizeTagInput(g.tags),
         favorited: Number(g.favorited) === 1,
         created_at: g.created_at,
         image_count: Number(g.image_count) || images.length,

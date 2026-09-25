@@ -11,8 +11,11 @@ import { weightApi } from './api'
 import type { WeightMember, WeightRecord, WeightStatistics, ChartDataPoint, TimeRange, WeightUnit, HealthyRange, Achievement } from './types'
 import { NOTE_TAGS } from './types'
 import { useUserStore } from '@/store/modules/user'
+import { useTheme } from '@/composables/useTheme'
 
 const info = { title: '体重记录' }
+// 图表轴/网格颜色跟随主题（ECharts 默认配色为白底设计）
+const { isDark } = useTheme()
 
 // Emoji 头像列表
 const AVATAR_EMOJIS = ['😀', '😊', '🙂', '😎', '🤗', '💪', '🏃', '⭐', '🌟', '❤️', '🎯', '🔥']
@@ -656,6 +659,11 @@ const renderChart = () => {
     })
   }
 
+  // 主题感知的轴/网格配色：暗色用全局 token 同款色阶，浅色保持默认观感
+  const axisLabelColor = isDark.value ? 'rgb(180 181 189)' : '#666'
+  const axisLineColor = isDark.value ? 'rgb(72 73 84)' : '#ddd'
+  const splitLineColor = isDark.value ? 'rgb(52 53 62)' : '#eceef2'
+
   const option = {
     tooltip: {
       trigger: 'axis',
@@ -669,7 +677,8 @@ const renderChart = () => {
     },
     legend: {
       data: series.map(s => s.name),
-      bottom: 0
+      bottom: 0,
+      textStyle: { color: axisLabelColor }
     },
     grid: {
       left: '3%',
@@ -681,12 +690,17 @@ const renderChart = () => {
     xAxis: {
       type: 'category',
       boundaryGap: false,
-      data: [...new Set(chartData.value.map(d => d.date))].sort()
+      data: [...new Set(chartData.value.map(d => d.date))].sort(),
+      axisLine: { lineStyle: { color: axisLineColor } },
+      axisLabel: { color: axisLabelColor }
     },
     yAxis: {
       type: 'value',
       name: '体重（斤）',
-      scale: true
+      scale: true,
+      nameTextStyle: { color: axisLabelColor },
+      axisLabel: { color: axisLabelColor },
+      splitLine: { lineStyle: { color: splitLineColor } }
     },
     series
   }
@@ -716,6 +730,11 @@ watch(currentMemberId, async (newId) => {
 
 watch(timeRange, () => {
   debouncedFetchChartData()
+})
+
+// 主题切换后重绘图表，让轴/网格/图例颜色跟随
+watch(isDark, () => {
+  renderChart()
 })
 
 watch(dateFilter, async () => {
@@ -1671,4 +1690,105 @@ export default {
 .tag-capsule:hover {
   transform: scale(1.05);
 }
+
+/* ─── 深色模式适配 ───────────────────────────────────────────────
+   全局只映射 .bg-white / .text-gray-* / .text-*-{600,700} 等基础工具类；
+   这里的玻璃卡、粉彩渐变卡、彩色胶囊是本地组合类，需要转成半透明暗色 tint。
+   渐变覆盖直接改 background-image，不依赖 Tailwind 内部变量。 */
+html.dark .glass-card {
+  background: rgb(38 39 46 / 0.55);
+  border-color: rgb(var(--border-default));
+}
+
+html.dark .glass-card-dark {
+  background: rgb(var(--surface-0) / 0.92);
+  box-shadow: 0 8px 32px rgb(0 0 0 / 0.35);
+}
+
+/* 页面主背景：浅色渐变 → 深底渐变 */
+html.dark .from-slate-50.via-blue-50.to-purple-50 {
+  background-image: linear-gradient(to bottom right, rgb(var(--surface-1)), rgb(var(--surface-0)));
+}
+
+/* 玻璃半透明白卡 → 暗色半透明卡（bg-white/10、/20 在彩色 hero 上，保持不动） */
+html.dark .bg-white\/50 {
+  background-color: rgb(38 39 46 / 0.5);
+}
+
+/* 统计粉彩渐变卡 → 同色系半透明 tint */
+html.dark .from-emerald-50.to-teal-50 {
+  background-image: linear-gradient(to bottom right, rgb(16 185 129 / 0.12), rgb(20 184 166 / 0.05));
+}
+html.dark .from-violet-50.to-purple-50 {
+  background-image: linear-gradient(to bottom right, rgb(139 92 246 / 0.12), rgb(167 139 250 / 0.05));
+}
+html.dark .from-amber-50.to-orange-50 {
+  background-image: linear-gradient(to bottom right, rgb(245 158 11 / 0.12), rgb(251 146 60 / 0.05));
+}
+html.dark .from-rose-50.to-pink-50 {
+  background-image: linear-gradient(to bottom right, rgb(244 63 94 / 0.12), rgb(236 72 153 / 0.05));
+}
+html.dark .from-cyan-50.to-sky-50 {
+  background-image: linear-gradient(to bottom right, rgb(6 182 212 / 0.12), rgb(14 165 233 / 0.05));
+}
+html.dark .from-indigo-50.to-blue-50 {
+  background-image: linear-gradient(to bottom right, rgb(99 102 241 / 0.12), rgb(59 130 246 / 0.05));
+}
+html.dark .from-yellow-50.to-amber-50 {
+  background-image: linear-gradient(to bottom right, rgb(234 179 8 / 0.12), rgb(245 158 11 / 0.05));
+}
+html.dark .from-slate-50.to-gray-100 {
+  background-image: linear-gradient(to bottom right, rgb(255 255 255 / 0.05), rgb(255 255 255 / 0.02));
+}
+html.dark .from-blue-50.to-indigo-50 {
+  background-image: linear-gradient(to right, rgb(59 130 246 / 0.12), rgb(99 102 241 / 0.05));
+}
+html.dark .from-indigo-50.to-purple-50 {
+  background-image: linear-gradient(to right, rgb(99 102 241 / 0.1), rgb(139 92 246 / 0.05));
+}
+
+/* 彩色描边 → 半透明同色 */
+html.dark .border-emerald-100 { border-color: rgb(16 185 129 / 0.3); }
+html.dark .border-violet-100 { border-color: rgb(139 92 246 / 0.3); }
+html.dark .border-amber-100 { border-color: rgb(245 158 11 / 0.3); }
+html.dark .border-rose-100 { border-color: rgb(244 63 94 / 0.3); }
+html.dark .border-cyan-100 { border-color: rgb(6 182 212 / 0.3); }
+html.dark .border-indigo-100 { border-color: rgb(99 102 241 / 0.3); }
+html.dark .border-yellow-200 { border-color: rgb(234 179 8 / 0.35); }
+html.dark .border-slate-200 { border-color: rgb(var(--border-default)); }
+
+/* 图标底色胶囊 */
+html.dark .bg-emerald-100 { background-color: rgb(16 185 129 / 0.2); }
+html.dark .bg-violet-100 { background-color: rgb(139 92 246 / 0.2); }
+html.dark .bg-amber-100 { background-color: rgb(245 158 11 / 0.2); }
+html.dark .bg-rose-100 { background-color: rgb(244 63 94 / 0.2); }
+html.dark .bg-cyan-100 { background-color: rgb(6 182 212 / 0.2); }
+html.dark .bg-indigo-100 { background-color: rgb(99 102 241 / 0.2); }
+html.dark .bg-blue-100 { background-color: rgb(59 130 246 / 0.2); }
+html.dark .bg-orange-100 { background-color: rgb(251 146 60 / 0.2); }
+html.dark .bg-yellow-200 { background-color: rgb(234 179 8 / 0.28); }
+html.dark .bg-slate-200 { background-color: rgb(255 255 255 / 0.1); }
+html.dark .bg-indigo-50 { background-color: rgb(99 102 241 / 0.12); }
+
+/* 全局没映射的 slate 文字 */
+html.dark .text-slate-600 {
+  color: rgb(var(--ink-700));
+}
+
+/* 成员操作小按钮：浅灰底 → 半透明白 */
+html.dark .member-action-btn {
+  background: rgb(255 255 255 / 0.08) !important;
+  color: rgb(var(--ink-500)) !important;
+}
+html.dark .member-action-btn:hover {
+  background: rgb(255 255 255 / 0.16) !important;
+  color: rgb(var(--ink-900)) !important;
+}
+
+/* 图表容器：浅色渐变 → 深色内凹 */
+html.dark .chart-container {
+  background: linear-gradient(135deg, rgb(255 255 255 / 0.04), rgb(255 255 255 / 0.02));
+  box-shadow: inset 0 2px 8px rgb(0 0 0 / 0.2);
+}
+
 </style>

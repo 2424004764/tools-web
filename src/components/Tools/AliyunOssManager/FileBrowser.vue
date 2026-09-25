@@ -681,4 +681,61 @@ onBeforeUnmount(() => {
     opacity: 1;
   }
 }
+
+/* ─── 深色模式适配 ─────────────────────────────────────────── */
+html.dark .breadcrumb {
+  background: rgb(245 158 11 / 0.08);
+  border-color: rgb(251 146 60 / 0.25);
+  color: #fcd34d;
+}
+html.dark .dropzone {
+  border-color: rgb(251 146 60 / 0.3);
+  background: rgb(var(--surface-0));
+}
+html.dark .dropzone.active {
+  border-color: #f97316;
+  background: rgb(249 115 22 / 0.1);
+}
+html.dark .list-row:hover {
+  background: rgb(245 158 11 / 0.08);
+}
+html.dark .row-folder {
+  background: rgb(245 158 11 / 0.07);
+}
+html.dark .row-folder .row-name {
+  color: #fcd34d;
+}
+html.dark .image-preview-dialog :deep(.el-dialog__header) {
+  background: rgb(245 158 11 / 0.06);
+  border-bottom-color: rgb(251 146 60 / 0.25);
+}
+html.dark .image-preview-dialog :deep(.el-dialog__footer) {
+  background: rgb(245 158 11 / 0.06);
+  border-top-color: rgb(251 146 60 / 0.25);
+}
+
+html.dark .row-name {
+  color: rgb(var(--ink-900));
+}
+html.dark .row-name:hover {
+  color: #fb923c;
+}
+html.dark .row-meta {
+  color: rgb(var(--ink-500));
+}
+html.dark .list-row {
+  border-bottom-color: rgb(var(--border-subtle));
+}
+html.dark .bc-item.last {
+  color: rgb(var(--ink-900));
+}
+html.dark .bc-item:hover {
+  background: rgb(251 146 60 / 0.2);
+}
+html.dark .bc-sep {
+  color: rgb(251 146 60 / 0.5);
+}
+html.dark .drop-overlay {
+  background: rgb(15 18 25 / 0.85);
+}
 </style>

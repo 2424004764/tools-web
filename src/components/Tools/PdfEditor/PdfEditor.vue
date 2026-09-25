@@ -286,7 +286,7 @@ const exportPDF = async () => {
 
 <template>
   <div>
-    <DetailHeader :info="info" />
+    <DetailHeader :title="info.title" />
     <div class="pdf-editor">
       <div class="toolbar">
         <el-upload
@@ -527,5 +527,13 @@ const exportPDF = async () => {
   display: flex;
   align-items: center;
   gap: 16px;
+}
+
+/* ─── 深色模式适配（.pdf-canvas 白底为 PDF 纸面本体，保留） ─── */
+html.dark .toolbar {
+  background: rgb(var(--surface-0));
+}
+html.dark .canvas-area {
+  background: rgb(var(--surface-1));
 }
 </style>

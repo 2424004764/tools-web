@@ -524,11 +524,11 @@ onMounted(() => {
 
        <!-- 数独棋盘 -->
        <div class="flex justify-center">
-        <div class="grid grid-cols-9 gap-0 border-2 border-gray-800 bg-gray-800">
+        <div class="grid grid-cols-9 gap-0 border-2 border-gray-800 bg-gray-800 dark:border-ink-500 dark:bg-surface-2">
           <!-- 9x9 网格 -->
           <div v-for="row in 9" :key="`row-${row}`" class="contents">
             <div v-for="col in 9" :key="`cell-${row}-${col}`"
-                 class="w-12 h-12 border border-gray-600 flex items-center justify-center cursor-pointer transition-colors"
+                 class="w-12 h-12 border border-gray-600 dark:border-ink-400 flex items-center justify-center cursor-pointer transition-colors"
                  :class="[
                    // 基础背景色
                    getCellBackgroundClass(row - 1, col - 1) || 'bg-white',
@@ -538,10 +538,10 @@ onMounted(() => {
                    !getCellBackgroundClass(row - 1, col - 1) && board[row - 1][col - 1].isError ? 'text-red-600' : '',
                    // 3x3宫格边框（只在非十字架时应用）
                    !getCellBackgroundClass(row - 1, col - 1) ? [
-                     (row - 1) % 3 === 0 ? 'border-t-2 border-t-gray-800' : '',
-                     (row - 1) % 3 === 2 ? 'border-b-2 border-b-gray-800' : '',
-                     (col - 1) % 3 === 0 ? 'border-l-2 border-l-gray-800' : '',
-                     (col - 1) % 3 === 2 ? 'border-r-2 border-r-gray-800' : ''
+                     (row - 1) % 3 === 0 ? 'border-t-2 border-t-gray-800 dark:border-t-ink-500' : '',
+                     (row - 1) % 3 === 2 ? 'border-b-2 border-b-gray-800 dark:border-b-ink-500' : '',
+                     (col - 1) % 3 === 0 ? 'border-l-2 border-l-gray-800 dark:border-l-ink-500' : '',
+                     (col - 1) % 3 === 2 ? 'border-r-2 border-r-gray-800 dark:border-r-ink-500' : ''
                    ] : ''
                  ]"
                  @click="selectCell(row - 1, col - 1)">

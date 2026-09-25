@@ -722,19 +722,19 @@ const downloadQR = () => {
 </script>
 
 <template>
-  <div class="flex flex-col mt-3 ml-4 flex-1 mr-3">
+  <div class="qrcode-page flex flex-col mt-3 ml-4 flex-1 mr-3 min-w-0">
     <DetailHeader :title="info.title"></DetailHeader>
 
     <!-- 桌面端布局：左右分栏 -->
     <div
-      class="hidden lg:flex flex-col lg:flex-row gap-6 w-full p-6 rounded-2xl bg-white shadow-sm"
+      class="hidden lg:flex flex-col lg:flex-row gap-6 w-full min-w-0 p-6 rounded-2xl bg-white dark:bg-surface-0 border border-transparent dark:border-border-default shadow-sm"
     >
       <!-- 左侧控制面板 -->
-      <div class="flex-1 space-y-4">
+      <div class="flex-1 min-w-0 space-y-4">
         <div class="space-y-4">
           <!-- 内容输入 -->
           <div class="space-y-2">
-            <label class="text-body-sm font-medium text-gray-700"
+            <label class="text-body-sm font-medium text-gray-700 dark:text-ink-800"
               >内容（网站链接，扫码会直接打开，暂不支持中文）</label
             >
             <el-input
@@ -756,7 +756,7 @@ const downloadQR = () => {
 
           <!-- 尺寸设置 -->
           <div class="space-y-2">
-            <label class="text-body-sm font-medium text-gray-700">尺寸</label>
+            <label class="text-body-sm font-medium text-gray-700 dark:text-ink-800">尺寸</label>
             <el-select
               v-model="info.size"
               class="w-full"
@@ -772,7 +772,7 @@ const downloadQR = () => {
 
           <!-- 纠错级别 -->
           <div class="space-y-2">
-            <label class="text-body-sm font-medium text-gray-700">纠错级别</label>
+            <label class="text-body-sm font-medium text-gray-700 dark:text-ink-800">纠错级别</label>
             <el-select
               v-model="info.errorCorrectionLevel"
               class="w-full"
@@ -787,7 +787,7 @@ const downloadQR = () => {
 
           <!-- Logo上传 -->
           <div class="space-y-2">
-            <label class="text-body-sm font-medium text-gray-700">Logo</label>
+            <label class="text-body-sm font-medium text-gray-700 dark:text-ink-800">Logo</label>
             <el-upload
               ref="uploadLogo"
               action="#"
@@ -833,7 +833,7 @@ const downloadQR = () => {
 
           <!-- 配置模式选择 -->
           <div class="space-y-2">
-            <label class="text-body-sm font-medium text-gray-700">样式配置</label>
+            <label class="text-body-sm font-medium text-gray-700 dark:text-ink-800">样式配置</label>
             <el-tabs v-model="info.configMode" class="w-full">
               <el-tab-pane label="预设" name="preset">
                 <div class="space-y-4">
@@ -883,7 +883,7 @@ const downloadQR = () => {
                 <div class="space-y-4">
           <!-- 点样式设置 -->
           <div class="space-y-2">
-            <label class="text-body-sm font-medium text-gray-700">点样式</label>
+            <label class="text-body-sm font-medium text-gray-700 dark:text-ink-800">点样式</label>
             <el-select
               v-model="info.dotType"
               class="w-full"
@@ -900,23 +900,23 @@ const downloadQR = () => {
 
           <!-- 颜色设置 -->
           <div class="space-y-2">
-            <label class="text-body-sm font-medium text-gray-700">颜色设置</label>
+            <label class="text-body-sm font-medium text-gray-700 dark:text-ink-800">颜色设置</label>
             
-            <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+            <div class="border border-gray-200 dark:border-border-default rounded-lg p-4 bg-gray-50 dark:bg-surface-1">
               <!-- 颜色模式选择 -->
               <el-tabs v-model="info.colorMode" @tab-change="handleColorModeChange">
                 <el-tab-pane label="单色" name="single">
                   <div class="space-y-2">
                     <div class="flex gap-4">
                       <div class="flex-1">
-                        <label class="text-caption text-gray-500 mb-1 block">前景色</label>
+                        <label class="text-caption text-gray-500 dark:text-ink-500 mb-1 block">前景色</label>
                         <el-color-picker
                           v-model="info.preColor"
                           @change="handleColorChange"
                         />
                       </div>
                       <div class="flex-1">
-                        <label class="text-caption text-gray-500 mb-1 block">背景色</label>
+                        <label class="text-caption text-gray-500 dark:text-ink-500 mb-1 block">背景色</label>
                         <el-color-picker
                           v-model="info.bgColor"
                           @change="handleColorChange"
@@ -930,7 +930,7 @@ const downloadQR = () => {
                   <div class="space-y-3">
                     <!-- 渐变类型 -->
                     <div>
-                      <label class="text-caption text-gray-500 mb-1 block">渐变类型</label>
+                      <label class="text-caption text-gray-500 dark:text-ink-500 mb-1 block">渐变类型</label>
                       <el-select
                         v-model="info.gradientType"
                         class="w-full"
@@ -943,7 +943,7 @@ const downloadQR = () => {
                     
                     <!-- 渐变角度（线性渐变时显示） -->
                     <div v-if="info.gradientType === 'linear'">
-                      <label class="text-caption text-gray-500 mb-1 block">
+                      <label class="text-caption text-gray-500 dark:text-ink-500 mb-1 block">
                         渐变角度: {{ info.gradientRotation }}°
                       </label>
                       <el-slider
@@ -959,14 +959,14 @@ const downloadQR = () => {
                     <!-- 渐变色选择 -->
                     <div class="flex gap-4">
                       <div class="flex-1">
-                        <label class="text-caption text-gray-500 mb-1 block">起始色</label>
+                        <label class="text-caption text-gray-500 dark:text-ink-500 mb-1 block">起始色</label>
                         <el-color-picker
                           v-model="info.gradientColor1"
                           @change="handleGradientChange"
                         />
                       </div>
                       <div class="flex-1">
-                        <label class="text-caption text-gray-500 mb-1 block">结束色</label>
+                        <label class="text-caption text-gray-500 dark:text-ink-500 mb-1 block">结束色</label>
                         <el-color-picker
                           v-model="info.gradientColor2"
                           @change="handleGradientChange"
@@ -976,7 +976,7 @@ const downloadQR = () => {
                     
                     <!-- 背景色 -->
                     <div>
-                      <label class="text-caption text-gray-500 mb-1 block">背景色</label>
+                      <label class="text-caption text-gray-500 dark:text-ink-500 mb-1 block">背景色</label>
                       <el-color-picker
                         v-model="info.bgColor"
                         @change="handleColorChange"
@@ -990,12 +990,12 @@ const downloadQR = () => {
 
           <!-- 角落方块设置 -->
           <div class="space-y-2">
-            <label class="text-body-sm font-medium text-gray-700">角落方块</label>
+            <label class="text-body-sm font-medium text-gray-700 dark:text-ink-800">角落方块</label>
             
-            <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+            <div class="border border-gray-200 dark:border-border-default rounded-lg p-4 bg-gray-50 dark:bg-surface-1">
               <!-- 角落方块样式 -->
               <div class="mb-3">
-                <label class="text-caption text-gray-500 mb-1 block">样式</label>
+                <label class="text-caption text-gray-500 dark:text-ink-500 mb-1 block">样式</label>
                 <el-select
                   v-model="info.cornerSquareType"
                   class="w-full"
@@ -1011,7 +1011,7 @@ const downloadQR = () => {
               <el-tabs v-model="info.cornerSquareColorMode" @tab-change="handleCornerSquareColorModeChange">
                 <el-tab-pane label="单色" name="single">
                   <div class="space-y-2">
-                    <label class="text-caption text-gray-500 mb-1 block">颜色</label>
+                    <label class="text-caption text-gray-500 dark:text-ink-500 mb-1 block">颜色</label>
                     <el-color-picker
                       v-model="info.cornerSquareColor"
                       @change="handleCornerSquareGradientChange"
@@ -1023,7 +1023,7 @@ const downloadQR = () => {
                   <div class="space-y-3">
                     <!-- 渐变类型 -->
                     <div>
-                      <label class="text-caption text-gray-500 mb-1 block">渐变类型</label>
+                      <label class="text-caption text-gray-500 dark:text-ink-500 mb-1 block">渐变类型</label>
                       <el-select
                         v-model="info.cornerSquareGradientType"
                         class="w-full"
@@ -1036,7 +1036,7 @@ const downloadQR = () => {
                     
                     <!-- 渐变角度（线性渐变时显示） -->
                     <div v-if="info.cornerSquareGradientType === 'linear'">
-                      <label class="text-caption text-gray-500 mb-1 block">
+                      <label class="text-caption text-gray-500 dark:text-ink-500 mb-1 block">
                         渐变角度: {{ info.cornerSquareGradientRotation }}°
                       </label>
                       <el-slider
@@ -1052,14 +1052,14 @@ const downloadQR = () => {
                     <!-- 渐变色选择 -->
                     <div class="flex gap-4">
                       <div class="flex-1">
-                        <label class="text-caption text-gray-500 mb-1 block">起始色</label>
+                        <label class="text-caption text-gray-500 dark:text-ink-500 mb-1 block">起始色</label>
                         <el-color-picker
                           v-model="info.cornerSquareGradientColor1"
                           @change="handleCornerSquareGradientChange"
                         />
                       </div>
                       <div class="flex-1">
-                        <label class="text-caption text-gray-500 mb-1 block">结束色</label>
+                        <label class="text-caption text-gray-500 dark:text-ink-500 mb-1 block">结束色</label>
                         <el-color-picker
                           v-model="info.cornerSquareGradientColor2"
                           @change="handleCornerSquareGradientChange"
@@ -1074,12 +1074,12 @@ const downloadQR = () => {
 
           <!-- 角落点设置 -->
           <div class="space-y-2">
-            <label class="text-body-sm font-medium text-gray-700">角落点</label>
+            <label class="text-body-sm font-medium text-gray-700 dark:text-ink-800">角落点</label>
             
-            <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+            <div class="border border-gray-200 dark:border-border-default rounded-lg p-4 bg-gray-50 dark:bg-surface-1">
               <!-- 角落点样式 -->
               <div class="mb-3">
-                <label class="text-caption text-gray-500 mb-1 block">样式</label>
+                <label class="text-caption text-gray-500 dark:text-ink-500 mb-1 block">样式</label>
                 <el-select
                   v-model="info.cornerDotType"
                   class="w-full"
@@ -1094,7 +1094,7 @@ const downloadQR = () => {
               <el-tabs v-model="info.cornerDotColorMode" @tab-change="handleCornerDotColorModeChange">
                 <el-tab-pane label="单色" name="single">
                   <div class="space-y-2">
-                    <label class="text-caption text-gray-500 mb-1 block">颜色</label>
+                    <label class="text-caption text-gray-500 dark:text-ink-500 mb-1 block">颜色</label>
                     <el-color-picker
                       v-model="info.cornerDotColor"
                       @change="handleCornerDotGradientChange"
@@ -1106,7 +1106,7 @@ const downloadQR = () => {
                   <div class="space-y-3">
                     <!-- 渐变类型 -->
                     <div>
-                      <label class="text-caption text-gray-500 mb-1 block">渐变类型</label>
+                      <label class="text-caption text-gray-500 dark:text-ink-500 mb-1 block">渐变类型</label>
                       <el-select
                         v-model="info.cornerDotGradientType"
                         class="w-full"
@@ -1119,7 +1119,7 @@ const downloadQR = () => {
                     
                     <!-- 渐变角度（线性渐变时显示） -->
                     <div v-if="info.cornerDotGradientType === 'linear'">
-                      <label class="text-caption text-gray-500 mb-1 block">
+                      <label class="text-caption text-gray-500 dark:text-ink-500 mb-1 block">
                         渐变角度: {{ info.cornerDotGradientRotation }}°
                       </label>
                       <el-slider
@@ -1135,14 +1135,14 @@ const downloadQR = () => {
                     <!-- 渐变色选择 -->
                     <div class="flex gap-4">
                       <div class="flex-1">
-                        <label class="text-caption text-gray-500 mb-1 block">起始色</label>
+                        <label class="text-caption text-gray-500 dark:text-ink-500 mb-1 block">起始色</label>
                         <el-color-picker
                           v-model="info.cornerDotGradientColor1"
                           @change="handleCornerDotGradientChange"
                         />
                       </div>
                       <div class="flex-1">
-                        <label class="text-caption text-gray-500 mb-1 block">结束色</label>
+                        <label class="text-caption text-gray-500 dark:text-ink-500 mb-1 block">结束色</label>
                         <el-color-picker
                           v-model="info.cornerDotGradientColor2"
                           @change="handleCornerDotGradientChange"
@@ -1163,14 +1163,14 @@ const downloadQR = () => {
 
       <!-- 右侧预览区域 -->
       <div 
-        class="preview-container" 
+        class="preview-container"
         :style="{ marginTop: dynamicMarginTop + 'px' }"
       >
-        <div class="flex flex-col items-center space-y-4 lg:w-80">
+        <div class="flex flex-col items-center space-y-4 w-full">
           <template v-if="info.content && info.content.trim()">
             <div class="text-center">
-              <h3 class="text-body-lg font-medium text-gray-900 mb-2">二维码预览</h3>
-              <p class="text-body-sm text-gray-500">点击二维码查看大图</p>
+              <h3 class="text-body-lg font-medium text-gray-900 dark:text-ink-900 mb-2">二维码预览</h3>
+              <p class="text-body-sm text-gray-500 dark:text-ink-500 qrcode-preview-subtitle">点击二维码查看大图</p>
             </div>
             <div class="qr-code bg-white p-4 rounded-lg border border-gray-200">
               <div class="qr-code-wrapper" @click="viewLargeQR">
@@ -1211,8 +1211,8 @@ const downloadQR = () => {
           </template>
           <template v-else>
             <!-- 占位内容 -->
-            <div class="flex flex-col items-center justify-center h-64 w-full opacity-60">
-              <el-icon size="48"><svg viewBox="0 0 1024 1024"><path d="M512 64C264.6 64 64 264.6 64 512s200.6 448 448 448 448-200.6 448-448S759.4 64 512 64zm0 820c-205.2 0-372-166.8-372-372S306.8 140 512 140s372 166.8 372 372-166.8 372-372 372zm0-624c-139.2 0-252 112.8-252 252s112.8 252 252 252 252-112.8 252-252S651.2 260 512 260zm0 432c-99.2 0-180-80.8-180-180s80.8-180 180-180 180 80.8 180 180-80.8 180-180 180z" fill="#d3d3d3"/></svg></el-icon>
+            <div class="flex flex-col items-center justify-center h-64 w-full text-ink-500">
+              <el-icon size="48"><svg viewBox="0 0 1024 1024"><path d="M512 64C264.6 64 64 264.6 64 512s200.6 448 448 448 448-200.6 448-448S759.4 64 512 64zm0 820c-205.2 0-372-166.8-372-372S306.8 140 512 140s372 166.8 372 372-166.8 372-372 372zm0-624c-139.2 0-252 112.8-252 252s112.8 252 252 252 252-112.8 252-252S651.2 260 512 260zm0 432c-99.2 0-180-80.8-180-180s80.8-180 180-180 180 80.8 180 180-80.8 180-180 180z" fill="currentColor"/></svg></el-icon>
               <span class="text-gray-400 mt-4">请输入内容以生成二维码</span>
             </div>
           </template>
@@ -1223,12 +1223,12 @@ const downloadQR = () => {
     <!-- 移动端布局：预览区在前，控制面板在后 -->
     <div class="lg:hidden">
       <!-- 移动端预览区 -->
-      <div class="w-full p-6 rounded-2xl bg-white shadow-sm mb-6">
+      <div class="w-full p-6 rounded-2xl bg-white dark:bg-surface-0 border border-transparent dark:border-border-default shadow-sm mb-6">
         <div class="flex flex-col items-center space-y-4">
           <template v-if="info.content && info.content.trim()">
             <div class="text-center">
-              <h3 class="text-body-lg font-medium text-gray-900 mb-2">二维码预览</h3>
-              <p class="text-body-sm text-gray-500">点击二维码查看大图</p>
+              <h3 class="text-body-lg font-medium text-gray-900 dark:text-ink-900 mb-2">二维码预览</h3>
+              <p class="text-body-sm text-gray-500 dark:text-ink-500 qrcode-preview-subtitle">点击二维码查看大图</p>
             </div>
 
             <div class="qr-code bg-white p-4 rounded-lg border border-gray-200">
@@ -1270,8 +1270,8 @@ const downloadQR = () => {
           </template>
           <template v-else>
             <!-- 占位内容 -->
-            <div class="flex flex-col items-center justify-center h-64 w-full opacity-60">
-              <el-icon size="48"><svg viewBox="0 0 1024 1024"><path d="M512 64C264.6 64 64 264.6 64 512s200.6 448 448 448 448-200.6 448-448S759.4 64 512 64zm0 820c-205.2 0-372-166.8-372-372S306.8 140 512 140s372 166.8 372 372-166.8 372-372 372zm0-624c-139.2 0-252 112.8-252 252s112.8 252 252 252 252-112.8 252-252S651.2 260 512 260zm0 432c-99.2 0-180-80.8-180-180s80.8-180 180-180 180 80.8 180 180-80.8 180-180 180z" fill="#d3d3d3"/></svg></el-icon>
+            <div class="flex flex-col items-center justify-center h-64 w-full text-ink-500">
+              <el-icon size="48"><svg viewBox="0 0 1024 1024"><path d="M512 64C264.6 64 64 264.6 64 512s200.6 448 448 448 448-200.6 448-448S759.4 64 512 64zm0 820c-205.2 0-372-166.8-372-372S306.8 140 512 140s372 166.8 372 372-166.8 372-372 372zm0-624c-139.2 0-252 112.8-252 252s112.8 252 252 252 252-112.8 252-252S651.2 260 512 260zm0 432c-99.2 0-180-80.8-180-180s80.8-180 180-180 180 80.8 180 180-80.8 180-180 180z" fill="currentColor"/></svg></el-icon>
               <span class="text-gray-400 mt-4">请输入内容以生成二维码</span>
             </div>
           </template>
@@ -1279,11 +1279,11 @@ const downloadQR = () => {
       </div>
 
       <!-- 移动端控制面板 -->
-      <div class="w-full p-6 rounded-2xl bg-white shadow-sm">
+      <div class="w-full p-6 rounded-2xl bg-white dark:bg-surface-0 border border-transparent dark:border-border-default shadow-sm">
         <div class="space-y-4">
           <!-- 内容输入 -->
           <div class="space-y-2">
-            <label class="text-body-sm font-medium text-gray-700"
+            <label class="text-body-sm font-medium text-gray-700 dark:text-ink-800"
               >内容（网站链接，扫码会直接打开，暂不支持中文）</label
             >
             <el-input
@@ -1305,7 +1305,7 @@ const downloadQR = () => {
 
           <!-- 尺寸设置 -->
           <div class="space-y-2">
-            <label class="text-body-sm font-medium text-gray-700">尺寸</label>
+            <label class="text-body-sm font-medium text-gray-700 dark:text-ink-800">尺寸</label>
             <el-select
               v-model="info.size"
               class="w-full"
@@ -1321,7 +1321,7 @@ const downloadQR = () => {
 
           <!-- 纠错级别 -->
           <div class="space-y-2">
-            <label class="text-body-sm font-medium text-gray-700">纠错级别</label>
+            <label class="text-body-sm font-medium text-gray-700 dark:text-ink-800">纠错级别</label>
             <el-select
               v-model="info.errorCorrectionLevel"
               class="w-full"
@@ -1336,7 +1336,7 @@ const downloadQR = () => {
 
           <!-- Logo上传 -->
           <div class="space-y-2">
-            <label class="text-body-sm font-medium text-gray-700">Logo</label>
+            <label class="text-body-sm font-medium text-gray-700 dark:text-ink-800">Logo</label>
             <el-upload
               ref="uploadLogo"
               action="#"
@@ -1382,7 +1382,7 @@ const downloadQR = () => {
 
           <!-- 配置模式选择 -->
           <div class="space-y-2">
-            <label class="text-body-sm font-medium text-gray-700">样式配置</label>
+            <label class="text-body-sm font-medium text-gray-700 dark:text-ink-800">样式配置</label>
             <el-tabs v-model="info.configMode" class="w-full">
               <el-tab-pane label="预设" name="preset">
                 <div class="space-y-4">
@@ -1432,7 +1432,7 @@ const downloadQR = () => {
                 <div class="space-y-4">
                   <!-- 点样式设置 -->
                   <div class="space-y-2">
-                    <label class="text-body-sm font-medium text-gray-700">点样式</label>
+                    <label class="text-body-sm font-medium text-gray-700 dark:text-ink-800">点样式</label>
                     <el-select
                       v-model="info.dotType"
                       class="w-full"
@@ -1449,23 +1449,23 @@ const downloadQR = () => {
 
                   <!-- 颜色设置 -->
                   <div class="space-y-2">
-                    <label class="text-body-sm font-medium text-gray-700">颜色设置</label>
+                    <label class="text-body-sm font-medium text-gray-700 dark:text-ink-800">颜色设置</label>
                     
-                    <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                    <div class="border border-gray-200 dark:border-border-default rounded-lg p-4 bg-gray-50 dark:bg-surface-1">
                       <!-- 颜色模式选择 -->
                       <el-tabs v-model="info.colorMode" @tab-change="handleColorModeChange">
                         <el-tab-pane label="单色" name="single">
                           <div class="space-y-2">
                             <div class="flex gap-4">
                               <div class="flex-1">
-                                <label class="text-caption text-gray-500 mb-1 block">前景色</label>
+                                <label class="text-caption text-gray-500 dark:text-ink-500 mb-1 block">前景色</label>
                                 <el-color-picker
                                   v-model="info.preColor"
                                   @change="handleColorChange"
                                 />
                               </div>
                               <div class="flex-1">
-                                <label class="text-caption text-gray-500 mb-1 block">背景色</label>
+                                <label class="text-caption text-gray-500 dark:text-ink-500 mb-1 block">背景色</label>
                                 <el-color-picker
                                   v-model="info.bgColor"
                                   @change="handleColorChange"
@@ -1479,7 +1479,7 @@ const downloadQR = () => {
                           <div class="space-y-3">
                             <!-- 渐变类型 -->
                             <div>
-                              <label class="text-caption text-gray-500 mb-1 block">渐变类型</label>
+                              <label class="text-caption text-gray-500 dark:text-ink-500 mb-1 block">渐变类型</label>
                               <el-select
                                 v-model="info.gradientType"
                                 class="w-full"
@@ -1492,7 +1492,7 @@ const downloadQR = () => {
                             
                             <!-- 渐变角度（线性渐变时显示） -->
                             <div v-if="info.gradientType === 'linear'">
-                              <label class="text-caption text-gray-500 mb-1 block">
+                              <label class="text-caption text-gray-500 dark:text-ink-500 mb-1 block">
                                 渐变角度: {{ info.gradientRotation }}°
                               </label>
                               <el-slider
@@ -1508,14 +1508,14 @@ const downloadQR = () => {
                             <!-- 渐变色选择 -->
                             <div class="flex gap-4">
                               <div class="flex-1">
-                                <label class="text-caption text-gray-500 mb-1 block">起始色</label>
+                                <label class="text-caption text-gray-500 dark:text-ink-500 mb-1 block">起始色</label>
                                 <el-color-picker
                                   v-model="info.gradientColor1"
                                   @change="handleGradientChange"
                                 />
                               </div>
                               <div class="flex-1">
-                                <label class="text-caption text-gray-500 mb-1 block">结束色</label>
+                                <label class="text-caption text-gray-500 dark:text-ink-500 mb-1 block">结束色</label>
                                 <el-color-picker
                                   v-model="info.gradientColor2"
                                   @change="handleGradientChange"
@@ -1525,7 +1525,7 @@ const downloadQR = () => {
                             
                             <!-- 背景色 -->
                             <div>
-                              <label class="text-caption text-gray-500 mb-1 block">背景色</label>
+                              <label class="text-caption text-gray-500 dark:text-ink-500 mb-1 block">背景色</label>
                               <el-color-picker
                                 v-model="info.bgColor"
                                 @change="handleColorChange"
@@ -1539,12 +1539,12 @@ const downloadQR = () => {
 
                   <!-- 角落方块设置 -->
                   <div class="space-y-2">
-                    <label class="text-body-sm font-medium text-gray-700">角落方块</label>
+                    <label class="text-body-sm font-medium text-gray-700 dark:text-ink-800">角落方块</label>
                     
-                    <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                    <div class="border border-gray-200 dark:border-border-default rounded-lg p-4 bg-gray-50 dark:bg-surface-1">
                       <!-- 角落方块样式 -->
                       <div class="mb-3">
-                        <label class="text-caption text-gray-500 mb-1 block">样式</label>
+                        <label class="text-caption text-gray-500 dark:text-ink-500 mb-1 block">样式</label>
                         <el-select
                           v-model="info.cornerSquareType"
                           class="w-full"
@@ -1560,7 +1560,7 @@ const downloadQR = () => {
                       <el-tabs v-model="info.cornerSquareColorMode" @tab-change="handleCornerSquareColorModeChange">
                         <el-tab-pane label="单色" name="single">
                           <div class="space-y-2">
-                            <label class="text-caption text-gray-500 mb-1 block">颜色</label>
+                            <label class="text-caption text-gray-500 dark:text-ink-500 mb-1 block">颜色</label>
                             <el-color-picker
                               v-model="info.cornerSquareColor"
                               @change="handleCornerSquareGradientChange"
@@ -1572,7 +1572,7 @@ const downloadQR = () => {
                           <div class="space-y-3">
                             <!-- 渐变类型 -->
                             <div>
-                              <label class="text-caption text-gray-500 mb-1 block">渐变类型</label>
+                              <label class="text-caption text-gray-500 dark:text-ink-500 mb-1 block">渐变类型</label>
                               <el-select
                                 v-model="info.cornerSquareGradientType"
                                 class="w-full"
@@ -1585,7 +1585,7 @@ const downloadQR = () => {
                             
                             <!-- 渐变角度（线性渐变时显示） -->
                             <div v-if="info.cornerSquareGradientType === 'linear'">
-                              <label class="text-caption text-gray-500 mb-1 block">
+                              <label class="text-caption text-gray-500 dark:text-ink-500 mb-1 block">
                                 渐变角度: {{ info.cornerSquareGradientRotation }}°
                               </label>
                               <el-slider
@@ -1601,14 +1601,14 @@ const downloadQR = () => {
                             <!-- 渐变色选择 -->
                             <div class="flex gap-4">
                               <div class="flex-1">
-                                <label class="text-caption text-gray-500 mb-1 block">起始色</label>
+                                <label class="text-caption text-gray-500 dark:text-ink-500 mb-1 block">起始色</label>
                                 <el-color-picker
                                   v-model="info.cornerSquareGradientColor1"
                                   @change="handleCornerSquareGradientChange"
                                 />
                               </div>
                               <div class="flex-1">
-                                <label class="text-caption text-gray-500 mb-1 block">结束色</label>
+                                <label class="text-caption text-gray-500 dark:text-ink-500 mb-1 block">结束色</label>
                                 <el-color-picker
                                   v-model="info.cornerSquareGradientColor2"
                                   @change="handleCornerSquareGradientChange"
@@ -1623,12 +1623,12 @@ const downloadQR = () => {
 
                   <!-- 角落点设置 -->
                   <div class="space-y-2">
-                    <label class="text-body-sm font-medium text-gray-700">角落点</label>
+                    <label class="text-body-sm font-medium text-gray-700 dark:text-ink-800">角落点</label>
                     
-                    <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                    <div class="border border-gray-200 dark:border-border-default rounded-lg p-4 bg-gray-50 dark:bg-surface-1">
                       <!-- 角落点样式 -->
                       <div class="mb-3">
-                        <label class="text-caption text-gray-500 mb-1 block">样式</label>
+                        <label class="text-caption text-gray-500 dark:text-ink-500 mb-1 block">样式</label>
                         <el-select
                           v-model="info.cornerDotType"
                           class="w-full"
@@ -1643,7 +1643,7 @@ const downloadQR = () => {
                       <el-tabs v-model="info.cornerDotColorMode" @tab-change="handleCornerDotColorModeChange">
                         <el-tab-pane label="单色" name="single">
                           <div class="space-y-2">
-                            <label class="text-caption text-gray-500 mb-1 block">颜色</label>
+                            <label class="text-caption text-gray-500 dark:text-ink-500 mb-1 block">颜色</label>
                             <el-color-picker
                               v-model="info.cornerDotColor"
                               @change="handleCornerDotGradientChange"
@@ -1655,7 +1655,7 @@ const downloadQR = () => {
                           <div class="space-y-3">
                             <!-- 渐变类型 -->
                             <div>
-                              <label class="text-caption text-gray-500 mb-1 block">渐变类型</label>
+                              <label class="text-caption text-gray-500 dark:text-ink-500 mb-1 block">渐变类型</label>
                               <el-select
                                 v-model="info.cornerDotGradientType"
                                 class="w-full"
@@ -1668,7 +1668,7 @@ const downloadQR = () => {
                             
                             <!-- 渐变角度（线性渐变时显示） -->
                             <div v-if="info.cornerDotGradientType === 'linear'">
-                              <label class="text-caption text-gray-500 mb-1 block">
+                              <label class="text-caption text-gray-500 dark:text-ink-500 mb-1 block">
                                 渐变角度: {{ info.cornerDotGradientRotation }}°
                               </label>
                               <el-slider
@@ -1684,14 +1684,14 @@ const downloadQR = () => {
                             <!-- 渐变色选择 -->
                             <div class="flex gap-4">
                               <div class="flex-1">
-                                <label class="text-caption text-gray-500 mb-1 block">起始色</label>
+                                <label class="text-caption text-gray-500 dark:text-ink-500 mb-1 block">起始色</label>
                                 <el-color-picker
                                   v-model="info.cornerDotGradientColor1"
                                   @change="handleCornerDotGradientChange"
                                 />
                               </div>
                               <div class="flex-1">
-                                <label class="text-caption text-gray-500 mb-1 block">结束色</label>
+                                <label class="text-caption text-gray-500 dark:text-ink-500 mb-1 block">结束色</label>
                                 <el-color-picker
                                   v-model="info.cornerDotGradientColor2"
                                   @change="handleCornerDotGradientChange"
@@ -1756,6 +1756,55 @@ const downloadQR = () => {
   </div>
 </template>
 
+<style>
+html.dark .qrcode-page .preset-card {
+  background: rgb(var(--surface-2));
+  border-color: rgb(var(--border-default));
+}
+html.dark .qrcode-page .preset-card:hover {
+  border-color: rgb(var(--border-strong));
+}
+html.dark .qrcode-page .preset-card-active {
+  background: rgb(var(--accent-700) / 0.18);
+  border-color: rgb(var(--accent-400));
+}
+html.dark .qrcode-page .preset-name {
+  color: rgb(var(--ink-900));
+}
+html.dark .qrcode-page .preset-desc {
+  color: rgb(var(--ink-500));
+}
+html.dark .qrcode-page .preview-container {
+  background: rgb(var(--surface-0));
+  border: 1px solid rgb(var(--border-default));
+}
+html.dark .qrcode-page .qr-code {
+  border-color: rgb(var(--border-default));
+}
+html.dark .qrcode-page .qr-code-container,
+html.dark .qrcode-page .qr-code-container-large {
+  background: rgb(var(--surface-0));
+  border-color: rgb(var(--border-default));
+}
+html.dark .qrcode-page .el-upload--picture-card {
+  border-color: rgb(var(--border-strong));
+}
+html.dark .qrcode-page .el-upload--picture-card:hover {
+  border-color: rgb(var(--accent-400));
+}
+html.dark .qrcode-page .qrcode-empty-text,
+html.dark .qrcode-page .qrcode-preview-subtitle {
+  color: rgb(var(--ink-500));
+}
+html.dark .el-color-picker__panel {
+  background: rgb(var(--surface-0));
+  border-color: rgb(var(--border-default));
+  color: rgb(var(--ink-900));
+  max-width: calc(100vw - 24px);
+  box-sizing: border-box;
+}
+</style>
+
 <style scoped>
 /* 预设卡片样式 */
 .preset-card {
@@ -1792,8 +1841,11 @@ const downloadQR = () => {
 
 /* 预览容器 */
   .preview-container {
-    width: 320px;
-    background: white;
+    width: min(320px, 100%);
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    background: rgb(var(--surface-0));
     border-radius: 12px;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
     padding: 16px;
@@ -1802,7 +1854,7 @@ const downloadQR = () => {
   transition: margin-top 0.1s ease;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1023px) {
   .preview-container {
     width: 100%;
     margin-left: 0;
@@ -1825,11 +1877,6 @@ const downloadQR = () => {
 }
 
 /* 确保颜色选择器不会超出容器 */
-:deep(.el-color-picker) {
-  width: 100% !important;
-  max-width: 100% !important;
-}
-
 .color-picker-limit {
   max-width: 120px;
   width: 100%;
@@ -1857,7 +1904,7 @@ const downloadQR = () => {
 }
 
 /* 响应式设计 */
-@media (max-width: 1024px) {
+@media (max-width: 1023px) {
   .qr-code {
     max-width: 300px;
     margin: 0 auto;
@@ -1946,7 +1993,12 @@ const downloadQR = () => {
   transform: scale(1.02);
 }
 
-/* 大图对话框中的二维码样式 */
+:deep(.qr-code-image),
+:deep(.qr-code-image-large) {
+  max-width: 100%;
+  height: auto;
+}
+
 :deep(.qr-code-container-large) {
   display: flex;
   flex-direction: column;
@@ -2013,7 +2065,7 @@ const downloadQR = () => {
 }
 
 /* H5端滑动条布局优化 */
-@media (max-width: 1024px) {
+@media (max-width: 1023px) {
   /* 让滑动条和输入框分两行显示 */
   :deep(.el-slider) {
     width: 100% !important;

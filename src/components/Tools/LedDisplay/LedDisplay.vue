@@ -252,7 +252,7 @@ onBeforeUnmount(() => document.removeEventListener('fullscreenchange', onFsChang
 
 <style scoped>
 @keyframes led-scroll {
-  0%   { transform: translateX(100vw); }
+  0%   { transform: translateX(0); }
   100% { transform: translateX(-100%); }
 }
 
@@ -277,6 +277,10 @@ onBeforeUnmount(() => document.removeEventListener('fullscreenchange', onFsChang
   font-weight: var(--font-weight);
   white-space: nowrap;
   display: inline-block;
+  /* padding-left: 100% 相对屏幕容器宽度，让文字从右缘外一点点起步（此前 100vw 起步要等近半圈才见字）；
+     translateX(-100%) 的百分比含 padding，恰好把「文字+让位」整体移出左缘 */
+  flex-shrink: 0;
+  padding-left: 100%;
   animation: led-scroll var(--speed) linear infinite;
   will-change: transform;
 }

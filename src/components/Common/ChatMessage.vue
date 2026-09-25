@@ -78,7 +78,7 @@ const renderedReasoning = computed(() => {
       class="max-w-[80%] rounded-lg px-4 py-2 relative"
       :class="message.type === 'user'
         ? 'bg-accent-500 text-white'
-        : 'bg-surface-0 text-ink-900 border border-border-default shadow-sm'"
+        : 'bg-surface-0 text-ink-900 border border-border-subtle shadow-sm'"
     >
       <!-- 用户消息：纯文本显示 -->
       <div v-if="message.type === 'user'" class="text-body-sm">{{ message.content }}</div>
@@ -88,9 +88,9 @@ const renderedReasoning = computed(() => {
         <!-- 思考过程（如果有） -->
         <div
           v-if="message.reasoning"
-          class="mb-3 p-3 bg-accent-50 border-l-4 border-accent-200 rounded-r-lg"
+          class="mb-3 p-3 bg-accent-50 dark:bg-accent-500/10 border-l-4 border-accent-200 dark:border-accent-500/40 rounded-r-lg"
         >
-          <div class="text-caption font-medium text-accent-700 mb-2 flex items-center">
+          <div class="text-caption font-medium text-accent-700 dark:text-accent-300 mb-2 flex items-center">
             <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
             </svg>
@@ -131,8 +131,8 @@ const renderedReasoning = computed(() => {
           <!-- 复制按钮 -->
           <button
             @click="handleCopy"
-            class="p-1 rounded hover:bg-accent-50 transition-colors"
-            :class="message.type === 'user' ? 'hover:bg-accent-400' : ''"
+            class="p-1 rounded hover:bg-accent-50 dark:hover:bg-surface-2 transition-colors"
+            :class="message.type === 'user' ? 'hover:bg-accent-400 dark:hover:bg-accent-400' : ''"
             title="复制消息"
           >
             <svg class="w-4 h-4" :class="message.type === 'user' ? 'text-accent-100' : 'text-ink-500'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -144,7 +144,7 @@ const renderedReasoning = computed(() => {
           <button
             v-if="message.type === 'assistant' && !message.streaming"
             @click="handleRetry"
-            class="p-1 rounded hover:bg-accent-50 transition-colors"
+            class="p-1 rounded hover:bg-accent-50 dark:hover:bg-surface-2 transition-colors"
             title="重新生成"
           >
             <svg class="w-4 h-4 text-ink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -158,7 +158,7 @@ const renderedReasoning = computed(() => {
       <div v-if="message.type === 'assistant' && message.failed" class="mt-2">
         <button
           @click="handleRetry"
-          class="px-3 py-1 text-caption bg-danger-50 text-danger-600 hover:bg-danger-100 rounded border border-danger-200 transition-colors"
+          class="px-3 py-1 text-caption bg-danger-50 dark:bg-danger-500/15 text-danger-600 dark:text-danger-400 hover:bg-danger-100 dark:hover:bg-danger-500/25 rounded border border-danger-200 dark:border-danger-500/40 transition-colors"
         >
           🔄 重试
         </button>
@@ -183,7 +183,7 @@ const renderedReasoning = computed(() => {
 }
 
 .reasoning-content :deep(code) {
-  background-color: rgb(var(--accent-50));
+  background-color: rgb(var(--accent-500) / 0.12);
   color: rgb(var(--accent-700));
   padding: 0.1em 0.3em;
   border-radius: 0.2em;

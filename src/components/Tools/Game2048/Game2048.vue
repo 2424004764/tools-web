@@ -571,7 +571,7 @@ onUnmounted(() => {
             <template v-for="(row, i) in board" :key="`row-${i}`">
               <template v-for="cell in row" :key="Math.random()">
                 <div
-                  class="bg-gray-200 rounded-lg flex items-center justify-center font-bold transition-all duration-200"
+                  class="rounded-lg flex items-center justify-center font-bold transition-all duration-200"
                   :class="[
                     getTileColor(cell),
                     getTileTextColor(cell)

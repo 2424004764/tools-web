@@ -20,16 +20,42 @@ const RELOAD_COUNT_KEY = '__reload_count__'
 const MIN_RELOAD_INTERVAL = 5000
 const LAST_RELOAD_TIME_KEY = '__last_reload_ts__'
 
+// 当前工具页归零任务的导航代际；新导航开始时令旧 RAF 失效，
+// 避免快速连续跳转时旧目标继续改写新页面的滚动位置。
+let scrollPinGeneration = 0
+let scrollPinFrame: number | null = null
+const cancelScrollPin = () => {
+  scrollPinGeneration += 1
+  if (scrollPinFrame !== null) {
+    window.cancelAnimationFrame(scrollPinFrame)
+    scrollPinFrame = null
+  }
+}
+
 //创建路由器
 const router = createRouter({
   history: createWebHistory(),
   routes: constantRoute,
   scrollBehavior(to, from, savedPosition) {
-    if (savedPosition) return savedPosition
+    // 工具页导航的滚动由当前导航统一负责；如果 Router 的异步 scrollBehavior
+    // 在新导航之后才落地，则放弃旧结果，避免把新页面再次滚到旧位置。
+    if (to.fullPath !== router.currentRoute.value.fullPath) return false
+    // 首页：浏览器返回时恢复精确位置；其余进入方式交给 Home 组件内
+    // 的恢复逻辑（精确位置 sessionStorage / 菜单锚点）
+    if (to.path === '/') {
+      if (savedPosition) return savedPosition
+      return false
+    }
+    // 工具页：进入时不做任何滚动恢复，一律回到顶部
+    // （afterEach 里还会在渲染后补一次归零，双保险）
     if (to.path === from.path) return false
     return { left: 0, top: 0 }
   },
 })
+
+// 接管浏览器滚动恢复：交由应用内机制管理（首页精确恢复 / 锚点 / 工具页归零），
+// 避免浏览器在异步渲染后自动恢复历史滚动位置、与路由滚动行为竞争
+window.history.scrollRestoration = 'manual'
 
 // SEO meta 数据源：每个路由的 meta 字段（见 router.ts）
 // - keywords / description / og:* 等由 index.html 静态 + Vite 构建时注入（首页）+ 路由 meta 三层共同决定
@@ -40,6 +66,9 @@ const APP_TITLE = import.meta.env.VITE_APP_TITLE as string
 const APP_DESC = import.meta.env.VITE_APP_DESC as string
 
 router.beforeEach(async (to, _from, next) => {
+  // 任何新导航都会使上一条工具页归零任务失效；Home 自身的生命周期任务
+  // 也会在路由离开时取消，双层保护共享的 window 滚动状态。
+  cancelScrollPin()
   // 记录目标路径，供 onError 硬刷时使用（避免 currentRoute 还指向旧路由）
   sessionStorage.setItem(TARGET_PATH_KEY, to.fullPath)
 
@@ -276,13 +305,35 @@ router.onError((error) => {
 
 // 路由后置：仅更新 document.title（SPA 内部导航的用户体验优化）
 // 同时清除动态 chunk 错误计数（导航成功说明目标 chunk 已加载完毕）
-router.afterEach((to) => {
+router.afterEach((to, _from, failure) => {
+  // 失败/取消的导航不能启动新的滚动任务，也不能把标题和埋点写成未落地的目标页。
+  if (failure) return
+
   if (sessionStorage.getItem(CHUNK_ERROR_KEY)) {
     sessionStorage.removeItem(CHUNK_ERROR_KEY)
   }
   document.title = to.meta.title
     ? `${to.meta.title as string}-${APP_TITLE}`
     : `${APP_TITLE}-${APP_DESC}`
+
+  // 工具页（非首页）进入时强制回到顶部，不做任何滚动恢复：
+  // - 首页有自身的滚动恢复机制（浏览器返回恢复精确位置 / 菜单点击走锚点），不受影响
+  // - SPA 共用 document，页面切换的过渡/异步渲染存在时序竞争，
+  //   用带导航代际校验的 RAF 短暂钉住，避免旧导航回写新页面
+  if (to.path !== '/') {
+    const generation = scrollPinGeneration
+    let frames = 0
+    const pinTop = () => {
+      if (generation !== scrollPinGeneration || router.currentRoute.value.fullPath !== to.fullPath) return
+      window.scrollTo(0, 0)
+      if (++frames < 10) {
+        scrollPinFrame = window.requestAnimationFrame(pinTop)
+      } else {
+        scrollPinFrame = null
+      }
+    }
+    pinTop()
+  }
 
   // 工具使用埋点：所有用户进入工具页都打点（登录用户带 uid，未登录 uid 留空）
   // 排除 /admin（后台不算工具使用）和 /login（登录页本身不是工具）

@@ -96,17 +96,17 @@ onMounted(() => {
 }
 
 .overflow-y-auto::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: rgb(var(--surface-2));
   border-radius: 3px;
 }
 
 .overflow-y-auto::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: rgb(var(--border-default));
   border-radius: 3px;
 }
 
 .overflow-y-auto::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+  background: rgb(var(--ink-300));
 }
 
 /* 自定义旋转动画 */
@@ -141,7 +141,7 @@ onMounted(() => {
 .streaming-cursor::after {
   content: '▋';
   animation: pulse 1s infinite;
-  color: #3b82f6;
+  color: rgb(var(--accent-500));
 }
 
 /* 思考过程样式 */
@@ -155,8 +155,8 @@ onMounted(() => {
 }
 
 .reasoning-content :deep(code) {
-  background-color: #e0f2fe;
-  color: #0277bd;
+  background-color: rgb(var(--accent-500) / 0.12);
+  color: rgb(var(--accent-700));
   padding: 0.1em 0.3em;
   border-radius: 0.2em;
   font-size: 0.8em;

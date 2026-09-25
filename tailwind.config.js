@@ -16,6 +16,7 @@ const defaultTheme = require('tailwindcss/defaultTheme')
  * `tile-*`（2048 游戏色）保持不变 —— 属于游戏素材，不归 token 管。
  */
 export default {
+  darkMode: 'class',
   content: [
     "./index.html",
     "./src/**/*.{vue,js,ts,jsx,tsx}",
@@ -113,7 +114,7 @@ export default {
           strong:  'rgb(var(--border-strong)  / <alpha-value>)',
         },
 
-        // accent — 品牌主色 = 暖橙（替代 orange 阶梯的语义化重命名）
+        // accent — 品牌主色 = 晴空蓝（替代 orange 阶梯的语义化重命名）
         accent: {
           50:  'rgb(var(--accent-50)  / <alpha-value>)',
           100: 'rgb(var(--accent-100) / <alpha-value>)',
@@ -126,6 +127,21 @@ export default {
           800: 'rgb(var(--accent-800) / <alpha-value>)',
           900: 'rgb(var(--accent-900) / <alpha-value>)',
           950: 'rgb(var(--accent-950) / <alpha-value>)',
+        },
+
+        // violet — 品牌渐变副色（与 accent 组成蓝→靛渐变）
+        violet: {
+          50:  'rgb(var(--violet-50)  / <alpha-value>)',
+          100: 'rgb(var(--violet-100) / <alpha-value>)',
+          200: 'rgb(var(--violet-200) / <alpha-value>)',
+          300: 'rgb(var(--violet-300) / <alpha-value>)',
+          400: 'rgb(var(--violet-400) / <alpha-value>)',
+          500: 'rgb(var(--violet-500) / <alpha-value>)',
+          600: 'rgb(var(--violet-600) / <alpha-value>)',
+          700: 'rgb(var(--violet-700) / <alpha-value>)',
+          800: 'rgb(var(--violet-800) / <alpha-value>)',
+          900: 'rgb(var(--violet-900) / <alpha-value>)',
+          950: 'rgb(var(--violet-950) / <alpha-value>)',
         },
 
         // danger — 语义红色阶梯（用于错误 / 删除按钮 / 失败状态）

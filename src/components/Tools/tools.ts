@@ -721,6 +721,15 @@ export function getToolsCate() {
           cateId: 4,
           cate: '教育学术',
         },
+        {
+          id: 139,
+          title: '复利计算器',
+          logo: '/images/logo/compound-interest.svg',
+          desc: '本金、年利率、年限与定投实时计算复利终值，对照单利、倒推本金/年限/利率，附年度明细与增长曲线',
+          url: '/compound-interest/',
+          cateId: 4,
+          cate: '教育学术',
+        },
       ]
     },
     {

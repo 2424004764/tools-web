@@ -320,4 +320,31 @@ function removeItemChild(idx: number) {
   color: #9ca3af;
   margin-bottom: 2px;
 }
+
+/* ─── 深色模式适配 ─────────────────────────────────────────── */
+html.dark .field-editor {
+  background: rgb(var(--surface-2));
+  border-color: rgb(var(--border-default));
+}
+html.dark .field-editor.is-root {
+  background: transparent;
+  border: none;
+}
+html.dark .field-editor.is-nested {
+  background: rgb(var(--surface-0));
+  border-color: rgb(var(--border-default));
+}
+html.dark .field-editor:hover {
+  border-color: rgb(var(--accent-500) / 0.5);
+}
+html.dark .fe-config-label {
+  color: rgb(var(--ink-400));
+}
+html.dark .fe-config-sep,
+html.dark .fe-children-hint {
+  color: rgb(var(--ink-500));
+}
+html.dark .fe-children {
+  border-left-color: rgb(var(--border-default));
+}
 </style>

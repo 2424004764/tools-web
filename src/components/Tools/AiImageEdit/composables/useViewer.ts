@@ -72,6 +72,9 @@ export function useViewer() {
   // 当前已绑定的 wrapper 元素，用于解绑时去重
   let attachedViewerWrapper: HTMLElement | null = null
   const viewerMousedownHandler = (e: MouseEvent) => {
+    // 只响应左键：右键（另存为/复制图片的上下文菜单）与中键不视为关闭信号，
+    // 否则右键的 mousedown 会先把预览关掉，上下文菜单根本弹不出来
+    if (e.button !== 0) return
     const target = e.target as HTMLElement | null
     if (!target) return
     // 点在操作栏内 → 不关
@@ -106,6 +109,8 @@ export function useViewer() {
   // 旧的兜底（保留给非 viewer 的边缘情况，但实际场景下 viewer 已经全覆盖）
   const onGlobalClickOutside = (e: MouseEvent) => {
     if (!previewOpen.value) return
+    // 只响应左键，右键菜单不触发关闭
+    if (e.button !== 0) return
     const target = e.target as HTMLElement | null
     if (!target) return
     // 黑名单：viewer 自身 / 缩略图 / el-image wrapper（已被 viewer 内部监听器接管）

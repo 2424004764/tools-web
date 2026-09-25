@@ -664,4 +664,28 @@ const openRamConsole = () => {
   justify-content: flex-end;
   gap: 10px;
 }
+
+/* ─── 深色模式适配 ─────────────────────────────────────────── */
+html.dark .guide-icon {
+  background: rgb(var(--surface-1));
+  color: #fb923c;
+}
+html.dark .form-section {
+  background: rgb(245 158 11 / 0.06);
+  border-color: rgb(251 146 60 / 0.25);
+}
+html.dark .form-hint,
+html.dark .advanced-toggle {
+  color: #fbbf24;
+}
+html.dark .mode-radio :deep(.el-radio-button__inner) {
+  background: rgb(var(--surface-0)) !important;
+  color: #fcd34d !important;
+  border-color: rgb(251 146 60 / 0.4) !important;
+}
+html.dark :deep(.el-input__wrapper),
+html.dark :deep(.el-textarea__inner) {
+  background: rgb(var(--surface-0));
+}
+
 </style>

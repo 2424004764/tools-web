@@ -490,10 +490,10 @@ const resetFilter = () => {
 </script>
 
 <template>
-  <div class="flex flex-col mt-3 flex-1">
+  <div class="world-records-page flex flex-col mt-3 flex-1 min-w-0">
     <DetailHeader :title="'世界之最'"></DetailHeader>
 
-    <div class="p-4 rounded-2xl bg-white">
+    <div class="p-4 rounded-2xl bg-white dark:bg-surface-0 border border-transparent dark:border-border-default">
       <!-- 顶部说明 + 统计 -->
       <div class="hero">
         <div class="hero-icon">🌏</div>
@@ -605,6 +605,67 @@ const resetFilter = () => {
   </div>
 </template>
 
+<style>
+html.dark .world-records-page .hero {
+  background: linear-gradient(135deg, rgb(var(--accent-950) / 0.55), rgb(14 116 144 / 0.24), rgb(13 148 136 / 0.18));
+  border-color: rgb(var(--accent-700) / 0.45);
+}
+html.dark .world-records-page .hero-title,
+html.dark .world-records-page .cat-title,
+html.dark .world-records-page .card-title {
+  color: rgb(var(--ink-900));
+}
+html.dark .world-records-page .hero-sub,
+html.dark .world-records-page .cat-desc,
+html.dark .world-records-page .card-location,
+html.dark .world-records-page .card-desc {
+  color: rgb(var(--ink-600));
+}
+html.dark .world-records-page .tab {
+  background: rgb(var(--surface-2));
+  color: rgb(var(--ink-700));
+  border-color: rgb(var(--border-default));
+}
+html.dark .world-records-page .tab:hover {
+  background: rgb(var(--surface-3));
+  border-color: rgb(var(--border-strong));
+}
+html.dark .world-records-page .tab.active {
+  background: linear-gradient(135deg, rgb(var(--accent-600)), rgb(var(--violet-600)));
+  color: #fff;
+  border-color: transparent;
+}
+html.dark .world-records-page .tab-count {
+  background: rgb(var(--surface-3));
+  color: rgb(var(--ink-700));
+}
+html.dark .world-records-page .tab.active .tab-count {
+  background: rgb(255 255 255 / 0.2);
+  color: #fff;
+}
+html.dark .world-records-page .cat-header {
+  border-bottom-color: rgb(var(--border-default));
+}
+html.dark .world-records-page .cat-num {
+  color: rgb(var(--accent-300));
+  background: rgb(var(--accent-700) / 0.22);
+}
+html.dark .world-records-page .record-card {
+  background: rgb(var(--surface-2));
+  border-color: rgb(var(--border-default));
+}
+html.dark .world-records-page .record-card:hover {
+  border-color: rgb(var(--accent-400));
+  box-shadow: 0 6px 18px -6px rgb(var(--accent-500) / 0.32);
+}
+html.dark .world-records-page .card-record {
+  color: rgb(var(--accent-300));
+}
+html.dark .world-records-page .card-location .el-icon {
+  color: rgb(var(--danger-400));
+}
+</style>
+
 <style scoped>
 .hero {
   display: flex;
@@ -638,9 +699,12 @@ const resetFilter = () => {
 
 .category-tabs {
   display: flex;
-  flex-wrap: wrap;
   gap: 0.5rem;
   margin-bottom: 1.25rem;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  padding-bottom: 0.25rem;
+  scrollbar-width: thin;
 }
 .tab {
   display: inline-flex;
@@ -725,11 +789,12 @@ const resetFilter = () => {
 
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
   gap: 0.85rem;
 }
 
 .record-card {
+  min-width: 0;
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 0.85rem;

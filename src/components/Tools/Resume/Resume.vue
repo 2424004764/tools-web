@@ -675,7 +675,7 @@ onMounted(() => {
       </div>
 
       <!-- 分页 -->
-      <div v-if="pagination.total > 0" class="pagination-wrapper">
+      <div v-if="pagination.totalPages > 1" class="pagination-wrapper">
         <el-pagination
           v-model:current-page="pagination.page"
           v-model:page-size="pagination.pageSize"
@@ -2002,5 +2002,107 @@ onMounted(() => {
   .dialog-title-area {
     align-items: center;
   }
+}
+
+/* ─── 深色模式适配 ───────────────────────────────────────────────
+   只覆盖写死浅色的自定义样式；表单控件/标签走全局 --el-* 变量自动适配。
+   A4 纸面（.resume-preview 及其内部 .preview-* / .cert-item 等）刻意保持白色。 */
+html.dark .resume-container {
+  background: rgb(var(--surface-0));
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.4);
+}
+
+html.dark .header-section {
+  border-bottom-color: rgb(var(--border-subtle));
+}
+
+html.dark .header-title {
+  color: rgb(var(--ink-900));
+}
+
+html.dark .header-subtitle {
+  color: rgb(var(--ink-500));
+}
+
+html.dark .refresh-btn {
+  border-color: rgb(var(--border-strong));
+  color: rgb(var(--ink-500));
+  background: transparent;
+}
+
+html.dark .empty-state {
+  color: rgb(var(--ink-500));
+}
+
+html.dark .empty-icon {
+  color: rgb(var(--ink-700));
+}
+
+html.dark .empty-title {
+  color: rgb(var(--ink-700));
+}
+
+html.dark .empty-desc {
+  color: rgb(var(--ink-500));
+}
+
+html.dark .resume-card {
+  background: rgb(var(--surface-2));
+  border-color: rgb(var(--border-default));
+}
+
+html.dark .personal-info {
+  color: rgb(var(--ink-500));
+}
+
+html.dark .resume-footer {
+  border-top-color: rgb(var(--border-subtle));
+}
+
+html.dark .time-text {
+  color: rgb(var(--ink-500));
+}
+
+html.dark .pagination-wrapper {
+  border-top-color: rgb(var(--border-subtle));
+}
+
+html.dark .feature-item p {
+  color: rgb(var(--ink-500));
+}
+
+/* 新建/编辑简历弹窗：分区底色、经历卡片、分隔线（弹窗插槽内容，scoped 可命中） */
+html.dark .form-section {
+  background: rgb(var(--surface-1));
+  border-color: rgb(var(--border-default));
+}
+
+html.dark .section-title {
+  color: rgb(var(--ink-900));
+}
+
+html.dark .experience-item {
+  background: rgb(var(--surface-2));
+  border-color: rgb(var(--border-default));
+}
+
+html.dark .dialog-footer {
+  border-top-color: rgb(var(--border-default));
+}
+
+html.dark .dialog-title {
+  color: rgb(var(--ink-900));
+}
+
+html.dark .a4-indicator {
+  color: rgb(var(--ink-500));
+}
+</style>
+
+<!-- 预览弹窗外壳挂在 body（teleport），scoped 样式命不中，需要非 scoped；
+     限定 .preview-dialog 前缀避免泄漏。A4 纸面本身保持白色。 -->
+<style>
+html.dark .preview-dialog .el-dialog__body {
+  background-color: rgb(var(--surface-1));
 }
 </style>

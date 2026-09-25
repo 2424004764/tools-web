@@ -378,11 +378,11 @@ const sampleRateLabel = computed(() => {
         <!-- 统计结果 -->
         <div v-if="imagePreview && !isAnalyzing && sampledPixels" class="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
           <div class="text-center bg-amber-50 p-3 rounded-lg border border-amber-200">
-            <h3 class="text-sm font-medium text-amber-900">唯一颜色数</h3>
+            <h3 class="text-sm font-medium text-amber-900 dark:text-amber-300">唯一颜色数</h3>
             <p class="text-xl font-bold text-amber-600">{{ uniqueColors.toLocaleString() }}</p>
           </div>
           <div class="text-center bg-blue-50 p-3 rounded-lg border border-blue-200">
-            <h3 class="text-sm font-medium text-blue-900">采样像素</h3>
+            <h3 class="text-sm font-medium text-blue-900 dark:text-blue-300">采样像素</h3>
             <p class="text-xl font-bold text-blue-600">
               {{ sampledPixels.toLocaleString() }}
               <span class="text-xs text-blue-400 font-normal">
@@ -391,13 +391,13 @@ const sampleRateLabel = computed(() => {
             </p>
           </div>
           <div class="text-center bg-purple-50 p-3 rounded-lg border border-purple-200">
-            <h3 class="text-sm font-medium text-purple-900">总像素</h3>
+            <h3 class="text-sm font-medium text-purple-900 dark:text-purple-300">总像素</h3>
             <p class="text-xl font-bold text-purple-600">
               {{ totalPixels.toLocaleString() }}
             </p>
           </div>
           <div class="text-center bg-emerald-50 p-3 rounded-lg border border-emerald-200">
-            <h3 class="text-sm font-medium text-emerald-900">耗时</h3>
+            <h3 class="text-sm font-medium text-emerald-900 dark:text-emerald-300">耗时</h3>
             <p class="text-xl font-bold text-emerald-600">{{ elapsedMs }} ms</p>
           </div>
         </div>

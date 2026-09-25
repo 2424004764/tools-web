@@ -1520,4 +1520,231 @@ onMounted(async () => {
     padding: 18px 20px;
   }
 }
+
+/* ─── 深色模式适配 ───────────────────────────────────────────────
+   本页为全自定义暖橙色系，深色下用「暗底 + 半透明橙 tint」保留主题身份；
+   弹窗铬件走 Element Plus 暗色变量（原 :deep 白底规则对 teleport 弹窗本就不生效）。 */
+html.dark .bookmarks-container {
+  background: rgb(249 115 22 / 0.06);
+  border-color: rgb(253 186 116 / 0.15);
+}
+
+html.dark .mode-banner.mode-remote {
+  background: rgb(16 185 129 / 0.12);
+  color: rgb(110 231 183);
+}
+
+html.dark .mode-banner.mode-local {
+  background: rgb(245 158 11 / 0.12);
+  color: rgb(252 211 77);
+}
+
+html.dark .stat-value {
+  color: rgb(253 186 116);
+}
+
+html.dark .stat-label {
+  color: rgb(251 146 60);
+}
+
+html.dark .stat-divider {
+  background: rgb(253 186 116 / 0.3);
+}
+
+html.dark .search-input :deep(.el-input__wrapper) {
+  background: rgb(255 255 255 / 0.06);
+  border-color: rgb(253 186 116 / 0.25);
+}
+
+html.dark .search-input :deep(.el-input__wrapper:hover),
+html.dark .search-input :deep(.el-input__wrapper.is-focus) {
+  border-color: rgb(249 115 22 / 0.7);
+  background: rgb(255 255 255 / 0.08);
+}
+
+html.dark .action-btn {
+  background: rgb(255 255 255 / 0.06) !important;
+  border-color: rgb(253 186 116 / 0.25) !important;
+  color: rgb(253 186 116) !important;
+}
+
+html.dark .action-btn:hover {
+  border-color: rgb(251 146 60 / 0.7) !important;
+  color: #fb923c !important;
+}
+
+html.dark .filter-bar {
+  background: rgb(255 255 255 / 0.04);
+  border-color: rgb(253 186 116 / 0.15);
+}
+
+html.dark .filter-tab {
+  color: rgb(251 146 60);
+}
+
+html.dark .filter-tab:hover {
+  background: rgb(249 115 22 / 0.12);
+  color: rgb(253 186 116);
+}
+
+html.dark .filter-tab.active {
+  background: rgb(249 115 22 / 0.15);
+  color: #fb923c;
+}
+
+html.dark .tag-filters {
+  border-top-color: rgb(253 186 116 / 0.15);
+}
+
+html.dark .tag-label {
+  color: rgb(251 146 60 / 0.75);
+}
+
+html.dark .tag-chip {
+  background: rgb(255 255 255 / 0.05);
+  border-color: rgb(253 186 116 / 0.3);
+  color: rgb(253 186 116);
+}
+
+html.dark .tag-chip:hover {
+  border-color: rgb(251 146 60 / 0.7);
+  color: #fb923c;
+}
+
+html.dark .tag-chip.active {
+  background: rgb(249 115 22 / 0.15);
+  border-color: rgb(249 115 22 / 0.6);
+  color: #fb923c;
+}
+
+html.dark .bookmark-card {
+  background: rgb(255 255 255 / 0.04);
+  border-color: rgb(253 186 116 / 0.14);
+}
+
+html.dark .bookmark-card:hover {
+  border-color: rgb(253 186 116 / 0.4);
+  background: rgb(255 255 255 / 0.07);
+}
+
+html.dark .card-favicon {
+  background: rgb(255 255 255 / 0.08);
+  border-color: rgb(253 186 116 / 0.2);
+}
+
+html.dark .card-title {
+  color: rgb(254 243 199);
+}
+
+html.dark .card-domain {
+  color: rgb(251 146 60 / 0.8);
+}
+
+html.dark .card-desc {
+  color: rgb(var(--ink-700));
+}
+
+html.dark .card-time {
+  color: rgb(251 146 60 / 0.9);
+}
+
+html.dark .unread-tag {
+  background: rgb(245 158 11 / 0.2) !important;
+  color: rgb(252 211 77) !important;
+}
+
+html.dark .card-tag {
+  background: rgb(249 115 22 / 0.18) !important;
+  color: rgb(253 186 116) !important;
+}
+
+html.dark .card-actions .el-button {
+  color: rgb(253 186 116) !important;
+}
+
+html.dark .card-actions .el-button--warning {
+  color: rgb(251 191 36) !important;
+}
+
+html.dark .card-actions .el-button--primary:hover {
+  color: #fb923c !important;
+}
+
+html.dark .card-actions .el-button--danger:hover {
+  color: rgb(248 113 113) !important;
+}
+
+html.dark .empty-state {
+  background: rgb(255 255 255 / 0.04);
+  border-color: rgb(var(--border-default));
+}
+
+html.dark .empty-icon {
+  color: rgb(var(--ink-500));
+}
+
+html.dark .empty-title {
+  color: rgb(var(--ink-900));
+}
+
+html.dark .empty-desc {
+  color: rgb(var(--ink-500));
+}
+
+html.dark .footer-bar {
+  background: rgb(255 255 255 / 0.04);
+  border-color: rgb(var(--border-default));
+  box-shadow: 0 2px 12px rgb(0 0 0 / 0.3);
+}
+
+html.dark .footer-count {
+  color: rgb(var(--ink-500));
+}
+
+/* 弹窗未设 append-to-body，:deep 白底规则生效，需要一并转暗 */
+html.dark :deep(.bookmark-dialog .el-dialog__header) {
+  background: rgb(var(--surface-0));
+  border-bottom-color: rgb(var(--border-default));
+}
+
+html.dark :deep(.bookmark-dialog .el-dialog__body) {
+  background: rgb(var(--surface-0));
+}
+
+html.dark .dialog-footer {
+  background: rgb(var(--surface-0));
+  border-top-color: rgb(var(--border-default));
+}
+
+html.dark :deep(.form-item .el-form-item__label) {
+  color: rgb(var(--ink-900));
+}
+
+html.dark :deep(.url-input .el-input__wrapper),
+html.dark :deep(.title-input .el-input__wrapper),
+html.dark :deep(.tags-input .el-input__wrapper) {
+  background: rgb(255 255 255 / 0.05);
+  border-color: rgb(var(--border-default));
+}
+
+html.dark :deep(.url-input .el-input__wrapper:hover),
+html.dark :deep(.title-input .el-input__wrapper:hover),
+html.dark :deep(.tags-input .el-input__wrapper:hover),
+html.dark :deep(.url-input .el-input__wrapper.is-focus),
+html.dark :deep(.title-input .el-input__wrapper.is-focus),
+html.dark :deep(.tags-input .el-input__wrapper.is-focus) {
+  border-color: rgb(96 165 250 / 0.7);
+  background: rgb(255 255 255 / 0.08);
+}
+
+html.dark :deep(.desc-textarea .el-textarea__inner) {
+  background: rgb(255 255 255 / 0.05);
+  border-color: rgb(var(--border-default));
+}
+
+html.dark :deep(.desc-textarea .el-textarea__inner:hover),
+html.dark :deep(.desc-textarea .el-textarea__inner:focus) {
+  border-color: rgb(96 165 250 / 0.7);
+  background: rgb(255 255 255 / 0.08);
+}
 </style>

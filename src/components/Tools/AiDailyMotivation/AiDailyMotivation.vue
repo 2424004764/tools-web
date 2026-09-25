@@ -758,6 +758,7 @@ const handleCountChange = () => {
   border-top: 3px solid #2563eb;
   border-radius: 50%;
   animation: spin 1s linear infinite;
+  position: relative;
 }
 
 .loading-spinner-small {

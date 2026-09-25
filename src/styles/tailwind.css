@@ -1,23 +1,21 @@
-@tailwind base;
+﻿@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /**
- * tools-web 全局 CSS 变量
+ * tools-web 鍏ㄥ眬 CSS 鍙橀噺
  *
- * token（RGB 空格分隔，让 Tailwind utility 通过 alpha-value 支持透明度）：
- *   --ink-{50..950}    文本 / 强对比 neutral 阶梯
- *   --surface-{0..3}   卡片 / 容器底色
+ * token锛圧GB 绌烘牸鍒嗛殧锛岃 Tailwind utility 閫氳繃 alpha-value 鏀寔閫忔槑搴︼級锛? *   --ink-{50..950}    鏂囨湰 / 寮哄姣?neutral 闃舵
+ *   --surface-{0..3}   鍗＄墖 / 瀹瑰櫒搴曡壊
  *   --border-{subtle,default,strong}
- *   --accent-{50..950} 品牌主色 = 暖橙
- *   --danger-{50..950} 语义红色
- *   --success-{50..950} --warning-{50..950} --info-{50..950}  EP 原生语义色
- */
+ *   --accent-{50..950} 鍝佺墝涓昏壊 = 鏆栨
+ *   --danger-{50..950} 璇箟绾㈣壊
+ *   --success-{50..950} --warning-{50..950} --info-{50..950}  EP 鍘熺敓璇箟鑹? */
 
 :root {
-  /* ─── token 系统 ─────────────────────────────────────────── */
+  /* 鈹€鈹€鈹€ token 绯荤粺 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */
 
-  /* ink — 文本 / 强对比 neutral */
+  /* ink 鈥?鏂囨湰 / 寮哄姣?neutral */
   --ink-50:  250 250 250;
   --ink-100: 244 244 245;
   --ink-200: 228 228 231;
@@ -30,31 +28,44 @@
   --ink-900:  24  24  27;
   --ink-950:  10  10  10;
 
-  /* surface — 卡片 / 容器底色 */
+  /* surface 鈥?鍗＄墖 / 瀹瑰櫒搴曡壊锛堣交寰喎钃濊皟锛屽懠搴斿搧鐗岃摑锛?*/
   --surface-0: 255 255 255;  /* canvas */
-  --surface-1: 250 250 250;  /* subtle card */
-  --surface-2: 244 244 245;  /* raised / hover */
-  --surface-3: 228 228 231;  /* selected */
+  --surface-1: 243 246 251;  /* page bg / subtle card */
+  --surface-2: 238 242 249;  /* raised / hover */
+  --surface-3: 226 232 242;  /* selected */
 
-  /* border — 描边 / 分隔线 */
-  --border-subtle:  244 244 245;
-  --border-default: 228 228 231;
-  --border-strong:  212 212 216;
+  /* border 鈥?鎻忚竟 / 鍒嗛殧绾?*/
+  --border-subtle:  238 242 249;
+  --border-default: 226 232 240;
+  --border-strong:  203 213 225;
 
-  /* accent — 品牌主色 = 暖橙（对齐原 orange 阶梯） */
-  --accent-50:  255 247 237;
-  --accent-100: 255 237 213;
-  --accent-200: 254 215 170;
-  --accent-300: 253 186 116;
-  --accent-400: 251 146  60;
-  --accent-500: 249 115  22;
-  --accent-600: 234  88  12;
-  --accent-700: 194  65  12;
-  --accent-800: 154  52  18;
-  --accent-900: 124  45  18;
-  --accent-950:  67  20   7;
+  /* accent 鈥?鍝佺墝涓昏壊 = 鏅寸┖钃濓紙Tailwind blue 闃舵锛?*/
+  --accent-50:  239 246 255;
+  --accent-100: 219 234 254;
+  --accent-200: 147 197 253;
+  --accent-300:  96 165 250;
+  --accent-400:  59 130 246;
+  --accent-500:  59 130 246;
+  --accent-600:  37  99 235;
+  --accent-700:  29  78 216;
+  --accent-800:  30  64 175;
+  --accent-900:  30  58 138;
+  --accent-950:  23  37  84;
 
-  /* danger — 语义红色阶梯 */
+  /* violet 鈥?鍝佺墝娓愬彉鍓壊锛堜笌 accent 缁勬垚钃濃啋闈涙笎鍙橈級 */
+  --violet-50:  238 242 255;
+  --violet-100: 224 231 255;
+  --violet-200: 199 210 254;
+  --violet-300: 165 180 252;
+  --violet-400: 129 140 248;
+  --violet-500:  99 102 241;
+  --violet-600:  79  70 229;
+  --violet-700:  67  56 202;
+  --violet-800:  55  48 163;
+  --violet-900:  46  40 134;
+  --violet-950:  30  27  75;
+
+  /* danger 鈥?璇箟绾㈣壊闃舵 */
   --danger-50:  254 242 242;
   --danger-100: 254 226 226;
   --danger-200: 254 202 202;
@@ -67,7 +78,7 @@
   --danger-900: 127  29  29;
   --danger-950:  69  10  10;
 
-  /* success — Element Plus 原生语义色（绿色阶梯） */
+  /* success 鈥?Element Plus 鍘熺敓璇箟鑹诧紙缁胯壊闃舵锛?*/
   --success-50:  240 249 235;
   --success-100: 230 244 220;
   --success-200: 204 235 197;
@@ -80,7 +91,7 @@
   --success-900:  39  82  21;
   --success-950:  22  49  10;
 
-  /* warning — Element Plus 原生语义色（黄色阶梯） */
+  /* warning 鈥?Element Plus 鍘熺敓璇箟鑹诧紙榛勮壊闃舵锛?*/
   --warning-50:  253 246 235;
   --warning-100: 251 237 209;
   --warning-200: 247 220 167;
@@ -93,7 +104,7 @@
   --warning-900:  98  59  12;
   --warning-950:  62  37   5;
 
-  /* info — Element Plus 原生语义色（中性灰阶梯） */
+  /* info 鈥?Element Plus 鍘熺敓璇箟鑹诧紙涓€х伆闃舵锛?*/
   --info-50:  248 248 249;
   --info-100: 241 241 243;
   --info-200: 226 226 229;
@@ -107,7 +118,7 @@
   --info-950:  20  22  28;
 }
 
-/* 中性底（Phase 1 之后调整：body 改 surface-1 给 chrome 卡片留视觉层次，body=#fafafa, card=#ffffff） */
+/* 涓€у簳锛圥hase 1 涔嬪悗璋冩暣锛歜ody 鏀?surface-1 缁?chrome 鍗＄墖鐣欒瑙夊眰娆★紝body=#fafafa, card=#ffffff锛?*/
 html, body {
   margin: 0;
   padding: 0;
@@ -118,8 +129,8 @@ body {
   font-family: theme('fontFamily.body');
 }
 
-/* ─── 可访问性 — 焦点可见 ─────────────────────────────────── */
-/* 鼠标点击不显示焦点环（避免视觉噪音），仅键盘 Tab 时显示 */
+/* 鈹€鈹€鈹€ 鍙闂€?鈥?鐒︾偣鍙 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */
+/* 榧犳爣鐐瑰嚮涓嶆樉绀虹劍鐐圭幆锛堥伩鍏嶈瑙夊櫔闊筹級锛屼粎閿洏 Tab 鏃舵樉绀?*/
 :focus {
   outline: none;
 }
@@ -128,7 +139,7 @@ body {
   outline-offset: 2px;
   border-radius: 4px;
 }
-/* Element Plus 组件的焦点环用 box-shadow 实现（EP 内部样式覆盖 outline） */
+/* Element Plus 缁勪欢鐨勭劍鐐圭幆鐢?box-shadow 瀹炵幇锛圗P 鍐呴儴鏍峰紡瑕嗙洊 outline锛?*/
 .el-button:focus-visible,
 .el-input__wrapper:focus-visible,
 .el-select__wrapper:focus-visible {
@@ -136,8 +147,8 @@ body {
   outline-offset: 2px;
 }
 
-/* ─── 可访问性 — prefers-reduced-motion ─────────────────────── */
-/* 用户在系统中设置了"减少动效"时，关闭无限循环动画与过渡 */
+/* 鈹€鈹€鈹€ 鍙闂€?鈥?prefers-reduced-motion 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */
+/* 鐢ㄦ埛鍦ㄧ郴缁熶腑璁剧疆浜?鍑忓皯鍔ㄦ晥"鏃讹紝鍏抽棴鏃犻檺寰幆鍔ㄧ敾涓庤繃娓?*/
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -149,16 +160,10 @@ body {
   }
 }
 
-/* ─── Element Plus 主题覆盖 ───────────────────────────────────────
-   之前用 `:root { --el-color-primary: ... }` 覆盖，但 EP 自身的 :root 块
-   在 unplugin-element-plus 注入的 CSS 末尾，会覆盖这里的设置，导致按钮变回默认蓝色。
-
-   这里改用 `:root[data-app], body` 提高特异性，并放在文件最末尾，确保覆盖最后生效。
-   实际上更稳的方案是用 JS 在 app.use() 后用 document.documentElement.style.setProperty
-   强制覆盖（最稳），但需要业务代码配合。先用更高特异性选择器。*/
+/* ─── Element Plus 主题覆盖 ─── */
 :root[data-app],
 html:root {
-  /* primary: 跟随品牌 accent (从 WCAG AA 对比度 4.5:1 考虑用 accent-600) */
+  /* primary: 璺熼殢鍝佺墝 accent (浠?WCAG AA 瀵规瘮搴?4.5:1 鑰冭檻鐢?accent-600) */
   --el-color-primary: rgb(var(--accent-600));
   --el-color-primary-light-3: rgb(var(--accent-500));
   --el-color-primary-light-5: rgb(var(--accent-400));
@@ -167,7 +172,7 @@ html:root {
   --el-color-primary-light-9: rgb(var(--accent-100));
   --el-color-primary-dark-2: rgb(var(--accent-700));
 
-  /* success / warning / danger / info — 使用 token 阶梯 */
+  /* success / warning / danger / info 鈥?浣跨敤 token 闃舵 */
   --el-color-success: rgb(var(--success-500));
   --el-color-success-light-3: rgb(var(--success-400));
   --el-color-success-light-5: rgb(var(--success-300));
@@ -201,8 +206,470 @@ html:root {
   --el-color-info-dark-2: rgb(var(--info-600));
 }
 
-/* 兜底：无论上面特异性是否生效，用更高优先级选择器 + !important 强制覆盖关键变量 */
+/* 鈹€鈹€鈹€ 鍝佺墝娓愬彉宸ュ叿绫伙紙钃?鈫?闈涳級 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */
+@layer components {
+  .bg-brand-gradient {
+    background-image: linear-gradient(135deg, rgb(var(--accent-500)) 0%, rgb(var(--violet-500)) 100%);
+  }
+  .bg-brand-gradient-soft {
+    background-image: linear-gradient(135deg, rgb(var(--accent-50)) 0%, rgb(var(--violet-100)) 100%);
+  }
+  .text-brand-gradient {
+    background-image: linear-gradient(135deg, rgb(var(--accent-500)) 0%, rgb(var(--violet-500)) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+}
+
+/* 鈹€鈹€鈹€ 鏆楄壊涓婚锛坈lass 绛栫暐锛歨tml.dark锛岀敱 useTheme 鍒囨崲锛?鈹€鈹€鈹€鈹€鈹€鈹€ */
+html.dark {
+  color-scheme: dark;
+
+  /* ink 鈥?鍙嶈浆锛氫綆鍙峰彉浜樁锛堢敤浜庢繁搴曚笂鐨勫急鏂囨湰锛夛紝楂樺彿鍙樹寒鏂囨湰 */
+  --ink-50:  39  40  47;
+  --ink-100: 52  53  61;
+  --ink-200: 70  71  80;
+  --ink-300: 105 106 115;
+  --ink-400: 145 146 155;
+  --ink-500: 180 181 189;
+  --ink-600: 210 211 217;
+  --ink-700: 228 229 233;
+  --ink-800: 238 239 241;
+  --ink-900: 244 245 247;
+  --ink-950: 250 250 251;
+
+  /* surface 鈥?娣卞簳娴呭崱 */
+  --surface-0: 30  31  37;
+  --surface-1: 19  20  25;
+  --surface-2: 38  39  46;
+  --surface-3: 48  50  58;
+
+  /* border */
+  --border-subtle:  39  40  47;
+  --border-default: 52  53  62;
+  --border-strong:  72  73  84;
+
+  /* Element Plus 鏆楄壊閫傞厤 */
+  --el-bg-color: rgb(var(--surface-0));
+  --el-bg-color-overlay: rgb(var(--surface-0));
+  --el-bg-color-page: rgb(var(--surface-1));
+  --el-text-color-primary: rgb(var(--ink-900));
+  --el-text-color-regular: rgb(var(--ink-700));
+  --el-text-color-secondary: rgb(var(--ink-500));
+  --el-text-color-placeholder: rgb(var(--ink-400));
+  --el-border-color: rgb(var(--border-default));
+  --el-border-color-light: rgb(var(--border-default));
+  --el-border-color-lighter: rgb(var(--border-subtle));
+  --el-fill-color-blank: rgb(var(--surface-0));
+  --el-fill-color: rgb(var(--surface-2));
+  --el-fill-color-light: rgb(var(--surface-2));
+  --el-fill-color-lighter: rgb(var(--surface-1));
+  --el-fill-color-extra-light: rgb(var(--surface-1));
+}
+
+/* 鍏滃簳锛氭棤璁轰笂闈㈢壒寮傛€ф槸鍚︾敓鏁堬紝鐢ㄦ洿楂樹紭鍏堢骇閫夋嫨鍣?+ !important 寮哄埗瑕嗙洊鍏抽敭鍙橀噺 */
 :root,
 html {
   --el-color-primary: rgb(var(--accent-600)) !important;
 }
+
+/* 深色模式：默认边框颜色
+   存量控件大量只写 `border`（宽度），颜色来自 preflight 默认浅灰 #e5e7eb，暗色下发白。
+   这里在 dark 下把默认边框统一到主题 token；显式颜色类（border-gray-300 等）特异性更高不受影响。 */
+:where(html.dark) *,
+:where(html.dark) *::before,
+:where(html.dark) *::after {
+  border-color: rgb(var(--border-default));
+}
+
+/* 鈹€鈹€鈹€ 娣辫壊妯″紡锛氬瓨閲忛粯璁ゅ伐鍏风被鍏ㄥ眬鏄犲皠 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+   澶ч噺宸叉湁宸ュ叿椤电洿鎺ヤ娇鐢?Tailwind 榛樿 white/gray 宸ュ叿绫伙紝閫愪竴鏀归€?   鎴愭湰杩囬珮銆傝繖閲屽湪 dark 涓嬫妸杩欎簺绫绘槧灏勫埌涓婚 token锛岃鏃ч〉闈㈠湪娣辫壊
+   涓嬭嚜鍔ㄥ崗璋冦€傝鍒欑敤 :where() 鍖呰９淇濇寔闆剁壒寮傛€у閲忥細
+   - 濮嬬粓鑳借鐩栧師濮嬪伐鍏风被锛堝０鏄庡湪 @tailwind utilities 涔嬪悗锛?   - 浠嶄細琚厓绱犱笂鏄惧紡鐨?dark:* 宸ュ叿绫昏鐩栵紙.dark .x 鐗瑰紓鎬ф洿楂橈級
+   - 闇€瑕佸湪娣辫壊涓嬩繚鎸佺函鐧界殑鍏冪礌锛堜俊绾?鐢诲竷/鍥剧墖琛簳锛夎鐢ㄨ鍐呮牱寮?     鎴?scoped CSS锛屼笉瑕佺敤 bg-white 绫?*/
+:where(html.dark) .bg-white  { background-color: rgb(var(--surface-0)); }
+:where(html.dark) .bg-gray-50  { background-color: rgb(var(--surface-1)); }
+:where(html.dark) .bg-gray-100 { background-color: rgb(var(--surface-2)); }
+:where(html.dark) .bg-gray-200 { background-color: rgb(var(--surface-3)); }
+/* gray-300 比 gray-200 亮一档（暗色下反向），避免与 bg-gray-200 同色导致 2048/扫雷棋盘格子隐形 */
+:where(html.dark) .bg-gray-300 { background-color: rgb(var(--ink-200)); }
+
+:where(html.dark) .text-gray-900,
+:where(html.dark) .text-gray-800 { color: rgb(var(--ink-900)); }
+:where(html.dark) .text-gray-700 { color: rgb(var(--ink-800)); }
+:where(html.dark) .text-gray-600 { color: rgb(var(--ink-700)); }
+:where(html.dark) .text-gray-500 { color: rgb(var(--ink-500)); }
+:where(html.dark) .text-gray-400,
+:where(html.dark) .text-gray-300 { color: rgb(var(--ink-400)); }
+:where(html.dark) .text-black    { color: rgb(var(--ink-900)); }
+
+:where(html.dark) .border-gray-100,
+:where(html.dark) .border-gray-200 { border-color: rgb(var(--border-default)); }
+:where(html.dark) .border-gray-300 { border-color: rgb(var(--border-strong)); }
+:where(html.dark) .border-gray-400 { border-color: rgb(var(--border-strong)); }
+
+:where(html.dark) .hover\:bg-white:hover    { background-color: rgb(var(--surface-0)) !important; }
+:where(html.dark) .hover\:bg-gray-50:hover  { background-color: rgb(var(--surface-2)) !important; }
+:where(html.dark) .hover\:bg-gray-100:hover { background-color: rgb(var(--surface-3)) !important; }
+:where(html.dark) .hover\:bg-gray-200:hover { background-color: rgb(var(--surface-3)) !important; }
+:where(html.dark) .hover\:bg-slate-50:hover  { background-color: rgb(var(--surface-2)) !important; }
+:where(html.dark) .hover\:bg-slate-100:hover { background-color: rgb(var(--surface-3)) !important; }
+/* 禁用态底色：存量表单大量使用 disabled:bg-gray-*，dark 下映射为深色阶，文字（含 text-white）仍可读 */
+:where(html.dark) .disabled\:bg-gray-50:disabled   { background-color: rgb(var(--surface-1)) !important; }
+:where(html.dark) .disabled\:bg-gray-100:disabled  { background-color: rgb(var(--surface-2)) !important; }
+:where(html.dark) .disabled\:bg-gray-200:disabled  { background-color: rgb(var(--surface-3)) !important; }
+:where(html.dark) .disabled\:bg-gray-300:disabled  { background-color: rgb(var(--surface-3)) !important; }
+:where(html.dark) .disabled\:bg-gray-400:disabled  { background-color: rgb(var(--surface-3)) !important; }
+
+/* 深色模式：彩色文字阶映射 —— 600/700 转亮色 400 阶，800/900 转亮色 300 阶，保证暗底可读 */
+:where(html.dark) .text-blue-900    { color: rgb(147 197 253); }
+:where(html.dark) .text-green-900   { color: rgb(134 239 172); }
+:where(html.dark) .text-purple-900  { color: rgb(196 181 253); }
+:where(html.dark) .text-red-900     { color: rgb(252 165 165); }
+:where(html.dark) .text-amber-900   { color: rgb(252 211 77); }
+:where(html.dark) .text-orange-900  { color: rgb(253 186 116); }
+:where(html.dark) .text-emerald-900 { color: rgb(110 231 183); }
+:where(html.dark) .text-teal-900    { color: rgb(94 234 212); }
+:where(html.dark) .text-cyan-900    { color: rgb(103 232 249); }
+:where(html.dark) .text-indigo-900  { color: rgb(165 180 252); }
+:where(html.dark) .text-violet-900  { color: rgb(196 181 253); }
+:where(html.dark) .text-pink-900    { color: rgb(249 168 212); }
+:where(html.dark) .text-rose-900    { color: rgb(253 164 175); }
+:where(html.dark) .text-yellow-900  { color: rgb(253 224 71); }
+:where(html.dark) .text-sky-900     { color: rgb(125 211 252); }
+:where(html.dark) .text-fuchsia-900 { color: rgb(240 171 252); }
+:where(html.dark) .text-green-600   { color: rgb(74 222 128); }
+:where(html.dark) .text-purple-600  { color: rgb(192 132 252); }
+:where(html.dark) .text-red-600     { color: rgb(248 113 113); }
+:where(html.dark) .text-amber-600   { color: rgb(251 191 36); }
+:where(html.dark) .text-orange-600  { color: rgb(251 146 60); }
+:where(html.dark) .text-emerald-600 { color: rgb(52 211 153); }
+:where(html.dark) .text-teal-600    { color: rgb(45 212 191); }
+:where(html.dark) .text-cyan-600    { color: rgb(34 211 238); }
+:where(html.dark) .text-indigo-600  { color: rgb(129 140 248); }
+:where(html.dark) .text-violet-600  { color: rgb(167 139 250); }
+:where(html.dark) .text-pink-600    { color: rgb(244 114 182); }
+:where(html.dark) .text-rose-600    { color: rgb(251 113 133); }
+:where(html.dark) .text-yellow-600  { color: rgb(250 204 21); }
+:where(html.dark) .text-sky-600     { color: rgb(56 189 248); }
+:where(html.dark) .text-green-700   { color: rgb(74 222 128); }
+:where(html.dark) .text-purple-700  { color: rgb(192 132 252); }
+:where(html.dark) .text-red-700     { color: rgb(248 113 113); }
+:where(html.dark) .text-amber-700   { color: rgb(251 191 36); }
+:where(html.dark) .text-orange-700  { color: rgb(251 146 60); }
+:where(html.dark) .text-emerald-700 { color: rgb(52 211 153); }
+:where(html.dark) .text-teal-700    { color: rgb(45 212 191); }
+:where(html.dark) .text-cyan-700    { color: rgb(34 211 238); }
+:where(html.dark) .text-indigo-700  { color: rgb(129 140 248); }
+:where(html.dark) .text-violet-700  { color: rgb(167 139 250); }
+:where(html.dark) .text-pink-700    { color: rgb(244 114 182); }
+:where(html.dark) .text-rose-700    { color: rgb(251 113 133); }
+:where(html.dark) .text-yellow-700  { color: rgb(250 204 21); }
+:where(html.dark) .text-sky-700     { color: rgb(56 189 248); }
+
+/* 深色模式：彩色边框 -200 阶映射（-100 已有），同色相低透明度融入深底 */
+:where(html.dark) .border-blue-200   { border-color: rgb(59 130 246 / 0.35); }
+:where(html.dark) .border-green-200  { border-color: rgb(34 197 94 / 0.35); }
+:where(html.dark) .border-purple-200 { border-color: rgb(168 85 247 / 0.35); }
+:where(html.dark) .border-red-200    { border-color: rgb(239 68 68 / 0.35); }
+:where(html.dark) .border-amber-200  { border-color: rgb(245 158 11 / 0.35); }
+:where(html.dark) .border-orange-200 { border-color: rgb(249 115 22 / 0.35); }
+:where(html.dark) .border-emerald-200 { border-color: rgb(16 185 129 / 0.35); }
+:where(html.dark) .border-teal-200   { border-color: rgb(20 184 166 / 0.35); }
+:where(html.dark) .border-cyan-200   { border-color: rgb(6 182 212 / 0.35); }
+:where(html.dark) .border-indigo-200 { border-color: rgb(99 102 241 / 0.35); }
+:where(html.dark) .border-violet-200 { border-color: rgb(139 92 246 / 0.35); }
+:where(html.dark) .border-pink-200   { border-color: rgb(236 72 153 / 0.35); }
+:where(html.dark) .border-rose-200   { border-color: rgb(244 63 94 / 0.35); }
+:where(html.dark) .border-yellow-200 { border-color: rgb(234 179 8 / 0.35); }
+:where(html.dark) .border-sky-200    { border-color: rgb(14 165 233 / 0.35); }
+:where(html.dark) .border-red-300    { border-color: rgb(239 68 68 / 0.45); }
+:where(html.dark) .border-amber-300  { border-color: rgb(245 158 11 / 0.45); }
+:where(html.dark) .border-blue-300   { border-color: rgb(59 130 246 / 0.45); }
+:where(html.dark) .border-green-300  { border-color: rgb(34 197 94 / 0.45); }
+:where(html.dark) .border-purple-300 { border-color: rgb(168 85 247 / 0.45); }
+/* 链接/强调文字：dark 下 blue-600/800 太暗，映射为亮蓝阶（dark:* 显式覆盖不受影响） */
+:where(html.dark) .text-blue-600           { color: rgb(96 165 250); }
+:where(html.dark) .text-blue-700           { color: rgb(96 165 250); }
+:where(html.dark) .text-blue-800           { color: rgb(147 197 253); }
+:where(html.dark) .hover\:text-blue-600:hover { color: rgb(147 197 253) !important; }
+:where(html.dark) .hover\:text-blue-700:hover { color: rgb(147 197 253) !important; }
+:where(html.dark) .hover\:text-blue-800:hover { color: rgb(147 197 253) !important; }
+/* 褰╄壊绯?hover 鑳屾櫙锛堝鍒嗙被鏍囩 hover:bg-orange-100锛夛細dark 涓嬫槧灏勪负鍚岃壊鐩镐綆閫忔槑搴?*/
+:where(html.dark) .hover\:bg-orange-100:hover  { background-color: rgb(249 115 22 / 0.15) !important; }
+:where(html.dark) .hover\:bg-blue-100:hover    { background-color: rgb(59 130 246 / 0.15) !important; }
+:where(html.dark) .hover\:bg-green-100:hover   { background-color: rgb(34 197 94 / 0.15) !important; }
+:where(html.dark) .hover\:bg-emerald-100:hover { background-color: rgb(16 185 129 / 0.15) !important; }
+:where(html.dark) .hover\:bg-red-100:hover     { background-color: rgb(239 68 68 / 0.15) !important; }
+:where(html.dark) .hover\:bg-purple-100:hover  { background-color: rgb(168 85 247 / 0.15) !important; }
+:where(html.dark) .hover\:bg-pink-100:hover    { background-color: rgb(236 72 153 / 0.15) !important; }
+:where(html.dark) .hover\:bg-amber-100:hover   { background-color: rgb(245 158 11 / 0.15) !important; }
+
+/* 鈹€鈹€鈹€ 娣辫壊妯″紡锛氱矇褰╂笎鍙?娴呰壊搴曞叏灞€鏄犲皠 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+   浠嬬粛妯箙绛夊父鐢?"bg-gradient-to-* from-X-50 via-Y-50 to-Z-50" 涓?   bg-X-50 / border-X-100 绫伙紝鍦?dark 涓嬫槧灏勪负鍚岃壊鐩镐綆閫忔槑搴︼紝
+   淇濇寔鑹茬浉灞傛鐨勫悓鏃惰瀺鍏ユ繁鑹插簳銆傜壒寮傛€х瓥鐣ュ悓涓婃柟 gray 鏄犲皠銆?*/
+:where(html.dark) .from-pink-50 { --tw-gradient-from: rgb(236 72 153 / 0.10) var(--tw-gradient-from-position); }
+:where(html.dark) .via-pink-50 { --tw-gradient-stops: var(--tw-gradient-from), rgb(236 72 153 / 0.07) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+:where(html.dark) .to-pink-50 { --tw-gradient-to: rgb(236 72 153 / 0.12) var(--tw-gradient-to-position); }
+:where(html.dark) .bg-pink-50 { background-color: rgb(236 72 153 / 0.10); }
+:where(html.dark) .border-pink-100 { border-color: rgb(236 72 153 / 0.25); }
+:where(html.dark) .from-rose-50 { --tw-gradient-from: rgb(244 63 94 / 0.10) var(--tw-gradient-from-position); }
+:where(html.dark) .via-rose-50 { --tw-gradient-stops: var(--tw-gradient-from), rgb(244 63 94 / 0.07) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+:where(html.dark) .to-rose-50 { --tw-gradient-to: rgb(244 63 94 / 0.12) var(--tw-gradient-to-position); }
+:where(html.dark) .bg-rose-50 { background-color: rgb(244 63 94 / 0.10); }
+:where(html.dark) .border-rose-100 { border-color: rgb(244 63 94 / 0.25); }
+:where(html.dark) .from-purple-50 { --tw-gradient-from: rgb(168 85 247 / 0.10) var(--tw-gradient-from-position); }
+:where(html.dark) .via-purple-50 { --tw-gradient-stops: var(--tw-gradient-from), rgb(168 85 247 / 0.07) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+:where(html.dark) .to-purple-50 { --tw-gradient-to: rgb(168 85 247 / 0.12) var(--tw-gradient-to-position); }
+:where(html.dark) .bg-purple-50 { background-color: rgb(168 85 247 / 0.10); }
+:where(html.dark) .border-purple-100 { border-color: rgb(168 85 247 / 0.25); }
+:where(html.dark) .from-violet-50 { --tw-gradient-from: rgb(139 92 246 / 0.10) var(--tw-gradient-from-position); }
+:where(html.dark) .via-violet-50 { --tw-gradient-stops: var(--tw-gradient-from), rgb(139 92 246 / 0.07) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+:where(html.dark) .to-violet-50 { --tw-gradient-to: rgb(139 92 246 / 0.12) var(--tw-gradient-to-position); }
+:where(html.dark) .bg-violet-50 { background-color: rgb(139 92 246 / 0.10); }
+:where(html.dark) .border-violet-100 { border-color: rgb(139 92 246 / 0.25); }
+:where(html.dark) .from-fuchsia-50 { --tw-gradient-from: rgb(217 70 239 / 0.10) var(--tw-gradient-from-position); }
+:where(html.dark) .via-fuchsia-50 { --tw-gradient-stops: var(--tw-gradient-from), rgb(217 70 239 / 0.07) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+:where(html.dark) .to-fuchsia-50 { --tw-gradient-to: rgb(217 70 239 / 0.12) var(--tw-gradient-to-position); }
+:where(html.dark) .bg-fuchsia-50 { background-color: rgb(217 70 239 / 0.10); }
+:where(html.dark) .border-fuchsia-100 { border-color: rgb(217 70 239 / 0.25); }
+:where(html.dark) .from-blue-50 { --tw-gradient-from: rgb(59 130 246 / 0.10) var(--tw-gradient-from-position); }
+:where(html.dark) .via-blue-50 { --tw-gradient-stops: var(--tw-gradient-from), rgb(59 130 246 / 0.07) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+:where(html.dark) .to-blue-50 { --tw-gradient-to: rgb(59 130 246 / 0.12) var(--tw-gradient-to-position); }
+:where(html.dark) .bg-blue-50 { background-color: rgb(59 130 246 / 0.10); }
+:where(html.dark) .border-blue-100 { border-color: rgb(59 130 246 / 0.25); }
+:where(html.dark) .from-indigo-50 { --tw-gradient-from: rgb(99 102 241 / 0.10) var(--tw-gradient-from-position); }
+:where(html.dark) .via-indigo-50 { --tw-gradient-stops: var(--tw-gradient-from), rgb(99 102 241 / 0.07) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+:where(html.dark) .to-indigo-50 { --tw-gradient-to: rgb(99 102 241 / 0.12) var(--tw-gradient-to-position); }
+:where(html.dark) .bg-indigo-50 { background-color: rgb(99 102 241 / 0.10); }
+:where(html.dark) .border-indigo-100 { border-color: rgb(99 102 241 / 0.25); }
+:where(html.dark) .from-sky-50 { --tw-gradient-from: rgb(14 165 233 / 0.10) var(--tw-gradient-from-position); }
+:where(html.dark) .via-sky-50 { --tw-gradient-stops: var(--tw-gradient-from), rgb(14 165 233 / 0.07) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+:where(html.dark) .to-sky-50 { --tw-gradient-to: rgb(14 165 233 / 0.12) var(--tw-gradient-to-position); }
+:where(html.dark) .bg-sky-50 { background-color: rgb(14 165 233 / 0.10); }
+:where(html.dark) .border-sky-100 { border-color: rgb(14 165 233 / 0.25); }
+:where(html.dark) .from-cyan-50 { --tw-gradient-from: rgb(6 182 212 / 0.10) var(--tw-gradient-from-position); }
+:where(html.dark) .via-cyan-50 { --tw-gradient-stops: var(--tw-gradient-from), rgb(6 182 212 / 0.07) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+:where(html.dark) .to-cyan-50 { --tw-gradient-to: rgb(6 182 212 / 0.12) var(--tw-gradient-to-position); }
+:where(html.dark) .bg-cyan-50 { background-color: rgb(6 182 212 / 0.10); }
+:where(html.dark) .border-cyan-100 { border-color: rgb(6 182 212 / 0.25); }
+:where(html.dark) .from-teal-50 { --tw-gradient-from: rgb(20 184 166 / 0.10) var(--tw-gradient-from-position); }
+:where(html.dark) .via-teal-50 { --tw-gradient-stops: var(--tw-gradient-from), rgb(20 184 166 / 0.07) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+:where(html.dark) .to-teal-50 { --tw-gradient-to: rgb(20 184 166 / 0.12) var(--tw-gradient-to-position); }
+:where(html.dark) .bg-teal-50 { background-color: rgb(20 184 166 / 0.10); }
+:where(html.dark) .border-teal-100 { border-color: rgb(20 184 166 / 0.25); }
+:where(html.dark) .from-emerald-50 { --tw-gradient-from: rgb(16 185 129 / 0.10) var(--tw-gradient-from-position); }
+:where(html.dark) .via-emerald-50 { --tw-gradient-stops: var(--tw-gradient-from), rgb(16 185 129 / 0.07) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+:where(html.dark) .to-emerald-50 { --tw-gradient-to: rgb(16 185 129 / 0.12) var(--tw-gradient-to-position); }
+:where(html.dark) .bg-emerald-50 { background-color: rgb(16 185 129 / 0.10); }
+:where(html.dark) .border-emerald-100 { border-color: rgb(16 185 129 / 0.25); }
+:where(html.dark) .from-green-50 { --tw-gradient-from: rgb(34 197 94 / 0.10) var(--tw-gradient-from-position); }
+:where(html.dark) .via-green-50 { --tw-gradient-stops: var(--tw-gradient-from), rgb(34 197 94 / 0.07) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+:where(html.dark) .to-green-50 { --tw-gradient-to: rgb(34 197 94 / 0.12) var(--tw-gradient-to-position); }
+:where(html.dark) .bg-green-50 { background-color: rgb(34 197 94 / 0.10); }
+:where(html.dark) .border-green-100 { border-color: rgb(34 197 94 / 0.25); }
+:where(html.dark) .from-amber-50 { --tw-gradient-from: rgb(245 158 11 / 0.10) var(--tw-gradient-from-position); }
+:where(html.dark) .via-amber-50 { --tw-gradient-stops: var(--tw-gradient-from), rgb(245 158 11 / 0.07) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+:where(html.dark) .to-amber-50 { --tw-gradient-to: rgb(245 158 11 / 0.12) var(--tw-gradient-to-position); }
+:where(html.dark) .bg-amber-50 { background-color: rgb(245 158 11 / 0.10); }
+:where(html.dark) .border-amber-100 { border-color: rgb(245 158 11 / 0.25); }
+:where(html.dark) .from-yellow-50 { --tw-gradient-from: rgb(234 179 8 / 0.10) var(--tw-gradient-from-position); }
+:where(html.dark) .via-yellow-50 { --tw-gradient-stops: var(--tw-gradient-from), rgb(234 179 8 / 0.07) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+:where(html.dark) .to-yellow-50 { --tw-gradient-to: rgb(234 179 8 / 0.12) var(--tw-gradient-to-position); }
+:where(html.dark) .bg-yellow-50 { background-color: rgb(234 179 8 / 0.10); }
+:where(html.dark) .border-yellow-100 { border-color: rgb(234 179 8 / 0.25); }
+:where(html.dark) .from-orange-50 { --tw-gradient-from: rgb(249 115 22 / 0.10) var(--tw-gradient-from-position); }
+:where(html.dark) .via-orange-50 { --tw-gradient-stops: var(--tw-gradient-from), rgb(249 115 22 / 0.07) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+:where(html.dark) .to-orange-50 { --tw-gradient-to: rgb(249 115 22 / 0.12) var(--tw-gradient-to-position); }
+:where(html.dark) .bg-orange-50 { background-color: rgb(249 115 22 / 0.10); }
+:where(html.dark) .border-orange-100 { border-color: rgb(249 115 22 / 0.25); }
+:where(html.dark) .from-red-50 { --tw-gradient-from: rgb(239 68 68 / 0.10) var(--tw-gradient-from-position); }
+:where(html.dark) .via-red-50 { --tw-gradient-stops: var(--tw-gradient-from), rgb(239 68 68 / 0.07) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+:where(html.dark) .to-red-50 { --tw-gradient-to: rgb(239 68 68 / 0.12) var(--tw-gradient-to-position); }
+:where(html.dark) .bg-red-50 { background-color: rgb(239 68 68 / 0.10); }
+:where(html.dark) .border-red-100 { border-color: rgb(239 68 68 / 0.25); }
+
+/* 鈹€鈹€鈹€ 娣辫壊妯″紡锛欳odeMirror 榛樿涓婚鏄犲皠 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+   JsonTran / MockData 绛夌紪杈戝櫒鐢?theme: "default"锛堟祬鑹诧級銆?   杩欓噷鍦?dark 涓嬬粰 .cm-s-default 鏁村娣辫壊閰嶈壊锛圤ne Dark 瑙傛劅锛夛紝
+   鍚勫伐鍏锋棤闇€鏀逛唬鐮侊紱鏄惧紡浣跨敤娣辫壊涓婚锛堝 material-darker锛夌殑涓嶅彈褰卞搷銆?*/
+:where(html.dark) .cm-s-default.CodeMirror {
+  background: rgb(var(--surface-0));
+  color: #dcdfe4;
+}
+:where(html.dark) .cm-s-default .CodeMirror-gutters {
+  background: rgb(var(--surface-1));
+  border-right: 1px solid rgb(var(--border-default));
+}
+:where(html.dark) .cm-s-default .CodeMirror-linenumber {
+  color: rgb(var(--ink-500));
+}
+:where(html.dark) .cm-s-default .CodeMirror-cursor { border-left-color: rgb(var(--accent-400)); }
+:where(html.dark) .cm-s-default .CodeMirror-selected { background: rgb(var(--accent-700) / 0.45); }
+:where(html.dark) .cm-s-default .CodeMirror-activeline-background { background: rgb(var(--surface-2)); }
+:where(html.dark) .cm-s-default .CodeMirror-foldmarker { color: #e5c07b; }
+:where(html.dark) .cm-s-default .CodeMirror-foldgutter-open,
+:where(html.dark) .cm-s-default .CodeMirror-foldgutter-folded { color: rgb(var(--ink-500)); }
+:where(html.dark) .cm-s-default .cm-keyword { color: #c678dd; }
+:where(html.dark) .cm-s-default .cm-atom { color: #d19a66; }
+:where(html.dark) .cm-s-default .cm-number { color: #d19a66; }
+:where(html.dark) .cm-s-default .cm-def { color: #61afef; }
+:where(html.dark) .cm-s-default .cm-variable { color: #e06c75; }
+:where(html.dark) .cm-s-default .cm-variable-2,
+:where(html.dark) .cm-s-default .cm-variable-3 { color: #56b6c2; }
+:where(html.dark) .cm-s-default .cm-property { color: #e06c75; }
+:where(html.dark) .cm-s-default .cm-operator { color: #56b6c2; }
+:where(html.dark) .cm-s-default .cm-comment { color: #7f848e; font-style: italic; }
+:where(html.dark) .cm-s-default .cm-string { color: #98c379; }
+:where(html.dark) .cm-s-default .cm-string-2 { color: #98c379; }
+:where(html.dark) .cm-s-default .cm-meta,
+:where(html.dark) .cm-s-default .cm-qualifier { color: #d19a66; }
+:where(html.dark) .cm-s-default .cm-builtin { color: #61afef; }
+:where(html.dark) .cm-s-default .cm-bracket { color: #abb2bf; }
+:where(html.dark) .cm-s-default .cm-tag { color: #e06c75; }
+:where(html.dark) .cm-s-default .cm-attribute { color: #d19a66; }
+:where(html.dark) .cm-s-default .cm-hr { color: rgb(var(--ink-500)); }
+:where(html.dark) .cm-s-default .cm-link { color: #61afef; text-decoration: underline; }
+:where(html.dark) .cm-s-default .cm-error { color: #f44747; }
+
+/* 鈹€鈹€鈹€ 娣辫壊妯″紡锛歴late 绯婚粯璁ゅ伐鍏风被鍏ㄥ眬鏄犲皠 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+   鍚?gray 鏄犲皠绛栫暐锛氬瓨閲忛〉闈㈠ぇ閲忎娇鐢?slate 钃濈伆闃讹紙border-slate-200銆?   text-slate-700 绛夛級锛宒ark 涓嬬粺涓€鏄犲皠鍒颁富棰?token銆?*/
+:where(html.dark) .bg-slate-50  { background-color: rgb(var(--surface-1)); }
+:where(html.dark) .bg-slate-100 { background-color: rgb(var(--surface-2)); }
+:where(html.dark) .bg-slate-200 { background-color: rgb(var(--surface-3)); }
+
+:where(html.dark) .text-slate-900,
+:where(html.dark) .text-slate-800 { color: rgb(var(--ink-900)); }
+:where(html.dark) .text-slate-700 { color: rgb(var(--ink-800)); }
+:where(html.dark) .text-slate-600 { color: rgb(var(--ink-700)); }
+:where(html.dark) .text-slate-500 { color: rgb(var(--ink-500)); }
+:where(html.dark) .text-slate-400 { color: rgb(var(--ink-400)); }
+:where(html.dark) .text-slate-300 { color: rgb(var(--ink-400)); }
+
+:where(html.dark) .border-slate-100,
+:where(html.dark) .border-slate-200 { border-color: rgb(var(--border-default)); }
+:where(html.dark) .border-slate-300 { border-color: rgb(var(--border-strong)); }
+
+
+/* 鈹€鈹€鈹€ 娣辫壊妯″紡锛歷-md-editor锛圡arkdown 缂栬緫鍣級 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */
+:where(html.dark) .v-md-editor,
+:where(html.dark) .v-md-editor__editor,
+:where(html.dark) .v-md-editor__preview-wrapper {
+  background-color: rgb(var(--surface-0));
+}
+:where(html.dark) .v-md-editor__toolbar {
+  background-color: rgb(var(--surface-1));
+  border-bottom-color: rgb(var(--border-default));
+}
+:where(html.dark) .v-md-editor__toolbar-item,
+:where(html.dark) .v-md-editor__menu-item {
+  color: rgb(var(--ink-700));
+}
+:where(html.dark) .v-md-editor__toolbar-item:hover {
+  background-color: rgb(var(--surface-3));
+}
+:where(html.dark) .v-md-editor__menu {
+  background-color: rgb(var(--surface-0));
+  border-color: rgb(var(--border-default));
+}
+:where(html.dark) .v-md-editor__tooltip {
+  background-color: rgb(var(--surface-3));
+  color: rgb(var(--ink-900));
+}
+:where(html.dark) .v-md-editor textarea {
+  background-color: rgb(var(--surface-1)) !important;
+  color: rgb(var(--ink-900)) !important;
+  caret-color: rgb(var(--accent-400));
+}
+:where(html.dark) .v-md-editor__left-area-title {
+  color: rgb(var(--ink-800));
+}
+:where(html.dark) .v-md-editor-preview {
+  background-color: rgb(var(--surface-0));
+  color: rgb(var(--ink-800));
+}
+:where(html.dark) .v-md-editor-preview .markdown-body,
+:where(html.dark) .v-md-editor-preview .vuepress-markdown-body {
+  background-color: transparent;
+  color: rgb(var(--ink-800));
+}
+
+/* 鈹€鈹€鈹€ 娣辫壊妯″紡锛歸angEditor 瀵屾枃鏈紪杈戝櫒 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */
+html.dark .w-e-toolbar {
+  --w-e-toolbar-bg-color: rgb(var(--surface-1));
+  --w-e-toolbar-color: rgb(var(--ink-700));
+  --w-e-toolbar-active-bg-color: rgb(var(--surface-3));
+  --w-e-toolbar-active-color: rgb(var(--ink-900));
+  --w-e-toolbar-disabled-color: rgb(var(--ink-400));
+  --w-e-toolbar-border-color: rgb(var(--border-default));
+}
+html.dark .w-e-text-container {
+  --w-e-textarea-bg-color: rgb(var(--surface-1));
+  --w-e-textarea-color: rgb(var(--ink-900));
+  --w-e-textarea-border-color: rgb(var(--border-default));
+  --w-e-textarea-slight-border-color: rgb(var(--border-subtle));
+  --w-e-textarea-slight-color: rgb(var(--ink-400));
+  --w-e-textarea-slight-bg-color: rgb(var(--surface-2));
+  --w-e-textarea-selected-border-color: rgb(var(--accent-400));
+}
+html.dark .w-e-text-placeholder { color: rgb(var(--ink-400)); }
+html.dark .w-e-select-list { background-color: rgb(var(--surface-0)); }
+html.dark .w-e-modal {
+  background-color: rgb(var(--surface-0));
+  color: rgb(var(--ink-900));
+}
+html.dark .w-e-modal .w-e-modal-btn {
+  background-color: rgb(var(--surface-2));
+  color: rgb(var(--ink-800));
+  border-color: rgb(var(--border-default));
+}
+
+/* 鈹€鈹€鈹€ 娣辫壊妯″紡锛?100 绾ф笎鍙樻柇鐐规槧灏勶紙鍚?-50 绛栫暐锛岄€忔槑搴︾暐楂橈級 鈹€鈹€鈹€ */
+:where(html.dark) .from-pink-100 { --tw-gradient-from: rgb(236 72 153 / 0.16) var(--tw-gradient-from-position); }
+:where(html.dark) .via-pink-100 { --tw-gradient-stops: var(--tw-gradient-from), rgb(236 72 153 / 0.12) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+:where(html.dark) .to-pink-100 { --tw-gradient-to: rgb(236 72 153 / 0.18) var(--tw-gradient-to-position); }
+:where(html.dark) .from-rose-100 { --tw-gradient-from: rgb(244 63 94 / 0.16) var(--tw-gradient-from-position); }
+:where(html.dark) .via-rose-100 { --tw-gradient-stops: var(--tw-gradient-from), rgb(244 63 94 / 0.12) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+:where(html.dark) .to-rose-100 { --tw-gradient-to: rgb(244 63 94 / 0.18) var(--tw-gradient-to-position); }
+:where(html.dark) .from-purple-100 { --tw-gradient-from: rgb(168 85 247 / 0.16) var(--tw-gradient-from-position); }
+:where(html.dark) .via-purple-100 { --tw-gradient-stops: var(--tw-gradient-from), rgb(168 85 247 / 0.12) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+:where(html.dark) .to-purple-100 { --tw-gradient-to: rgb(168 85 247 / 0.18) var(--tw-gradient-to-position); }
+:where(html.dark) .from-violet-100 { --tw-gradient-from: rgb(139 92 246 / 0.16) var(--tw-gradient-from-position); }
+:where(html.dark) .via-violet-100 { --tw-gradient-stops: var(--tw-gradient-from), rgb(139 92 246 / 0.12) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+:where(html.dark) .to-violet-100 { --tw-gradient-to: rgb(139 92 246 / 0.18) var(--tw-gradient-to-position); }
+:where(html.dark) .from-fuchsia-100 { --tw-gradient-from: rgb(217 70 239 / 0.16) var(--tw-gradient-from-position); }
+:where(html.dark) .via-fuchsia-100 { --tw-gradient-stops: var(--tw-gradient-from), rgb(217 70 239 / 0.12) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+:where(html.dark) .to-fuchsia-100 { --tw-gradient-to: rgb(217 70 239 / 0.18) var(--tw-gradient-to-position); }
+:where(html.dark) .from-blue-100 { --tw-gradient-from: rgb(59 130 246 / 0.16) var(--tw-gradient-from-position); }
+:where(html.dark) .via-blue-100 { --tw-gradient-stops: var(--tw-gradient-from), rgb(59 130 246 / 0.12) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+:where(html.dark) .to-blue-100 { --tw-gradient-to: rgb(59 130 246 / 0.18) var(--tw-gradient-to-position); }
+:where(html.dark) .from-indigo-100 { --tw-gradient-from: rgb(99 102 241 / 0.16) var(--tw-gradient-from-position); }
+:where(html.dark) .via-indigo-100 { --tw-gradient-stops: var(--tw-gradient-from), rgb(99 102 241 / 0.12) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+:where(html.dark) .to-indigo-100 { --tw-gradient-to: rgb(99 102 241 / 0.18) var(--tw-gradient-to-position); }
+:where(html.dark) .from-sky-100 { --tw-gradient-from: rgb(14 165 233 / 0.16) var(--tw-gradient-from-position); }
+:where(html.dark) .via-sky-100 { --tw-gradient-stops: var(--tw-gradient-from), rgb(14 165 233 / 0.12) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+:where(html.dark) .to-sky-100 { --tw-gradient-to: rgb(14 165 233 / 0.18) var(--tw-gradient-to-position); }
+:where(html.dark) .from-cyan-100 { --tw-gradient-from: rgb(6 182 212 / 0.16) var(--tw-gradient-from-position); }
+:where(html.dark) .via-cyan-100 { --tw-gradient-stops: var(--tw-gradient-from), rgb(6 182 212 / 0.12) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+:where(html.dark) .to-cyan-100 { --tw-gradient-to: rgb(6 182 212 / 0.18) var(--tw-gradient-to-position); }
+:where(html.dark) .from-teal-100 { --tw-gradient-from: rgb(20 184 166 / 0.16) var(--tw-gradient-from-position); }
+:where(html.dark) .via-teal-100 { --tw-gradient-stops: var(--tw-gradient-from), rgb(20 184 166 / 0.12) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+:where(html.dark) .to-teal-100 { --tw-gradient-to: rgb(20 184 166 / 0.18) var(--tw-gradient-to-position); }
+:where(html.dark) .from-emerald-100 { --tw-gradient-from: rgb(16 185 129 / 0.16) var(--tw-gradient-from-position); }
+:where(html.dark) .via-emerald-100 { --tw-gradient-stops: var(--tw-gradient-from), rgb(16 185 129 / 0.12) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+:where(html.dark) .to-emerald-100 { --tw-gradient-to: rgb(16 185 129 / 0.18) var(--tw-gradient-to-position); }
+:where(html.dark) .from-green-100 { --tw-gradient-from: rgb(34 197 94 / 0.16) var(--tw-gradient-from-position); }
+:where(html.dark) .via-green-100 { --tw-gradient-stops: var(--tw-gradient-from), rgb(34 197 94 / 0.12) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+:where(html.dark) .to-green-100 { --tw-gradient-to: rgb(34 197 94 / 0.18) var(--tw-gradient-to-position); }
+:where(html.dark) .from-amber-100 { --tw-gradient-from: rgb(245 158 11 / 0.16) var(--tw-gradient-from-position); }
+:where(html.dark) .via-amber-100 { --tw-gradient-stops: var(--tw-gradient-from), rgb(245 158 11 / 0.12) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+:where(html.dark) .to-amber-100 { --tw-gradient-to: rgb(245 158 11 / 0.18) var(--tw-gradient-to-position); }
+:where(html.dark) .from-yellow-100 { --tw-gradient-from: rgb(234 179 8 / 0.16) var(--tw-gradient-from-position); }
+:where(html.dark) .via-yellow-100 { --tw-gradient-stops: var(--tw-gradient-from), rgb(234 179 8 / 0.12) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+:where(html.dark) .to-yellow-100 { --tw-gradient-to: rgb(234 179 8 / 0.18) var(--tw-gradient-to-position); }
+:where(html.dark) .from-orange-100 { --tw-gradient-from: rgb(249 115 22 / 0.16) var(--tw-gradient-from-position); }
+:where(html.dark) .via-orange-100 { --tw-gradient-stops: var(--tw-gradient-from), rgb(249 115 22 / 0.12) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+:where(html.dark) .to-orange-100 { --tw-gradient-to: rgb(249 115 22 / 0.18) var(--tw-gradient-to-position); }
+:where(html.dark) .from-red-100 { --tw-gradient-from: rgb(239 68 68 / 0.16) var(--tw-gradient-from-position); }
+:where(html.dark) .via-red-100 { --tw-gradient-stops: var(--tw-gradient-from), rgb(239 68 68 / 0.12) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+:where(html.dark) .to-red-100 { --tw-gradient-to: rgb(239 68 68 / 0.18) var(--tw-gradient-to-position); }

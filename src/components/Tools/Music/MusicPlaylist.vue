@@ -1481,4 +1481,149 @@ onBeforeUnmount(() => {
   .now-playing-bar { padding: 8px 12px; gap: 8px; bottom: 8px; left: 8px; right: 8px; }
   .np-audio { min-width: 160px !important; height: 32px !important; }
 }
+
+:global(html.dark .login-banner) {
+  background: linear-gradient(135deg, rgb(67 32 20 / 0.72), rgb(72 43 25 / 0.72));
+  border-color: rgb(194 122 64 / 0.55);
+}
+:global(html.dark .banner-icon) {
+  background: rgb(var(--surface-2));
+  color: #fb923c;
+}
+:global(html.dark .banner-title) { color: #fed7aa; }
+:global(html.dark .banner-desc) { color: #fdba74; }
+
+:global(html.dark .music-layout) {
+  background: rgb(var(--surface-0));
+  border-color: rgb(194 122 64 / 0.55);
+}
+:global(html.dark .side-menu) {
+  background: rgb(var(--surface-1));
+  border-color: rgb(194 122 64 / 0.45);
+}
+:global(html.dark .menu-item) {
+  color: #fdba74;
+}
+:global(html.dark .menu-item:hover) {
+  background: rgb(245 158 11 / 0.14);
+  color: #fed7aa;
+}
+:global(html.dark .menu-item.active) {
+  background: #c2410c;
+  color: #fff7ed;
+}
+:global(html.dark .section-title) {
+  color: rgb(var(--ink-800));
+}
+:global(html.dark .cell-title:hover) { background: rgb(245 158 11 / 0.12); }
+:global(html.dark .cell-title:hover .cell-title-text),
+:global(html.dark .cell-title.playing .cell-title-text),
+:global(html.dark .cell-title:hover .cell-icon) { color: #fb923c; }
+:global(html.dark .cell-icon) { color: rgb(var(--ink-400)); }
+
+:global(html.dark .now-playing-bar) {
+  background: rgb(var(--surface-1));
+  border-color: rgb(194 122 64 / 0.55);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.36);
+}
+:global(html.dark .np-title) { color: rgb(var(--ink-800)); }
+:global(html.dark .np-artist) { color: rgb(var(--ink-400)); }
+
+:global(html.dark .playlist-card) {
+  background: rgb(var(--surface-1));
+  border-color: rgb(194 122 64 / 0.45);
+}
+:global(html.dark .playlist-card:hover) {
+  background: rgb(var(--surface-2));
+  border-color: #fb923c;
+}
+:global(html.dark .card-title) { color: #fed7aa; }
+:global(html.dark .card-share-text),
+:global(html.dark .card-desc) { color: #fdba74; }
+
+:global(html.dark .upload-zone) {
+  background: rgb(var(--surface-1));
+  border-color: rgb(251 146 60 / 0.65);
+}
+:global(html.dark .upload-zone:hover) {
+  background: rgb(var(--surface-2));
+  border-color: #fb923c;
+}
+:global(html.dark .upload-title),
+:global(html.dark .queue-title),
+:global(html.dark .row-name),
+:global(html.dark .summary-row) { color: #fed7aa; }
+:global(html.dark .upload-desc),
+:global(html.dark .row-size),
+:global(html.dark .row-status),
+:global(html.dark .cost-label) { color: #fdba74; }
+:global(html.dark .upload-queue) {
+  background: rgb(var(--surface-1));
+  border-color: rgb(194 122 64 / 0.45);
+}
+:global(html.dark .queue-row) { border-color: rgb(194 122 64 / 0.35); }
+:global(html.dark .upload-summary) {
+  background: rgb(124 45 18 / 0.28);
+  border-color: rgb(251 146 60 / 0.55);
+}
+:global(html.dark .quality-note) {
+  background: rgb(6 78 59 / 0.35);
+  border-color: rgb(52 211 153 / 0.45);
+  color: #a7f3d0;
+}
+:global(html.dark .free-quota-bar) {
+  background: rgb(20 83 45 / 0.28);
+  border-color: rgb(74 222 128 / 0.4);
+}
+:global(html.dark .free-quota-header),
+:global(html.dark .free-quota-delta) { color: #a7f3d0; }
+
+:global(html.dark .pl-meta) {
+  background: rgb(124 45 18 / 0.28);
+}
+:global(html.dark .pl-title) { color: #fed7aa; }
+:global(html.dark .pl-section-title),
+:global(html.dark .pl-song-title) { color: rgb(var(--ink-800)); }
+:global(html.dark .pl-empty),
+:global(html.dark .pl-song-artist) { color: rgb(var(--ink-400)); }
+:global(html.dark .pl-song-row) { border-color: rgb(var(--border-default)); }
+:global(html.dark .pl-song-info:hover) { background: rgb(245 158 11 / 0.12); }
+
+:global(html.dark .content-panel .el-table) {
+  --el-table-bg-color: rgb(var(--surface-1));
+  --el-table-tr-bg-color: rgb(var(--surface-1));
+  --el-table-header-bg-color: rgb(var(--surface-2));
+  --el-table-row-hover-bg-color: rgb(var(--surface-2));
+  --el-table-border-color: rgb(var(--border-default));
+  --el-table-text-color: rgb(var(--ink-700));
+  --el-table-header-text-color: rgb(var(--ink-800));
+  background: rgb(var(--surface-1));
+  color: rgb(var(--ink-700));
+}
+:global(html.dark .content-panel .el-table th.el-table__cell) {
+  background: rgb(var(--surface-2));
+  color: rgb(var(--ink-800));
+}
+:global(html.dark .content-panel .el-table tr),
+:global(html.dark .content-panel .el-table td.el-table__cell) {
+  background: rgb(var(--surface-1));
+  border-color: rgb(var(--border-default));
+  color: rgb(var(--ink-700));
+}
+:global(html.dark .content-panel .el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell) {
+  background: rgb(var(--surface-2));
+}
+:global(html.dark .content-panel .el-table__body tr:hover > td.el-table__cell) {
+  background: rgb(var(--surface-3));
+}
+
+:global(html.dark .el-dialog),
+:global(html.dark .el-drawer) {
+  background: rgb(var(--surface-0));
+  color: rgb(var(--ink-700));
+}
+:global(html.dark .el-dialog__title),
+:global(html.dark .el-drawer__header) {
+  color: rgb(var(--ink-800));
+}
 </style>

@@ -5,6 +5,7 @@ import { Delete, Plus, Upload } from '@element-plus/icons-vue'
 import {
   saveManualAiCreationFiles,
   fetchAiCreations,
+  parseTagInput,
   type ManualUploadFile,
   type ManualUploadResult,
 } from '@/api/ai-creations'
@@ -34,6 +35,8 @@ const emit = defineEmits<{
 const fileInput = ref<HTMLInputElement | null>(null)
 const entries = ref<UploadEntry[]>([])
 const uploading = ref(false)
+// 可选标签（逗号分隔输入；默认空 = 不打标签）
+const tagsInput = ref('')
 const visible = computed({
   get: () => props.modelValue,
   set: (value: boolean) => emit('update:modelValue', value),
@@ -94,6 +97,7 @@ function onFilenameInput(entry: UploadEntry, value: string) {
 function reset() {
   entries.value.forEach((entry) => URL.revokeObjectURL(entry.previewUrl))
   entries.value = []
+  tagsInput.value = ''
 }
 
 function close() {
@@ -109,7 +113,12 @@ async function submit() {
   try {
     const result = await saveManualAiCreationFiles(
       entries.value.map(({ file, filename, width, height }) => ({ file, filename, width, height })),
-      { title: props.title, category: props.category },
+      {
+        title: props.title,
+        category: props.category,
+        // 空输入 → 空数组 → 后端不打标签（默认空）
+        tags: parseTagInput(tagsInput.value),
+      },
     )
     ElMessage.success(`已上传 ${result.inserted} 张图片`)
     emit('success', {
@@ -179,6 +188,17 @@ defineExpose({ open: () => { visible.value = true }, close })
             @click="removeEntry(index)"
           />
         </div>
+      </div>
+
+      <!-- 可选标签：整批图片共用，默认空 -->
+      <div>
+        <el-input
+          v-model="tagsInput"
+          placeholder="标签（可选，逗号分隔，如：风景,头像）"
+          clearable
+          :disabled="uploading"
+          @keyup.enter="submit"
+        />
       </div>
     </div>
     <template #footer>

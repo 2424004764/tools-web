@@ -726,20 +726,20 @@ const handleActionAndClose = (prompt: string, type: string) => {
             :key="index"
             class="border border-gray-200 rounded-lg p-5 hover:shadow-lg transition-all duration-200 hover:border-gray-300"
           >
-            <!-- 标题和难度 -->
-            <div class="flex justify-between items-start mb-4">
-              <div class="flex-1">
+            <!-- 标题和难度：窄屏时标签换行到标题下方，避免标题被挤成一字一行 -->
+            <div class="flex flex-wrap justify-between items-start gap-x-3 gap-y-2 mb-4">
+              <div class="flex-1 min-w-[13rem]">
                 <h4 class="text-body-lg font-semibold text-gray-800 mb-1">{{ item.title }}</h4>
                 <!-- 分组视图时显示子分类信息 -->
-                <div v-if="activeCategoryType === 'group' && item.categoryName" class="flex items-center gap-1 text-body-sm text-gray-500">
+                <div v-if="activeCategoryType === 'group' && item.categoryName" class="flex items-center gap-1 text-body-sm text-gray-500 whitespace-nowrap">
                   <span>{{ item.categoryIcon }}</span>
                   <span>{{ item.categoryName }}</span>
                 </div>
               </div>
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-2 shrink-0">
                 <!-- 类型标识 -->
-                <el-tag 
-                  :type="item.type === 'image' ? 'success' : 'info'" 
+                <el-tag
+                  :type="item.type === 'image' ? 'success' : 'info'"
                   size="small"
                   effect="plain"
                 >
@@ -793,7 +793,7 @@ const handleActionAndClose = (prompt: string, type: string) => {
             </div>
 
             <!-- 操作按钮 -->
-            <div class="flex justify-end gap-2">
+            <div class="flex flex-wrap justify-end gap-2">
               <el-button type="primary" size="default" @click="copyPrompt(item.prompt)">
                 复制提示词
               </el-button>
@@ -869,7 +869,7 @@ const handleActionAndClose = (prompt: string, type: string) => {
         <br>4. 点击复制按钮获取提示词
         <br>5. 文生图提示词点击"生成图片"跳转到AI生图页面
         <br>6. 文生文提示词点击"文生文"跳转到AI对话页面并自动发起对话
-        <br>7. 如果你有好的提示词，欢迎提交到<a style="color: blue;" :href="gitUrl+'/issues/new'" target="_blank">GitHub</a>，我们会尽快审核并添加到提示词仓库中
+        <br>7. 如果你有好的提示词，欢迎提交到<a class="text-blue-600" :href="gitUrl+'/issues/new'" target="_blank">GitHub</a>，我们会尽快审核并添加到提示词仓库中
       </el-text>
     </ToolDetail>
   </div>
@@ -904,6 +904,10 @@ const handleActionAndClose = (prompt: string, type: string) => {
   pointer-events: none;
 }
 
+html.dark .prompt-preview::after {
+  background: linear-gradient(transparent, rgb(var(--surface-1)));
+}
+
 /* 确保左侧栏在移动端正确显示 */
 @media (max-width: 768px) {
   .sidebar-overlay {
@@ -923,17 +927,17 @@ const handleActionAndClose = (prompt: string, type: string) => {
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: rgb(var(--surface-1));
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: rgb(var(--border-strong));
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+  background: rgb(var(--ink-400));
 }
 
 /* 对话框样式优化 */
@@ -943,7 +947,7 @@ const handleActionAndClose = (prompt: string, type: string) => {
 
 :deep(.prompt-dialog .el-dialog__header) {
   padding: 20px 20px 10px 20px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid rgb(var(--border-default));
 }
 
 :deep(.prompt-dialog .el-dialog__body) {
@@ -952,7 +956,7 @@ const handleActionAndClose = (prompt: string, type: string) => {
 
 :deep(.prompt-dialog .el-dialog__footer) {
   padding: 15px 20px 20px 20px;
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid rgb(var(--border-default));
 }
 
 /* 移动端对话框适配 */
