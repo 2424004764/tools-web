@@ -549,4 +549,30 @@ const onOpenInEditor = async (key: string) => {
     grid-template-columns: 1fr;
   }
 }
+
+/* ─── 深色模式适配 ─────────────────────────────────────────── */
+html.dark .banner-icon {
+  background: rgb(var(--surface-1));
+  color: #fb923c;
+}
+html.dark .oss-container {
+  background: rgb(var(--surface-0));
+  border-color: rgb(251 146 60 / 0.35);
+}
+html.dark .config-card {
+  background: rgb(245 158 11 / 0.06);
+  border-color: rgb(251 146 60 / 0.25);
+}
+html.dark .config-card:hover {
+  border-color: rgb(251 146 60 / 0.6);
+  background: rgb(245 158 11 / 0.12);
+}
+html.dark .meta-key,
+html.dark .need-config-tip {
+  color: #fbbf24;
+}
+html.dark .meta-val {
+  color: rgb(var(--ink-900));
+}
+
 </style>

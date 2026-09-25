@@ -11,7 +11,7 @@ defineProps<{
 
 <template>
   <!-- Header 骨架：logo + 搜索框 + 右侧按钮 -->
-  <div v-if="variant === 'header'" class="h-16 px-4 flex items-center gap-4 border-b border-border-subtle bg-white">
+  <div v-if="variant === 'header'" class="h-16 px-4 flex items-center gap-4 border-b border-border-subtle bg-white dark:bg-surface-0">
     <div class="skel-block w-28 h-7 rounded"></div>
     <div class="skel-block flex-1 max-w-xl h-9 rounded-lg"></div>
     <div class="skel-block w-20 h-9 rounded-lg"></div>
@@ -19,7 +19,7 @@ defineProps<{
   </div>
 
   <!-- Left 骨架：菜单列表，模拟分类 + 工具项 -->
-  <div v-else-if="variant === 'left'" class="h-full p-4 space-y-3 bg-white">
+  <div v-else-if="variant === 'left'" class="h-full p-4 space-y-3 bg-white dark:bg-surface-0">
     <div v-for="i in 8" :key="i" class="space-y-2">
       <div class="skel-block h-5 w-3/4 rounded"></div>
       <div class="skel-block h-4 w-1/2 rounded ml-3"></div>

@@ -289,7 +289,7 @@ const sourceValid = computed(() => {
   <div class="flex flex-col mt-3 flex-1">
     <DetailHeader title="在线计算器" />
 
-    <div class="p-4 rounded-2xl bg-white shadow-sm border border-slate-200">
+    <div class="p-4 rounded-2xl bg-white dark:bg-surface-0 shadow-sm border border-slate-200 dark:border-border-default">
       <el-tabs v-model="mode" class="calc-tabs">
         <!-- ============================== -->
         <!-- 科学计算 -->
@@ -299,7 +299,7 @@ const sourceValid = computed(() => {
             <!-- 主区域：显示屏 + 按钮 -->
             <div class="space-y-4">
               <!-- 显示屏 -->
-              <div class="p-4 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200">
+              <div class="p-4 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 dark:from-surface-1 dark:to-surface-2 border border-slate-200 dark:border-border-default">
                 <div class="flex items-center justify-between text-caption text-slate-500 mb-2">
                   <div class="flex items-center gap-3">
                     <span>角度</span>
@@ -365,7 +365,7 @@ const sourceValid = computed(() => {
             </div>
 
             <!-- 历史侧栏 -->
-            <div class="p-4 rounded-xl bg-white border border-slate-200 lg:max-h-[640px] flex flex-col">
+            <div class="p-4 rounded-xl bg-surface-0 dark:bg-surface-0 border border-slate-200 dark:border-border-default lg:max-h-[640px] flex flex-col">
               <div class="flex items-center justify-between mb-2">
                 <div class="text-body font-semibold text-slate-700">历史记录</div>
                 <el-button v-if="history.length" size="small" type="danger" plain @click="clearHistory">清空</el-button>
@@ -377,7 +377,7 @@ const sourceValid = computed(() => {
                 <div
                   v-for="(h, i) in history"
                   :key="i"
-                  class="p-2 rounded-lg hover:bg-slate-50 cursor-pointer border border-transparent hover:border-slate-200 transition-colors"
+                  class="p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-surface-2 cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-border-default transition-colors"
                   @click="useHistory(h)"
                 >
                   <div class="text-caption text-slate-500 truncate font-mono">{{ h.expr }} =</div>
@@ -393,7 +393,7 @@ const sourceValid = computed(() => {
         <!-- ============================== -->
         <el-tab-pane label="进制转换" name="base">
           <div class="space-y-4">
-            <div class="p-4 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200">
+            <div class="p-4 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 dark:from-surface-1 dark:to-surface-2 border border-slate-200 dark:border-border-default">
               <div class="flex flex-wrap items-center gap-3 mb-3">
                 <span class="text-body-sm text-slate-600">源进制：</span>
                 <el-radio-group v-model="srcBase" size="default">
@@ -422,7 +422,7 @@ const sourceValid = computed(() => {
               <div
                 v-for="c in conversions"
                 :key="c.base"
-                class="p-4 rounded-xl bg-white border border-slate-200 shadow-sm"
+                class="p-4 rounded-xl bg-white dark:bg-surface-0 border border-slate-200 dark:border-border-default shadow-sm"
               >
                 <div class="flex items-center justify-between mb-2">
                   <span class="text-body-sm font-semibold text-slate-700">{{ c.label }} <span class="text-slate-400 text-caption">({{ c.base }} 进制)</span></span>
@@ -464,8 +464,68 @@ const sourceValid = computed(() => {
   </div>
 </template>
 
+<style>
+/* 暗色主题：保留按钮语义色，但把浅色背景压到 surface 层次内，
+   避免计算器成为工具页里突兀的白色区域。 */
+html.dark .calc-btn {
+  background: rgb(var(--surface-2));
+  color: rgb(var(--ink-900));
+  border-color: rgb(var(--border-default));
+}
+html.dark .calc-btn:hover {
+  background: rgb(var(--surface-3));
+  border-color: rgb(var(--border-strong));
+}
+html.dark .calc-btn-num {
+  background: rgb(var(--surface-2));
+}
+html.dark .calc-btn-op {
+  background: rgb(var(--accent-700) / 0.28);
+  color: rgb(var(--accent-300));
+  border-color: rgb(var(--accent-500) / 0.55);
+}
+html.dark .calc-btn-op:hover {
+  background: rgb(var(--accent-700) / 0.42);
+}
+html.dark .calc-btn-fn {
+  background: rgb(var(--surface-2));
+  color: rgb(var(--ink-800));
+}
+html.dark .calc-btn-fn:hover {
+  background: rgb(var(--surface-3));
+}
+html.dark .calc-btn-mem {
+  background: rgb(var(--warning-500) / 0.18);
+  color: rgb(var(--warning-300));
+  border-color: rgb(var(--warning-500) / 0.48);
+}
+html.dark .calc-btn-mem:hover {
+  background: rgb(var(--warning-500) / 0.28);
+}
+html.dark .calc-btn-eq {
+  background: rgb(var(--accent-600));
+  color: #fff;
+  border-color: rgb(var(--accent-500));
+}
+html.dark .calc-btn-eq:hover {
+  background: rgb(var(--accent-500));
+}
+html.dark .calc-btn-danger {
+  background: rgb(var(--danger-500) / 0.18);
+  color: rgb(var(--danger-300));
+  border-color: rgb(var(--danger-500) / 0.48);
+}
+html.dark .calc-btn-danger:hover {
+  background: rgb(var(--danger-500) / 0.28);
+}
+
+html.dark .calc-tabs .el-tabs__nav-wrap::after {
+  background: rgb(var(--border-default));
+}
+</style>
+
 <style scoped>
-/* 按钮基础样式 */
+
 .calc-btn {
   height: 48px;
   border-radius: 10px;

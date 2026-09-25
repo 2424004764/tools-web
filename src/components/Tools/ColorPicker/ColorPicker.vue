@@ -69,7 +69,7 @@ onMounted(() => {
 
         <li class='flex items-center mb-3'>
           <div class="w-36 text-right pr-3">Hex:</div>
-          <div class="w-full pl-3 p-1  text-left bg-[#f5f5fb] flex items-center justify-between">
+          <div class="w-full pl-3 p-1 text-left bg-[#f5f5fb] dark:bg-surface-2 dark:text-ink-900 flex items-center justify-between">
             <div>
               {{ hex }}
             </div>
@@ -86,7 +86,7 @@ onMounted(() => {
 
         <li class='flex items-center mb-3'>
           <div class="w-36 text-right pr-3">RGB:</div>
-          <div class="w-full pl-3 p-1  text-left bg-[#f5f5fb] flex items-center justify-between">
+          <div class="w-full pl-3 p-1 text-left bg-[#f5f5fb] dark:bg-surface-2 dark:text-ink-900 flex items-center justify-between">
             <div>
               {{ rgb }}
             </div>
@@ -103,7 +103,7 @@ onMounted(() => {
 
         <li class='flex items-center mb-3'>
           <div class="w-36 text-right pr-3">HSL:</div>
-          <div class="w-full pl-3 p-1  text-left bg-[#f5f5fb] flex items-center justify-between">
+          <div class="w-full pl-3 p-1 text-left bg-[#f5f5fb] dark:bg-surface-2 dark:text-ink-900 flex items-center justify-between">
             <div>
               {{ hsl }}
             </div>
@@ -120,7 +120,7 @@ onMounted(() => {
 
         <li class='flex items-center mb-3'>
           <div class="w-36 text-right pr-3">HSV:</div>
-          <div class="w-full pl-3 p-1  text-left bg-[#f5f5fb] flex items-center justify-between">
+          <div class="w-full pl-3 p-1 text-left bg-[#f5f5fb] dark:bg-surface-2 dark:text-ink-900 flex items-center justify-between">
             <div>
               {{ hsv }}
             </div>
@@ -137,7 +137,7 @@ onMounted(() => {
 
         <li class='flex items-center mb-3'>
           <div class="w-36 text-right pr-3">HWB:</div>
-          <div class="w-full pl-3 p-1  text-left bg-[#f5f5fb] flex items-center justify-between">
+          <div class="w-full pl-3 p-1 text-left bg-[#f5f5fb] dark:bg-surface-2 dark:text-ink-900 flex items-center justify-between">
             <div>
               {{ hwb }}
             </div>
@@ -154,7 +154,7 @@ onMounted(() => {
 
         <li class='flex items-center mb-3'>
           <div class="w-36 text-right pr-3">LAB:</div>
-          <div class="w-full pl-3 p-1  text-left bg-[#f5f5fb] flex items-center justify-between">
+          <div class="w-full pl-3 p-1 text-left bg-[#f5f5fb] dark:bg-surface-2 dark:text-ink-900 flex items-center justify-between">
             <div>
               {{ lab }}
             </div>
@@ -171,7 +171,7 @@ onMounted(() => {
 
         <li class='flex items-center mb-3'>
           <div class="w-36 text-right pr-3">LCH:</div>
-          <div class="w-full pl-3 p-1  text-left bg-[#f5f5fb] flex items-center justify-between">
+          <div class="w-full pl-3 p-1 text-left bg-[#f5f5fb] dark:bg-surface-2 dark:text-ink-900 flex items-center justify-between">
             <div>
               {{ lch }}
             </div>
@@ -188,7 +188,7 @@ onMounted(() => {
 
         <li class='flex items-center mb-3'>
           <div class="w-36 text-right pr-3">CMYK:</div>
-          <div class="w-full pl-3 p-1  text-left bg-[#f5f5fb] flex items-center justify-between">
+          <div class="w-full pl-3 p-1 text-left bg-[#f5f5fb] dark:bg-surface-2 dark:text-ink-900 flex items-center justify-between">
             <div>
               {{ cmyk }}
             </div>
@@ -205,7 +205,7 @@ onMounted(() => {
 
         <li class='flex items-center mb-3'>
           <div class="w-36 text-right pr-3">Name:</div>
-          <div class="w-full pl-3 p-1  text-left bg-[#f5f5fb] flex items-center justify-between">
+          <div class="w-full pl-3 p-1 text-left bg-[#f5f5fb] dark:bg-surface-2 dark:text-ink-900 flex items-center justify-between">
             <div>
               {{ name }}
             </div>

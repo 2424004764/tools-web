@@ -807,8 +807,8 @@ onMounted(() => {
         </el-checkbox>
       </div>
 
-      <!-- 分页组件 -->
-      <div v-if="pagination.total > 0" class="pagination-wrapper">
+      <!-- 分页组件：只有一页时不渲染，避免出现无意义的翻页/跳页控件 -->
+      <div v-if="pagination.totalPages > 1" class="pagination-wrapper">
         <el-pagination
           v-model:current-page="pagination.page"
           v-model:page-size="pagination.pageSize"
@@ -2191,6 +2191,153 @@ onMounted(() => {
   gap: 16px;
   padding: 24px 32px;
   background: #f8fafc;
+}
+
+:global(html.dark .companies-container) {
+  background: linear-gradient(135deg, #20232d 0%, #17313d 100%);
+}
+
+:global(html.dark .header-section),
+:global(html.dark .search-section),
+:global(html.dark .pagination-wrapper),
+:global(html.dark .empty-state),
+:global(html.dark .company-card) {
+  background: rgba(30, 31, 37, 0.96);
+  border-color: rgb(255 255 255 / 0.08);
+  box-shadow: 0 8px 32px rgb(0 0 0 / 0.24);
+}
+
+:global(html.dark .company-card:hover),
+:global(html.dark .company-active),
+:global(html.dark .company-selected) {
+  background: rgb(38 40 50 / 0.98);
+  border-color: #818cf8;
+}
+
+:global(html.dark .header-title),
+:global(html.dark .company-position),
+:global(html.dark .time-value),
+:global(html.dark .stats-content p) {
+  color: #a5b4fc;
+}
+
+:global(html.dark .header-subtitle),
+:global(html.dark .empty-desc),
+:global(html.dark .label),
+:global(html.dark .time-label),
+:global(html.dark .selector-content p),
+:global(html.dark .meta-item),
+:global(html.dark .detail-item label),
+:global(html.dark .detail-section label),
+:global(html.dark .compare-company .company-position) {
+  color: #a1a1aa;
+}
+
+:global(html.dark .empty-title),
+:global(html.dark .company-name),
+:global(html.dark .value),
+:global(html.dark .detail-title),
+:global(html.dark .detail-item span),
+:global(html.dark .detail-text),
+:global(html.dark .compare-container h4),
+:global(html.dark .selector-content h5),
+:global(html.dark .compare-company .company-name),
+:global(html.dark .stats-content h4) {
+  color: #e4e4e7;
+}
+
+:global(html.dark .company-footer) {
+  border-color: rgb(255 255 255 / 0.12);
+}
+
+:global(html.dark .refresh-btn) {
+  background: #30313a;
+  color: #a5b4fc;
+}
+
+:global(html.dark .search-input .el-input__wrapper),
+:global(html.dark .form-input .el-input__wrapper),
+:global(html.dark .form-textarea .el-textarea__inner),
+:global(html.dark .filter-form .el-input__wrapper),
+:global(html.dark .filter-form .el-input-number__wrapper) {
+  background: #25262e;
+  border-color: #454650;
+  box-shadow: none;
+}
+
+:global(html.dark .search-input .el-input__inner),
+:global(html.dark .form-input .el-input__inner),
+:global(html.dark .form-textarea .el-textarea__inner),
+:global(html.dark .filter-form .el-input__inner) {
+  color: #e4e4e7;
+}
+
+:global(html.dark .form-item .el-form-item__label),
+:global(html.dark .filter-form .el-form-item__label) {
+  color: #d4d4d8;
+}
+
+:global(html.dark .custom-pagination .el-pager li),
+:global(html.dark .custom-pagination .btn-prev),
+:global(html.dark .custom-pagination .btn-next) {
+  background: #30313a;
+  color: #d4d4d8;
+}
+
+:global(html.dark .custom-pagination .el-pagination__total),
+:global(html.dark .custom-pagination .el-pagination__jump) {
+  color: #a1a1aa;
+}
+
+:global(html.dark .company-dialog .el-dialog),
+:global(html.dark .detail-dialog .el-dialog),
+:global(html.dark .compare-dialog .el-dialog),
+:global(html.dark .stats-dialog .el-dialog),
+:global(html.dark .filter-dialog .el-dialog) {
+  background: #1e1f25;
+  color: #e4e4e7;
+}
+
+:global(html.dark .company-dialog .el-dialog__body),
+:global(html.dark .detail-dialog .el-dialog__body),
+:global(html.dark .compare-dialog .el-dialog__body),
+:global(html.dark .stats-dialog .el-dialog__body),
+:global(html.dark .filter-dialog .el-dialog__body),
+:global(html.dark .dialog-footer) {
+  background: #1e1f25;
+}
+
+:global(html.dark .detail-header),
+:global(html.dark .detail-item),
+:global(html.dark .detail-section),
+:global(html.dark .selector-card),
+:global(html.dark .compare-table) {
+  background: #25262e;
+}
+
+:global(html.dark .detail-header),
+:global(html.dark .selector-card),
+:global(html.dark .compare-table th),
+:global(html.dark .compare-table td) {
+  border-color: #3b3c45;
+}
+
+:global(html.dark .selector-card) {
+  color: #e4e4e7;
+}
+
+:global(html.dark .selector-card.selected) {
+  background: rgb(99 102 241 / 0.14);
+  border-color: #818cf8;
+}
+
+:global(html.dark .compare-table .compare-label) {
+  background: #30313a;
+  color: #a5b4fc;
+}
+
+:global(html.dark .compare-table td) {
+  color: #d4d4d8;
 }
 
 .footer-left,

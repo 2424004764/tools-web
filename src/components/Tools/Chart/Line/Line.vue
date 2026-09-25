@@ -30,9 +30,9 @@ const attrColor = ref('#5470c6')
 //标题位置
 const titlePos = ref('center')
 //标题
-const title = ref('Tools-Web')
+const title = ref('')
 //副标题
-const subTitle = ref('在线图表制作工具')
+const subTitle = ref('')
 //显示标题 - 开关
 const titleSwitch = ref(true)
 //显示副标题 - 开关

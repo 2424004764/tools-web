@@ -512,8 +512,8 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <!-- 分页 -->
-    <div v-if="pagination.total > 0" class="mt-4 flex justify-center">
+    <!-- 分页：只有一页时不渲染，避免出现无意义的翻页控件 -->
+    <div v-if="pagination.totalPages > 1" class="mt-4 flex justify-center">
       <el-pagination
         v-model:current-page="pagination.page"
         :page-size="pagination.pageSize"

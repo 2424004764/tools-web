@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref, shallowRef, onBeforeUnmount } from 'vue'
+import { reactive, ref, shallowRef, onBeforeUnmount, nextTick } from 'vue'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import html2canvas from "html2canvas";
@@ -33,9 +33,6 @@ const valueHtml = ref(`文字转图片演示😀
 支持一键导出为长图
 `)
 
-// 绑定  需要把那个内容生成图片
-const  poster  = ref();
-
 // 工具栏配置
 const toolbarConfig = {
   excludeKeys: [
@@ -52,27 +49,48 @@ const handleCreated = (editor) => {
   editorRef.value = editor // 记录 editor 实例，重要！
 }
 
-const goDown =() => {
-  html2canvas(poster.value, {
-      backgroundColor: info.convasBackgroundColor,//海报的背景颜色
-      useCORS: true, // 允许跨域 
-      width: info.convasWidth, //生成海报的w
-    }).then(canvas=>{
-      // canvas 其实就是我们所讲的res 的意思 返回报文的意思
-      let  baseImg = canvas.toDataURL("image/png");
-      if (info.downExt == '.jpg') {
-        baseImg = canvas.toDataURL("image/jpg");
-      }
-      //创建a标签
-      let save  = document.createElement('a');
-      // <a href=''></a>
-      save.href = baseImg;
-      // 下载的名字
-      save.download = 'yz'
-      // 直接回调a的点击事件
-      save.click()
+const goDown = async () => {
+  const exportNode = document.createElement('div')
+  exportNode.innerHTML = valueHtml.value
+  Object.assign(exportNode.style, {
+    position: 'fixed',
+    left: '-100000px',
+    top: '0',
+    width: `${info.convasWidth}px`,
+    minHeight: '1px',
+    padding: '16px',
+    boxSizing: 'border-box',
+    color: '#18181b',
+    backgroundColor: info.convasBackgroundColor,
+    fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif",
+    fontSize: '16px',
+    lineHeight: '1.5',
+    whiteSpace: 'pre-wrap',
+    overflowWrap: 'anywhere',
   })
+  document.body.appendChild(exportNode)
+
+  try {
+    await nextTick()
+    const canvas = await html2canvas(exportNode, {
+      backgroundColor: info.convasBackgroundColor,
+      useCORS: true,
+      width: info.convasWidth,
+      windowWidth: info.convasWidth,
+      scale: window.devicePixelRatio || 1,
+    })
+    const isJpeg = info.downExt === '.jpg'
+    const mime = isJpeg ? 'image/jpeg' : 'image/png'
+    const baseImg = canvas.toDataURL(mime, isJpeg ? 0.92 : undefined)
+    const save = document.createElement('a')
+    save.href = baseImg
+    save.download = `text-to-image${info.downExt}`
+    save.click()
+  } finally {
+    exportNode.remove()
+  }
 }
+
 
 // 组件销毁时，也及时销毁编辑器
 onBeforeUnmount(() => {
@@ -91,7 +109,7 @@ onBeforeUnmount(() => {
   <div class="flex flex-col mt-3 flex-1">
     <DetailHeader :title="info.title"></DetailHeader>
 
-    <div class="p-4 rounded-2xl bg-white">
+    <div class="p-4 rounded-2xl bg-white dark:bg-surface-0 border border-transparent dark:border-border-default">
       <div>
         <div class="">
           
@@ -118,7 +136,7 @@ onBeforeUnmount(() => {
           </div>
         </div>
       </div>
-      <div class="border relative z-10 mt-3">
+      <div class="border border-border-default relative z-10 mt-3">
         <Toolbar
           class="border-b"
           :editor="editorRef"
@@ -131,7 +149,6 @@ onBeforeUnmount(() => {
           :mode="info.mode"
           @onCreated="handleCreated"
         />
-        <div ref="poster" class="absolute top-0 -z-10" v-html="valueHtml"></div>
       </div>
     </div>
 

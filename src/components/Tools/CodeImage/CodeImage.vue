@@ -852,6 +852,23 @@ const loadSample = (idx: number) => {
   padding: 0;
 }
 
+/* ─── 深色模式适配 ───────────────────────────────────────────
+   输入框浅底被 !important 强制，深色下需同步覆盖为暗底亮字；
+   右侧预览卡是最终生成的图片本体，保持浅色不变。 */
+html.dark .ci-code-input :deep(.el-textarea__inner) {
+  background: rgb(var(--surface-1)) !important;
+  color: rgb(var(--ink-900)) !important;
+  border-color: rgb(var(--border-default));
+}
+html.dark .ci-color-input {
+  border-color: rgb(var(--border-default));
+}
+/* 预览画板保持浅色棋盘格：代码高亮 token 是按浅底设计的
+   （GitHub 浅色等主题），深色页面里相当于一块浅色绘图板 */
+html.dark .ci-preview-wrap {
+  background-color: #fff;
+}
+
 /* 移动端：左右两栏堆叠时给卡片一个最小宽度 */
 @media (max-width: 1023px) {
   .ci-preview {

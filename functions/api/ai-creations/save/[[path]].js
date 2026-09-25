@@ -1,7 +1,7 @@
 // 我的 AI 创作 - 保存到 R2 + D1
 //   POST /api/ai-creations/save/init
 //     鉴权 + 复用/创建 group + 给每个 image 签 R2 PUT URL
-//     Body: { prompt_id?, scene, category?, model_name?, title?,
+//     Body: { prompt_id?, scene, category?, model_name?, title?, tags?,
 //             images: [{ upstream_url, prompt, width?, height? }] }
 //     Resp: { group_id, plan: [{ index, upload_url, r2_key, public_url, expires_at }] }
 //
@@ -11,6 +11,7 @@
 //     Resp: { inserted: number, ids: number[] }
 
 import { extractUidFromRequest } from '../../_lib/model-resolver.js'
+import { serializeTagInput } from '../../_lib/ai-creation-tags.js'
 import { signR2PutUrl, buildR2PublicUrl, headR2ObjectSize } from '../../../services/r2.js'
 import { reserveStorage, settleReservation } from '../../../services/storageQuotaService.js'
 
@@ -114,6 +115,8 @@ async function handleInit(db, uid, body, env) {
   const category = body.category ? String(body.category).trim().slice(0, MAX_CATEGORY) : null
   const modelName = body.model_name ? String(body.model_name).trim().slice(0, MAX_MODEL) : null
   const title = body.title ? String(body.title).trim().slice(0, MAX_TITLE) : null
+  // 可选标签（081）：手动上传时可随图带上；数组或逗号分隔字符串，空 = 不打（默认）
+  const tagsStr = body.tags !== undefined && body.tags !== null ? serializeTagInput(body.tags) : ''
   const sourceType = body.source_type ? String(body.source_type).trim() : (scene === 'manual-upload' ? 'manual_upload' : 'ai_generated')
   if (!ALLOWED_SOURCES.has(sourceType)) return jsonError('source_type 不合法', 400)
   const images = Array.isArray(body.images) ? body.images : []
@@ -142,7 +145,8 @@ async function handleInit(db, uid, body, env) {
       .first()
     if (existing) {
       groupId = existing.id
-      // 顺手更新 title / category / model_name / updated_at（不覆盖已存在的非空字段）
+      // 顺手更新 title / category / model_name / updated_at（不覆盖已存在的非空字段）；
+      // tags 只在该组还没有标签时写入（复用组不打断用户已整理好的标签）
       await db
         .prepare(
           `UPDATE ai_creation_groups
@@ -150,10 +154,11 @@ async function handleInit(db, uid, body, env) {
                title = COALESCE(NULLIF(?, ''), title),
                category = COALESCE(NULLIF(?, ''), category),
                model_name = COALESCE(NULLIF(?, ''), model_name),
+               tags = CASE WHEN tags IS NULL OR tags = '' THEN ? ELSE tags END,
                updated_at = ?
            WHERE id = ? AND uid = ?`,
         )
-        .bind(sourceType, title || '', category || '', modelName || '', nowSql(), groupId, uid)
+        .bind(sourceType, title || '', category || '', modelName || '', tagsStr, nowSql(), groupId, uid)
         .run()
     }
   }
@@ -162,10 +167,10 @@ async function handleInit(db, uid, body, env) {
     const ins = await db
       .prepare(
         `INSERT INTO ai_creation_groups
-           (uid, prompt_id, scene, source_type, category, model_name, title, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           (uid, prompt_id, scene, source_type, category, model_name, title, tags, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .bind(uid, promptId, scene, sourceType, category, modelName, title, now, now)
+      .bind(uid, promptId, scene, sourceType, category, modelName, title, tagsStr, now, now)
       .run()
     groupId = ins.meta?.last_row_id || 0
     if (!groupId) return jsonError('创建 group 失败', 500)
@@ -181,9 +186,16 @@ async function handleInit(db, uid, body, env) {
   if (declaredBytes > 0) {
     const rid = await reserveStorage(db, uid, declaredBytes)
     if (!rid) {
-      return jsonError('存储空间不足，请先购买存储额度（1 积分 = 100MB）', 402)
+      // AI 图片编辑按张计费（生成时已扣积分），存储额度不足不阻断保存：
+      // 跳过预留走无预留模式，confirm 按 R2 真实大小累加用量（允许透支）。
+      // 其他场景维持原 402 引导购买。
+      if (scene !== 'ai-image-edit') {
+        return jsonError('存储空间不足，请先购买存储额度（1 积分 = 100MB）', 402)
+      }
+      console.warn('[ai-creations/save] 存储额度不足：ai-image-edit 计费工具放行（无预留透支保存）')
+    } else {
+      reservationId = rid
     }
-    reservationId = rid
   }
 
   // 3) 给每个 image 签 R2 PUT URL

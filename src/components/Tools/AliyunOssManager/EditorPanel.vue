@@ -786,4 +786,46 @@ watch(activeTabId, (id) => {
     padding: 4px 8px;
   }
 }
+
+/* ─── 深色模式适配（.preview-iframe 白底为文件预览本体，保留） ── */
+html.dark .tabs-bar {
+  background: rgb(245 158 11 / 0.06);
+  border-color: rgb(251 146 60 / 0.25);
+}
+html.dark .tab-item {
+  background: rgb(var(--surface-0));
+  border-color: rgb(251 146 60 / 0.25);
+  color: rgb(var(--ink-500));
+}
+html.dark .tab-item:hover {
+  background: rgb(245 158 11 / 0.1);
+}
+html.dark .tab-close,
+html.dark .no-tabs {
+  color: #fbbf24;
+}
+html.dark .preview-pane {
+  border-color: rgb(251 146 60 / 0.25);
+  background: rgb(var(--surface-0));
+}
+html.dark .preview-header {
+  background: rgb(245 158 11 / 0.06);
+  border-bottom-color: rgb(251 146 60 / 0.25);
+  color: #fcd34d;
+}
+html.dark .preview-name {
+  color: #fcd34d;
+}
+html.dark .empty-editor {
+  background: rgb(245 158 11 / 0.06);
+  border-color: rgb(251 146 60 / 0.3);
+}
+html.dark .open-breadcrumb {
+  background: rgb(245 158 11 / 0.08);
+  color: #fcd34d;
+}
+html.dark .open-row:hover {
+  background: rgb(245 158 11 / 0.1);
+}
+
 </style>

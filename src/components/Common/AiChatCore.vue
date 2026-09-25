@@ -445,13 +445,13 @@ defineExpose({
     </div>
 
     <!-- 只有在选择了供应商和模型后才显示聊天界面 -->
-    <div v-if="selectedProvider.provider && selectedProvider.model" class="p-4 rounded-2xl bg-white">
+    <div v-if="selectedProvider.provider && selectedProvider.model" class="p-4 rounded-2xl bg-white dark:bg-surface-0 border border-transparent dark:border-border-subtle shadow-sm">
       <!-- 聊天界面 -->
       <div class="flex flex-col h-[600px]">
         <!-- 聊天记录区域 -->
         <div
           ref="chatContainer"
-          class="flex-1 overflow-y-auto p-4 border rounded-lg bg-surface-1 mb-4"
+          class="flex-1 overflow-y-auto p-4 border border-border-subtle rounded-lg bg-surface-1 mb-4"
         >
           <!-- 欢迎消息 -->
           <div

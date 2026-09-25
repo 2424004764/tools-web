@@ -454,9 +454,15 @@ onMounted(async () => {
   border: 1px solid rgb(var(--border-strong));
   border-radius: 6px;
   font-size: 14px;
-  background: white;
+  background: rgb(var(--surface-0));
   color: rgb(var(--ink-800));
+  color-scheme: inherit;
   transition: border-color 0.2s ease;
+}
+
+.selector-select option {
+  background: rgb(var(--surface-0));
+  color: rgb(var(--ink-800));
 }
 
 .selector-select:focus {
@@ -515,7 +521,7 @@ onMounted(async () => {
 
 .current-selection {
   padding: 12px;
-  background: white;
+  background: rgb(var(--surface-0));
   border-radius: 6px;
   border: 1px solid rgb(var(--border-default));
 }
@@ -553,10 +559,10 @@ onMounted(async () => {
 /* 新增加载和错误提示样式 */
 .loading-indicator {
   padding: 8px 12px;
-  background: rgb(var(--accent-50));
-  border: 1px solid rgb(var(--accent-700));
+  background: rgb(var(--accent-500) / 0.12);
+  border: 1px solid rgb(var(--accent-500) / 0.35);
   border-radius: 6px;
-  color: rgb(var(--accent-900));
+  color: rgb(var(--ink-800));
   font-size: 14px;
   margin-bottom: 12px;
   display: flex;
@@ -566,8 +572,8 @@ onMounted(async () => {
 
 .error-indicator {
   padding: 8px 12px;
-  background: rgb(var(--danger-50));
-  border: 1px solid rgb(var(--danger-300));
+  background: rgb(var(--danger-500) / 0.12);
+  border: 1px solid rgb(var(--danger-500) / 0.35);
   border-radius: 6px;
   color: rgb(var(--danger-500));
   font-size: 14px;

@@ -303,7 +303,7 @@ const randomPage = () => {
 </script>
 
 <template>
-  <div class="flex flex-col mt-3 flex-1">
+  <div class="mao-quotes-page flex flex-col mt-3 flex-1 min-w-0">
     <DetailHeader title="毛选名句"></DetailHeader>
 
     <!-- 控制按钮 -->
@@ -311,7 +311,8 @@ const randomPage = () => {
       <button
         class="px-5 py-2 rounded-full text-body-sm font-medium transition-all duration-300
                bg-gradient-to-r from-red-600 to-amber-600 text-white
-               hover:from-red-700 hover:to-amber-700 hover:shadow-lg hover:scale-105
+               dark:from-red-500 dark:to-amber-500
+               hover:from-red-700 hover:to-amber-700 dark:hover:from-red-400 dark:hover:to-amber-400 hover:shadow-lg hover:scale-105
                active:scale-95"
         @click="randomPage"
       >
@@ -319,8 +320,9 @@ const randomPage = () => {
       </button>
       <button
         class="px-5 py-2 rounded-full text-body-sm font-medium transition-all duration-300
-               border border-red-400 text-red-600 bg-white/60 backdrop-blur-sm
-               hover:bg-red-50 hover:shadow-md hover:scale-105
+               border border-red-400 text-red-600 bg-white/60 dark:bg-surface-2/60
+               dark:border-red-400 dark:text-red-400 backdrop-blur-sm
+               hover:bg-red-50 dark:hover:bg-red-900/30 hover:shadow-md hover:scale-105
                active:scale-95"
         @click="shuffle"
       >
@@ -329,8 +331,7 @@ const randomPage = () => {
     </div>
 
     <!-- 卡片网格 -->
-    <div
-      class="grid gap-4"
+    <div class="grid gap-4 min-w-0"
       :class="{
         'grid-cols-1': columns === 1,
         'grid-cols-2': columns === 2,
@@ -342,7 +343,8 @@ const randomPage = () => {
         :key="item.text"
         class="group relative flex flex-col justify-between p-6 rounded-2xl
                bg-gradient-to-br from-red-50/80 via-amber-50/60 to-white
-               border border-red-100/60 backdrop-blur-sm
+               dark:from-red-950/40 dark:via-amber-950/30 dark:to-surface-0
+               border border-red-100/60 dark:border-red-900/50 backdrop-blur-sm
                shadow-[0_4px_20px_rgba(180,40,40,0.06)]
                hover:shadow-[0_8px_30px_rgba(180,40,40,0.12)]
                transition-all duration-500 hover:-translate-y-1
@@ -352,20 +354,20 @@ const randomPage = () => {
         <div
           class="absolute top-0 left-4 right-4 h-[2px] rounded-full
                  bg-gradient-to-r from-transparent via-red-400/40 to-transparent
-                 group-hover:via-red-400/70 transition-all duration-500"
+                 dark:via-red-300/50 dark:group-hover:via-red-200/70 transition-all duration-500"
         ></div>
 
         <!-- 左上角装饰 -->
         <div
-          class="absolute top-3 left-4 text-4xl font-serif text-red-300/30
-                 group-hover:text-red-400/40 transition-colors duration-500 select-none"
+          class="absolute top-3 left-4 text-4xl font-serif text-red-300/30 dark:text-red-300/50
+                 group-hover:text-red-400/40 dark:group-hover:text-red-200/70 transition-colors duration-500 select-none"
         >"</div>
 
         <!-- 引用正文 -->
         <div class="relative z-10 flex-1 flex items-center justify-center py-6">
           <p
             class="text-body-lg md:text-h3 leading-relaxed tracking-wider text-center
-                   text-gray-800 font-medium"
+                   text-gray-800 dark:text-ink-900 font-medium break-words"
             style="font-family: 'Noto Serif SC', 'Source Han Serif SC', 'STSong', 'SimSun', 'Songti SC', serif;"
           >
             {{ item.text }}
@@ -373,9 +375,9 @@ const randomPage = () => {
         </div>
 
         <!-- 底部来源信息 -->
-        <div class="relative z-10 flex items-center justify-between text-caption text-gray-400 mt-2 pt-3 border-t border-red-100/50">
+        <div class="relative z-10 flex items-center justify-between text-caption text-gray-400 dark:text-ink-400 mt-2 pt-3 border-t border-red-100/50 dark:border-red-900/60">
           <span class="font-serif italic tracking-wide">{{ item.source }}</span>
-          <span class="text-red-300/70 font-medium">{{ item.year }}</span>
+          <span class="text-red-300/70 dark:text-red-300/90 font-medium">{{ item.year }}</span>
         </div>
       </div>
     </div>
@@ -386,14 +388,14 @@ const randomPage = () => {
         v-for="i in totalPages"
         :key="i"
         class="flex-shrink-0 w-2 h-2 rounded-full transition-all duration-300 cursor-pointer"
-        :class="i - 1 === currentPage
-          ? 'bg-red-500 w-6'
-          : 'bg-red-200 hover:bg-red-300'"
+          :class="i - 1 === currentPage
+          ? 'bg-red-500 dark:bg-red-400 w-6'
+          : 'bg-red-200 dark:bg-red-700/70 hover:bg-red-300 dark:hover:bg-red-500'"
         @click="currentPage = i - 1"
       ></div>
     </div>
 
-    <div class="text-center text-caption text-gray-400 mt-3">
+    <div class="text-center text-caption text-gray-400 dark:text-ink-400 mt-3">
       共收录 {{ quotes.length }} 条毛选名句，涵盖《毛泽东选集》五卷本全部重要篇目及毛泽东诗词
     </div>
 

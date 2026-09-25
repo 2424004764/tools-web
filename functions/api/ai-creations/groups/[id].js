@@ -8,10 +8,12 @@
 //       3) DELETE FROM ai_creation_groups WHERE id=? AND uid=?（ON DELETE CASCADE 删 images）
 //     Resp: { deleted: { group_id, images: number, r2_deleted: number, r2_failed: number } }
 //
-//   PATCH /api/ai-creations/groups/:id   收藏切换，body: { favorited: 0|1|true|false }
-//     Resp: { group_id, favorited: boolean }（依赖 073 迁移的 favorited 列）
+//   PATCH /api/ai-creations/groups/:id
+//     body: { favorited?: 0|1|true|false, tags?: string[] | 'a,b' }（至少一项；081 迁移提供 tags 列）
+//     Resp: { group_id, favorited?, tags?: string[] }（依赖 073 迁移的 favorited 列）
 
 import { extractUidFromRequest } from '../../_lib/model-resolver.js'
+import { serializeTagInput, normalizeTagInput } from '../../_lib/ai-creation-tags.js'
 import { deleteR2Object, headR2ObjectSize } from '../../../services/r2.js'
 import { refundStorageUsage } from '../../../services/storageQuotaService.js'
 
@@ -60,14 +62,17 @@ export async function onRequest(context) {
     return jsonError('group_id 不合法', 400)
   }
 
-  // ---------- PATCH：收藏星标切换 ----------
+  // ---------- PATCH：收藏星标切换 / 标签更新（至少传一项） ----------
   if (request.method === 'PATCH') {
     const body = await request.json().catch(() => null)
-    const raw = body?.favorited
-    if (typeof raw !== 'boolean' && raw !== 0 && raw !== 1) {
-      return jsonError('favorited 必须是 0 / 1 / true / false', 400)
+    const hasFav = body && (typeof body.favorited === 'boolean' || body.favorited === 0 || body.favorited === 1)
+    const hasTags = body && body.tags !== undefined
+    if (!hasFav && !hasTags) {
+      return jsonError('favorited 必须是 0 / 1 / true / false，或传 tags 数组/逗号分隔字符串', 400)
     }
-    const favVal = raw === true || raw === 1 ? 1 : 0
+    const favVal = hasFav && (body.favorited === true || body.favorited === 1) ? 1 : 0
+    // 入库统一转逗号分隔文本；前端传空数组 = 清空标签
+    const tagsStr = hasTags ? serializeTagInput(body.tags) : null
     try {
       const row = await db
         .prepare('SELECT id, uid FROM ai_creation_groups WHERE id = ?')
@@ -78,16 +83,30 @@ export async function onRequest(context) {
 
       // updated_at 沿用表里 'YYYY-MM-DD HH:mm:ss' UTC 格式
       const nowStr = new Date().toISOString().slice(0, 19).replace('T', ' ')
+      const sets = ['updated_at = ?']
+      const binds = [nowStr]
+      if (hasFav) {
+        sets.push('favorited = ?')
+        binds.push(favVal)
+      }
+      if (hasTags) {
+        sets.push('tags = ?')
+        binds.push(tagsStr)
+      }
+      binds.push(groupId, uid)
       await db
-        .prepare('UPDATE ai_creation_groups SET favorited = ?, updated_at = ? WHERE id = ? AND uid = ?')
-        .bind(favVal, nowStr, groupId, uid)
+        .prepare(`UPDATE ai_creation_groups SET ${sets.join(', ')} WHERE id = ? AND uid = ?`)
+        .bind(...binds)
         .run()
-      return json({ group_id: groupId, favorited: favVal === 1 })
+      const data = { group_id: groupId }
+      if (hasFav) data.favorited = favVal === 1
+      if (hasTags) data.tags = normalizeTagInput(tagsStr)
+      return json(data)
     } catch (e) {
-      // favorited 列不存在（073 迁移未应用）会走到这里
+      // favorited / tags 列不存在（073 / 081 迁移未应用）会走到这里
       console.error('[ai-creations/groups/:id PATCH] error:', e?.message || e)
       return jsonError(e?.message?.includes('no such column')
-        ? 'favorited 列不存在，请先应用 073 迁移'
+        ? 'favorited/tags 列不存在，请先应用 073 / 081 迁移'
         : (e?.message || '服务器错误'), 500)
     }
   }

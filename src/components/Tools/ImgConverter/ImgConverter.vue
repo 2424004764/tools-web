@@ -107,7 +107,7 @@ const download = () => {
 </script>
 
 <template>
-  <div class="flex flex-col mt-3 flex-1">
+  <div class="img-converter-page flex flex-col mt-3 flex-1">
     <DetailHeader :title="info.title"></DetailHeader>
 
     <div class="p-4 rounded-2xl bg-white">
@@ -220,5 +220,21 @@ const download = () => {
 }
 :deep(.el-upload-dragger) {
   width: 100%;
+}
+</style>
+
+<style>
+/* Element Plus 的空状态插画默认使用白色阶梯，深色背景下会显得过亮。 */
+html.dark .img-converter-page .el-empty {
+  --el-empty-fill-color-0: #30323a;
+  --el-empty-fill-color-1: #2c2e35;
+  --el-empty-fill-color-2: #34363f;
+  --el-empty-fill-color-3: #33353e;
+  --el-empty-fill-color-4: #3d3f49;
+  --el-empty-fill-color-5: #3c3e48;
+  --el-empty-fill-color-6: #42444e;
+  --el-empty-fill-color-7: #464852;
+  --el-empty-fill-color-8: #4a4c56;
+  --el-empty-fill-color-9: #525461;
 }
 </style>

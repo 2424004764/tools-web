@@ -29,6 +29,8 @@ export interface AiCreationGroup {
   category: string | null
   model_name: string | null
   title: string | null
+  /** 标签（AI 生成 / 手动上传通用），默认空数组 = 未打标签 */
+  tags: string[]
   favorited: boolean
   created_at: string
   image_count: number
@@ -37,6 +39,12 @@ export interface AiCreationGroup {
 }
 
 export interface AiCreationCategory {
+  name: string
+  count: number
+}
+
+/** 标签聚合项（当前 uid 所有合集出现过的标签 + 计数） */
+export interface AiCreationTag {
   name: string
   count: number
 }
@@ -56,12 +64,14 @@ export interface ListAiCreationsParams {
   page?: number
   pageSize?: number
   category?: string
-  /** 关键词搜索（标题 / 模型 / 分类 / 图片提示词 / 关联提示词内容） */
+  /** 关键词搜索（标题 / 模型 / 分类 / 标签 / 图片提示词 / 关联提示词内容） */
   q?: string
   /** 只看收藏 */
   favOnly?: boolean
   /** 来源筛选 */
   source?: 'ai_generated' | 'manual_upload'
+  /** 按标签精确筛选 */
+  tag?: string
 }
 
 export async function fetchAiCreations(
@@ -77,6 +87,32 @@ export async function fetchAiCreations(
 export async function fetchAiCreationCategories(): Promise<AiCreationCategory[]> {
   const res = await functionsRequest.get('/api/ai-creations/categories')
   return res.data.data || []
+}
+
+export async function fetchAiCreationTags(): Promise<AiCreationTag[]> {
+  const res = await functionsRequest.get('/api/ai-creations/tags')
+  return res.data.data || []
+}
+
+// ============ 标签输入归一化（与后端 _lib/ai-creation-tags.js 约定一致）============
+export const MAX_CREATION_TAGS = 10
+export const MAX_CREATION_TAG_LEN = 24
+
+/** 把用户输入（数组或逗号分隔字符串）拆成去重、截断后的标签数组 */
+export function parseTagInput(input: string | string[] | null | undefined): string[] {
+  if (input == null) return []
+  const raw = Array.isArray(input) ? input : String(input).split(/[,，]/)
+  const out: string[] = []
+  for (const item of raw) {
+    const tag = String(item ?? '')
+      .trim()
+      .replace(/^#+/, '')
+      .replace(/\s+/g, ' ')
+      .slice(0, MAX_CREATION_TAG_LEN)
+    if (tag && !out.includes(tag)) out.push(tag)
+    if (out.length >= MAX_CREATION_TAGS) break
+  }
+  return out
 }
 
 // ============ 保存（生成结果 → 我的创作）============
@@ -110,6 +146,8 @@ export interface InitSaveRequest {
   title?: string
   /** 来源类型 */
   source_type?: 'ai_generated' | 'manual_upload'
+  /** 可选标签（随合集保存；默认不传 = 空） */
+  tags?: string[]
   images: Array<{
     upstream_url?: string
     prompt: string
@@ -209,7 +247,7 @@ export async function deleteAiCreationImage(
   return res.data.data
 }
 
-// ============ 收藏 / 星标 ============
+// ============ 收藏 / 星标 / 标签 ============
 /** 切换合集收藏状态（favorited 列由 073 迁移提供） */
 export async function toggleAiCreationGroupFavorite(
   groupId: number,
@@ -218,6 +256,15 @@ export async function toggleAiCreationGroupFavorite(
   const res = await functionsRequest.patch(`/api/ai-creations/groups/${groupId}`, {
     favorited: favorited ? 1 : 0,
   })
+  return res.data.data
+}
+
+/** 更新合集标签（tags 列由 081 迁移提供）；传空数组 = 清空标签 */
+export async function updateAiCreationGroupTags(
+  groupId: number,
+  tags: string[],
+): Promise<{ group_id: number; tags: string[] }> {
+  const res = await functionsRequest.patch(`/api/ai-creations/groups/${groupId}`, { tags })
   return res.data.data
 }
 
@@ -319,6 +366,8 @@ export interface ManualUploadFile {
 export interface ManualUploadOptions {
   title?: string
   category?: string
+  /** 可选标签；默认不打（空） */
+  tags?: string[]
 }
 
 export interface ManualUploadResult {
@@ -341,6 +390,7 @@ export async function saveManualAiCreationFiles(
     source_type: 'manual_upload',
     title: options.title,
     category: options.category,
+    ...(options.tags?.length ? { tags: options.tags } : {}),
     images: files.map(({ file, filename, width, height }) => ({
       prompt: '(手动上传)',
       filename: filename || file.name,

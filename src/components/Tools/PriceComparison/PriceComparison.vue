@@ -1124,4 +1124,58 @@ export default {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
 }
+
+/* ─── 深色模式适配 ───────────────────────────────────────────────
+   全局只映射 .bg-white / .text-gray-* 等基础工具类；玻璃卡、粉彩渐变卡
+   与状态胶囊是本地组合类，需要转成半透明暗色 tint。 */
+html.dark .glass-card-dark {
+  background: rgb(var(--surface-0) / 0.92);
+  box-shadow: 0 8px 32px rgb(0 0 0 / 0.35);
+}
+
+/* 页面主背景：浅色渐变 → 深底渐变 */
+html.dark .from-slate-50.via-cyan-50.to-blue-50 {
+  background-image: linear-gradient(to bottom right, rgb(var(--surface-1)), rgb(var(--surface-0)));
+}
+
+/* 玻璃半透明白卡 → 暗色半透明卡（bg-white/10 在彩色 hero 上，保持不动） */
+html.dark .bg-white\/60 {
+  background-color: rgb(38 39 46 / 0.6);
+}
+
+/* 统计粉彩渐变卡 → 同色系半透明 tint */
+html.dark .from-cyan-50.to-blue-50 {
+  background-image: linear-gradient(to bottom right, rgb(6 182 212 / 0.12), rgb(59 130 246 / 0.05));
+}
+html.dark .from-violet-50.to-purple-50 {
+  background-image: linear-gradient(to bottom right, rgb(139 92 246 / 0.12), rgb(167 139 250 / 0.05));
+}
+html.dark .from-amber-50.to-orange-50 {
+  background-image: linear-gradient(to bottom right, rgb(245 158 11 / 0.12), rgb(251 146 60 / 0.05));
+}
+html.dark .from-slate-50.to-gray-50 {
+  background-image: linear-gradient(to bottom right, rgb(255 255 255 / 0.05), rgb(255 255 255 / 0.02));
+}
+
+/* 彩色描边 → 半透明同色 */
+html.dark .border-cyan-100 { border-color: rgb(6 182 212 / 0.3); }
+html.dark .border-violet-100 { border-color: rgb(139 92 246 / 0.3); }
+html.dark .border-amber-100 { border-color: rgb(245 158 11 / 0.3); }
+html.dark .border-gray-100 { border-color: rgb(var(--border-default)); }
+
+/* 状态胶囊：浅灰底 → 半透明白 */
+html.dark .status-chip {
+  background-color: rgb(255 255 255 / 0.06);
+  color: rgb(var(--ink-500));
+}
+html.dark .status-chip:hover {
+  background-color: rgb(255 255 255 / 0.12);
+}
+
+/* 报价行 hover 的浅色渐变 → 暗色渐变 */
+html.dark .entry-row:hover {
+  background: linear-gradient(135deg, rgb(6 182 212 / 0.08) 0%, rgb(59 130 246 / 0.03) 100%);
+}
+
+/* 已选/最低价高亮底色在暗色下同样可读（半透明色块），无需调整 */
 </style>

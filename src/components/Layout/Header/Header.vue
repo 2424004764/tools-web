@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed, onUnmounted, nextTick } from 'vue'
 import Search from '~icons/ep/search'
+import IconMoon from '~icons/ep/moon'
+import IconSunny from '~icons/ep/sunny'
 import { ElMessage } from 'element-plus'
 import { useToolsStore } from '@/store/modules/tools'
 import { useComponentStore } from '@/store/modules/component'
 import { useUserStore } from '@/store/modules/user'
+import { useTheme } from '@/composables/useTheme'
 import 'element-plus/theme-chalk/display.css'
 import { ToolsInfo } from '@/components/Tools/tools.type.ts';
 
@@ -35,13 +38,14 @@ router.afterEach(() => {
     loadingTimer = null
   }
 })
-// const isNavDrawer = ref(false)
+
 const loading = ref(false)
 const options = ref<ToolsInfo[]>([])
 //store
 const toolsStore = useToolsStore()
 const componentStore = useComponentStore()
 const userStore = useUserStore()
+const { isDark, toggleTheme } = useTheme()
 
 // 用户相关状态
 const userMenuVisible = ref(false)
@@ -53,29 +57,18 @@ const isLoggedIn = computed(() => userStore.getLoginStatus)
 // 计算属性：获取用户信息
 const user = computed(() => userStore.getUserInfo)
 
+// 头像圆里显示的字符：用户名 / 邮箱首字符
+const avatarChar = computed(() => {
+  const name = user.value?.username || user.value?.email || '用'
+  return String(name).charAt(0).toUpperCase()
+})
+
 //查询参数
 const searchParam = reactive({
   cateId: 0,
   title: '',
   route: '',
 })
-
-//search
-// const search = async () => {
-//   try {
-//     await toolsStore.getTools(searchParam)
-//     //关闭抽屉
-//     isNavDrawer.value = false
-//   } catch (error) {
-//     console.log(error)
-//   }
-// }
-
-//选择分类
-// const chooseCate = (cateId: number) => {
-//   searchParam.cateId = cateId
-//   search()
-// }
 
 //搜索工具
 const searchTools = async (query: string) => {
@@ -114,16 +107,16 @@ const handleLogout = async () => {
   try {
     // 先清除用户状态
     userStore.logout()
-    
+
     // 关闭菜单
     userMenuVisible.value = false
-    
+
     // 等待DOM更新
     await nextTick()
-    
+
     // 强制跳转到首页，使用replace避免历史记录问题
     await router.replace('/')
-    
+
     // 显示成功消息
     ElMessage.success('已退出登录')
   } catch (error) {
@@ -207,8 +200,8 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <header class="h-24 w-full flex justify-between pt-2 pb-2 c-xs:h-16 c-xs:border-b-[1px] border-border-subtle items-center c-xs:fixed c-xs:top-0 c-xs:left-0 c-xs:right-0 c-xs:z-50 c-xs:bg-white">
-    <div class="flex items-center w-full">
+  <header class="h-20 w-full flex items-center justify-between gap-4 c-xs:h-16 c-xs:fixed c-xs:top-0 c-xs:left-0 c-xs:right-0 c-xs:z-50 c-xs:bg-surface-1 dark:c-xs:bg-surface-1 c-xs:border-b c-xs:border-border-subtle">
+    <div class="flex items-center flex-1 min-w-0">
       <Transition name="fold" class="hidden c-sm:block c-md:hidden c-xs:block text-ink-700">
         <button v-if="!componentStore.leftComDrawer" type="button" class="icon-btn bg-transparent border-0 p-0 cursor-pointer text-ink-700" aria-label="打开导航菜单" :aria-expanded="componentStore.leftComDrawer" @click="componentStore.setleftComDrawerStatus(true)">
           <svg t="1702978210636" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="7618" width="30" height="30" aria-hidden="true">
@@ -222,7 +215,6 @@ onUnmounted(() => {
         </button>
       </Transition>
 
-      <!-- c-md:block -->
       <Transition name="fold" class="hidden c-md:block text-ink-700">
         <button v-if="!componentStore.leftCom" type="button" class="icon-btn bg-transparent border-0 p-0 cursor-pointer text-ink-700" aria-label="打开侧边栏" :aria-expanded="!componentStore.leftCom" @click="componentStore.setLeftComStatus(true)">
           <svg t="1702978577170" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="1587" width="30" height="30" aria-hidden="true">
@@ -231,30 +223,12 @@ onUnmounted(() => {
         </button>
         <button v-else type="button" class="icon-btn bg-transparent border-0 p-0 cursor-pointer text-ink-700" aria-label="关闭侧边栏" :aria-expanded="!componentStore.leftCom" @click="componentStore.setLeftComStatus(false)">
           <svg t="1702978210636" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="7618" width="30" height="30" aria-hidden="true">
-            <path fill="currentColor" fill-opacity=".9" d="M895.936 256l-768-0.896 0.128-64L896 192l-0.064 64zM895.936 256l-768-0.896 0.128-64L896 192l-0.064 64zM179.2 689.152l202.688-152a32 32 0 0 0 0-51.2L179.2 333.952a32 32 0 0 0-51.2 25.6v304a32 32 0 0 0 51.2 25.6z m12.8-89.6v-176l117.312 88L192 599.552zM896 544H480v-64H896v64z m-0.064 288l-768-0.896 0.128-64L896 768l-0.064 64z" p-id="7619"></path>
+            <path fill="currentColor" fill-opacity=".9" d="M895.936 256l-768-0.896 0.128-64L896 192l-0.064 64zM179.2 689.152l202.688-152a32 32 0 0 0 0-51.2L179.2 333.952a32 32 0 0 0-51.2 25.6v304a32 32 0 0 0 51.2 25.6z m12.8-89.6v-176l117.312 88L192 599.552zM896 544H480v-64H896v64z m-0.064 288l-768-0.896 0.128-64L896 768l-0.064 64z" p-id="7619"></path>
           </svg>
         </button>
       </Transition>
 
-      <div class="ml-3 mr-1 text-ink-900">
-        <router-link to="/">
-          <svg t="1715590310537" class="icon" viewBox="0 0 1053 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="4287" width="25" height="25">
-            <path d="M526.63454 58.067422a21.503527 21.503527 0 0 1-27.501109 0.175539l474.979265 381.50475a31.538506 31.538506 0 1 0 39.496274-49.150919L538.629705 9.004273a41.602742 41.602742 0 0 0-51.988799 0.234052L11.573871 398.671586a31.538506 31.538506 0 1 0 39.993635 48.79984L526.63454 58.067422z" fill="currentColor" p-id="4288"></path><path d="M1013.60897 564.087832L538.629705 182.583083a41.602742 41.602742 0 0 0-51.988799 0.204795L11.573871 572.191883a31.538506 31.538506 0 1 0 39.993635 48.79984l66.763331-54.709653v361.61033A94.644775 94.644775 0 0 0 213.004869 1022.537175H441.732179v-247.275931a15.79851 15.79851 0 0 1 15.739997-15.79851h110.472541c8.68918 0 15.769253 7.080073 15.769253 15.79851v247.275931H812.441281a94.615518 94.615518 0 0 0 94.644775-94.615518V559.465305l66.997383 53.831959a31.538506 31.538506 0 1 0 39.525531-49.209432z m-169.629183 363.804568c0 17.436874-14.101633 31.538506-31.567763 31.538506h-165.591785v-184.198919a78.875522 78.875522 0 0 0-78.875522-78.904778h-110.472541a78.875522 78.875522 0 0 0-78.846265 78.904778v184.198919h-165.591786c-17.46613 0-31.597019-14.130889-31.597019-31.538506V514.527323L512.883986 242.851471l331.095801 265.941578v419.128608z" fill="currentColor" p-id="4289" stroke="currentColor" stroke-width="10"></path>
-          </svg>
-        </router-link>
-      </div>
-      
-    
-      <div class="c-xs:w-[85%] w-full mr-3">
-        <!-- <el-input 
-          v-model="searchParam.title" 
-          placeholder="搜索工具" 
-          class="h-10 ml-3" 
-          @keyup.enter.native="search">
-          <template #append>
-            <el-button :icon="Search" @click="search"/>
-          </template>
-        </el-input> -->
+      <div class="flex-1 min-w-0 w-full max-w-2xl mr-2 c-xs:mr-0">
         <el-select
           v-model="searchParam.title"
           filterable
@@ -266,7 +240,7 @@ onUnmounted(() => {
           placeholder="输入关键词搜索，如文本、json、图片等"
           :remote-method="searchTools"
           :loading="loading"
-          class="ml-3 w-full"
+          class="w-full c-sm:ml-3"
           size="large"
           @change="handleSelectChange"
         >
@@ -281,87 +255,101 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <div class=" w-full md:w-auto flex md:block c-xs:w-auto">
-      <ul class="flex mt-4 flex-col md:flex-row md:mt-0 justify-end items-center c-xs:mt-0">
-        <!-- 用户信息区域 -->
-        <li class="ml-3 relative user-menu-container">
-          <!-- 未登录状态：显示登录按钮 -->
-          <router-link v-if="!isLoggedIn" to="/login">
-            <el-tooltip
-              class="box-item"
-              effect="dark"
-              content="用户登录"
-              placement="bottom"
-            >
-              <el-button type="primary" size="large" class="bg-gradient-to-r from-accent-500 to-accent-600 hover:from-accent-600 hover:to-accent-700 w-20 border-none">
-                登录
-              </el-button>
-            </el-tooltip>
-          </router-link>
-          
-          <!-- 已登录状态：积分徽章 + 用户名和下拉菜单 -->
-          <div v-else class="flex items-center gap-1">
-            <UserBalanceBadge />
-            <button
-              type="button"
-              class="relative cursor-pointer text-ink-700 hover:text-accent-600 flex items-center gap-1 px-3 py-2 rounded hover:bg-accent-50 bg-transparent border-0"
-              :aria-haspopup="'menu'"
-              :aria-expanded="userMenuVisible"
-              aria-label="用户菜单"
-              @click="toggleUserMenu"
-              @mouseenter="showUserMenu"
-              @mouseleave="hideUserMenu"
-            >
-              <span class="whitespace-nowrap">{{ user?.username || user?.email || '用户' }}</span>
-              <svg class="w-4 h-4 text-ink-400 transition-transform duration-200" :class="{ 'rotate-180': userMenuVisible }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <polyline points="6,9 12,15 18,9"></polyline>
-              </svg>
-            </button>
+    <div class="flex items-center gap-2 shrink-0 c-xs:pr-3">
+      <!-- 主题切换 -->
+      <button
+        type="button"
+        class="w-10 h-10 rounded-full bg-white dark:bg-surface-0 shadow-sm shadow-ink-950/5 border border-border-subtle flex items-center justify-center text-ink-500 hover:text-accent-600 hover:border-accent-300 transition-colors"
+        :aria-label="isDark ? '切换到浅色模式' : '切换到深色模式'"
+        :title="isDark ? '切换到浅色模式' : '切换到深色模式'"
+        @click="toggleTheme"
+      >
+        <IconSunny v-if="isDark" class="w-5 h-5" aria-hidden="true" />
+        <IconMoon v-else class="w-5 h-5" aria-hidden="true" />
+      </button>
 
-            <!-- 悬浮菜单 -->
+      <!-- 用户信息区域 -->
+      <div class="relative user-menu-container">
+        <!-- 未登录状态：显示登录按钮 -->
+        <router-link v-if="!isLoggedIn" to="/login">
+          <el-tooltip
+            class="box-item"
+            effect="dark"
+            content="用户登录"
+            placement="bottom"
+          >
+            <el-button type="primary" size="large" class="bg-brand-gradient hover:opacity-90 w-20 border-none rounded-full">
+              登录
+            </el-button>
+          </el-tooltip>
+        </router-link>
+
+        <!-- 已登录状态：积分徽章 + 头像 + 下拉菜单 -->
+        <div v-else class="flex items-center gap-1">
+          <UserBalanceBadge class="c-xs:hidden" />
+          <button
+            type="button"
+            class="relative cursor-pointer flex items-center gap-2 px-2 py-1.5 rounded-full hover:bg-accent-50 dark:hover:bg-surface-3 bg-transparent border-0"
+            :aria-haspopup="'menu'"
+            :aria-expanded="userMenuVisible"
+            aria-label="用户菜单"
+            @click="toggleUserMenu"
+            @mouseenter="showUserMenu"
+            @mouseleave="hideUserMenu"
+          >
+            <span
+              class="w-8 h-8 rounded-full bg-brand-gradient text-white text-sm font-semibold flex items-center justify-center shadow-sm shadow-accent-500/30"
+              aria-hidden="true"
+            >{{ avatarChar }}</span>
+            <span class="whitespace-nowrap text-sm text-ink-700 c-xs:hidden">{{ user?.username || user?.email || '用户' }}</span>
+            <svg class="w-4 h-4 text-ink-400 transition-transform duration-200" :class="{ 'rotate-180': userMenuVisible }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="6,9 12,15 18,9"></polyline>
+            </svg>
+          </button>
+
+          <!-- 悬浮菜单 -->
+          <div
+            v-show="userMenuVisible"
+            role="menu"
+            aria-label="用户菜单"
+            class="absolute top-full right-0 mt-1 bg-surface-0 dark:bg-surface-0 border border-border-default rounded-2xl shadow-lg py-2 min-w-[140px] z-50"
+            @mouseenter="showUserMenu"
+            @mouseleave="hideUserMenu"
+          >
             <div
-              v-show="userMenuVisible"
-              role="menu"
-              aria-label="用户菜单"
-              class="absolute top-full right-0 mt-1 bg-surface-1 border border-border-default rounded-lg shadow-lg py-2 min-w-[120px] z-50"
-              @mouseenter="showUserMenu"
-              @mouseleave="hideUserMenu"
+              role="menuitem"
+              tabindex="0"
+              class="px-4 py-2 hover:bg-accent-50 dark:hover:bg-surface-3 cursor-pointer text-ink-700 dark:text-ink-800 hover:text-accent-700 dark:hover:text-accent-300"
+              @click.stop="goToUserInfo"
+              @keyup.enter="goToUserInfo"
+              @keyup.space.prevent="goToUserInfo"
             >
-              <div
-                role="menuitem"
-                tabindex="0"
-                class="px-4 py-2 hover:bg-accent-50 cursor-pointer text-ink-700 hover:text-accent-700"
-                @click.stop="goToUserInfo"
-                @keyup.enter="goToUserInfo"
-                @keyup.space.prevent="goToUserInfo"
-              >
-                个人中心
-              </div>
-              <div
-                v-if="userStore.getIsAdmin"
-                role="menuitem"
-                tabindex="0"
-                class="px-4 py-2 hover:bg-accent-50 cursor-pointer text-accent-700 hover:text-accent-800"
-                @click.stop="goToAdmin"
-                @keyup.enter="goToAdmin"
-                @keyup.space.prevent="goToAdmin"
-              >
-                管理后台
-              </div>
-              <div
-                role="menuitem"
-                tabindex="0"
-                class="px-4 py-2 hover:bg-danger-50 cursor-pointer text-danger-600"
-                @click.stop="handleLogout"
-                @keyup.enter="handleLogout"
-                @keyup.space.prevent="handleLogout"
-              >
-                退出登录
-              </div>
+              个人中心
+            </div>
+            <div
+              v-if="userStore.getIsAdmin"
+              role="menuitem"
+              tabindex="0"
+              class="px-4 py-2 hover:bg-accent-50 dark:hover:bg-surface-3 cursor-pointer text-accent-700 dark:text-accent-300 hover:text-accent-800 dark:hover:text-accent-200"
+              @click.stop="goToAdmin"
+              @keyup.enter="goToAdmin"
+              @keyup.space.prevent="goToAdmin"
+            >
+              管理后台
+            </div>
+            <div
+              role="menuitem"
+              tabindex="0"
+              class="px-4 py-2 hover:bg-danger-50 dark:hover:bg-danger-500/15 cursor-pointer text-danger-600 dark:text-danger-400"
+              @click.stop="handleLogout"
+              @keyup.enter="handleLogout"
+              @keyup.space.prevent="handleLogout"
+            >
+              退出登录
             </div>
           </div>
-        </li>
-      </ul>
+        </div>
+      </div>
     </div>
   </header>
   <!-- 更新加载状态样式 -->
@@ -388,25 +376,26 @@ onUnmounted(() => {
 :deep(.el-select__wrapper) {
     box-shadow: 0 0 0 0px var(--el-input-border-color, var(--el-border-color)) inset;
     cursor: default;
+    border-radius: 9999px;
     @apply w-full;
 }
 
-/* 搜索框：EP 2.5+ 的 .el-select__wrapper 用 box-shadow 实现边框，
-   原来的 border-color 写法完全无效（元素无 border 属性），
+/* 搜索框：胶囊造型。EP 2.5+ 的 .el-select__wrapper 用 box-shadow 实现边框，
    必须用 box-shadow inset 显式画边框 */
 .el-select :deep(.el-select__wrapper) {
-  background-color: white;
-  box-shadow: 0 0 0 1px rgb(var(--border-default)) inset;
+  background-color: rgb(var(--surface-0));
+  border-radius: 9999px;
+  box-shadow: 0 0 0 1px rgb(var(--border-default)) inset, 0 2px 8px rgb(var(--ink-950) / 0.04);
   transition: box-shadow 0.2s ease;
 }
 .el-select :deep(.el-select__wrapper.is-hovering:not(.is-focused)) {
-  box-shadow: 0 0 0 1px rgb(var(--border-strong)) inset;
+  box-shadow: 0 0 0 1px rgb(var(--accent-300)) inset, 0 2px 12px rgb(var(--accent-500) / 0.1);
 }
 .el-select :deep(.el-select__wrapper.is-focused) {
-  box-shadow: 0 0 0 2px rgb(var(--accent-500)) inset;
+  box-shadow: 0 0 0 2px rgb(var(--accent-500)) inset, 0 2px 12px rgb(var(--accent-500) / 0.12);
 }
 
-/* 用户菜单容器（保持定位上下文，移除并行的 .user-menu / .user-menu-item scoped CSS —— 它们全代码库零引用，模板走 Tailwind utility 实现） */
+/* 用户菜单容器（保持定位上下文） */
 .user-menu-container {
   position: relative;
 }
@@ -419,7 +408,7 @@ onUnmounted(() => {
 
 /* 加载动画样式 - accent 主题 */
 .loading-container {
-  background: rgb(var(--surface-1) / 0.95);
+  background: rgb(var(--surface-0) / 0.95);
   border: 1px solid rgb(var(--accent-200));
   border-radius: 16px;
   padding: 32px 40px;
@@ -481,12 +470,12 @@ onUnmounted(() => {
   .loading-container {
     padding: 24px 32px;
   }
-  
+
   .loading-spinner {
     width: 40px;
     height: 40px;
   }
-  
+
   .loading-text {
     font-size: 14px;
   }

@@ -486,8 +486,8 @@ const showQADetail = computed(() =>
         </div>
       </div>
 
-      <!-- 分页组件 -->
-      <div v-if="pagination.total > 0" class="pagination-wrapper">
+      <!-- 分页组件：只有一页时不渲染，避免出现无意义的翻页/跳页控件 -->
+      <div v-if="pagination.totalPages > 1" class="pagination-wrapper">
         <el-pagination
           v-model:current-page="pagination.page"
           v-model:page-size="pagination.pageSize"

@@ -902,4 +902,25 @@ export default {
   50% { opacity: 0.5; }
 }
 
+/* ─── 深色模式适配 ───────────────────────────────────────────────
+   全局只映射 .bg-white / .text-gray-* 等基础工具类；玻璃卡与粉彩渐变卡
+   是本地组合类，需要转成半透明暗色 tint。分享图预览底保持浅色（图片衬底）。 */
+html.dark .glass-card-dark {
+  background: rgb(var(--surface-0) / 0.92);
+  box-shadow: 0 8px 32px rgb(0 0 0 / 0.35);
+}
+
+/* 页面主背景：浅色渐变 → 深底渐变 */
+html.dark .from-slate-50.via-rose-50.to-pink-50 {
+  background-image: linear-gradient(to bottom right, rgb(var(--surface-1)), rgb(var(--surface-0)));
+}
+
+/* 统计粉彩渐变卡 → 同色系半透明 tint */
+html.dark .from-rose-50.to-pink-50 {
+  background-image: linear-gradient(to bottom right, rgb(244 63 94 / 0.12), rgb(236 72 153 / 0.05));
+}
+
+html.dark .border-rose-100 {
+  border-color: rgb(244 63 94 / 0.3);
+}
 </style>

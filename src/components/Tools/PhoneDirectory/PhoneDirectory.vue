@@ -131,7 +131,7 @@ const callPhone = (phone: string) => {
   <div class="flex flex-col mt-3 flex-1">
     <DetailHeader :title="info.title"></DetailHeader>
 
-    <div class="p-4 rounded-2xl bg-white">
+    <div class="p-4 rounded-2xl bg-white phone-directory-page">
       <!-- 搜索框 -->
       <div class="mb-6">
         <el-input
@@ -338,5 +338,59 @@ const callPhone = (phone: string) => {
 
 .phone-card:hover {
   background: rgba(243, 244, 246, 0.9);
+}
+
+:global(html.dark .phone-directory-page) {
+  background: rgb(var(--surface-0));
+}
+
+:global(html.dark .category-title) {
+  color: rgb(var(--ink-800));
+  border-color: rgb(var(--border-strong));
+}
+
+:global(html.dark .phone-card) {
+  background: rgb(var(--surface-1));
+  border-color: rgb(var(--border-default));
+}
+
+:global(html.dark .phone-card:hover) {
+  background: rgb(var(--surface-2));
+  border-color: rgb(var(--accent-400));
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.24);
+}
+
+:global(html.dark .phone-name) {
+  color: rgb(var(--ink-800));
+}
+
+:global(html.dark .phone-desc) {
+  color: rgb(var(--ink-400));
+}
+
+:global(html.dark .phone-number) {
+  color: rgb(var(--accent-300));
+}
+
+:global(html.dark .search-input .el-input__wrapper) {
+  background: rgb(var(--surface-1));
+  box-shadow: 0 0 0 1px rgb(var(--border-default)) inset;
+}
+
+:global(html.dark .search-input .el-input__inner) {
+  color: rgb(var(--ink-100));
+}
+
+:global(html.dark .search-input .el-input__inner::placeholder) {
+  color: rgb(var(--ink-400));
+}
+
+:global(html.dark .search-input .el-input__prefix),
+:global(html.dark .search-input .el-input__suffix) {
+  color: rgb(var(--ink-400));
+}
+
+:global(html.dark .no-results .el-empty__description) {
+  color: rgb(var(--ink-400));
 }
 </style>

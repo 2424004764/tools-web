@@ -54,7 +54,7 @@ const visible = computed(() => isToolPage.value && commonBlocks.length > 0)
 </script>
 
 <template>
-  <div v-if="visible" class="mt-3 rounded-2xl bg-white border border-border-subtle p-4">
+  <div v-if="visible" class="mt-3 rounded-2xl bg-white dark:bg-surface-0 border border-border-subtle p-4">
     <div v-for="(block, bi) in commonBlocks" :key="bi" :class="bi > 0 ? 'mt-4 pt-4 border-t border-border-subtle' : ''">
       <div v-if="block.title" class="text-body font-semibold mb-2">{{ block.title }}</div>
       <p v-for="(item, ii) in block.items" :key="ii" class="text-body-sm text-ink-600 leading-6">

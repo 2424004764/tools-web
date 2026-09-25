@@ -16,10 +16,21 @@ import pinia from './store'
 import { useUserStore } from './store/modules/user'
 import { initializeAIProviders } from './spi/init'
 import { injectCloudflareAnalytics } from './utils/analytics'
+import { initTheme } from './composables/useTheme'
+import CodeMirror from 'codemirror'
 
 const app = createApp(App)
 app.use(pinia)
 app.use(router)
+
+// 恢复主题偏好（light/dark，见 useTheme.ts），须在挂载前执行避免闪白
+initTheme()
+
+// CodeMirror 行号对齐修复：fixedGutter 的横向滚动补偿依赖易失效的量测，
+// 会让不同批次渲染的行号基准不一致（行号分裂成两列 / 盖住行首）。
+// 本站编辑器均为自动换行模式，关闭 fixedGutter 后所有行统一以
+// -gutterWidth 定位，行号槽背景列永远与行号对齐。
+CodeMirror.defaults.fixedGutter = false
 
 // v-md-editor 懒加载：仅在 /markdown/ 页面首次访问时动态 import 并注册，
 // 避免首屏就把 v-md-editor + prism + vuepress 主题一起打包进来。

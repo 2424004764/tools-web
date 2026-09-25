@@ -8,7 +8,7 @@
           :value="modelValue"
           @input="$emit('update:modelValue', ($event.target as HTMLTextAreaElement).value)"
           placeholder="例如：一只可爱的猫咪在草地上玩耍"
-          rows="3"
+          rows="6"
           class="flex-1 px-3 py-2 border rounded-lg text-body-sm"
           :disabled="disabled"
         />

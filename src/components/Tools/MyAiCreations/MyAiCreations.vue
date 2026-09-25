@@ -10,6 +10,7 @@ import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import {
   fetchAiCreations,
   fetchAiCreationCategories,
+  fetchAiCreationTags,
   deleteAiCreationGroup,
   deleteAiCreationImage,
   fetchImageClaims,
@@ -21,9 +22,11 @@ import {
   type AiCreationGroup,
   type AiCreationImage,
   type AiCreationCategory,
+  type AiCreationTag,
 } from '@/api/ai-creations'
 import ClaimDialog from './ClaimDialog.vue'
 import ManualUploadDialog from './ManualUploadDialog.vue'
+import TagEditDialog from './TagEditDialog.vue'
 import Expand from '~icons/ep/expand'
 import Fold from '~icons/ep/fold'
 import Star from '~icons/ep/star'
@@ -39,9 +42,10 @@ const route = useRoute()
 
 const info = reactive({ title: '我的 AI 创作' })
 
-// ============ 列表筛选状态（分类 / 页码 / 搜索 / 只看收藏）============
-// 这四项都会同步到 URL query（category/page/q/fav），刷新或分享链接后状态可恢复。
+// ============ 列表筛选状态（分类 / 标签 / 页码 / 搜索 / 只看收藏）============
+// 这些都会同步到 URL query（category/tag/page/q/fav），刷新或分享链接后状态可恢复。
 const activeCategory = ref<string>('')
+const activeTag = ref<string>('')
 const sourceFilter = ref<'all' | 'ai_generated' | 'manual_upload'>('all')
 const searchQ = ref<string>('')
 const favOnly = ref<boolean>(false)
@@ -59,6 +63,45 @@ const groupKeyOf = (g: AiCreationGroup): string => {
 const loading = ref(false)
 const groups = ref<AiCreationGroup[]>([])
 const categories = ref<AiCreationCategory[]>([])
+// 当前 uid 的标签聚合（筛选 chips + 编辑弹窗建议用）
+const allTags = ref<AiCreationTag[]>([])
+
+// ============ 标签（AI 生成 / 手动上传通用，默认空）============
+const tagDialogGroup = ref<AiCreationGroup | null>(null)
+const tagDialogRef = ref<InstanceType<typeof TagEditDialog> | null>(null)
+
+const loadTags = async () => {
+  try {
+    allTags.value = await fetchAiCreationTags()
+  } catch {
+    /* 静默：标签聚合失败不影响列表 */
+  }
+}
+
+/** 点筛选 chips：再点一次取消；传 '' 直接清空 */
+const handleTagFilterChange = (name: string) => {
+  activeTag.value = name === '' ? '' : (activeTag.value === name ? '' : name)
+  pagination.value.page = 1
+  loadGroups()
+  syncUrl()
+}
+
+const openTagDialog = (g: AiCreationGroup) => {
+  tagDialogGroup.value = g
+  nextTick(() => tagDialogRef.value?.open())
+}
+
+/** 编辑弹窗保存成功：原地更新组（详情/画廊持有同一引用，自动跟随），再刷新聚合计数 */
+const onTagsSaved = (payload: { groupId: number; tags: string[] }) => {
+  const g = groups.value.find((x) => x.id === payload.groupId)
+  if (g) g.tags = payload.tags
+  loadTags()
+}
+
+/** 卡片上的标签最多展示 3 个，多余折叠成 +N */
+const TAGS_SHOWN = 3
+const shownGroupTags = (g: AiCreationGroup) => (g.tags || []).slice(0, TAGS_SHOWN)
+const hiddenTagCount = (g: AiCreationGroup) => Math.max(0, (g.tags || []).length - TAGS_SHOWN)
 
 const pagination = ref({
   total: 0,
@@ -79,6 +122,7 @@ const failedIds = reactive(new Set<number>())
 const syncUrl = () => {
   const query: Record<string, string> = {}
   if (activeCategory.value) query.category = activeCategory.value
+  if (activeTag.value) query.tag = activeTag.value
   if (sourceFilter.value !== 'all') query.source = sourceFilter.value
   if (pagination.value.page > 1) query.page = String(pagination.value.page)
   if (searchQ.value.trim()) query.q = searchQ.value.trim()
@@ -90,8 +134,9 @@ const syncUrl = () => {
 
 // 从 URL query 恢复筛选状态（onMounted 时、loadGroups 之前调用）
 const restoreFromUrl = () => {
-  const { category, page, q, fav, source } = route.query
+  const { category, tag, page, q, fav, source } = route.query
   if (typeof category === 'string' && category) activeCategory.value = category
+  if (typeof tag === 'string' && tag) activeTag.value = tag
   if (source === 'ai_generated' || source === 'manual_upload') sourceFilter.value = source
   if (typeof page === 'string') {
     const p = parseInt(page, 10)
@@ -714,6 +759,7 @@ const loadGroups = async () => {
       page: pagination.value.page,
       pageSize: pagination.value.pageSize,
       category: activeCategory.value || undefined,
+      tag: activeTag.value || undefined,
       q: searchQ.value.trim() || undefined,
       favOnly: favOnly.value || undefined,
       source: sourceFilter.value === 'all' ? undefined : sourceFilter.value,
@@ -724,6 +770,8 @@ const loadGroups = async () => {
     pagination.value = result.pagination
     // 列表更新后批量拉当前页所有图的认领记录（认领数据量小，单次请求覆盖整页）
     await loadClaimsForCurrentList()
+    // 标签聚合只在进页面 / 标签变动后需要刷新；跟在列表后面拉一次，保证筛选 chips 计数准确
+    loadTags()
   } catch (e: any) {
     console.error('load ai-creations fail', e)
     if (e?.response?.status === 401) {
@@ -754,6 +802,8 @@ const openUploadDialog = () => { uploadDialogVisible.value = true }
 const handleUploadSuccess = async () => {
   uploadDialogVisible.value = false
   sourceFilter.value = 'manual_upload'
+  // 新上传默认无标签，若停留在某个标签筛选下会看不到新图，这里清掉标签筛选
+  activeTag.value = ''
   pagination.value.page = 1
   syncUrl()
   await loadGroups()
@@ -986,6 +1036,33 @@ onUnmounted(() => {
             </button>
           </div>
         </template>
+        <!-- 标签筛选（AI 生成 / 手动上传合集的标签聚合；没有任何标签时整段隐藏） -->
+        <template v-if="allTags.length > 0">
+          <div class="flex items-center gap-2 mb-2 mt-2">
+            <span class="text-sm text-gray-500">标签</span>
+            <span v-if="activeTag" class="text-xs text-gray-400">当前：{{ activeTag }}</span>
+            <button
+              v-if="activeTag"
+              class="text-xs text-gray-400 hover:text-indigo-600 underline underline-offset-2"
+              @click="handleTagFilterChange('')"
+            >
+              清除筛选
+            </button>
+          </div>
+          <div class="flex flex-wrap gap-2 mb-2">
+            <button
+              v-for="t in allTags"
+              :key="t.name"
+              class="px-3 py-1 rounded-full text-xs transition-all"
+              :class="activeTag === t.name ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+              :title="`按标签「${t.name}」筛选`"
+              @click="handleTagFilterChange(t.name)"
+            >
+              # {{ t.name }}
+              <span class="opacity-60 ml-1">{{ t.count }}</span>
+            </button>
+          </div>
+        </template>
         <!-- 顶部工具栏：仅在页面有多图合集时显示（批量模式下隐藏，避免与批量选择语义冲突）。
              默认：合集卡片用横向 swiper 显示全部图（不拆分）。
              一键展开后：多图合集拆成 N 个独立单图卡片混排在 grid 里。 -->
@@ -1115,6 +1192,27 @@ onUnmounted(() => {
                 >
                   {{ groupPromptText(item.parent) }}
                 </p>
+                <!-- 标签：AI 生成 / 手动上传通用；默认空时显示虚线「+ 标签」入口 -->
+                <div class="flex flex-wrap items-center gap-1 mt-1.5">
+                  <span
+                    v-for="t in shownGroupTags(item.parent)"
+                    :key="t"
+                    class="max-w-[40%] truncate text-[11px] px-1.5 py-0.5 rounded bg-purple-50 text-purple-700"
+                    :title="(item.parent.tags || []).join('、')"
+                  >
+                    # {{ t }}
+                  </span>
+                  <span v-if="hiddenTagCount(item.parent) > 0" class="text-[11px] text-gray-400">+{{ hiddenTagCount(item.parent) }}</span>
+                  <button
+                    type="button"
+                    class="text-[11px] px-1.5 py-0.5 rounded transition-colors"
+                    :class="(item.parent.tags || []).length > 0 ? 'text-gray-400 hover:text-purple-600' : 'border border-dashed border-gray-300 text-gray-400 hover:border-purple-400 hover:text-purple-600'"
+                    :title="(item.parent.tags || []).length > 0 ? '编辑标签' : '添加标签'"
+                    @click="openTagDialog(item.parent)"
+                  >
+                    {{ (item.parent.tags || []).length > 0 ? '✏️' : '+ 标签' }}
+                  </button>
+                </div>
                 <div class="flex items-center justify-between mt-2 gap-2 flex-wrap">
                   <span v-if="item.image.filename" class="text-[11px] text-gray-500 truncate max-w-full" :title="item.image.filename">{{ item.image.filename }}</span>
                   <span v-if="item.parent.model_name" class="text-[11px] text-indigo-500 truncate max-w-[40%]">
@@ -1208,6 +1306,30 @@ onUnmounted(() => {
                 backgroundColor: `${colorForGroup(item.group.id)}10`,
               }"
             >
+              <!-- 展开态头部：标题 + 标签（默认空时显示「+ 标签」入口） -->
+              <div class="flex flex-wrap items-center gap-1 mb-2 px-1">
+                <span class="text-xs font-semibold text-gray-600 truncate max-w-[35%]" :title="groupTitle(item.group)">
+                  {{ groupTitle(item.group) }}
+                </span>
+                <span
+                  v-for="t in shownGroupTags(item.group)"
+                  :key="t"
+                  class="max-w-[30%] truncate text-[11px] px-1.5 py-0.5 rounded bg-white/80 text-purple-700"
+                  :title="(item.group.tags || []).join('、')"
+                >
+                  # {{ t }}
+                </span>
+                <span v-if="hiddenTagCount(item.group) > 0" class="text-[11px] text-gray-500">+{{ hiddenTagCount(item.group) }}</span>
+                <button
+                  type="button"
+                  class="text-[11px] px-1.5 py-0.5 rounded transition-colors"
+                  :class="(item.group.tags || []).length > 0 ? 'text-gray-500 hover:text-purple-600' : 'border border-dashed border-gray-300 text-gray-500 hover:border-purple-400 hover:text-purple-600'"
+                  :title="(item.group.tags || []).length > 0 ? '编辑标签' : '添加标签'"
+                  @click="openTagDialog(item.group)"
+                >
+                  {{ (item.group.tags || []).length > 0 ? '✏️' : '+ 标签' }}
+                </button>
+              </div>
               <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 <div
                   v-for="img in item.group.images"
@@ -1459,6 +1581,27 @@ onUnmounted(() => {
                 >
                   {{ groupPromptText(item.group) }}
                 </p>
+                <!-- 标签：AI 生成 / 手动上传通用；默认空时显示虚线「+ 标签」入口 -->
+                <div class="flex flex-wrap items-center gap-1 mt-1.5">
+                  <span
+                    v-for="t in shownGroupTags(item.group)"
+                    :key="t"
+                    class="max-w-[40%] truncate text-[11px] px-1.5 py-0.5 rounded bg-purple-50 text-purple-700"
+                    :title="(item.group.tags || []).join('、')"
+                  >
+                    # {{ t }}
+                  </span>
+                  <span v-if="hiddenTagCount(item.group) > 0" class="text-[11px] text-gray-400">+{{ hiddenTagCount(item.group) }}</span>
+                  <button
+                    type="button"
+                    class="text-[11px] px-1.5 py-0.5 rounded transition-colors"
+                    :class="(item.group.tags || []).length > 0 ? 'text-gray-400 hover:text-purple-600' : 'border border-dashed border-gray-300 text-gray-400 hover:border-purple-400 hover:text-purple-600'"
+                    :title="(item.group.tags || []).length > 0 ? '编辑标签' : '添加标签'"
+                    @click="openTagDialog(item.group)"
+                  >
+                    {{ (item.group.tags || []).length > 0 ? '✏️' : '+ 标签' }}
+                  </button>
+                </div>
                 <div class="flex items-center justify-between mt-2 gap-2 flex-wrap">
                   <span v-if="item.group.model_name" class="text-[11px] text-indigo-500 truncate max-w-[40%]">
                     {{ item.group.model_name }}
@@ -1693,6 +1836,25 @@ onUnmounted(() => {
                 + 标记已发布的平台
               </button>
             </div>
+            <!-- 标签：整个合集共用，点「编辑」打开标签弹窗（AI 生成 / 手动上传通用，默认空） -->
+            <div class="flex flex-wrap items-center gap-1.5 mb-3">
+              <span class="text-xs text-gray-500 mr-0.5">标签：</span>
+              <span
+                v-for="t in selectedGroup.tags || []"
+                :key="t"
+                class="px-2 py-0.5 rounded bg-purple-100 text-purple-700 text-xs"
+              >
+                {{ t }}
+              </span>
+              <button
+                type="button"
+                class="text-xs text-purple-600 hover:text-purple-700 hover:underline"
+                :title="(selectedGroup.tags || []).length > 0 ? '编辑标签' : '添加标签'"
+                @click="openTagDialog(selectedGroup)"
+              >
+                {{ (selectedGroup.tags || []).length > 0 ? '✏️ 编辑' : '+ 添加标签' }}
+              </button>
+            </div>
             <!-- 描述：与标题完全一致时省略，避免视觉重复；右上角复制按钮一键复制提示词 -->
             <div
               v-if="groupPromptText(selectedGroup) && groupPromptText(selectedGroup).trim() !== groupTitle(selectedGroup).trim()"
@@ -1875,6 +2037,25 @@ onUnmounted(() => {
             <el-tag size="small" type="success" effect="plain">🖼 {{ galleryImages.length }} 张</el-tag>
             <el-tag size="small" type="info" effect="plain">{{ sourceLabel(galleryGroup.source_type) }}</el-tag>
             <el-tag v-if="galleryGroup.scene" size="small" type="info" effect="plain">{{ galleryGroup.scene }}</el-tag>
+            <!-- 标签 chips + 编辑入口（AI 生成 / 手动上传通用） -->
+            <el-tag
+              v-for="t in galleryGroup.tags || []"
+              :key="t"
+              size="small"
+              effect="plain"
+              class="!border-purple-300 !text-purple-700 !bg-purple-50"
+            >
+              # {{ t }}
+            </el-tag>
+            <el-tag
+              size="small"
+              effect="plain"
+              class="cursor-pointer select-none !border-purple-300 !text-purple-700 !bg-purple-50"
+              :title="(galleryGroup.tags || []).length > 0 ? '编辑标签' : '添加标签'"
+              @click="openTagDialog(galleryGroup)"
+            >
+              {{ (galleryGroup.tags || []).length > 0 ? '✏️ 标签' : '+ 标签' }}
+            </el-tag>
             <!-- 整组的认领统计：聚合所有图的所有平台去重后的数量。
                  0 时整段不渲染，不打扰未认领的组。 -->
             <el-tag
@@ -2031,6 +2212,16 @@ onUnmounted(() => {
       :image-id="claimDialogImageId ?? 0"
       :current-claims="claimDialogImageId != null ? claimsOf(claimDialogImageId) : []"
       @saved="(p) => updateLocalClaims(p.imageId, p.claims)"
+    />
+
+    <!-- 标签编辑弹窗：tagDialogGroup 由 openTagDialog() 设置；保存后 onTagsSaved 原地更新组 + 刷新聚合 -->
+    <TagEditDialog
+      ref="tagDialogRef"
+      :group-id="tagDialogGroup?.id ?? 0"
+      :group-title="tagDialogGroup ? groupTitle(tagDialogGroup) : ''"
+      :tags="tagDialogGroup?.tags ?? []"
+      :suggestions="allTags.map((t) => t.name)"
+      @saved="onTagsSaved"
     />
 
     <!-- 全屏图片浏览（el-image-viewer，挂在根，teleported 避免被 dialog 遮挡） -->
