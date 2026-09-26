@@ -211,8 +211,8 @@ export default defineConfig(({command, mode}) => {
           name: '开发者工具箱',
           short_name: '工具箱',
           description: '开发者工具箱离线工具集合',
-          start_url: '/shopping-list/',
-          scope: '/shopping-list/',
+          start_url: '/',
+          scope: '/',
           display: 'standalone',
           theme_color: '#ffffff',
           background_color: '#ffffff',
@@ -223,10 +223,47 @@ export default defineConfig(({command, mode}) => {
         },
         workbox: {
           cacheId: 'tools-web-pwa',
-          navigateFallback: '/shopping-list/',
-          navigateFallbackDenylist: [/^\/api\//, /^\/(?!shopping-list(?:\/|$))/],
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+          navigateFallback: '/index.html',
+          // API / 短链跳转 / SEO 文件不能被 SPA fallback 拦截
+          navigateFallbackDenylist: [
+            /^\/api\//,
+            /^\/s\//,
+            /^\/sitemap\.xml$/,
+            /^\/robots\.txt$/,
+            /^\/googlee80af792a405bec5\.html$/,
+          ],
+          // 预缓存只保留首屏外壳（入口 HTML + 入口静态依赖 + 主样式，约 2MB）。
+          // 之前用 `**/*.{js,css,html,ico,png,svg,woff2}` 会把 dist 里 900+ 个文件
+          // （全部 80+ 工具路由的 chunk、字体、图片，共 14MB）打进 precache，
+          // 首访/发版后 Service Worker 在后台整站下载一遍，网络面板里 700+ 请求。
+          globPatterns: [
+            'index.html',
+            'js/index-*.js',
+            'js/vue-vendor-*.js',
+            'js/element-plus-*.js',
+            'js/codemirror-*.js',
+            'css/index-*.css',
+          ],
           runtimeCaching: [
+            // 其余路由的 JS/CSS：访问过哪个工具就缓存哪个，后续可离线复用
+            {
+              urlPattern: ({ request }) =>
+                request.destination === 'script' || request.destination === 'style',
+              handler: 'StaleWhileRevalidate',
+              options: {
+                cacheName: 'tools-web-pwa-assets',
+                expiration: { maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              },
+            },
+            // 字体：内容不变，长期缓存
+            {
+              urlPattern: ({ request }) => request.destination === 'font',
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'tools-web-pwa-fonts',
+                expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              },
+            },
             {
               urlPattern: ({ request }) => request.destination === 'image',
               handler: 'CacheFirst',

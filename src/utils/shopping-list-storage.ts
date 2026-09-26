@@ -48,6 +48,8 @@ export interface ShoppingData {
   lists: ShoppingList[]
   templates: ShoppingTemplate[]
   history: ShoppingHistoryEntry[]
+  /** 本地有未同步到服务端的修改时为 true，用于下次加载时避免被过期的远端数据覆盖 */
+  pendingSync?: boolean
 }
 
 const DB_NAME = 'yifang-shopping-list'

@@ -44,6 +44,27 @@ const detailVisible = ref(false)
 const selected = ref<AiMediaWork | null>(null)
 const detailLoading = ref(false)
 
+// 声音偏好：用户在详情弹窗里手动取消过静音后，本次会话内再打开视频自动带声音
+const soundEnabled = ref(false)
+
+// 原生控制条上的静音按钮/音量条会触发 volumechange，据此记录用户偏好
+const onDetailVolumeChange = (e: Event) => {
+  const v = e.target as HTMLVideoElement
+  soundEnabled.value = !v.muted && v.volume > 0
+}
+
+// 详情视频起播：按声音偏好自动播放；带声音的自动播放被浏览器策略
+// 拦截时（尚无用户交互），退回静音自动播放
+const onDetailVideoReady = (e: Event) => {
+  const v = e.target as HTMLVideoElement
+  v.muted = !soundEnabled.value
+  v.play().catch(() => {
+    if (v.muted) return
+    v.muted = true
+    v.play().catch(() => {})
+  })
+}
+
 const openDetail = async (row: AiMediaWork) => {
   selected.value = row // 先用列表数据即时显示
   detailVisible.value = true
@@ -164,16 +185,42 @@ const videoCoverSrc = (item: AiMediaWork) => {
   return `${item.media_url}#t=0.1`
 }
 
-const handleVideoEnter = (e: Event) => {
+// 悬浮播放中的视频 id（触屏设备不会进入，悬浮进度层只在这些视频上显示）
+const hoverVideoIds = reactive(new Set<number>())
+// 每个视频的实时播放进度：已播秒数 / 总秒数
+const videoProgress = reactive<Record<number, { current: number; duration: number }>>({})
+
+const handleVideoEnter = (item: AiMediaWork, e: Event) => {
   if (!canHover.value) return
+  hoverVideoIds.add(item.id)
   ;(e.target as HTMLVideoElement).play().catch(() => {})
 }
 
-const handleVideoLeave = (e: Event) => {
+const handleVideoLeave = (item: AiMediaWork, e: Event) => {
   if (!canHover.value) return
+  hoverVideoIds.delete(item.id)
   const v = e.target as HTMLVideoElement
   v.pause()
   v.currentTime = 0
+  if (videoProgress[item.id]) videoProgress[item.id].current = 0
+}
+
+const onVideoTimeUpdate = (item: AiMediaWork, e: Event) => {
+  const v = e.target as HTMLVideoElement
+  if (!Number.isFinite(v.duration) || v.duration <= 0) return
+  videoProgress[item.id] = { current: v.currentTime, duration: v.duration }
+}
+
+const videoProgressText = (id: number) => {
+  const p = videoProgress[id]
+  if (!p || !p.duration) return ''
+  return `${p.current.toFixed(1)}s / ${p.duration.toFixed(1)}s`
+}
+
+const videoProgressPercent = (id: number) => {
+  const p = videoProgress[id]
+  if (!p || !p.duration) return 0
+  return Math.min(100, (p.current / p.duration) * 100)
 }
 
 // 视频 src 真的彻底失败时（外链失效、iOS 黑屏等），用独立的失败集合触发 CSS 占位
@@ -368,7 +415,7 @@ function openOriginal(item: any) {
               />
 
               <!-- 视频：<video> 标签做静态封面（#t=0.1 让浏览器渲染首帧），
-                   hover 时自动播放，离开时暂停回 0，hover-leave 仍能看到首帧 -->
+                   hover 时循环播放，离开时暂停回 0，hover-leave 仍能看到首帧 -->
               <video
                 v-else
                 :src="videoCoverSrc(item)"
@@ -376,6 +423,7 @@ function openOriginal(item: any) {
                 class="w-full h-full object-cover transition-opacity duration-300"
                 :class="loadedCoverIds.has(item.id) ? 'opacity-100' : 'opacity-0'"
                 muted
+                loop
                 playsinline
                 webkit-playsinline
                 disablepictureinpicture
@@ -383,9 +431,27 @@ function openOriginal(item: any) {
                 @loadedmetadata="markCoverLoaded(item.id)"
                 @loadeddata="markCoverLoaded(item.id)"
                 @error="onCoverError($event, item.id)"
-                @mouseenter="handleVideoEnter"
-                @mouseleave="handleVideoLeave"
+                @timeupdate="onVideoTimeUpdate(item, $event)"
+                @mouseenter="handleVideoEnter(item, $event)"
+                @mouseleave="handleVideoLeave(item, $event)"
               />
+
+              <!-- 悬浮播放进度：已播放秒数/总秒数 + 进度条（pointer-events-none
+                   避免挡住 video 的 mouseenter/mouseleave） -->
+              <div
+                v-if="hoverVideoIds.has(item.id) && videoProgress[item.id]"
+                class="absolute inset-x-0 bottom-0 z-10 pointer-events-none bg-gradient-to-t from-black/70 via-black/35 to-transparent px-2 pt-4 pb-1.5"
+              >
+                <div class="h-0.5 rounded-full bg-white/25 overflow-hidden">
+                  <div
+                    class="h-full rounded-full bg-white/90"
+                    :style="{ width: videoProgressPercent(item.id) + '%' }"
+                  ></div>
+                </div>
+                <div class="mt-1 text-[10px] leading-none font-mono text-white/95 tabular-nums">
+                  {{ videoProgressText(item.id) }}
+                </div>
+              </div>
 
               <!-- 视频 src 彻底失败时的 CSS 占位兜底 -->
               <div
@@ -507,11 +573,12 @@ function openOriginal(item: any) {
             :src="selected.media_url"
             :poster="selected.thumbnail_url || undefined"
             controls
-            autoplay
-            muted
+            :muted="!soundEnabled"
+            loop
             playsinline
             webkit-playsinline
-            loop
+            @loadeddata="onDetailVideoReady"
+            @volumechange="onDetailVolumeChange"
             class="max-w-full max-h-[45vh] md:max-h-[86vh]"
           />
         </div>

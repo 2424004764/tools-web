@@ -673,3 +673,33 @@ html.dark .w-e-modal .w-e-modal-btn {
 :where(html.dark) .from-red-100 { --tw-gradient-from: rgb(239 68 68 / 0.16) var(--tw-gradient-from-position); }
 :where(html.dark) .via-red-100 { --tw-gradient-stops: var(--tw-gradient-from), rgb(239 68 68 / 0.12) var(--tw-gradient-via-position), var(--tw-gradient-to); }
 :where(html.dark) .to-red-100 { --tw-gradient-to: rgb(239 68 68 / 0.18) var(--tw-gradient-to-position); }
+
+/* 深色模式：实底状态色块（bg-*-100 芯片等）改为品牌色低透明度，与 50 阶同公式 */
+:where(html.dark) .bg-indigo-100 { background-color: rgb(99 102 241 / 0.16); }
+:where(html.dark) .bg-emerald-100 { background-color: rgb(16 185 129 / 0.16); }
+:where(html.dark) .bg-rose-100   { background-color: rgb(244 63 94 / 0.16); }
+:where(html.dark) .bg-amber-100  { background-color: rgb(245 158 11 / 0.16); }
+:where(html.dark) .text-amber-800 { color: rgb(251 191 36); }
+
+/* 深色模式：补 token 覆盖（accent/danger/success/warning/info），否则暗色下仍保持亮色块（例：后台统计卡片图标、侧栏激活项） */
+:where(html.dark) .bg-accent-50  { background-color: rgb(var(--accent-500) / 0.10); }
+:where(html.dark) .bg-accent-100 { background-color: rgb(var(--accent-500) / 0.16); }
+:where(html.dark) .bg-danger-50  { background-color: rgb(var(--danger-500) / 0.12); }
+:where(html.dark) .bg-danger-100 { background-color: rgb(var(--danger-500) / 0.16); }
+:where(html.dark) .bg-success-50  { background-color: rgb(var(--success-500) / 0.12); }
+:where(html.dark) .bg-success-100 { background-color: rgb(var(--success-500) / 0.16); }
+:where(html.dark) .bg-warning-50  { background-color: rgb(var(--warning-500) / 0.12); }
+:where(html.dark) .bg-warning-100 { background-color: rgb(var(--warning-500) / 0.16); }
+:where(html.dark) .bg-info-50  { background-color: rgb(var(--info-500) / 0.12); }
+:where(html.dark) .bg-info-100 { background-color: rgb(var(--info-500) / 0.16); }
+
+:where(html.dark) .text-accent-600,
+:where(html.dark) .text-accent-700 { color: rgb(var(--accent-300)); }
+:where(html.dark) .text-danger-600,
+:where(html.dark) .text-danger-700 { color: rgb(var(--danger-400)); }
+:where(html.dark) .text-success-600 { color: rgb(var(--success-400)); }
+:where(html.dark) .text-warning-600 { color: rgb(var(--warning-400)); }
+
+:where(html.dark) .border-accent-200 { border-color: rgb(var(--accent-500) / 0.35); }
+:where(html.dark) .border-accent-300 { border-color: rgb(var(--accent-500) / 0.45); }
+:where(html.dark) .border-danger-200 { border-color: rgb(var(--danger-500) / 0.35); }

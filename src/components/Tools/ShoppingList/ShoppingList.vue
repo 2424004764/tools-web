@@ -5,6 +5,7 @@ import html2canvas from 'html2canvas'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { functionsRequest } from '@/utils/functionsRequest'
 import { useUserStore } from '@/store/modules/user'
+import { getLocalToken } from '@/utils/user'
 import { releaseStorageReservation } from '@/api/storageQuota'
 import { loadShoppingData, saveShoppingData, type ShoppingData, type ShoppingHistoryEntry, type ShoppingItem, type ShoppingList, type ShoppingTemplate } from '@/utils/shopping-list-storage'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
@@ -58,6 +59,10 @@ const uploadingImage = ref(false)
 const imageDragActive = ref(false)
 const exportTarget = ref<HTMLElement | null>(null)
 let syncTimer: ReturnType<typeof setTimeout> | undefined
+let syncRunning = false
+let syncQueued = false
+let syncRevision = 0
+const localDirty = ref(false)
 
 const userId = computed(() => userStore.getUserInfo?.uid || 'anonymous')
 const activeList = computed(() => lists.value.find((list) => list.id === activeListId.value) || lists.value[0])
@@ -81,11 +86,83 @@ const filteredItems = computed(() => {
 const syncLabel = computed(() => offline.value ? '离线，已保存本地' : syncing.value ? '正在同步' : syncError.value ? '同步失败' : userStore.getLoginStatus ? '已同步账户' : '仅本地保存')
 
 function snapshot(): ShoppingData { return { version: 2, lists: lists.value, templates: templates.value, history: history.value } }
-async function persistLocal() { try { await saveShoppingData(userId.value, snapshot()) } catch { ElMessage.warning('本地保存失败，请检查浏览器存储权限') } }
-function touch() { if (activeList.value) activeList.value.updatedAt = new Date().toISOString(); void persistLocal(); scheduleSync() }
-function scheduleSync() { if (!userStore.getLoginStatus || offline.value) return; if (syncTimer) clearTimeout(syncTimer); syncTimer = setTimeout(() => { void syncRemote() }, 500) }
-async function syncRemote() { if (!userStore.getLoginStatus || offline.value) return; syncing.value = true; syncError.value = false; try { await functionsRequest.put('/api/shopping-lists', { lists: lists.value }); syncError.value = false } catch { syncError.value = true } finally { syncing.value = false } }
-async function loadData() { loading.value = true; try { const local = await loadShoppingData(userId.value); if (local?.lists?.length) { lists.value = local.lists; templates.value = local.templates || []; history.value = local.history || []; activeListId.value = lists.value.find((list) => !list.archived)?.id || lists.value[0].id } if (userStore.getLoginStatus && !offline.value) { try { const response = await functionsRequest.get<{ lists?: ShoppingList[] }>('/api/shopping-lists'); if (response.data?.lists?.length) { lists.value = response.data.lists; activeListId.value = lists.value[0].id; await persistLocal() } } catch { syncError.value = true } } } finally { loading.value = false } }
+async function persistLocal() { try { await saveShoppingData(userId.value, { ...snapshot(), pendingSync: localDirty.value }) } catch { ElMessage.warning('本地保存失败，请检查浏览器存储权限') } }
+function touch() { if (activeList.value) activeList.value.updatedAt = new Date().toISOString(); localDirty.value = true; syncRevision += 1; void persistLocal(); scheduleSync() }
+function scheduleSync() { if (!userStore.getLoginStatus || offline.value) return; if (syncTimer) clearTimeout(syncTimer); syncTimer = setTimeout(() => { syncTimer = undefined; void syncRemote() }, 500) }
+async function syncRemote() {
+  if (!userStore.getLoginStatus || offline.value) return
+  if (syncRunning) { syncQueued = true; return }
+  syncRunning = true
+  syncing.value = true
+  syncError.value = false
+  const revision = syncRevision
+  try {
+    await functionsRequest.put('/api/shopping-lists', { lists: lists.value })
+    syncError.value = false
+    if (revision === syncRevision) { localDirty.value = false; void persistLocal() }
+  } catch { syncError.value = true } finally {
+    syncing.value = false
+    syncRunning = false
+    if (syncQueued) { syncQueued = false; void syncRemote() }
+  }
+}
+function flushSync() {
+  if (!localDirty.value || !userStore.getLoginStatus || offline.value) return
+  const token = getLocalToken()
+  try {
+    void fetch(`${functionsRequest.getProxyUrl() || ''}/api/shopping-lists`, { method: 'PUT', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ lists: lists.value }), keepalive: true }).catch(() => {})
+  } catch { /* 页面正在卸载，尽力补发 */ }
+}
+function fromRemoteList(raw: any): ShoppingList {
+  return {
+    id: String(raw?.id ?? ''),
+    name: String(raw?.name || '未命名清单'),
+    description: raw?.description ?? raw?.note ?? '',
+    budget: Number(raw?.budget || 0),
+    method: raw?.method ?? raw?.purchaseMethod ?? '线下采购',
+    archived: raw?.archived ?? (Number(raw?.status) === 1),
+    updatedAt: raw?.updatedAt ?? raw?.updateTime ?? new Date().toISOString(),
+    items: Array.isArray(raw?.items) ? raw.items.map((item: any) => ({
+      id: String(item?.id ?? ''),
+      name: String(item?.name || ''),
+      quantity: Number(item?.quantity || 1),
+      unit: item?.unit || '件',
+      weight: item?.weight || '',
+      category: item?.category || '其他',
+      note: item?.note || '',
+      estimatedPrice: Number(item?.estimatedPrice || 0),
+      actualPrice: Number(item?.actualPrice || 0),
+      purchased: item?.purchased ?? (Number(item?.checked) === 1),
+      required: item?.required ?? (item?.isRequired == null ? true : Number(item.isRequired) === 1),
+      priority: (item?.priority === 3 ? 3 : item?.priority === 1 ? 1 : 2) as ShoppingItem['priority'],
+      imageUrl: item?.imageUrl || null,
+      purchasedAt: item?.purchasedAt || undefined,
+    })) : [],
+  }
+}
+async function loadData() {
+  loading.value = true
+  try {
+    const local = await loadShoppingData(userId.value)
+    if (local?.lists?.length) { lists.value = local.lists; templates.value = local.templates || []; history.value = local.history || []; activeListId.value = lists.value.find((list) => !list.archived)?.id || lists.value[0].id; localDirty.value = Boolean(local.pendingSync) }
+    if (userStore.getLoginStatus && !offline.value) {
+      try {
+        const response = await functionsRequest.get<{ lists?: unknown[] }>('/api/shopping-lists')
+        const remote = (response.data?.lists || []).map(fromRemoteList)
+        if (remote.length) {
+          if (localDirty.value) {
+            // 本地有未同步的修改（如上次刷新前没来得及发出的同步），以本地为准并补推一次
+            scheduleSync()
+          } else {
+            lists.value = remote
+            activeListId.value = lists.value.find((list) => !list.archived)?.id || lists.value[0].id
+            await persistLocal()
+          }
+        }
+      } catch { syncError.value = true }
+    }
+  } finally { loading.value = false }
+}
 function openNewItem(item?: ShoppingItem) { editingItem.value = item ? { ...item, purchased: false } : defaultItem(); isEditingItem.value = Boolean(item); itemDialogVisible.value = true }
 function saveItem() { const item = { ...editingItem.value, name: editingItem.value.name.trim() }; if (!item.name) return ElMessage.warning('请填写商品名称'); if (isEditingItem.value) { const index = activeList.value.items.findIndex((entry) => entry.id === item.id); if (index >= 0) activeList.value.items[index] = item } else activeList.value.items.unshift({ ...item, id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}` }); itemDialogVisible.value = false; touch() }
 async function resizeImage(file: File): Promise<Blob> {
@@ -171,8 +248,8 @@ async function exportImage() { if (!exportTarget.value) return; await nextTick()
 function money(value: number) { return Number(value || 0).toFixed(2) }
 function onOnline() { offline.value = false; void persistLocal(); void syncRemote() }
 function onOffline() { offline.value = true }
-onMounted(() => { void loadData(); window.addEventListener('online', onOnline); window.addEventListener('offline', onOffline); window.addEventListener('paste', onPaste) })
-onBeforeUnmount(() => { window.removeEventListener('online', onOnline); window.removeEventListener('offline', onOffline); window.removeEventListener('paste', onPaste); if (syncTimer) clearTimeout(syncTimer) })
+onMounted(() => { void loadData(); window.addEventListener('online', onOnline); window.addEventListener('offline', onOffline); window.addEventListener('paste', onPaste); window.addEventListener('pagehide', flushSync) })
+onBeforeUnmount(() => { flushSync(); window.removeEventListener('online', onOnline); window.removeEventListener('offline', onOffline); window.removeEventListener('paste', onPaste); window.removeEventListener('pagehide', flushSync); if (syncTimer) clearTimeout(syncTimer) })
 watch(() => userStore.getLoginStatus, (loggedIn) => { if (loggedIn) void loadData() })
 </script>
 

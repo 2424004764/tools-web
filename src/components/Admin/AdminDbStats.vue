@@ -2,10 +2,11 @@
 // Admin 数据统计页
 // 上：近 30 天每日新增行数折线图（下拉切换数据表）
 // 下：所有数据表的 总行数 / 今日 / 7日 / 30日 新增统计表
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import * as echarts from 'echarts'
 import type { ECharts } from 'echarts'
 import { ElMessage } from 'element-plus'
+import { useTheme } from '@/composables/useTheme'
 import {
   fetchDbStats,
   fetchDbTableTrend,
@@ -28,6 +29,18 @@ const chartTables = computed(() => tables.value.filter((t) => t.tracked))
 
 const formatNum = (n: number) => (n || 0).toLocaleString('zh-CN')
 
+// 图表配色跟随主题：html.dark 翻转 CSS 变量后，构建 option 时实时解析即得当前主题色
+const { isDark } = useTheme()
+function themeVar(name: string, alpha = 1): string {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+  const parts = raw.split(/\s+/)
+  if (parts.length < 3) return raw
+  return `rgba(${parts.join(', ')}, ${alpha})`
+}
+
+// 最近一次绘制的数据，主题切换时用它重绘（不重新请求接口）
+let lastTrend: { dates: string[]; counts: number[] } | null = null
+
 function buildDateList(days: number): string[] {
   const list: string[] = []
   const now = new Date()
@@ -48,62 +61,76 @@ async function loadTrend(table: string) {
     const countMap = new Map(points.map((p) => [p.date, p.count]))
     const dates = buildDateList(30)
     const counts = dates.map((d) => countMap.get(d) || 0)
-
-    chartInstance?.setOption(
-      {
-        grid: { left: 48, right: 20, top: 36, bottom: 28 },
-        tooltip: {
-          trigger: 'axis',
-          formatter: (params: any) => {
-            const p = Array.isArray(params) ? params[0] : params
-            return `${p.name}<br/>${p.marker} 新增 <b>${formatNum(p.value)}</b> 行`
-          },
-        },
-        xAxis: {
-          type: 'category',
-          data: dates,
-          boundaryGap: false,
-          axisLabel: {
-            color: '#71717a',
-            interval: 4,
-            formatter: (v: string) => v.slice(5),
-          },
-          axisLine: { lineStyle: { color: '#e4e4e7' } },
-        },
-        yAxis: {
-          type: 'value',
-          minInterval: 1,
-          axisLabel: { color: '#71717a' },
-          splitLine: { lineStyle: { color: '#f4f4f5' } },
-        },
-        series: [
-          {
-            name: '每日新增行数',
-            type: 'line',
-            data: counts,
-            smooth: true,
-            symbol: 'circle',
-            symbolSize: 5,
-            showSymbol: false,
-            itemStyle: { color: '#f97316' },
-            lineStyle: { width: 2.5, color: '#f97316' },
-            areaStyle: {
-              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                { offset: 0, color: 'rgba(249, 115, 22, 0.25)' },
-                { offset: 1, color: 'rgba(249, 115, 22, 0.02)' },
-              ]),
-            },
-          },
-        ],
-      },
-      { notMerge: true },
-    )
+    lastTrend = { dates, counts }
+    applyTrendOption(dates, counts)
   } catch (err: any) {
     ElMessage.error(err?.response?.data?.error || '趋势数据加载失败')
   } finally {
     chartLoading.value = false
   }
 }
+
+function applyTrendOption(dates: string[], counts: number[]) {
+  chartInstance?.setOption(
+    {
+      grid: { left: 48, right: 20, top: 36, bottom: 28 },
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: themeVar('--surface-0'),
+        borderColor: themeVar('--border-default'),
+        textStyle: { color: themeVar('--ink-700') },
+        formatter: (params: any) => {
+          const p = Array.isArray(params) ? params[0] : params
+          return `${p.name}<br/>${p.marker} 新增 <b>${formatNum(p.value)}</b> 行`
+        },
+      },
+      xAxis: {
+        type: 'category',
+        data: dates,
+        boundaryGap: false,
+        axisLabel: {
+          color: themeVar('--ink-500'),
+          interval: 4,
+          formatter: (v: string) => v.slice(5),
+        },
+        axisLine: { lineStyle: { color: themeVar('--border-default') } },
+      },
+      yAxis: {
+        type: 'value',
+        minInterval: 1,
+        axisLabel: { color: themeVar('--ink-500') },
+        splitLine: { lineStyle: { color: themeVar('--border-subtle') } },
+      },
+      series: [
+        {
+          name: '每日新增行数',
+          type: 'line',
+          data: counts,
+          smooth: true,
+          symbol: 'circle',
+          symbolSize: 5,
+          showSymbol: false,
+          itemStyle: { color: themeVar('--accent-500') },
+          lineStyle: { width: 2.5, color: themeVar('--accent-500') },
+          areaStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: themeVar('--accent-500', 0.25) },
+              { offset: 1, color: themeVar('--accent-500', 0.02) },
+            ]),
+          },
+        },
+      ],
+    },
+    { notMerge: true },
+  )
+}
+
+// 主题切换时用缓存数据按新主题色重绘
+watch(isDark, () => {
+  if (chartInstance && lastTrend) {
+    applyTrendOption(lastTrend.dates, lastTrend.counts)
+  }
+})
 
 function onSelectTable(table: string) {
   loadTrend(table)
