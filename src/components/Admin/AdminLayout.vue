@@ -48,7 +48,7 @@ onUnmounted(() => {
   <div class="admin-root min-h-screen bg-surface-1 text-ink-900">
     <!-- 顶栏 -->
     <header
-      class="h-14 px-4 md:px-6 flex items-center justify-between bg-white/85 backdrop-blur border-b border-border-default sticky top-0 z-20"
+      class="h-14 px-4 md:px-6 flex items-center justify-between bg-white/85 dark:bg-surface-0/85 backdrop-blur border-b border-border-default sticky top-0 z-20"
     >
       <div class="flex items-center gap-3 min-w-0">
         <button
@@ -107,7 +107,7 @@ onUnmounted(() => {
     <!-- 主体：左 sidebar + 右 内容 -->
     <div class="flex">
       <aside
-        class="admin-sidebar hidden md:block w-60 shrink-0 border-r border-border-default bg-white min-h-[calc(100vh-3.5rem)] sticky top-14 self-start"
+        class="admin-sidebar hidden md:block w-60 shrink-0 border-r border-border-default bg-white dark:bg-surface-0 min-h-[calc(100vh-3.5rem)] sticky top-14 self-start"
       >
         <AdminSidebar />
       </aside>

@@ -1136,7 +1136,16 @@ export function getToolsCate() {
           url: '/make24/',
           cateId: 11,
           cate: '趣味互动',
-        }
+        },
+        {
+          id: 140,
+          title: '井字棋',
+          logo: '/images/logo/tic_tac_toe.svg',
+          desc: '经典井字棋圈叉棋，支持人机对战（三档AI难度）和双人同屏对战，先连成三子者获胜',
+          url: '/tic-tac-toe/',
+          cateId: 11,
+          cate: '趣味互动',
+        },
       ]
     },
     {

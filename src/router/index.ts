@@ -1,7 +1,7 @@
 //通过vue-router插件实现模板路由配置
 import { createRouter, createWebHistory } from 'vue-router'
 import { constantRoute } from './router'
-import { checkAppStale } from '@/utils/version-guard'
+import { guardStaleVersion } from '@/utils/version-guard'
 import { useUserStore } from '@/store/modules/user'
 import { matchToolByPath, recordToolUsage } from '@/utils/tool-usage'
 
@@ -12,13 +12,6 @@ const TARGET_PATH_KEY = '__nav_target_path__'
 // 避免 旧 SW / CDN 异常 / 旧 chunk 仍可访问 时反复 reload。
 const CHUNK_ERROR_KEY = '__chunk_error_count__'
 const MAX_CHUNK_ERRORS = 2
-// 同一会话最多硬刷 N 次版本不一致，超出后停止硬刷避免死循环
-// （典型场景：CDN 边缘缓存返回老 hash 导致 isAppStale() 永远 true）
-const MAX_RELOADS_PER_SESSION = 3
-const RELOAD_COUNT_KEY = '__reload_count__'
-// 两次硬刷之间最短间隔（ms），防止 scroll→router.replace→硬刷→scroll→... 的快速循环
-const MIN_RELOAD_INTERVAL = 5000
-const LAST_RELOAD_TIME_KEY = '__last_reload_ts__'
 
 // 当前工具页归零任务的导航代际；新导航开始时令旧 RAF 失效，
 // 避免快速连续跳转时旧目标继续改写新页面的滚动位置。
@@ -65,41 +58,18 @@ window.history.scrollRestoration = 'manual'
 const APP_TITLE = import.meta.env.VITE_APP_TITLE as string
 const APP_DESC = import.meta.env.VITE_APP_DESC as string
 
-router.beforeEach(async (to, _from, next) => {
+router.beforeEach((to, _from, next) => {
   // 任何新导航都会使上一条工具页归零任务失效；Home 自身的生命周期任务
   // 也会在路由离开时取消，双层保护共享的 window 滚动状态。
   cancelScrollPin()
   // 记录目标路径，供 onError 硬刷时使用（避免 currentRoute 还指向旧路由）
   sessionStorage.setItem(TARGET_PATH_KEY, to.fullPath)
 
-  // 版本过期检查（被动触发：仅在路由跳转时拉一次，不再有 setInterval 轮询）。
-  // checkAppStale() 内部使用单飞模式避免同一时间并发拉多次；
-  // 命中 stale → 直接硬刷到目标 URL；未命中 → 继续正常导航。
-  // 受 MAX_RELOADS_PER_SESSION + MIN_RELOAD_INTERVAL 双重保护，避免死循环。
-  const staleTarget = await checkAppStale(to.fullPath || '/')
-  if (staleTarget) {
-    const reloadCount = parseInt(sessionStorage.getItem(RELOAD_COUNT_KEY) || '0', 10)
-    const lastReload = parseInt(sessionStorage.getItem(LAST_RELOAD_TIME_KEY) || '0', 10)
-    const now = Date.now()
-
-    if (reloadCount < MAX_RELOADS_PER_SESSION && (now - lastReload) > MIN_RELOAD_INTERVAL) {
-      sessionStorage.setItem(RELOAD_COUNT_KEY, String(reloadCount + 1))
-      sessionStorage.setItem(LAST_RELOAD_TIME_KEY, String(now))
-      window.location.replace(staleTarget)
-      return // 不调用 next()，中断当前 SPA 导航
-    }
-    if (reloadCount >= MAX_RELOADS_PER_SESSION) {
-      console.warn('[version-guard] 已达硬刷上限，跳过本轮。')
-    }
-  } else {
-    // hash 一致 → 重置计数（成功落到新版本）
-    if (sessionStorage.getItem(RELOAD_COUNT_KEY)) {
-      sessionStorage.removeItem(RELOAD_COUNT_KEY)
-    }
-    if (sessionStorage.getItem(LAST_RELOAD_TIME_KEY)) {
-      sessionStorage.removeItem(LAST_RELOAD_TIME_KEY)
-    }
-  }
+  // 版本过期检查（后台非阻塞）：导航立即放行、点击零延迟。
+  // 探测由 version-guard 内部做单飞 + TTL 限频（成功后 5 分钟内不重复探测）；
+  // 发现服务端有新版本时直接硬刷到最新目标 URL。
+  // 「chunk 在探测返回前就 404」的竞态由下方 router.onError 兜底硬刷。
+  guardStaleVersion(to.fullPath || '/')
 
   // ===== Admin 后台鉴权 =====
   // 前端守卫仅改善体验；真正拦截由后端 _middleware.js 二次把关。

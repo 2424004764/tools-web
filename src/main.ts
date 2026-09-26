@@ -48,8 +48,8 @@ router.beforeEach(async (to) => {
 // 否则未在 onMounted 显式 initUserState() 的页面守卫会误判未登录，导致死循环
 useUserStore().initUserState()
 // 版本指纹守卫：检测 CF 重新部署后让用户透明刷新到新版本。
-// 已改造为「只在路由跳转时检查」（见 router.beforeEach 调用 checkAppStale），
-// 不再有 setInterval 轮询，避免浪费 CF Pages 请求次数。
+// 路由跳转时后台非阻塞探测（见 router.beforeEach 调用 guardStaleVersion），
+// 导航不等待探测结果，无 setInterval 轮询，探测有 TTL 限频。
 app.mount('#app')
 
 // 延迟初始化AI提供者（不阻塞应用启动）

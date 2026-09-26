@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { useTheme } from '@/composables/useTheme'
 
 const route = useRoute()
 const giscusLoaded = ref(false)
+// giscus 主题跟随站点暗色模式（transparent_dark 让 iframe 底色融入卡片）
+const { isDark } = useTheme()
+const giscusTheme = () => (isDark.value ? 'transparent_dark' : 'light')
 
 // 从环境变量获取配置
 const gitUrl = import.meta.env.VITE_GIT_URL || ''
@@ -25,7 +29,7 @@ const giscusConfig = {
   'data-reactions-enabled': '1',
   'data-emit-metadata': '0',
   'data-input-position': 'bottom',
-  'data-theme': 'light',
+  'data-theme': giscusTheme(),
   'data-lang': 'zh-CN',
   'data-loading': 'lazy',
   crossorigin: 'anonymous',
@@ -69,6 +73,15 @@ const resetGiscus = () => {
 
 onMounted(() => {
   loadGiscus()
+})
+
+// 主题切换时通知 giscus iframe 热更新，避免整块重载
+watch(isDark, () => {
+  const iframe = document.querySelector<HTMLIFrameElement>('iframe.giscus-frame')
+  iframe?.contentWindow?.postMessage(
+    { giscus: { setConfig: { theme: giscusTheme() } } },
+    'https://giscus.app',
+  )
 })
 
 // 监听路由变化，更新评论

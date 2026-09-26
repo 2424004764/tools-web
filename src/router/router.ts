@@ -921,6 +921,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/tic-tac-toe',
+    component: () => import('@/components/Tools/TicTacToe/TicTacToe.vue'),
+    name: 'tic-tac-toe',
+    meta: {
+      title: "井字棋",
+      keywords: '井字棋,圈叉棋,AI井字棋,双人井字棋,在线井字棋,三子棋',
+      description: '经典井字棋（圈叉棋）游戏，支持人机对战（简单/中等/困难三档AI）与好友双人同屏对战，先连成三子者获胜',
+    }
+  },
+  {
     path: '/gomoku-online',
     component: () => import('@/components/Tools/GomokuOnline/GomokuOnline.vue'),
     name: 'gomoku-online',

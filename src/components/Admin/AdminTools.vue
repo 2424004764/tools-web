@@ -719,16 +719,16 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* Sortable 拖拽视觉反馈（仅作用于编辑弹窗内的 model 表格） */
+/* Sortable 拖拽视觉反馈（仅作用于编辑弹窗内的 model 表格）；用 token 底色随暗色主题自适应 */
 :deep(.model-row-ghost) {
-  background: #eef2ff !important;
+  background: rgb(var(--accent-500) / 0.14) !important;
   opacity: 0.5;
 }
 :deep(.model-row-chosen) {
-  background: #f0f9ff !important;
+  background: rgb(var(--accent-500) / 0.08) !important;
 }
 :deep(.model-drag-handle:hover) {
-  background: #f3f4f6;
+  background: rgb(var(--surface-2));
   border-radius: 4px;
 }
 </style>

@@ -38,8 +38,8 @@
   --el-card-border-radius: 14px;
   --el-card-padding: 20px;
   box-shadow:
-    0 1px 2px rgb(var(--ink-950) / 0.03),
-    0 8px 24px -16px rgb(var(--ink-950) / 0.08);
+    0 1px 2px rgb(0 0 0 / 0.03),
+    0 8px 24px -16px rgb(0 0 0 / 0.08);
 }
 .admin-root .el-card__header {
   border-bottom-color: rgb(var(--border-subtle));
@@ -50,8 +50,8 @@
   --el-table-border-color: rgb(var(--border-default));
   --el-table-header-bg-color: rgb(var(--surface-1));
   --el-table-header-text-color: rgb(var(--ink-500));
-  --el-table-row-hover-bg-color: rgb(var(--accent-50) / 0.55);
-  --el-table-fixed-box-shadow: 0 -8px 16px -10px rgb(var(--ink-950) / 0.1);
+  --el-table-row-hover-bg-color: rgb(var(--accent-500) / 0.10);
+  --el-table-fixed-box-shadow: 0 -8px 16px -10px rgb(0 0 0 / 0.1);
 
   font-size: 13.5px;
 }
@@ -108,7 +108,7 @@
 .admin-root .el-input__wrapper,
 .admin-root .el-textarea__inner {
   border-radius: 8px;
-  background: #fff;
+  background: rgb(var(--surface-0));
   box-shadow: 0 0 0 1px rgb(var(--border-default)) inset;
   transition: box-shadow 0.15s ease;
 }
@@ -131,7 +131,7 @@
 .admin-root .el-select__wrapper {
   border-radius: 8px;
   min-height: 32px;
-  background: #fff;
+  background: rgb(var(--surface-0));
   box-shadow: 0 0 0 1px rgb(var(--border-default)) inset;
   transition: box-shadow 0.15s ease;
 }
@@ -188,13 +188,13 @@
 
 /* ---------- Dialog（内联渲染于 .admin-root 内） ---------- */
 .admin-root .el-overlay {
-  background-color: rgb(var(--ink-950) / 0.45);
+  background-color: rgb(0 0 0 / 0.45);
   backdrop-filter: blur(3px);
 }
 .admin-root .el-dialog {
   --el-dialog-padding-primary: 20px;
   border-radius: 16px;
-  box-shadow: 0 24px 64px -16px rgb(var(--ink-950) / 0.28);
+  box-shadow: 0 24px 64px -16px rgb(0 0 0 / 0.28);
 }
 .admin-root .el-dialog__header {
   padding-bottom: 8px;
@@ -242,11 +242,11 @@
 body.admin-mode .el-popper.is-light {
   border-radius: 10px;
   border-color: rgb(var(--border-default));
-  box-shadow: 0 12px 32px -8px rgb(var(--ink-950) / 0.14);
+  box-shadow: 0 12px 32px -8px rgb(0 0 0 / 0.14);
 }
 body.admin-mode .el-select-dropdown__item.is-hovering,
 body.admin-mode .el-select-dropdown__item.hover {
-  background: rgb(var(--accent-50) / 0.6);
+  background: rgb(var(--accent-500) / 0.15);
 }
 body.admin-mode .el-select-dropdown__item.is-selected {
   color: rgb(var(--accent-600));
@@ -258,12 +258,12 @@ body.admin-mode .el-picker-panel {
 body.admin-mode .el-message {
   border-radius: 10px;
   border: 1px solid rgb(var(--border-default));
-  box-shadow: 0 8px 24px -8px rgb(var(--ink-950) / 0.16);
+  box-shadow: 0 8px 24px -8px rgb(0 0 0 / 0.16);
 }
 body.admin-mode .el-message-box {
   border-radius: 14px;
   border: none;
-  box-shadow: 0 24px 64px -16px rgb(var(--ink-950) / 0.28);
+  box-shadow: 0 24px 64px -16px rgb(0 0 0 / 0.28);
 }
 body.admin-mode .el-message-box__title {
   font-weight: 600;
@@ -274,23 +274,23 @@ body.admin-mode .el-message-box__title {
    后台通用组件
    ============================================================ */
 
-/* 统计卡片（仪表盘） */
+/* 统计卡片（仪表盘）—— surface-0 随暗色主题自动切换为深色卡片 */
 .admin-stat-card {
-  background: #fff;
+  background: rgb(var(--surface-0));
   border: 1px solid rgb(var(--border-default));
   border-radius: 14px;
   padding: 18px 20px;
   box-shadow:
-    0 1px 2px rgb(var(--ink-950) / 0.03),
-    0 8px 24px -16px rgb(var(--ink-950) / 0.08);
+    0 1px 2px rgb(0 0 0 / 0.03),
+    0 8px 24px -16px rgb(0 0 0 / 0.08);
   transition:
     box-shadow 0.2s ease,
     transform 0.2s ease;
 }
 .admin-stat-card:hover {
   box-shadow:
-    0 2px 4px rgb(var(--ink-950) / 0.04),
-    0 12px 32px -12px rgb(var(--ink-950) / 0.12);
+    0 2px 4px rgb(0 0 0 / 0.04),
+    0 12px 32px -12px rgb(0 0 0 / 0.12);
   transform: translateY(-1px);
 }
 .admin-stat-icon {

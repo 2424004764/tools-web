@@ -165,6 +165,15 @@ const go = (path: string) => {
   font-weight: 500;
 }
 
+/* 暗色：accent-50/700 不随主题翻转，切换为低透明度品牌底 + 亮色文字 */
+:global(html.dark) .admin-nav-item.is-active {
+  background: rgb(var(--accent-500) / 0.15);
+  color: rgb(var(--accent-300));
+}
+:global(html.dark) .admin-nav-item.is-active .admin-nav-icon {
+  color: rgb(var(--accent-300));
+}
+
 .admin-nav-icon {
   width: 16px;
   height: 16px;
