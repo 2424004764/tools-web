@@ -78,6 +78,9 @@
 
     "/api/admin",
     "/api/admin/*",
+    "/api/comments",
+    "/api/site-config",
+    "/api/friend-links",
     "/api/user-tool-prompts",
     "/api/user-tool-prompts/*",
     "/api/user-tool-prompt-groups",
