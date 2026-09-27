@@ -1908,6 +1908,26 @@ export const constantRoute = [
         },
       },
       {
+        path: 'comments',
+        component: () => import('@/components/Admin/AdminComments.vue'),
+        name: 'adminComments',
+        meta: {
+          title: '评论管理',
+          keywords: '后台评论管理,评论审核',
+          description: '审核自建评论系统的用户评论，通过后展示在工具页',
+        },
+      },
+      {
+        path: 'settings',
+        component: () => import('@/components/Admin/AdminSettings.vue'),
+        name: 'adminSettings',
+        meta: {
+          title: '站点设置',
+          keywords: '后台站点设置,评论系统设置',
+          description: '配置站点级开关，如评论系统切换（giscus / 自建评论）',
+        },
+      },
+      {
         path: 'db-stats',
         component: () => import('@/components/Admin/AdminDbStats.vue'),
         name: 'adminDbStats',

@@ -16,6 +16,8 @@ import IconLightning from '~icons/ep/lightning'
 import IconDataAnalysis from '~icons/ep/data-analysis'
 import IconTimer from '~icons/ep/timer'
 import IconLink from '~icons/ep/link'
+import IconChatDotRound from '~icons/ep/chat-dot-round'
+import IconSetting from '~icons/ep/setting'
 
 const route = useRoute()
 const router = useRouter()
@@ -70,6 +72,8 @@ const groups: MenuGroup[] = [
   {
     title: '系统',
     items: [
+      { index: '/admin/settings', title: '站点设置', icon: IconSetting },
+      { index: '/admin/comments', title: '评论管理', icon: IconChatDotRound },
       { index: '/admin/friend-links', title: '友链审核', icon: IconLink },
       { index: '/admin/db-stats', title: '数据统计', icon: IconDataAnalysis },
     ],

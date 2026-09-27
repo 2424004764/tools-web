@@ -1,7 +1,14 @@
 <script setup lang="ts">
+/**
+ * 评论入口组件：按后台「站点设置 → 评论系统」配置自动切换
+ * - giscus（GitHub Discussions 评论，默认，兼容历史行为）
+ * - custom（自建评论系统，需审核，见 CustomComments.vue）
+ */
 import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useTheme } from '@/composables/useTheme'
+import { fetchSiteConfig } from '@/api/site-config'
+import CustomComments from './CustomComments.vue'
 
 const route = useRoute()
 const giscusLoaded = ref(false)
@@ -9,22 +16,32 @@ const giscusLoaded = ref(false)
 const { isDark } = useTheme()
 const giscusTheme = () => (isDark.value ? 'transparent_dark' : 'light')
 
-// 从环境变量获取配置
+/** loading = 配置拉取中；giscus / custom = 后台配置的评论系统 */
+const mode = ref<'loading' | 'giscus' | 'custom'>('loading')
+
+// 从环境变量获取配置（后台未配置 giscus repo 时的回退）
 const gitUrl = import.meta.env.VITE_GIT_URL || ''
 // 从 GitHub URL 中提取 owner 和 repo
 // 格式: https://github.com/owner/repo
 const match = gitUrl.match(/github\.com\/([^\/]+)\/([^\/]+)/)
-const repoOwner = match ? match[1] : ''
-const repoName = match ? match[2] : ''
+const fallbackRepo = match ? `${match[1]}/${match[2]}` : ''
 
-// giscus 配置
-const giscusConfig = {
+// giscus 实际生效配置（后台 site-config 优先，缺省回退环境变量/旧硬编码）
+const giscusAttrs = ref<Record<string, string | boolean>>({})
+
+const buildGiscusAttrs = (cfg: {
+  repo: string
+  repo_id: string
+  category: string
+  category_id: string
+  mapping: string
+}) => ({
   src: 'https://giscus.app/client.js',
-  'data-repo': `${repoOwner}/${repoName}`,
-  'data-repo-id': 'R_kgDOPUcsXg', // 需要替换为实际的 repo-id
-  'data-category': 'General', // 需要替换为实际的 category
-  'data-category-id': 'DIC_kwDOPUcsXs4C1Y2z', // 需要替换为实际的 category-id
-  'data-mapping': 'title',
+  'data-repo': cfg.repo || fallbackRepo,
+  'data-repo-id': cfg.repo_id || 'R_kgDOPUcsXg',
+  'data-category': cfg.category || 'General',
+  'data-category-id': cfg.category_id || 'DIC_kwDOPUcsXs4C1Y2z',
+  'data-mapping': cfg.mapping || 'title',
   'data-strict': '1',
   'data-reactions-enabled': '1',
   'data-emit-metadata': '0',
@@ -33,15 +50,15 @@ const giscusConfig = {
   'data-lang': 'zh-CN',
   'data-loading': 'lazy',
   crossorigin: 'anonymous',
-  async: true
-}
+  async: true,
+})
 
 // 加载 giscus 脚本
 const loadGiscus = () => {
   if (giscusLoaded.value) return
 
   const script = document.createElement('script')
-  Object.entries(giscusConfig).forEach(([key, value]) => {
+  Object.entries(giscusAttrs.value).forEach(([key, value]) => {
     if (key === 'src') {
       script.src = value as string
     } else if (key === 'async') {
@@ -71,12 +88,21 @@ const resetGiscus = () => {
   }
 }
 
-onMounted(() => {
-  loadGiscus()
+onMounted(async () => {
+  // 先读后台配置再决定渲染哪种评论系统（fetchSiteConfig 失败时内部回退 giscus）
+  const config = await fetchSiteConfig()
+  if (config.comment_system === 'custom') {
+    mode.value = 'custom'
+  } else {
+    giscusAttrs.value = buildGiscusAttrs(config.giscus)
+    mode.value = 'giscus'
+    loadGiscus()
+  }
 })
 
 // 主题切换时通知 giscus iframe 热更新，避免整块重载
 watch(isDark, () => {
+  if (mode.value !== 'giscus') return
   const iframe = document.querySelector<HTMLIFrameElement>('iframe.giscus-frame')
   iframe?.contentWindow?.postMessage(
     { giscus: { setConfig: { theme: giscusTheme() } } },
@@ -84,9 +110,11 @@ watch(isDark, () => {
   )
 })
 
-// 监听路由变化，更新评论
+// 监听路由变化，更新评论（自建评论由 CustomComments 内部自行监听）
 watch(() => route.path, () => {
-  resetGiscus()
+  if (mode.value === 'giscus') {
+    resetGiscus()
+  }
 })
 </script>
 
@@ -100,11 +128,20 @@ watch(() => route.path, () => {
         </svg>
         评论交流
       </h3>
-      <p class="text-body-sm text-ink-500 mb-4">
-        欢迎在下方留言讨论，如有问题或建议请提交
-        <a :href="gitUrl + '/issues'" target="_blank" class="text-accent-600 hover:text-accent-700">GitHub Issue</a>
-      </p>
-      <div id="giscus-container"></div>
+
+      <!-- 自建评论系统 -->
+      <template v-if="mode === 'custom'">
+        <CustomComments />
+      </template>
+
+      <!-- giscus（默认） -->
+      <template v-else>
+        <p class="text-body-sm text-ink-500 mb-4">
+          欢迎在下方留言讨论，如有问题或建议请提交
+          <a :href="gitUrl + '/issues'" target="_blank" class="text-accent-600 hover:text-accent-700 dark:text-accent-400 dark:hover:text-accent-300">GitHub Issue</a>
+        </p>
+        <div v-show="mode === 'giscus'" id="giscus-container"></div>
+      </template>
     </div>
   </div>
 </template>
