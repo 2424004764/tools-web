@@ -4,10 +4,12 @@ import { functionsRequest } from '@/utils/functionsRequest'
 export interface DbTableStat {
   /** 表名 */
   name: string
-  /** 中文说明（未登记表为「未登记表」） */
+  /** 中文说明（手工登记）；未登记但已自动识别时间列的表为「自动跟踪 <列名>」 */
   comment: string
   /** 是否有行创建时间列（决定能否统计增量与趋势） */
   tracked: boolean
+  /** 是否为自动识别（未在 TABLE_META 手工登记） */
+  auto: boolean
   total: number
   today: number
   last7: number
@@ -29,7 +31,15 @@ export interface DbTrendPoint {
 export async function fetchDbStats(): Promise<DbStatsResponse> {
   const res = await functionsRequest.get('/api/admin/db-stats')
   return {
-    tables: res.data?.data?.tables || [],
+    tables: (res.data?.data?.tables || []).map((t: Partial<DbTableStat>) => ({
+      total: 0,
+      today: 0,
+      last7: 0,
+      last30: 0,
+      ...t,
+      tracked: !!t.tracked,
+      auto: !!t.auto,
+    })),
     generatedAt: res.data?.data?.generatedAt || '',
   }
 }

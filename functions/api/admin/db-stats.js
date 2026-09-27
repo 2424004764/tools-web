@@ -5,9 +5,11 @@
 // 中间件 _middleware.js 已确保调用方为管理员，无需再做权限检查。
 //
 // 说明：
-// - SQLite 没有表注释，注释维护在本文件的 TABLE_META（与 migrations 同步补充）
+// - SQLite 没有表注释，中文说明维护在本文件的 TABLE_META（与 migrations 同步补充）
+// - 未登记的表会自动探测「行创建时间列」（见 TIME_COL_CANDIDATES），自动纳入
+//   增量统计与趋势图；TABLE_META 仅用于补充中文名或显式指定时间列（优先级更高）
 // - 各表行创建时间列不统一（create_time / created_at / used_at ...），
-//   通过 TABLE_META.timeCol + timeKind 生成对应 SQL：
+//   通过 timeCol + timeKind 生成对应 SQL：
 //     text  → DATETIME/ISO 字符串（date(col) 可解析）
 //     date  → 'YYYY-MM-DD' 纯日期字符串
 //     int   → 秒级时间戳（unixepoch）
@@ -35,7 +37,7 @@ function jsonError(message, status = 500) {
 
 /**
  * 表元数据：comment = 中文说明；timeCol/timeKind = 行创建时间列（无则不统计增量）
- * 新增表后在此补一行即可纳入完整统计
+ * 手工登记优先于自动识别；新表即使不登记也会被自动探测兜底（见 TIME_COL_CANDIDATES）
  */
 const TABLE_META = {
   user:                        { comment: '用户',               timeCol: 'created_at',  timeKind: 'text' },
@@ -93,6 +95,22 @@ const TABLE_META = {
   user_season_scenery:         { comment: '四季景色',           timeCol: 'create_time', timeKind: 'text' },
   hotlist_cache:               { comment: '热榜缓存',           timeCol: 'fetched_at',  timeKind: 'text' },
   friend_links:                { comment: '友情链接',           timeCol: 'created_at',  timeKind: 'text' },
+
+  // —— 存量补登记（此前漏登记的表；新表不登记也会被自动识别）——
+  slow_query_logs:             { comment: '慢查询日志',         timeCol: 'created_at',  timeKind: 'text' },
+  ai_creation_groups:          { comment: 'AI 创作分组',        timeCol: 'created_at',  timeKind: 'text' },
+  ai_creation_images:          { comment: 'AI 创作图片',        timeCol: 'created_at',  timeKind: 'text' },
+  ai_creation_claims:          { comment: 'AI 创作发布认领',    timeCol: 'created_at',  timeKind: 'text' },
+  shopping_lists:              { comment: '购物清单',           timeCol: 'create_time', timeKind: 'text' },
+  shopping_list_items:         { comment: '购物清单明细',       timeCol: 'create_time', timeKind: 'text' },
+  shopping_list_templates:     { comment: '购物清单模板',       timeCol: 'create_time', timeKind: 'text' },
+  shopping_purchase_history:   { comment: '购物购买记录',       timeCol: 'create_time', timeKind: 'text' },
+  travel_map_days:             { comment: '旅行地图日程',       timeCol: 'created_at',  timeKind: 'text' },
+  resumes:                     { comment: '简历',               timeCol: 'create_time', timeKind: 'text' },
+  companies:                   { comment: '公司对比',           timeCol: 'create_time', timeKind: 'text' },
+  comments:                    { comment: '站点评论',           timeCol: 'created_at',  timeKind: 'text' },
+  site_config:                 { comment: '站点配置',           timeCol: 'updated_at',  timeKind: 'text' },
+  music_user_quota:            { comment: '音乐上传配额',       timeCol: 'updated_at',  timeKind: 'text' },
 }
 
 // 统计口径阈值：今日 / 近7日 / 近30日（含当天）
@@ -127,6 +145,77 @@ function statsSql(table, meta) {
 // 表名合法性（全部来自 sqlite_master，双保险）
 const SAFE_NAME = /^[a-zA-Z_][a-zA-Z0-9_]*$/
 
+// ============ 未登记表的自动识别 ============
+// 中文说明只能手工登记；但「行创建时间列」可按常见命名自动探测：
+// 先 PRAGMA table_info 拿列清单，命中候选列后按声明类型定 timeKind，
+// 数值/无类型列再抽样一个非空值区分秒级/毫秒级时间戳。
+// 新建表后即使忘记登记，也会自动纳入增量统计与趋势图。
+
+// 候选时间列（小写比较，天然兼容 createTime 等驼峰命名），先创建时间再更新时间
+const TIME_COL_CANDIDATES = [
+  'created_at', 'create_time', 'createtime', 'created', 'create_date', 'created_on',
+  'date_created', 'added_at', 'add_time', 'fetched_at',
+  'updated_at', 'update_time', 'updatetime',
+]
+
+// 文本型时间（date(col) 可解析 'YYYY-MM-DD[ HH:mm:ss]'）
+const TEXT_TYPE_RE = /^(TEXT|DATETIME|DATE|TIME|CHAR|CLOB|VARCHAR)/i
+// 数值型时间（秒/毫秒需抽样判断）
+const NUM_TYPE_RE = /^(INT|REAL|FLOA|DOUB|NUM|DEC|BIG|SMALL|TINY|MEDIUM|NUMBER)/i
+
+// 抽样值 → timeKind；空表或异常格式按 text 兜底（ISO 文本 date() 也能解析）
+function inferTimeKindFromValue(v) {
+  if (typeof v === 'number') return v > 1e12 ? 'intms' : 'int'
+  if (typeof v === 'string') {
+    const s = v.trim()
+    if (/^\d{13}$/.test(s)) return 'intms'
+    if (/^\d{10}$/.test(s)) return 'int'
+  }
+  return 'text'
+}
+
+// 返回 Map<tableName, { timeCol, timeKind }>；任何一步失败都降级为空（按未登记处理）
+async function resolveAutoMetas(db, tableNames) {
+  const auto = new Map()
+  const missing = tableNames.filter((n) => !TABLE_META[n])
+  if (missing.length === 0) return auto
+  try {
+    const colResults = await db.batch(missing.map((n) => db.prepare(`PRAGMA table_info(${n})`)))
+    const needSample = []
+    colResults.forEach((res, i) => {
+      const name = missing[i]
+      const lowerMap = new Map((res.results || []).map((c) => [String(c.name).toLowerCase(), c]))
+      for (const cand of TIME_COL_CANDIDATES) {
+        const col = lowerMap.get(cand)
+        if (!col || !SAFE_NAME.test(col.name)) continue
+        const type = String(col.type || '').trim()
+        if (TEXT_TYPE_RE.test(type)) {
+          auto.set(name, { timeCol: col.name, timeKind: 'text' })
+        } else if (NUM_TYPE_RE.test(type) || type === '') {
+          needSample.push({ name, col: col.name })
+        } else {
+          continue // 类型不明的列不猜，试下一个候选
+        }
+        break
+      }
+    })
+    if (needSample.length > 0) {
+      const sampleResults = await db.batch(
+        needSample.map((s) =>
+          db.prepare(`SELECT ${s.col} AS v FROM ${s.name} WHERE ${s.col} IS NOT NULL LIMIT 1`),
+        ),
+      )
+      sampleResults.forEach((res, i) => {
+        const { name, col } = needSample[i]
+        auto.set(name, { timeCol: col, timeKind: inferTimeKindFromValue(res.results?.[0]?.v) })
+      })
+    }
+  } catch (error) {
+    console.error('db-stats 自动识别时间列失败（按未登记表处理）:', error)
+  }
+  return auto
+}
+
 export async function onRequest(context) {
   const { request, env } = context
   if (request.method === 'OPTIONS') {
@@ -142,7 +231,7 @@ export async function onRequest(context) {
     const trendTable = url.searchParams.get('table')
     if (trendTable) {
       if (!SAFE_NAME.test(trendTable)) return jsonError('表名不合法', 400)
-      const meta = TABLE_META[trendTable]
+      const meta = TABLE_META[trendTable] || (await resolveAutoMetas(db, [trendTable])).get(trendTable)
       if (!meta || !meta.timeCol) return jsonError('该表不支持增量趋势统计', 400)
 
       const c = meta.timeCol
@@ -167,10 +256,14 @@ export async function onRequest(context) {
     // ============ 全表清单统计 ============
     const tablesResult = await db
       .prepare(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite\\_%' AND name NOT LIKE '\\_cf\\_%' ESCAPE '\\' ORDER BY name",
+        // sqlite_%（sqlite_sequence 等）与 _cf_%（D1 内部表）均为内部表，不参与统计
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite\\_%' ESCAPE '\\' AND name NOT LIKE '\\_cf\\_%' ESCAPE '\\' ORDER BY name",
       )
       .all()
     const tableNames = (tablesResult.results || []).map((r) => r.name).filter((n) => SAFE_NAME.test(n))
+
+    // 未登记的表自动探测时间列（失败则按未登记处理，不影响主流程）
+    const autoMetas = await resolveAutoMetas(db, tableNames)
 
     // 分批 batch（每批 20 条），单表一条聚合 SQL
     const stats = []
@@ -182,11 +275,13 @@ export async function onRequest(context) {
       results.forEach((res, idx) => {
         const name = chunk[idx]
         const meta = TABLE_META[name]
+        const autoMeta = autoMetas.get(name)
         const row = res.results?.[0] || {}
         stats.push({
           name,
-          comment: meta?.comment || '未登记表',
-          tracked: !!meta?.timeCol,
+          comment: meta?.comment || (autoMeta ? `自动跟踪 ${autoMeta.timeCol}` : '未登记表'),
+          tracked: !!(meta?.timeCol || autoMeta?.timeCol),
+          auto: !meta && !!autoMeta,
           total: Number(row.total || 0),
           today: Number(row.today || 0),
           last7: Number(row.last7 || 0),
