@@ -234,6 +234,13 @@ onUnmounted(() => {
         <el-table-column prop="comment" label="说明" min-width="160">
           <template #default="{ row }">
             <span :class="row.tracked ? 'text-ink-700' : 'text-ink-400'">{{ row.comment }}</span>
+            <el-tooltip
+              v-if="row.auto"
+              content="未手工登记的表，已按时间列自动统计；如需中文名可在 db-stats.js 的 TABLE_META 补登记"
+              placement="top"
+            >
+              <el-tag size="small" type="info" effect="plain" class="ml-1">自动</el-tag>
+            </el-tooltip>
           </template>
         </el-table-column>
         <el-table-column prop="total" label="总行数" width="120" align="right" sortable>
