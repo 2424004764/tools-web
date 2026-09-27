@@ -596,7 +596,7 @@ watch(() => toolsStore.cates.length, (newLen, oldLen) => {
 </script>
 
 <template>
-  <div class="max-w-[1400px]">
+  <div class="md:mr-6 c-xs:mr-0">
     <!-- 全球与全国热门信息 -->
     <HotList />
 
