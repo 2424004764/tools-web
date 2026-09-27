@@ -64,6 +64,13 @@ const formData = reactive({
   category: '默认'
 })
 
+// 换行批量创建：勾选后标题变为多行输入，一行一条待办（仅新建模式生效）
+const MAX_BATCH = 50
+const batchMode = ref(false)
+const batchCount = computed(() =>
+  formData.title.split(/\r?\n/).map(line => line.trim()).filter(Boolean).length
+)
+
 const loading = ref(false)
 const operationLoading = ref(false)
 const collapsedCategories = ref<Set<string>>(new Set())
@@ -196,7 +203,67 @@ const formatDateTime = (date: Date) => {
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 }
 
+const createTodoPayload = () => ({
+  priority: formData.priority,
+  dueDate: formData.dueDate ? formatDateTime(new Date(formData.dueDate)) : null,
+  category: formData.category.trim() || '默认'
+})
+
 const createTodo = async () => {
+  // 批量模式：一行一条待办，共用优先级 / 分类 / 截止时间
+  if (batchMode.value) {
+    const lines = formData.title.split(/\r?\n/).map(line => line.trim()).filter(Boolean)
+    if (!lines.length) {
+      ElMessage.warning('请至少输入一条待办')
+      return
+    }
+    if (lines.length > MAX_BATCH) {
+      ElMessage.warning(`一次最多创建 ${MAX_BATCH} 条，请分批操作`)
+      return
+    }
+    const tooLong = lines.findIndex(line => line.length > 200)
+    if (tooLong !== -1) {
+      ElMessage.warning(`第 ${tooLong + 1} 行超过 200 字，请缩短后再创建`)
+      return
+    }
+
+    try {
+      operationLoading.value = true
+      let success = 0
+      // 顺序创建，遇到第一条失败即停止（其余保留在输入框可重试）
+      for (const line of lines) {
+        try {
+          const response = await functionsRequest.post('/api/todos', { title: line, ...createTodoPayload() })
+          if (response.status !== 201) break
+          success += 1
+        } catch {
+          break
+        }
+      }
+      if (!success) {
+        ElMessage.error('创建失败')
+        return
+      }
+      const failed = lines.slice(success)
+      await fetchTodos(pagination.value.page, pagination.value.pageSize)
+      if (failed.length) {
+        // 部分失败：对话框保持打开，未创建的行留在输入框里可直接重试
+        ElMessage.warning(`成功创建 ${success} 条，${failed.length} 条失败：${failed[0]}${failed.length > 1 ? ' 等' : ''}`)
+        formData.title = failed.join('\n')
+        return
+      }
+      ElMessage.success(`成功创建 ${success} 条待办`)
+      showForm.value = false
+      resetForm()
+    } catch (error) {
+      console.error('批量创建待办失败:', error)
+      ElMessage.error('创建失败')
+      return
+    } finally {
+      operationLoading.value = false
+    }
+  }
+
   if (!formData.title.trim()) {
     ElMessage.warning('标题不能为空')
     return
@@ -206,9 +273,7 @@ const createTodo = async () => {
     operationLoading.value = true
     const response = await functionsRequest.post('/api/todos', {
       title: formData.title.trim(),
-      priority: formData.priority,
-      dueDate: formData.dueDate ? formatDateTime(new Date(formData.dueDate)) : null,
-      category: formData.category.trim() || '默认'
+      ...createTodoPayload()
     })
 
     if (response.status === 201) {
@@ -411,8 +476,31 @@ onBeforeUnmount(() => {
     <el-dialog v-model="showForm" :title="isEditing ? '编辑待办' : '新建待办'" width="500px">
       <div class="space-y-4">
         <div>
-          <label class="block text-body-sm font-medium text-gray-700 mb-1">标题</label>
-          <el-input v-model="formData.title" placeholder="请输入待办事项标题" maxlength="200" show-word-limit />
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-body-sm font-medium text-gray-700">标题</label>
+            <el-checkbox
+              v-if="!isEditing"
+              v-model="batchMode"
+              size="small"
+            >换行批量创建</el-checkbox>
+          </div>
+          <el-input
+            v-if="batchMode && !isEditing"
+            v-model="formData.title"
+            type="textarea"
+            :rows="6"
+            placeholder="一行一个待办，换行分隔，最多 50 条"
+          />
+          <el-input
+            v-else
+            v-model="formData.title"
+            placeholder="请输入待办事项标题"
+            maxlength="200"
+            show-word-limit
+          />
+          <p v-if="batchMode && !isEditing" class="mt-1 text-caption text-gray-500">
+            将创建 <span class="font-medium" :class="batchCount > MAX_BATCH ? 'text-red-500' : ''">{{ batchCount }}</span> / {{ MAX_BATCH }} 条待办，共用下方优先级、分类与截止时间
+          </p>
         </div>
         <div class="grid grid-cols-2 gap-4">
           <div>

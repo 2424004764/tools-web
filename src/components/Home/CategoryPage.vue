@@ -102,7 +102,7 @@ const goHome = () => router.push('/')
 </script>
 
 <template>
-  <div class="max-w-[1440px] mx-auto">
+  <div class="md:mr-6 c-xs:mr-0">
     <!-- 页头：渐变圆角图标 + 分类名 + 右侧搜索 -->
     <header class="flex items-center gap-4 mt-8 mb-6 flex-wrap">
       <div
