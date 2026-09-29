@@ -59,6 +59,17 @@ function publicItem(row) {
   }
 }
 
+function publicReplyItem(row) {
+  return {
+    id: row.id,
+    nickname: row.nickname,
+    avatar: row.avatar || '',
+    content: row.content,
+    created_at: row.created_at,
+    is_admin: !!row.is_admin,
+  }
+}
+
 function isMissingTable(error) {
   const msg = String(error?.message || error || '')
   return /no such table/i.test(msg)
@@ -77,7 +88,7 @@ export async function onRequest(context) {
   const db = dbInit.db
 
   try {
-    // ---- GET：已通过评论列表（分页） ----
+    // ---- GET：已通过评论列表（分页，站长回复嵌套在对应评论的 replies 里） ----
     if (request.method === 'GET') {
       const url = new URL(request.url)
       const pagePath = normalizePath(url.searchParams.get('path'))
@@ -86,8 +97,12 @@ export async function onRequest(context) {
       const page = Math.max(1, parseInt(url.searchParams.get('page')) || 1)
       const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, parseInt(url.searchParams.get('pageSize')) || DEFAULT_PAGE_SIZE))
 
+      // 分页只针对主评论；站长回复（parent_id 非空）跟随主评论完整返回
       const totalRow = await db
-        .prepare(`SELECT COUNT(*) AS c FROM comments WHERE page_path = ? AND status = 'approved'`)
+        .prepare(
+          `SELECT COUNT(*) AS c FROM comments
+           WHERE page_path = ? AND status = 'approved' AND parent_id IS NULL`,
+        )
         .bind(pagePath)
         .first()
       const total = totalRow?.c || 0
@@ -96,18 +111,42 @@ export async function onRequest(context) {
         .prepare(
           `SELECT id, nickname, avatar, content, created_at
            FROM comments
-           WHERE page_path = ? AND status = 'approved'
+           WHERE page_path = ? AND status = 'approved' AND parent_id IS NULL
            ORDER BY created_at DESC
            LIMIT ? OFFSET ?`,
         )
         .bind(pagePath, pageSize, (page - 1) * pageSize)
         .all()
+      const rows = list.results || []
+
+      // 本页主评论的站长回复；父评论不在本页/非 approved 的回复自然不会挂载
+      let repliesByParent = new Map()
+      if (rows.length) {
+        const replyRows = await db
+          .prepare(
+            `SELECT id, parent_id, nickname, avatar, content, is_admin, created_at
+             FROM comments
+             WHERE page_path = ? AND status = 'approved' AND parent_id IS NOT NULL
+             ORDER BY created_at ASC`,
+          )
+          .bind(pagePath)
+          .all()
+        const parentIds = new Set(rows.map((r) => r.id))
+        for (const reply of replyRows.results || []) {
+          if (!parentIds.has(reply.parent_id)) continue
+          if (!repliesByParent.has(reply.parent_id)) repliesByParent.set(reply.parent_id, [])
+          repliesByParent.get(reply.parent_id).push(publicReplyItem(reply))
+        }
+      }
 
       const totalPages = Math.ceil(total / pageSize)
       return ApiResponse.success(
         {
           data: {
-            list: (list.results || []).map(publicItem),
+            list: rows.map((row) => ({
+              ...publicItem(row),
+              replies: repliesByParent.get(row.id) || [],
+            })),
             pagination: {
               total,
               page,

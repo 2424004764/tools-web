@@ -7,15 +7,17 @@
     "dev": "vite",
     "dev:wrangler": "pnpm sync:functions && wrangler pages dev . --local --d1 yifang-tool:afdabfae-6edd-4def-8e77-6a1171009b9c",
     "sprite:build": "node scripts/build-sprite.mjs",
+    "gen:page-meta": "node scripts/generate-page-meta.mjs",
     "prebuild": "pnpm sprite:build",
-    "prebuild:pro": "pnpm sprite:build",
+    "prebuild:pro": "pnpm sprite:build && pnpm gen:page-meta && pnpm generate:sitemap",
     "build": "vue-tsc --noEmit && vite build --mode development",
-    "build:pro": "vue-tsc --noEmit && vite build --mode production && pnpm sync:functions",
+    "build:pro": "vue-tsc --noEmit && vite build --mode production && node scripts/prerender.mjs && pnpm sync:functions",
+    "prerender": "node scripts/prerender.mjs",
     "sync:functions": "node scripts/sync-functions.mjs",
     "deploy:cf": "pnpm build:pro && pnpm exec wrangler pages deploy dist --project-name tools-web && node scripts/deploy-cf.mjs",
     "submit:search": "node scripts/submit-search.mjs",
     "preview": "vite preview",
-    "generate:sitemap": "node scripts/generate-sitemap.js"
+    "generate:sitemap": "node scripts/generate-sitemap.mjs"
   },
   "dependencies": {
     "@codemirror/commands": "^6.3.2",
@@ -90,6 +92,7 @@
     "path": "^0.12.7",
     "pinia": "^2.1.7",
     "prettier": "^3.3.2",
+    "puppeteer": "20.9.0",
     "sass": "^1.69.5",
     "sass-loader": "^13.3.2",
     "sharp": "^0.34.5",

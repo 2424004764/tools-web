@@ -182,6 +182,9 @@ export interface AdminDashboard {
   topTools?: TopToolSummary[]
   /** 慢日志统计（依赖 slow_query_logs 表；未迁移兜底全为 0） */
   slowQueries?: SlowQuerySummary
+  /** 待审核数（依赖 comments / friend_links 表；未迁移兜底为 0） */
+  pendingComments?: number
+  pendingFriendLinks?: number
 }
 
 /** 慢日志按时间窗聚合（UTC+8 自然日 / 周一 / 1 号起） */

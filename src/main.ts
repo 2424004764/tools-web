@@ -61,3 +61,11 @@ setTimeout(() => {
 if (import.meta.env.PROD) {
   injectCloudflareAnalytics()
 }
+
+// PWA Service Worker：仅生产环境、非自动化环境注册（与 vite.config injectRegister: null 配套，
+// 等价于原注入脚本——registerType: 'prompt'，只注册不自动刷新）。
+// puppeteer 预渲染时 navigator.webdriver === true，必须跳过 —— 否则 SW 的
+// navigateFallback 会把后续预渲染路由都替换成缓存的首页壳，静态 HTML 全部失效
+if (import.meta.env.PROD && !navigator.webdriver) {
+  navigator.serviceWorker.register('/sw.js').catch(() => { /* SW 注册失败静默 */ })
+}

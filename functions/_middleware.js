@@ -18,6 +18,7 @@
 import { getCORSHeaders, handleCORSPreflight } from './utils/cors.js'
 import { logApiError, UPSTREAM_ERROR_KEY } from './utils/error-log.js'
 import { extractUidFromRequest } from './api/_lib/model-resolver.js'
+import PAGE_META from './_page-meta.js'
 
 // 需要走 CORS 处理的路径前缀
 const CORS_PROTECTED_PREFIXES = [
@@ -143,6 +144,68 @@ function withSecurityHeaders(response) {
   })
 }
 
+// ============ 页面 SEO meta 改写 ============
+// 本站是 Vue SPA：服务器返回的初始 HTML 全站共用一份（全局标题 + 空 #app），
+// 每页的标题/描述原本要等 JS 跑起来才填。不执行 JS 的爬虫（百度等）抓到的
+// 就是千页一面的壳。这里按路径查 _page-meta.js 映射，在边缘把初始 HTML 的
+// <title> / description / keywords / og:* / twitter:* 改写成对应工具的文案；
+// 正文内容则由构建期预渲染（vite-plugin-seo-prerender）产出静态 HTML 补齐。
+
+function escapeHtmlAttr(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+// 按 name/property 定位单个 <meta> 标签并替换其 content 属性；标签不存在则原样返回
+// （普通 meta 用 name="..."，Open Graph 系用 property="..."）
+function replaceMetaContent(html, name, value) {
+  return html.replace(new RegExp(`<meta\\b[^>]*\\b(?:name|property)=["']${name}["'][^>]*>`, 'i'), (tag) =>
+    tag.replace(/\bcontent=["'][^"']*["']/i, `content="${escapeHtmlAttr(value)}"`)
+  )
+}
+
+// /json/ 与 /json 视为同一路由（生成器里路径统一不带尾斜杠）
+function normalizePagePath(p) {
+  return p !== '/' && p.endsWith('/') ? p.slice(0, -1) : p
+}
+
+async function maybeRewritePageMeta(request, path, response) {
+  try {
+    if (request.method !== 'GET') return response
+    const contentType = response.headers.get('Content-Type') || ''
+    if (response.status !== 200 || !contentType.includes('text/html')) return response
+
+    const meta = PAGE_META[normalizePagePath(path)]
+    if (!meta) return response // 首页 / 未收录路径：保持全局默认 meta
+
+    const html = await response.text()
+    let out = html.replace(/<title\b[^>]*>[\s\S]*?<\/title>/i, `<title>${escapeHtmlAttr(meta.title)}</title>`)
+    out = replaceMetaContent(out, 'description', meta.description)
+    out = replaceMetaContent(out, 'keywords', meta.keywords)
+    out = replaceMetaContent(out, 'og:title', meta.title)
+    out = replaceMetaContent(out, 'og:description', meta.description)
+    out = replaceMetaContent(out, 'og:url', meta.ogUrl)
+    out = replaceMetaContent(out, 'twitter:title', meta.title)
+    out = replaceMetaContent(out, 'twitter:description', meta.description)
+
+    const headers = new Headers(response.headers)
+    headers.delete('Content-Length') // body 已变，交给运行时按实际长度生成
+    headers.set('X-Page-Meta', 'rewritten')
+    return new Response(out, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    })
+  } catch (e) {
+    // 改写失败绝不能影响页面本身可用：原样返回
+    console.error('[middleware] rewrite page meta failed:', e)
+    return response
+  }
+}
+
 export async function onRequest(context) {
   const { request } = context
   const path = new URL(request.url).pathname
@@ -155,9 +218,11 @@ export async function onRequest(context) {
 
   const origin = request.headers.get('Origin')
 
-  // 非受保护路径直接走原逻辑
+  // 非受保护路径直接走原逻辑（页面 HTML 顺带按路径改写 SEO meta）
   if (!needsCORS(path)) {
-    return withSecurityHeaders(await context.next())
+    const resp = await context.next()
+    const rewritten = await maybeRewritePageMeta(request, path, resp)
+    return withSecurityHeaders(rewritten)
   }
 
   // OPTIONS 预检：白名单校验通过则放行，否则 403

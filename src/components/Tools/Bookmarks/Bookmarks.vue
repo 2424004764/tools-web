@@ -713,7 +713,7 @@ onMounted(async () => {
               />
             </div>
             <div class="card-body" @click="openUrl(bookmark.url)">
-              <div class="card-title-row">
+              <div class="card-title-row" :class="{ 'has-unread': !bookmark.isRead }">
                 <h3 class="card-title">{{ bookmark.title }}</h3>
                 <el-tag
                   v-if="!bookmark.isRead"
@@ -1127,6 +1127,8 @@ onMounted(async () => {
   gap: 8px;
   /* 允许卡片在窄屏下收缩，避免长标题把 grid 轨道撑破容器 */
   min-width: 0;
+  /* card-actions / unread-tag 悬浮定位的参照 */
+  position: relative;
   background: #fffbeb;
   border: 1.5px solid #fdead5;
   border-radius: 10px;
@@ -1170,6 +1172,10 @@ onMounted(async () => {
   align-items: center;
   gap: 6px;
 }
+/* 有未读标签时给右上角留位，长标题在标签前截断，不被遮挡 */
+.card-title-row.has-unread {
+  padding-right: 48px;
+}
 
 .card-title {
   font-size: 13px;
@@ -1182,7 +1188,11 @@ onMounted(async () => {
   text-overflow: ellipsis;
 }
 
+/* 未读标签：悬浮在卡片右上角，贴卡片右缘，不占标题行的布局空间 */
 .unread-tag {
+  position: absolute;
+  top: 10px;
+  right: 12px;
   flex-shrink: 0;
   padding: 0 5px;
   height: 16px;
@@ -1245,12 +1255,18 @@ onMounted(async () => {
   white-space: nowrap;
 }
 
+/* 操作按钮：悬浮层，hover 才显示，不常驻占位（否则未读标签到不了卡片右缘） */
 .card-actions {
   display: flex;
   gap: 0;
   flex-shrink: 0;
   opacity: 0;
   transition: opacity 0.15s ease;
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  z-index: 1;
 }
 
 .bookmark-card:hover .card-actions {
@@ -1506,6 +1522,9 @@ onMounted(async () => {
 
   .card-actions {
     opacity: 1;
+    /* 手机端按钮常驻显示，恢复文档流占位，避免盖住卡片内容 */
+    position: static;
+    transform: none;
   }
 
   .card-title {

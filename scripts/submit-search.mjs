@@ -86,7 +86,7 @@ const INDEXNOW_KEY_LOC = process.env.INDEXNOW_KEY_LOCATION
 const GOOGLE_PING  = (process.env.GOOGLE_PING_SITEMAP ?? '1') !== '0'
 
 const SNAPSHOT_PATH = resolve(process.cwd(), '.search-submissions.json')
-const SITEMAP_PATH  = resolve(process.cwd(), 'sitemap.xml')
+const SITEMAP_PATH  = resolve(process.cwd(), 'public', 'sitemap.xml')
 
 log('\n🚀 搜索引擎主动推送')
 log('━'.repeat(50))

@@ -292,6 +292,10 @@ export class Validator {
       errors.push('优先级必须是 low、medium 或 high')
     }
 
+    if (data.completed !== undefined && ![0, 1, 2].includes(data.completed)) {
+      errors.push('完成状态必须是 0（已创建）、2（进行中）或 1（已完成）')
+    }
+
     if (data.category !== undefined && (typeof data.category !== 'string' || data.category.length > 50)) {
       errors.push('分类长度不能超过50个字符')
     }
@@ -318,8 +322,8 @@ export class Validator {
       errors.push('优先级必须是 low、medium 或 high')
     }
 
-    if (data.completed !== undefined && typeof data.completed !== 'number') {
-      errors.push('完成状态必须是数字')
+    if (data.completed !== undefined && ![0, 1, 2].includes(data.completed)) {
+      errors.push('完成状态必须是 0（已创建）、2（进行中）或 1（已完成）')
     }
 
     if (data.category !== undefined && (typeof data.category !== 'string' || data.category.length > 50)) {
