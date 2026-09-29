@@ -1,5 +1,16 @@
 import { functionsRequest } from '@/utils/functionsRequest'
 
+/** 站长回复（后台回复，公开可见） */
+export interface SiteCommentReply {
+  id: string
+  nickname: string
+  avatar: string
+  content: string
+  /** 'YYYY-MM-DD HH:MM:SS'（UTC） */
+  created_at: string
+  is_admin: boolean
+}
+
 /** 评论项（前台公开视图，仅已审核通过的） */
 export interface SiteComment {
   id: string
@@ -10,6 +21,8 @@ export interface SiteComment {
   created_at: string
   /** 仅提交接口返回；本会话内展示「审核中」用 */
   status?: string
+  /** 站长回复，嵌套展示（列表接口返回） */
+  replies?: SiteCommentReply[]
 }
 
 export interface SiteCommentPagination {

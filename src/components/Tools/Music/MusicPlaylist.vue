@@ -141,6 +141,7 @@ const onEditSong = async (song: SongMeta) => {
 // ============ 播放（不离开当前页） ============
 
 const currentSong = ref<SongMeta | null>(null)
+const isPlaying = ref(false)
 
 // ============ 响应式：手机端简化操作列 ============
 
@@ -168,10 +169,12 @@ const onPlaySong = async (song: SongMeta) => {
 const stopPlayback = () => {
   audioRef.value?.pause()
   if (audioRef.value) audioRef.value.currentTime = 0
+  isPlaying.value = false
   currentSong.value = null
 }
 
 const onAudioPlay = async () => {
+  isPlaying.value = true
   const song = currentSong.value
   if (!song) return
   const now = Date.now()
@@ -180,7 +183,12 @@ const onAudioPlay = async () => {
   await postMySongPlay(song.id)
 }
 
+const onAudioPause = () => {
+  isPlaying.value = false
+}
+
 const onAudioEnded = () => {
+  isPlaying.value = false
   lastPlayTs = 0 // 播完重置，下次重新允许 +1
 }
 
@@ -712,8 +720,8 @@ onBeforeUnmount(() => {
                 <div class="cell-title" :class="{ playing: currentSong?.id === row.id }" @click="onPlaySong(row)">
                   <!-- 默认：静止播放图标（hover 时变成主色调） -->
                   <el-icon v-if="currentSong?.id !== row.id" class="cell-icon"><VideoPlay /></el-icon>
-                  <!-- 正在播放：三柱跳动均衡器 -->
-                  <span v-else class="np-eq" aria-label="正在播放">
+                  <!-- 正在播放：三柱跳动均衡器（暂停时冻结） -->
+                  <span v-else class="np-eq" :class="{ paused: !isPlaying }" :aria-label="isPlaying ? '正在播放' : '已暂停'">
                     <span class="bar"></span><span class="bar"></span><span class="bar"></span>
                   </span>
                   <span class="cell-title-text">{{ row.title }}</span>
@@ -804,7 +812,9 @@ onBeforeUnmount(() => {
     <!-- 播放器条：提到根级，让抽屉里点歌也能复用同一个 <audio> -->
     <div v-if="currentSong" class="now-playing-bar">
       <div class="np-info">
-        <el-tag size="small" type="success" effect="dark">正在播放</el-tag>
+        <el-tag size="small" :type="isPlaying ? 'success' : 'info'" effect="dark">
+          {{ isPlaying ? '正在播放' : '已暂停' }}
+        </el-tag>
         <span class="np-title">{{ currentSong.title }}</span>
         <span v-if="currentSong.artist" class="np-artist">— {{ currentSong.artist }}</span>
         <el-button :icon="Close" size="small" plain circle @click="stopPlayback" />
@@ -816,6 +826,7 @@ onBeforeUnmount(() => {
         preload="metadata"
         class="np-audio"
         @play="onAudioPlay"
+        @pause="onAudioPause"
         @ended="onAudioEnded"
       >
         您的浏览器不支持 audio 元素。
@@ -1175,6 +1186,7 @@ onBeforeUnmount(() => {
 .np-eq .bar:nth-child(1) { height: 60%; animation-delay: 0s; }
 .np-eq .bar:nth-child(2) { height: 100%; animation-delay: 0.15s; }
 .np-eq .bar:nth-child(3) { height: 75%; animation-delay: 0.3s; }
+.np-eq.paused .bar { animation-play-state: paused; }
 @keyframes eq-bounce {
   from { transform: scaleY(0.25); }
   to   { transform: scaleY(1); }

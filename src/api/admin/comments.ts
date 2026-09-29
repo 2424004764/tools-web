@@ -17,6 +17,10 @@ export interface AdminComment {
   submit_ip: string | null
   reviewed_by: string | null
   reviewed_at: string | null
+  /** 站长回复指向的原评论 id；用户评论为 null */
+  parent_id: string | null
+  /** 1 = 站长回复 */
+  is_admin: number
   created_at: string
 }
 
@@ -46,6 +50,18 @@ export async function updateAdminCommentStatus(
   status: SiteCommentStatus,
 ): Promise<AdminComment> {
   const res = await functionsRequest.put(`/api/admin/comments/${encodeURIComponent(id)}`, { status })
+  return res.data.data
+}
+
+/**
+ * 站长回复评论：回复直接公开可见；
+ * 原评论还在待审时后端会顺带自动通过（返回的 parent.status 为 approved）
+ */
+export async function replyAdminComment(
+  id: string,
+  content: string,
+): Promise<{ reply: AdminComment; parent: { id: string; status: SiteCommentStatus } }> {
+  const res = await functionsRequest.post(`/api/admin/comments/${encodeURIComponent(id)}`, { content })
   return res.data.data
 }
 

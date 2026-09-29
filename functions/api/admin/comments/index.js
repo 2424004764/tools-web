@@ -85,10 +85,12 @@ export async function onRequest(context) {
       const like = `%${keyword}%`
       args.push(like, like, like, like, like)
     }
+    // 站长回复（is_admin = 1）保留在列表里（可查看/删除），但不计入分页总数，避免回复后「共 N 条」虚高
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : ''
+    const countSql = `${whereSql}${whereSql ? ' AND' : ' WHERE'} is_admin = 0`
 
     const totalRow = await db
-      .prepare(`SELECT COUNT(*) AS c FROM comments ${whereSql}`)
+      .prepare(`SELECT COUNT(*) AS c FROM comments ${countSql}`)
       .bind(...args)
       .first()
     const total = totalRow?.c || 0
@@ -96,7 +98,7 @@ export async function onRequest(context) {
     const list = await db
       .prepare(
         `SELECT id, page_path, page_title, content, user_id, nickname, email, avatar,
-                status, submit_ip, reviewed_by, reviewed_at, created_at
+                status, submit_ip, reviewed_by, reviewed_at, parent_id, is_admin, created_at
          FROM comments
          ${whereSql}
          ORDER BY CASE status WHEN 'pending' THEN 0 WHEN 'approved' THEN 1 ELSE 2 END,
@@ -113,7 +115,8 @@ export async function onRequest(context) {
            SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) AS approved,
            SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) AS rejected,
            COUNT(*) AS total
-         FROM comments`,
+         FROM comments
+         WHERE is_admin = 0`,
       )
       .first()
 

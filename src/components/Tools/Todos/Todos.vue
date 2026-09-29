@@ -32,9 +32,19 @@ interface Pagination {
   hasPrev: boolean
 }
 
+// 状态三态：0=已创建，2=进行中，1=已完成（复用 completed 字段，保持历史数据兼容）
+const statusOptions = [
+  { label: '已创建', value: 0 },
+  { label: '进行中', value: 2 },
+  { label: '已完成', value: 1 }
+]
+
+const getStatusText = (status: number) =>
+  statusOptions.find(option => option.value === status)?.label ?? '已创建'
+
 const info = reactive({
   title: "待办事项",
-  desc: "在线待办事项管理工具，帮助您高效管理日常任务。支持设置优先级（低/中/高）、截止日期时间（精确到秒）、自定义分类，一键标记完成状态。所有数据安全存储在云端，登录后即可随时随地访问和管理您的待办清单。"
+  desc: "在线待办事项管理工具，帮助您高效管理日常任务。支持设置优先级（低/中/高）、截止日期时间（精确到秒）、自定义分类，支持已创建、进行中、已完成三种状态流转。所有数据安全存储在云端，登录后即可随时随地访问和管理您的待办清单。"
 })
 
 const todos = ref<Todo[]>([])
@@ -54,7 +64,8 @@ const pagination = ref<Pagination>({
 const filterData = reactive({
   title: '',
   priority: '',
-  category: ''
+  category: '',
+  status: [] as number[]
 })
 
 const formData = reactive({
@@ -171,6 +182,7 @@ const fetchTodos = async (page = 1, pageSize = 10) => {
     if (filterData.title) params.title = filterData.title
     if (filterData.priority) params.priority = filterData.priority
     if (filterData.category) params.category = filterData.category
+    if (filterData.status.length) params.completed = filterData.status.join(',')
 
     const response = await functionsRequest.get('/api/todos', { params })
     if (response.status === 200) {
@@ -321,19 +333,21 @@ const updateTodo = async () => {
   }
 }
 
-const toggleComplete = async (todo: Todo) => {
+const changeStatus = async (todo: Todo, status: number) => {
+  if (status === todo.completed) return
   try {
     const response = await functionsRequest.put(`/api/todos/${todo.id}`, {
-      completed: todo.completed === 1 ? 0 : 1
+      completed: status
     })
 
     if (response.status === 200) {
-      ElMessage.success(todo.completed === 1 ? '已标记为未完成' : '已标记为完成')
+      ElMessage.success(`状态已更新为「${getStatusText(status)}」`)
       await fetchTodos(pagination.value.page, pagination.value.pageSize)
     }
   } catch (error) {
     console.error('更新状态失败:', error)
     ElMessage.error('更新状态失败')
+    await fetchTodos(pagination.value.page, pagination.value.pageSize)
   }
 }
 
@@ -395,14 +409,20 @@ const cancelForm = () => {
   resetForm()
 }
 
-const getPriorityColor = (priority: string) => {
-  const colors: Record<string, string> = {
-    low: 'text-green-600',
-    medium: 'text-yellow-600',
-    high: 'text-red-600'
-  }
-  return colors[priority] || 'text-gray-600'
+// 描边胶囊样式（参考飞书项目状态标签）：彩色描边 + 淡色底 + 同色文字
+const STATUS_PILL: Record<number, string> = {
+  0: 'border-accent-300 bg-accent-50/80 text-accent-700 dark:border-accent-500/40 dark:bg-accent-500/10 dark:text-accent-300',
+  2: 'border-warning-300 bg-warning-50/80 text-warning-700 dark:border-warning-500/40 dark:bg-warning-500/10 dark:text-warning-400',
+  1: 'border-ink-300 bg-surface-1 text-ink-500 dark:border-ink-600 dark:bg-surface-2 dark:text-ink-400'
 }
+
+const PRIORITY_PILL: Record<string, string> = {
+  low: 'border-success-300 bg-success-50/80 text-success-700 dark:border-success-500/40 dark:bg-success-500/10 dark:text-success-400',
+  medium: 'border-warning-300 bg-warning-50/80 text-warning-700 dark:border-warning-500/40 dark:bg-warning-500/10 dark:text-warning-400',
+  high: 'border-danger-300 bg-danger-50/80 text-danger-700 dark:border-danger-500/40 dark:bg-danger-500/10 dark:text-danger-400'
+}
+
+const CATEGORY_PILL = 'border-violet-300 bg-violet-50/80 text-violet-700 dark:border-violet-500/40 dark:bg-violet-500/10 dark:text-violet-300'
 
 const getPriorityText = (priority: string) => {
   const texts: Record<string, string> = {
@@ -415,7 +435,7 @@ const getPriorityText = (priority: string) => {
 
 // 实时搜索（防抖）
 let searchTimer: ReturnType<typeof setTimeout> | null = null
-watch(() => [filterData.title, filterData.priority, filterData.category], () => {
+watch(() => [filterData.title, filterData.priority, filterData.category, filterData.status], () => {
   if (searchTimer) clearTimeout(searchTimer)
   searchTimer = setTimeout(() => {
     fetchTodos(1, pagination.value.pageSize)
@@ -432,7 +452,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <DetailHeader :info="info" />
+  <DetailHeader :title="info.title" />
   <div class="flex flex-col flex-1 bg-white rounded-md p-4 c-sm:p-6 mt-3">
     <!-- 筛选栏 -->
     <div class="mb-4 p-3 border border-gray-200 rounded-lg bg-gray-50">
@@ -454,6 +474,22 @@ onBeforeUnmount(() => {
           <el-select v-model="filterData.category" placeholder="全部" clearable class="w-full">
             <el-option label="默认" value="默认" />
             <el-option v-for="cat in userCategories.filter(c => c !== '默认')" :key="cat" :label="cat" :value="cat" />
+          </el-select>
+        </div>
+        <div class="w-full sm:w-36">
+          <label class="block text-body-sm font-medium text-gray-700 mb-1">状态</label>
+          <el-select
+            v-model="filterData.status"
+            placeholder="全部"
+            clearable
+            multiple
+            collapse-tags
+            collapse-tags-tooltip
+            class="w-full"
+          >
+            <el-option label="已创建" :value="0" />
+            <el-option label="进行中" :value="2" />
+            <el-option label="已完成" :value="1" />
           </el-select>
         </div>
       </div>
@@ -559,26 +595,48 @@ onBeforeUnmount(() => {
           <div v-show="!isCategoryCollapsed(group.category)" class="todo-sortable space-y-2 mt-2">
             <div v-for="todo in group.todos" :key="todo.id"
               class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:shadow-md transition-shadow"
-              :class="{ 'bg-gray-50': todo.completed === 1 }">
+              :class="{ 'bg-gray-50': todo.completed === 1, 'bg-blue-50': todo.completed === 2 }">
               <span class="todo-drag-handle cursor-grab text-gray-400 select-none" title="拖动排序" aria-label="拖动排序">⋮⋮</span>
-              <el-checkbox :model-value="todo.completed === 1" @change="toggleComplete(todo)" />
+              <!-- 状态胶囊：点击弹出菜单切换 -->
+              <el-dropdown trigger="click" class="shrink-0" @command="(value: number) => changeStatus(todo, value)">
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-caption leading-5 transition-colors hover:opacity-80"
+                  :class="STATUS_PILL[todo.completed] ?? STATUS_PILL[0]"
+                  :title="'点击修改状态'"
+                >
+                  {{ getStatusText(todo.completed) }}
+                  <svg class="w-2.5 h-2.5 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                  </svg>
+                </button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item
+                      v-for="option in statusOptions"
+                      :key="option.value"
+                      :command="option.value"
+                      :disabled="option.value === todo.completed"
+                    >{{ option.label }}</el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
               <div class="flex-1 min-w-0">
                 <div class="flex flex-wrap items-center gap-2">
                   <span :class="{ 'line-through text-gray-400': todo.completed === 1 }" class="font-medium">
                     {{ todo.title }}
                   </span>
-                  <span class="text-caption px-2 py-0.5 rounded-full bg-opacity-20"
-                    :class="[
-                      getPriorityColor(todo.priority),
-                      {
-                        'bg-green-100': todo.priority === 'low',
-                        'bg-yellow-100': todo.priority === 'medium',
-                        'bg-red-100': todo.priority === 'high'
-                      }
-                    ]">
+                  <span
+                    class="text-caption px-2.5 py-0.5 rounded-full border leading-5"
+                    :class="PRIORITY_PILL[todo.priority] || 'border-ink-300 bg-surface-1 text-ink-500'"
+                  >
                     {{ getPriorityText(todo.priority) }}
                   </span>
-                  <span v-if="todo.category && todo.category !== '默认'" class="text-caption px-2 py-0.5 rounded-full bg-blue-100 text-blue-600">
+                  <span
+                    v-if="todo.category && todo.category !== '默认'"
+                    class="text-caption px-2.5 py-0.5 rounded-full border leading-5"
+                    :class="CATEGORY_PILL"
+                  >
                     {{ todo.category }}
                   </span>
                 </div>

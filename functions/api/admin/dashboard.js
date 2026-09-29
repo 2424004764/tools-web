@@ -80,6 +80,22 @@ export async function onRequest(context) {
       .prepare('SELECT COUNT(*) AS total, SUM(CASE WHEN is_enabled = 1 THEN 1 ELSE 0 END) AS enabled FROM tool_features')
       .first()
 
+    // 待审核数：评论 / 友链（依赖 comments / friend_links 表，未迁移兜底 0）
+    let pendingComments = 0
+    let pendingFriendLinks = 0
+    try {
+      const pendingCommentsRow = await db
+        .prepare("SELECT COUNT(*) AS c FROM comments WHERE status = 'pending' AND is_admin = 0")
+        .first()
+      pendingComments = pendingCommentsRow?.c || 0
+      const pendingFriendLinksRow = await db
+        .prepare("SELECT COUNT(*) AS c FROM friend_links WHERE status = 'pending'")
+        .first()
+      pendingFriendLinks = pendingFriendLinksRow?.c || 0
+    } catch (e) {
+      console.warn('[admin/dashboard] 待审核统计失败（可能表未创建）:', e?.message || e)
+    }
+
     // 工具使用：今日 / 本周 / 本月 / TOP 5（依赖 tool_usage_records，可能因迁移未执行而抛错 → 兜底 0）
     let todayToolUsage = 0
     let weekToolUsage = 0
@@ -211,6 +227,8 @@ export async function onRequest(context) {
         week: slowQueryWeek,
         month: slowQueryMonth,
       },
+      pendingComments,
+      pendingFriendLinks,
     })
   } catch (error) {
     console.error('dashboard API error:', error)

@@ -196,6 +196,8 @@ export default defineConfig(({command, mode}) => {
     plugins: [
       injectSiteMeta(),
       spriteWatcher(),
+      // SEO 预渲染不在这里做：build:pro 链上由 scripts/prerender.mjs 在 vite build
+      // 之后并发渲染（原 vite-plugin-seo-prerender 串行太慢且单页失败会中断构建）
       vue({
         template: {
           compilerOptions: {
@@ -205,7 +207,9 @@ export default defineConfig(({command, mode}) => {
       }),
       VitePWA({
         registerType: 'prompt',
-        injectRegister: 'auto',
+        // 不自动注入注册脚本：改由 main.ts 手动注册，预渲染（puppeteer）时能跳过，
+        // 否则 SW 的 navigateFallback 会把预渲染路由替换成缓存的首页壳
+        injectRegister: null,
         includeAssets: ['favicon.ico', 'logo192.png', 'logo512.png'],
         manifest: {
           name: '开发者工具箱',

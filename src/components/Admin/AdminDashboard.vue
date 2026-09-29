@@ -10,6 +10,7 @@ import IconSetUp from '~icons/ep/set-up'
 import IconHistogram from '~icons/ep/histogram'
 import IconTrophy from '~icons/ep/trophy'
 import IconTimer from '~icons/ep/timer'
+import IconBell from '~icons/ep/bell'
 
 const data = ref<AdminDashboard | null>(null)
 const loading = ref(false)
@@ -240,6 +241,47 @@ onMounted(load)
           </div>
           <span class="admin-stat-icon bg-amber-50 text-amber-600" aria-hidden="true">
             <IconTrophy class="w-4 h-4" />
+          </span>
+        </div>
+      </div>
+
+      <!-- 待审核：评论 / 友链 -->
+      <div class="admin-stat-card md:col-span-2">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0 flex-1">
+            <div class="text-sm text-ink-500 mb-2 flex items-center gap-1.5">
+              <IconBell class="w-3.5 h-3.5" />
+              待审核
+            </div>
+            <div class="grid grid-cols-2 divide-x divide-ink-100">
+              <div class="pr-2">
+                <div class="text-[11px] text-ink-400">评论</div>
+                <div class="mt-0.5 text-lg font-semibold tabular-nums leading-tight"
+                  :class="data?.pendingComments ? 'text-amber-600' : 'text-ink-900'">
+                  {{ data?.pendingComments ?? 0 }}
+                </div>
+                <div class="text-[11px] mt-1">
+                  <router-link to="/admin/comments" class="text-accent-600 hover:text-accent-700 font-medium">
+                    去审核 →
+                  </router-link>
+                </div>
+              </div>
+              <div class="pl-2">
+                <div class="text-[11px] text-ink-400">友链</div>
+                <div class="mt-0.5 text-lg font-semibold tabular-nums leading-tight"
+                  :class="data?.pendingFriendLinks ? 'text-amber-600' : 'text-ink-900'">
+                  {{ data?.pendingFriendLinks ?? 0 }}
+                </div>
+                <div class="text-[11px] mt-1">
+                  <router-link to="/admin/friend-links" class="text-accent-600 hover:text-accent-700 font-medium">
+                    去审核 →
+                  </router-link>
+                </div>
+              </div>
+            </div>
+          </div>
+          <span class="admin-stat-icon bg-amber-50 text-amber-600" aria-hidden="true">
+            <IconBell class="w-4 h-4" />
           </span>
         </div>
       </div>

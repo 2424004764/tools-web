@@ -7,6 +7,17 @@ export class TodosService {
 
   async getAllTodos(uid, pager, filters = {}) {
     try {
+      // 状态三态：0=已创建，2=进行中，1=已完成；支持逗号分隔多选（如 completed=0,2）
+      let completedFilters = null
+      if (filters.completed !== undefined && filters.completed !== '') {
+        const raw = String(filters.completed).split(',').map(v => v.trim()).filter(Boolean)
+        const statuses = [...new Set(raw.map(Number))]
+        if (statuses.length === 0 || statuses.some(v => ![0, 1, 2].includes(v))) {
+          return { success: false, error: '状态筛选值无效' }
+        }
+        completedFilters = statuses
+      }
+
       const queryBuilder = new QueryBuilder()
         .where('uid', '=', uid)
 
@@ -22,6 +33,10 @@ export class TodosService {
         queryBuilder.where('category', '=', filters.category)
       }
 
+      if (completedFilters !== null) {
+        queryBuilder.where('completed', 'IN', completedFilters)
+      }
+
       queryBuilder.orderBy('sortOrder', 'ASC').orderBy('createTime', 'DESC').orderBy('id', 'ASC')
 
       pager.applyTo(queryBuilder)
@@ -35,6 +50,9 @@ export class TodosService {
       }
       if (filters.category) {
         countQuery.where('category', '=', filters.category)
+      }
+      if (completedFilters !== null) {
+        countQuery.where('completed', 'IN', completedFilters)
       }
 
       const total = await this.todoModel.count(countQuery)

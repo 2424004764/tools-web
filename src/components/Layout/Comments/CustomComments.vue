@@ -151,7 +151,7 @@ const avatarGradient = (name: string) => AVATAR_GRADIENTS[hashString(name || '?'
 const initial = (name: string) => (name || '客').trim().charAt(0).toUpperCase()
 
 const avatarError = ref<Set<string>>(new Set())
-const isImgAvatar = (c: SiteComment) => !!c.avatar && !avatarError.value.has(c.id)
+const isImgAvatar = (c: { id: string; avatar: string }) => !!c.avatar && !avatarError.value.has(c.id)
 const onAvatarError = (id: string) => {
   avatarError.value = new Set([...avatarError.value, id])
 }
@@ -379,6 +379,35 @@ const handleSubmit = async () => {
               <span class="text-caption text-ink-400">{{ formatTime(c.created_at) }}</span>
             </div>
             <p class="mt-1 text-body-sm text-ink-700 whitespace-pre-line break-words">{{ c.content }}</p>
+
+            <!-- 站长回复（后台回复，嵌套展示） -->
+            <div v-if="c.replies?.length" class="mt-2.5 space-y-3 border-l-2 border-accent-100 dark:border-accent-500/25 pl-3">
+              <div v-for="r in c.replies" :key="r.id" class="flex gap-2.5">
+                <img
+                  v-if="isImgAvatar(r)"
+                  :src="r.avatar"
+                  :alt="r.nickname"
+                  class="w-7 h-7 shrink-0 rounded-full object-cover ring-2 ring-white dark:ring-surface-2 shadow-sm"
+                  referrerpolicy="no-referrer"
+                  @error="onAvatarError(r.id)"
+                />
+                <span
+                  v-else
+                  class="w-7 h-7 shrink-0 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-xs font-semibold shadow-sm select-none"
+                  :class="avatarGradient(r.nickname)"
+                >{{ initial(r.nickname) }}</span>
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center flex-wrap gap-x-2 gap-y-0.5">
+                    <span class="text-body-sm font-medium text-ink-900">{{ r.nickname }}</span>
+                    <span
+                      class="inline-flex items-center rounded-full px-1.5 py-px text-[11px] font-medium bg-accent-50 text-accent-600 dark:bg-accent-500/15 dark:text-accent-400"
+                    >站长</span>
+                    <span class="text-caption text-ink-400">{{ formatTime(r.created_at) }}</span>
+                  </div>
+                  <p class="mt-0.5 text-body-sm text-ink-700 whitespace-pre-line break-words">{{ r.content }}</p>
+                </div>
+              </div>
+            </div>
           </div>
         </li>
       </ul>

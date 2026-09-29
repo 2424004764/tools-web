@@ -25,7 +25,8 @@ export class TodosRouter {
           const filters = {
             title: url.searchParams.get('title') || '',
             priority: url.searchParams.get('priority') || '',
-            category: url.searchParams.get('category') || ''
+            category: url.searchParams.get('category') || '',
+            completed: url.searchParams.get('completed') || ''
           }
           return await this.controller.index(user, pager, origin, filters)
         } else {

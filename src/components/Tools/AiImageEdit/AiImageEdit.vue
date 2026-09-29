@@ -18,6 +18,7 @@ import { useViewer } from './composables/useViewer'
 import { useUpload, MAX_IMAGES } from './composables/useUpload'
 import { useSaveToCreations } from './composables/useSaveToCreations'
 import { useGenerate } from './composables/useGenerate'
+import { usePromptVars } from './composables/usePromptVars'
 
 const info = reactive({
   title: 'AI图片编辑',
@@ -121,6 +122,33 @@ watch(prompt, (val) => {
   } catch {
     // 静默忽略
   }
+})
+
+// ============ 提示词模板变量 ============
+// 提示词里含 {{xxx}} 占位符时，在输入框下方逐个列出填写项；
+// 生成 / 保存都用替换后的最终提示词，未填齐的变量在生成入口拦截提示。
+const promptVarsApi = usePromptVars(prompt, 'ai-image-edit:prompt-vars')
+const promptVars = promptVarsApi.vars
+const promptVarValues = promptVarsApi.values
+const unfilledPromptVars = promptVarsApi.unfilledVars
+const promptHighlightHtml = promptVarsApi.highlightHtml
+const resolvedPrompt = computed(() => promptVarsApi.resolve(prompt.value))
+
+// ============ 提示词高亮背板滚动同步 ============
+// 有模板变量时 textarea 文字变透明，由下方背板渲染彩色替换结果。
+// textarea 是真正的滚动容器，背板隐藏滚动条、被动跟随它的 scrollTop/scrollLeft。
+const promptTextareaRef = ref<HTMLTextAreaElement | null>(null)
+const promptHighlightRef = ref<HTMLDivElement | null>(null)
+const syncHighlightScroll = () => {
+  const ta = promptTextareaRef.value
+  const bd = promptHighlightRef.value
+  if (!ta || !bd) return
+  bd.scrollTop = ta.scrollTop
+  bd.scrollLeft = ta.scrollLeft
+}
+// 背板 v-if 重新挂载（变量从无到有）时 scrollTop 从 0 开始，补一次对齐
+watch(promptVars, () => {
+  void nextTick(syncHighlightScroll)
 })
 
 // ============ 用户 store / 路由 ============
@@ -252,11 +280,11 @@ const isBatchLoading = ref(false)
 const slotVisuals = useSlotVisuals()
 const viewer = useViewer()
 const upload = useUpload()
-const save = useSaveToCreations({ results, prompt, selectedPromptId, selectedModel })
+const save = useSaveToCreations({ results, prompt: resolvedPrompt, selectedPromptId, selectedModel })
 const gen = useGenerate({
   results,
   isBatchLoading,
-  prompt,
+  prompt: resolvedPrompt,
   promptTouched,
   modelLoaded,
   modelList,
@@ -469,6 +497,19 @@ watch(isBatchLoading, (val, oldVal) => {
 const handleGenerateTrigger = () => {
   if (!canGenerate.value) {
     promptTouched.value = true
+    return
+  }
+  // 提示词模板里有变量没填齐：拦截生成，滚动回变量填写区引导补填
+  if (unfilledPromptVars.value.length > 0) {
+    promptTouched.value = true
+    ElMessage.warning(
+      `请先填写提示词模板变量：${unfilledPromptVars.value.map((v) => v.label).join('、')}`,
+    )
+    void nextTick(() => {
+      document
+        .querySelector('.prompt-vars-box')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
     return
   }
   void requestNotifyPermission()
@@ -686,13 +727,29 @@ onUnmounted(() => {
               </button>
             </label>
             <div class="relative">
+              <!-- 高亮背板：提示词含模板变量时垫在 textarea 下面，把 {{var}} 渲染成
+                   填写值 + 彩色标记（同一变量同色）。字体/内边距与 textarea 完全一致，
+                   滚动由 syncHighlightScroll 跟随 textarea。 -->
+              <div
+                v-if="promptVars.length > 0"
+                ref="promptHighlightRef"
+                class="prompt-highlight-backdrop"
+                aria-hidden="true"
+              >
+                <div class="prompt-highlight-text" v-html="promptHighlightHtml"></div>
+              </div>
               <textarea
+                ref="promptTextareaRef"
                 v-model="prompt"
                 placeholder="描述你想要的图片效果，例如：把图片中的天空变成日落、让人物戴上墨镜、生成一只坐在沙发上的猫..."
                 maxlength="5000"
                 class="w-full p-4 pr-10 pb-7 border rounded-lg focus:ring-2 focus:ring-blue-500 min-h-[120px] resize-y"
-                :class="{ 'border-red-400': promptTouched && !prompt.trim() }"
+                :class="{
+                  'border-red-400': promptTouched && !prompt.trim(),
+                  'prompt-editor-overlaid': promptVars.length > 0,
+                }"
                 @blur="promptTouched = true"
+                @scroll="syncHighlightScroll"
                 @keydown.ctrl.enter.prevent="handleGenerateTrigger"
                 @keydown.meta.enter.prevent="handleGenerateTrigger"
               ></textarea>
@@ -722,6 +779,32 @@ onUnmounted(() => {
               <kbd class="inline-block px-1 rounded border border-gray-300 text-gray-400">Ctrl</kbd>+<kbd class="inline-block px-1 rounded border border-gray-300 text-gray-400">Enter</kbd>
               快速生成
             </span>
+            <!-- 提示词模板变量：识别 {{xxx}} 占位符，逐个填写后再生成 -->
+            <div
+              v-if="promptVars.length > 0"
+              class="prompt-vars-box mt-3 rounded-lg border border-blue-200 bg-blue-50/50 p-3 space-y-3"
+            >
+              <p class="text-caption text-blue-700 font-medium">
+                以下为该提示词模板中的变量，请填写后再制作。
+              </p>
+              <div v-for="v in promptVars" :key="v.name">
+                <label class="block text-body-sm font-medium text-gray-700 mb-1.5">
+                  {{ v.label }}
+                  <span
+                    class="text-caption font-normal ml-1 px-1.5 py-0.5 rounded"
+                    :style="{ backgroundColor: v.color.bg, color: v.color.text }"
+                  >{{ v.token }}</span>
+                </label>
+                <input
+                  v-model="promptVarValues[v.name]"
+                  type="text"
+                  :placeholder="`请填写${v.label}`"
+                  maxlength="500"
+                  class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
+                  :class="{ 'border-red-400': promptTouched && !(promptVarValues[v.name] || '').trim() }"
+                />
+              </div>
+            </div>
           </div>
 
           <!-- 模型独占一行；输出尺寸 + 并发数 并排一行 -->
@@ -821,7 +904,7 @@ onUnmounted(() => {
               ref="btnRef"
               @click="handleGenerateTrigger"
               :disabled="!canGenerate"
-              :title="isBatchLoading ? '已有请求在进行中，请等待完成' : (!canGenerate ? '请先填写提示词并确保有可用模型' : '开始生成')"
+              :title="isBatchLoading ? '已有请求在进行中，请等待完成' : (!canGenerate ? '请先填写提示词并确保有可用模型' : (unfilledPromptVars.length > 0 ? '请先填写上方提示词模板变量' : '开始生成'))"
               class="relative w-full py-4 rounded-xl font-semibold text-white flex items-center justify-center gap-2 overflow-hidden shadow-lg transition-all duration-300 ease-out group"
               :class="canGenerate && !isBatchLoading
                 ? 'bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 hover:-translate-y-0.5 hover:shadow-2xl hover:brightness-110 hover:saturate-150 active:translate-y-0 active:scale-[0.99]'
@@ -1389,6 +1472,57 @@ onUnmounted(() => {
 :deep(.result-draggable img) {
   -webkit-user-drag: element;
   user-drag: element;
+}
+
+/* ============ 提示词模板变量高亮 ============
+   有变量时 textarea 文字变透明、背景透明，由下方背板渲染彩色替换结果。
+   背板必须与 textarea 逐像素对齐：同样式字体继承 + 相同 padding（p-4 pr-10 pb-7）
+   + 1px 透明边框抵消 textarea 自身边框的位移。 */
+.prompt-editor-overlaid {
+  position: relative;
+  z-index: 1; /* 让光标/选区画在背板标记之上 */
+  color: transparent;
+  caret-color: #374151;
+  background-color: transparent;
+}
+.prompt-editor-overlaid::placeholder {
+  color: #9ca3af;
+}
+.prompt-editor-overlaid::selection {
+  background: rgba(59, 130, 246, 0.35);
+}
+.prompt-highlight-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: auto;
+  scrollbar-width: none;
+  pointer-events: none;
+  border: 1px solid transparent;
+  border-radius: 8px;
+}
+.prompt-highlight-backdrop::-webkit-scrollbar {
+  display: none;
+}
+.prompt-highlight-text {
+  min-height: 100%;
+  padding: 16px 40px 28px 16px; /* 对应 textarea 的 p-4 pr-10 pb-7 */
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+.prompt-highlight-text :deep(.ph-mark) {
+  border-radius: 4px;
+  padding: 1px 3px;
+  margin: 0 1px;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+.prompt-highlight-text :deep(.ph-mark--empty) {
+  background-color: #fee2e2;
+  color: #b91c1c;
 }
 
 /* ============ 拖拽回填 loading 遮罩 + 自驱动 spinner ============

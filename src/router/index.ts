@@ -1,6 +1,8 @@
 //通过vue-router插件实现模板路由配置
 import { createRouter, createWebHistory } from 'vue-router'
 import { constantRoute } from './router'
+// 每条路由的 SEO 优化标题（构建脚本 generate-page-meta.mjs 也读这份，两端同源）
+import seoTitles from './seo-titles.js'
 import { guardStaleVersion } from '@/utils/version-guard'
 import { useUserStore } from '@/store/modules/user'
 import { matchToolByPath, recordToolUsage } from '@/utils/tool-usage'
@@ -282,9 +284,12 @@ router.afterEach((to, _from, failure) => {
   if (sessionStorage.getItem(CHUNK_ERROR_KEY)) {
     sessionStorage.removeItem(CHUNK_ERROR_KEY)
   }
-  document.title = to.meta.title
-    ? `${to.meta.title as string}-${APP_TITLE}`
-    : `${APP_TITLE}-${APP_DESC}`
+  // 标题优先取 SEO 优化标题（与预渲染/中间件写入初始 HTML 的标题同源，
+  // 见 seo-titles.js），保证爬虫看到的和用户标签页里的一致
+  const titlePath = to.path !== '/' && to.path.endsWith('/') ? to.path.slice(0, -1) : to.path
+  const titleBase =
+    seoTitles[titlePath] ?? (to.meta.title ? `${to.meta.title as string} | ${APP_TITLE}` : `${APP_TITLE}-${APP_DESC}`)
+  document.title = titleBase
 
   // 工具页（非首页）进入时强制回到顶部，不做任何滚动恢复：
   // - 首页有自身的滚动恢复机制（浏览器返回恢复精确位置 / 菜单点击走锚点），不受影响
