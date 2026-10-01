@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import Sortable from 'sortablejs'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import TiandituMap from './TiandituMap.vue'
@@ -76,9 +77,23 @@ const activeDaySummary = computed(() => ({
 
 const loading = ref(true)
 const saving = ref(false)
+// 当前在途保存是否为静默视野保存（不显示状态条、列表不转圈）
+const savingViewOnly = ref(false)
 const dirty = ref(false)
+// 保存状态条：idle 没动静 / saving 保存中 / saved 刚存完（带时间）/ error 失败待重试
+const saveState = ref<'idle' | 'saving' | 'saved' | 'error'>('idle')
+const lastSavedAt = ref('')
+// 保存请求在途时又产生了保存意图（定时器恰好落在保存期间/手动连点）：
+// 记一笔，本轮 finally 里补一枪
+let saveQueuedWhileSaving = false
+// 保存请求在途时用户又改了内容：置 true，成功回调里据此跳过旧快照回填
+let editingWhileSaving = false
+// 静默保存连续失败的自动重试次数（成功或手动保存后清零）
+let saveRetryCount = 0
 const drawerVisible = ref(false)
 const itineraryCollapsed = ref(false)
+// 简洁名称模式：点位只显示名称文字（无图标背景框），行程连线保留
+const simplePointLabel = ref(false)
 const titleEditing = ref(false)
 const temporarySearchPlace = ref<GeocodedPlace | null>(null)
 
@@ -240,7 +255,10 @@ const shareUrl = computed(() =>
 // 点位弹窗期间不抑制，因为弹窗关掉那一刻 handlePointSubmit 才会改 points.value，
 // 此时 dialog 已经 close 了，watch 看到的 state 是稳定可保存的。
 const applyingDetail = ref(false)
-const suppressAutoSaveOnce = ref(false)
+// 时间窗抑制：applyDetail 回填触发的 watch 只需压住眼下这一次刷新（200ms 内），
+// 过期自动失效。不再用一次性 boolean —— 它可能因「回填时没有任何赋值」而残留，
+// 把用户的下一次改动吞掉（表现为排序偶尔不保存）。
+const suppressAutoSaveUntil = ref(0)
 let autoSaveTimer: ReturnType<typeof setTimeout> | null = null
 
 /**
@@ -252,19 +270,21 @@ let autoSaveTimer: ReturnType<typeof setTimeout> | null = null
  *   - 画线中（route / route-osrm）：draftPath 还没落库，不能把半成品打回去
  *   - 未登录 / 地图未初始化：没有可保存的对象
  *
+ * 注意：保存进行中（saving）不再直接丢弃 —— 那会把「保存返回前用户做的改动」
+ * 永远弄丢。这里照常置 dirty + 排定时器；handleSave 正在跑时会把这次请求排队，
+ * 跑完立刻补一枪。
+ *
  * 真正的 center/zoom 由 handleSave 现场从 mapRef.getView() 取，
  * 所以这里不需要先把视野写回响应式状态（也就不存在反馈循环）。
  */
 function scheduleAutoSave() {
-  if (suppressAutoSaveOnce.value) {
-    suppressAutoSaveOnce.value = false
-    return
-  }
+  if (Date.now() < suppressAutoSaveUntil.value) return
   if (loading.value) return
-  if (saving.value) return
   if (applyingDetail.value) return
   if (mode.value === 'route' || mode.value === 'route-osrm') return
   if (!isLoggedIn.value || !mapId.value) return
+  // 保存在途时的改动要打上标记：成功回调里跳过旧快照回填，防止新改动被覆盖
+  if (saving.value) editingWhileSaving = true
   dirty.value = true
   if (autoSaveTimer) clearTimeout(autoSaveTimer)
   autoSaveTimer = setTimeout(() => {
@@ -614,7 +634,7 @@ function daysEqual(a: TravelMapDay[], b: TravelMapDay[]): boolean {
   return true
 }
 
-function applyDetail(detail: any) {
+function applyDetail(detail: any, opts: { skipIfDirty?: boolean } = {}) {
   // 整个赋值过程包在 applyingDetail 旗标里：
   //   - 抑制上面的 watch 自动保存（不是用户改动，不能 PUT 回服务器）
   //   - applyDetail 结束后再清 dirty（用户在 PUT 之前改的东西已经被服务器接受了）
@@ -626,16 +646,23 @@ function applyDetail(detail: any) {
   //     （这就是用户报告的「标题输入框聚焦后闪一下失焦」）
   //   - 子组件 props 变化 → 整个 watch 重画 → 备注/点位闪动
   // 所以 applyDetail 必须做到"内容没变就别赋值"。
+  //
+  // skipIfDirty（保存请求在途时用户又改了内容）：
+  //   detail 是请求发出那一刻的快照，直接回填会把用户在途的新改动（比如刚拖完的
+  //   排序）悄悄回退。此时跳过内容类赋值（days/points/routes/标题等），保住本地
+  //   新状态；id 也保持本地临时值（和 days 的 lodgingPointId 引用一致），
+  //   排队的补存会把最新内容推上去。
   applyingDetail.value = true
   try {
+    const skipContent = opts.skipIfDirty && dirty.value
     if (mapId.value !== detail.id) mapId.value = detail.id
     const nextDays = detail.days?.length ? detail.days : [{ id: `legacy-day-${detail.id}`, dayNumber: 1, title: '第 1 天', date: '', startTime: '', startLocation: '', lodgingPointId: '', lodgingName: '', note: '' }]
-    if (!daysEqual(days.value, nextDays)) days.value = nextDays
-    if (!nextDays.some((d: TravelMapDay) => d.id === activeDayId.value)) activeDayId.value = nextDays[0].id
+    if (!skipContent && !daysEqual(days.value, nextDays)) days.value = nextDays
+    if (!skipContent && !nextDays.some((d: TravelMapDay) => d.id === activeDayId.value)) activeDayId.value = nextDays[0].id
     if (slug.value !== detail.slug) slug.value = detail.slug
     // title / description：字符串相等就直接跳过赋值，避免 el-input 重渲染失焦
-    if (title.value !== detail.title) title.value = detail.title
-    if (description.value !== detail.description) description.value = detail.description
+    if (!skipContent && title.value !== detail.title) title.value = detail.title
+    if (!skipContent && description.value !== detail.description) description.value = detail.description
     // center / zoom 用亚像素级容差比较：保存时是浮点坐标，applyDetail 回填后
     // 浮点微差也会触发子组件的 centerAndZoom → 视野跳动让 label 抖一下
     const c = detail.center
@@ -651,8 +678,8 @@ function applyDetail(detail: any) {
     if (isPublic.value !== detail.isPublic) isPublic.value = detail.isPublic
     const nextPoints = detail.points ?? []
     const nextRoutes = detail.routes ?? []
-    if (!pointsEqual(points.value, nextPoints)) points.value = nextPoints
-    if (!routesEqual(routes.value, nextRoutes)) routes.value = nextRoutes
+    if (!skipContent && !pointsEqual(points.value, nextPoints)) points.value = nextPoints
+    if (!skipContent && !routesEqual(routes.value, nextRoutes)) routes.value = nextRoutes
   } finally {
     applyingDetail.value = false
   }
@@ -661,6 +688,12 @@ function applyDetail(detail: any) {
 async function openMap(id: string): Promise<boolean> {
   loading.value = true
   try {
+    // 切地图：上一张的视野待存任务作废（别存进新地图）
+    viewNeedsSave = false
+    if (viewSaveTimer) {
+      clearTimeout(viewSaveTimer)
+      viewSaveTimer = null
+    }
     const detail = await fetchMap(id)
     // 切地图：旧的选中态属于上一张地图，清掉避免"列表里残留高亮但地图上没线"
     selectedRouteId.value = null
@@ -686,6 +719,18 @@ async function openMap(id: string): Promise<boolean> {
 }
 
 onMounted(bootstrap)
+
+onMounted(() => {
+  document.addEventListener('visibilitychange', handleVisibilitySave)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('visibilitychange', handleVisibilitySave)
+  if (viewSaveTimer) {
+    clearTimeout(viewSaveTimer)
+    viewSaveTimer = null
+  }
+})
 
 // ---------- 地图交互 ----------
 
@@ -726,19 +771,54 @@ function addPointFromContextMenu() {
   openNewPointDialog({ lng, lat })
 }
 
+// 视野（center/zoom）保存策略：拖动/缩放会保存，但做两层节流，避免微小操作
+// 频繁全量 PUT 给服务器加负担：
+//   1. 停稳去抖：最后一次拖动/缩放 VIEW_SAVE_DEBOUNCE 后才存，连续拖动只存最后一次
+//   2. 最小间隔：两次视野保存至少隔 VIEW_SAVE_MIN_INTERVAL，期间反复拖动会顺延
+// 另外任何内容保存（自动/手动）都会顺带把当前实时视野写进去，并重置节流时钟；
+// 页面隐藏/切走时若视野有变，也会静默补存一次（handleVisibilitySave）。
+// 视野保存完全静默：不显示状态条、列表不转圈、失败不重试。
+const VIEW_SAVE_DEBOUNCE = 4000
+const VIEW_SAVE_MIN_INTERVAL = 15_000
+let viewNeedsSave = false
+let viewSaveTimer: ReturnType<typeof setTimeout> | null = null
+let lastViewSaveAt = 0
+
 function handleViewChange(payload: { center: LngLat; zoom: number }) {
   // 不把 center/zoom 实时写回父组件响应式状态：「地图自己拖动」也会 emit
   // view-change，一旦回写，子组件的 center watch 会命中 → 调 centerAndZoom →
   // 再触发 moveend → 再 emit → 死循环，瓦片请求风暴式打过来。
-  //
-  // 但视野（中心点 + 缩放级别）需要持久化，否则用户拖到某个地方一刷新，
-  // 地图又跳回上次保存的位置。做法：这里只排一次去抖的静默自动保存，
-  // 保存时 handleSave 现场从 mapRef.getView() 取实时 center/zoom 落库——
-  // 既不回写响应式状态（无反馈循环），又能把拖动/缩放后的位置存下来。
   // （POI 搜索要用的视野缓存 currentBounds 由子组件自行维护，不受影响。）
   void payload
   if (Date.now() < suppressViewSaveUntil.value) return
-  scheduleAutoSave()
+  viewNeedsSave = true
+  scheduleViewSave()
+}
+
+/** 视野保存的节流调度：停稳去抖 + 最小间隔 */
+function scheduleViewSave() {
+  if (!isLoggedIn.value || !mapId.value) return
+  if (viewSaveTimer) clearTimeout(viewSaveTimer)
+  const sinceLast = Date.now() - lastViewSaveAt
+  const wait = Math.max(VIEW_SAVE_DEBOUNCE, VIEW_SAVE_MIN_INTERVAL - sinceLast)
+  viewSaveTimer = setTimeout(() => {
+    viewSaveTimer = null
+    // dirty 时不单独存视野：紧跟着的内容自动保存（1.5s 去抖）会连视野一起带上
+    if (!viewNeedsSave || dirty.value || saving.value) return
+    viewNeedsSave = false
+    lastViewSaveAt = Date.now()
+    void handleSave({ silent: true, viewOnly: true })
+  }, wait)
+}
+
+/** 页面隐藏/切走时，把还没落库的视野静默补存一次（不受节流限制，最后机会） */
+function handleVisibilitySave() {
+  if (document.visibilityState !== 'hidden') return
+  if (!viewNeedsSave || dirty.value || saving.value) return
+  if (!isLoggedIn.value || !mapId.value) return
+  viewNeedsSave = false
+  lastViewSaveAt = Date.now()
+  void handleSave({ silent: true, viewOnly: true })
 }
 
 function handlePointClick(id: string) {
@@ -785,6 +865,10 @@ function updatePointCategory(point: MapPoint, category: PointCategory) {
   points.value = points.value.map((item) => item.id === point.id ? { ...item, category } : item)
 }
 
+function togglePointVisited(point: MapPoint) {
+  points.value = points.value.map((item) => item.id === point.id ? { ...item, visited: !item.visited } : item)
+}
+
 function handlePointSubmit(payload: Omit<MapPoint, 'id'> & { id?: string }) {
   if (payload.id) {
     const index = points.value.findIndex((p) => p.id === payload.id)
@@ -822,6 +906,98 @@ function locatePoint(p: MapPoint) {
   suppressProgrammaticViewSave()
   mapRef.value?.panTo(p.lng, p.lat, Math.max(zoom.value, 14))
 }
+
+// ---------- 点位排序（行程面板内拖拽 / 键盘 ↑↓） ----------
+// 点位顺序就是 points 数组的顺序：后端按数组顺序写 sort_order、读回也按它排序，
+// 所以这里只需重排数组，深度 watch(points) 会照常触发 1.5s 自动保存。
+
+/** 把当前天的第 oldIndex 个点位移到 newIndex（索引相对 dayPoints，其他天的点位位置不动） */
+function reorderDayPoints(oldIndex: number, newIndex: number) {
+  const list = dayPoints.value
+  if (
+    oldIndex === newIndex ||
+    oldIndex < 0 || newIndex < 0 ||
+    oldIndex >= list.length || newIndex >= list.length
+  ) return
+  // 先算出该天点位的新 id 顺序，再按新顺序回填到全局数组里这些位置上
+  const ids = list.map((p) => p.id)
+  const [movedId] = ids.splice(oldIndex, 1)
+  ids.splice(newIndex, 0, movedId)
+  const nextById = new Map(list.map((p) => [p.id, p]))
+  let cursor = 0
+  points.value = points.value.map((p) => {
+    if (!nextById.has(p.id)) return p
+    const next = nextById.get(ids[cursor])
+    cursor += 1
+    return next ?? p
+  })
+}
+
+// Sortable 只挂在当前展开的 day-body 上；切换日期 / 天数变化后 DOM 会被替换，需要重建
+let stopSortable: Sortable | null = null
+let sortableContainer: HTMLElement | null = null
+// 拖拽松手后浏览器还会在 .travel-map-stop 这个按钮上补一次 click（会触发 locatePoint 平移地图），
+// 在捕获层把这一次吞掉
+let suppressStopClick = false
+// Sortable 会直接搬 DOM 节点，Vue 的 keyed diff 不知道这事；先记下被拖行的原位，
+// onEnd 时把 DOM 还原，再改数组让 Vue 按新顺序自己重排，两边就不会互相打架
+let dragOrigin: { parent: Node; next: Node | null } | null = null
+
+function onStopClickCapture(e: MouseEvent) {
+  if (!suppressStopClick) return
+  e.stopPropagation()
+  e.preventDefault()
+  suppressStopClick = false
+}
+
+async function syncStopSortable() {
+  await nextTick()
+  stopSortable?.destroy()
+  stopSortable = null
+  if (sortableContainer) {
+    sortableContainer.removeEventListener('click', onStopClickCapture, true)
+    sortableContainer = null
+  }
+  // 同一时刻只有激活天的 day-body 在 DOM 里
+  const container = document.querySelector<HTMLElement>('.travel-map-day-body')
+  if (!container) return
+  container.addEventListener('click', onStopClickCapture, true)
+  sortableContainer = container
+  stopSortable = new Sortable(container, {
+    // 只允许从把手发起拖拽，避免和行点击（定位）、类型下拉、删除按钮冲突
+    handle: '.travel-map-stop-drag',
+    draggable: '.travel-map-stop',
+    animation: 150,
+    onStart(evt) {
+      dragOrigin = { parent: evt.item.parentNode as Node, next: evt.item.nextSibling }
+    },
+    // oldIndex/newIndex 是相对容器全部子元素的序号（day-body 里还有日期框等非点位子元素），
+    // 必须用 oldDraggableIndex/newDraggableIndex（只统计 .travel-map-stop）才能对上 dayPoints 的下标
+    onEnd(evt) {
+      if (dragOrigin) {
+        dragOrigin.parent.insertBefore(evt.item, dragOrigin.next)
+        dragOrigin = null
+      }
+      const { oldDraggableIndex, newDraggableIndex } = evt
+      if (
+        oldDraggableIndex == null || newDraggableIndex == null ||
+        oldDraggableIndex === newDraggableIndex
+      ) return
+      suppressStopClick = true
+      setTimeout(() => { suppressStopClick = false })
+      reorderDayPoints(oldDraggableIndex, newDraggableIndex)
+    },
+  })
+}
+
+watch([activeDayId, days], () => { void syncStopSortable() }, { deep: true, immediate: true })
+
+onUnmounted(() => {
+  stopSortable?.destroy()
+  stopSortable = null
+  sortableContainer?.removeEventListener('click', onStopClickCapture, true)
+  sortableContainer = null
+})
 
 // ---------- 路线 ----------
 
@@ -1067,7 +1243,7 @@ async function handleOsrmRouteFromPoint(payload: { id: string; lng: number; lat:
 
 // ---------- 保存与分享 ----------
 
-async function handleSave(opts: { silent?: boolean } = {}): Promise<boolean> {
+async function handleSave(opts: { silent?: boolean; viewOnly?: boolean } = {}): Promise<boolean> {
   if (!requireLogin()) return false
   if (!mapId.value) {
     ElMessage.warning('地图尚未初始化，请刷新页面重试')
@@ -1078,8 +1254,17 @@ async function handleSave(opts: { silent?: boolean } = {}): Promise<boolean> {
     if (!opts.silent) ElMessage.warning('请先结束或取消当前路线绘制')
     return false
   }
+  // 上一枪还在路上：记下意图，这轮跑完立刻补存，保证排序/编辑不丢
+  // （视野补存不用排队——内容保存在途时照常取实时视野，切走时还有兜底）
+  if (saving.value) {
+    if (!opts.viewOnly) saveQueuedWhileSaving = true
+    return false
+  }
 
   saving.value = true
+  savingViewOnly.value = !!opts.viewOnly
+  if (!opts.viewOnly) saveState.value = 'saving'
+  editingWhileSaving = false
   if (autoSaveTimer) {
     clearTimeout(autoSaveTimer)
     autoSaveTimer = null
@@ -1109,19 +1294,50 @@ async function handleSave(opts: { silent?: boolean } = {}): Promise<boolean> {
       routes: routes.value.map(({ id, ...rest }) => rest),
       days: days.value,
     })
-    applyDetail(detail)
-    suppressAutoSaveOnce.value = true
+    // 请求在途时用户可能又改了内容/拖了排序：此时不能用旧快照回填覆盖本地，
+    // 排队的补存会把最新内容推上去（skipIfDirty 见 applyDetail 注释）
+    applyDetail(detail, { skipIfDirty: editingWhileSaving })
+    suppressAutoSaveUntil.value = Date.now() + 200
     dirty.value = false
+    // 本次保存已带上实时视野：清掉待存标记与节流时钟，取消挂起的视野保存
+    viewNeedsSave = false
+    lastViewSaveAt = Date.now()
+    if (viewSaveTimer) {
+      clearTimeout(viewSaveTimer)
+      viewSaveTimer = null
+    }
+    saveRetryCount = 0
+    if (!opts.viewOnly) {
+      saveState.value = 'saved'
+      lastSavedAt.value = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+    }
     // 自动保存的 toast 静默——每改一个字就弹一次会刷屏；手动点保存才提示
     if (!opts.silent) ElMessage.success('已保存')
     return true
   } catch (error: any) {
-    // 400 是服务端校验（超限等），带着后端文案提示更有用
+    if (!opts.viewOnly) saveState.value = 'error'
+    // 静默保存失败：5s 后自动重试（最多 3 次），仍失败就等下一次改动或手动重试
+    if (opts.silent && !opts.viewOnly && saveRetryCount < 3) {
+      saveRetryCount += 1
+      if (autoSaveTimer) clearTimeout(autoSaveTimer)
+      autoSaveTimer = setTimeout(() => {
+        void handleSave({ silent: true })
+      }, 5000)
+    }
     const msg = error?.response?.data?.error
     if (msg) ElMessage.error(msg)
     return false
   } finally {
     saving.value = false
+    savingViewOnly.value = false
+    if (saveQueuedWhileSaving) {
+      saveQueuedWhileSaving = false
+      if (dirty.value) {
+        setTimeout(() => {
+          void handleSave({ silent: true })
+        }, 300)
+      }
+    }
   }
 }
 
@@ -1282,9 +1498,39 @@ function goPlaza() {
               :title="layer.desc"
               @click="baseLayer = layer.value"
             >{{ layer.label }}</button>
+            <span class="travel-map-layer-divider" aria-hidden="true"></span>
+            <!-- 简洁名称模式：隐藏点位图标框，只显示名称文字，行程连线保留 -->
+            <button
+              type="button"
+              :class="{ active: simplePointLabel }"
+              :title="simplePointLabel ? '点位当前只显示名称，点击恢复完整图标' : '只显示点位名称、隐藏图标背景框（连线保留）'"
+              @click="simplePointLabel = !simplePointLabel"
+            >仅名称</button>
+          </div>
+          <!-- 保存状态条：拖动/编辑后让用户明确知道存没存上 -->
+          <div
+            v-show="!itineraryCollapsed && saveState !== 'idle'"
+            class="travel-map-save-state"
+            :class="`is-${saveState}`"
+            role="status"
+            aria-live="polite"
+          >
+            <span v-if="saveState === 'saving'" class="travel-map-save-spinner" aria-hidden="true"></span>
+            <template v-if="saveState === 'saving'">保存中…</template>
+            <template v-else-if="saveState === 'saved'">✓ 已保存 {{ lastSavedAt }}</template>
+            <template v-else-if="saveState === 'error'">
+              保存失败，稍后自动重试
+              <span role="button" tabindex="0" class="travel-map-save-retry" @click="handleSave()">立即重试</span>
+            </template>
           </div>
         </div>
-        <div v-show="!itineraryCollapsed" class="travel-map-floating-days">
+        <div
+          v-show="!itineraryCollapsed"
+          v-loading="saving && !savingViewOnly"
+          element-loading-text="保存中…"
+          element-loading-background="rgba(248, 250, 252, 0.55)"
+          class="travel-map-floating-days"
+        >
           <div v-for="day in days" :key="day.id" class="travel-map-floating-day" :class="{ active: activeDayId === day.id }">
             <div
               class="travel-map-day-head"
@@ -1320,25 +1566,58 @@ function goPlaza() {
                 />
               </div>
               <div v-if="day.startTime || day.startLocation" class="travel-map-day-meta">出发 {{ day.startTime || '--:--' }} · {{ day.startLocation || '未设置地点' }}</div>
-              <button v-for="(p, index) in dayPoints" :key="p.id" type="button" class="travel-map-stop" @click="locatePoint(p)">
-                <span class="travel-map-stop-index">{{ index + 1 }}</span>
+              <!-- 行整体承担「点击定位」：HTML 规范不允许 button 嵌套 button（行内还有
+                   序号/删除按钮和拖拽把手），这里用 div[role=button] + 键盘事件替代 -->
+              <div
+                v-for="(p, index) in dayPoints"
+                :key="p.id"
+                role="button"
+                tabindex="0"
+                class="travel-map-stop"
+                :class="{ 'travel-map-stop--visited': p.visited }"
+                @click="locatePoint(p)"
+                @keydown.enter.prevent="locatePoint(p)"
+                @keydown.space.prevent="locatePoint(p)"
+              >
+                <!-- 排序把手：鼠标按住拖动，聚焦后 ↑↓ 也能调顺序。
+                     注意必须是 span（Sortable 会忽略 button/input 上的 mousedown 不起拖） -->
+                <span
+                  role="button"
+                  tabindex="0"
+                  class="travel-map-stop-drag"
+                  :aria-label="`调整${p.name}顺序（当前第 ${index + 1} 个），按上下方向键移动`"
+                  title="拖动排序（聚焦后也可按 ↑↓）"
+                  @keydown.up.prevent="reorderDayPoints(index, index - 1)"
+                  @keydown.down.prevent="reorderDayPoints(index, index + 1)"
+                ><span class="travel-map-stop-drag-grip" aria-hidden="true">⠿</span></span>
+                <button
+                  type="button"
+                  class="travel-map-stop-index"
+                  :class="{ visited: p.visited }"
+                  :aria-label="p.visited ? `取消${p.name}的已到达标记` : `标记${p.name}为已到达`"
+                  :title="p.visited ? '取消已到达' : '标记为已到达'"
+                  @click.stop="togglePointVisited(p)"
+                >{{ p.visited ? '✓' : index + 1 }}</button>
                 <span class="travel-map-stop-main">
-                  <span class="travel-map-stop-name">{{ p.name }}</span>
-                  <el-select
-                    :model-value="p.category"
-                    size="small"
-                    class="travel-map-stop-category-select"
-                    :aria-label="`${p.name}点位类型`"
-                    @click.stop
-                    @update:model-value="(category) => updatePointCategory(p, category as PointCategory)"
-                  >
-                    <el-option
-                      v-for="category in POINT_CATEGORIES"
-                      :key="category.value"
-                      :value="category.value"
-                      :label="`${category.emoji} ${category.label}`"
-                    />
-                  </el-select>
+                  <span class="travel-map-stop-row">
+                    <span class="travel-map-stop-name">{{ p.name }}</span>
+                    <el-select
+                      :model-value="p.category"
+                      size="small"
+                      class="travel-map-stop-category-select"
+                      :aria-label="`${p.name}点位类型`"
+                      @click.stop
+                      @update:model-value="(category) => updatePointCategory(p, category as PointCategory)"
+                    >
+                      <el-option
+                        v-for="category in POINT_CATEGORIES"
+                        :key="category.value"
+                        :value="category.value"
+                        :label="`${category.emoji} ${category.label}`"
+                      />
+                    </el-select>
+                  </span>
+                  <span v-if="p.note" class="travel-map-stop-note" :title="p.note">{{ p.note }}</span>
                 </span>
                 <span class="travel-map-stop-time">{{ p.stayMinutes ? `停留 ${p.stayMinutes} 分钟` : '' }}</span>
                 <button
@@ -1347,8 +1626,8 @@ function goPlaza() {
                   :aria-label="`删除${p.name}`"
                   title="删除节点"
                   @click.stop="deletePointFromItinerary(p)"
-                >×</button>
-              </button>
+                  >×</button>
+              </div>
               <div v-for="r in dayRoutes" :key="r.id" class="travel-map-route-summary">
                 <span class="travel-map-route-dot" :style="{ backgroundColor: r.color }"></span>
                 <span>{{ r.name }}</span>
@@ -1690,7 +1969,7 @@ function goPlaza() {
           <h3 class="font-semibold text-ink-900 mb-2">{{ activeDay?.title || '行程' }} · 行程点位</h3>
           <div class="space-y-2">
             <div v-for="p in filteredPoints" :key="p.id" class="p-2 rounded-lg border border-border-subtle">
-              <div class="flex items-center gap-2"><span>{{ getCategory(p.category).emoji }}</span><span class="font-medium truncate">{{ p.name }}</span><span class="ml-auto text-xs text-ink-500">{{ p.stayMinutes ? `${p.stayMinutes} 分钟` : '未设停留' }}</span></div>
+              <div class="flex items-center gap-2"><span>{{ getCategory(p.category).emoji }}</span><span class="font-medium truncate" :class="{ 'line-through text-ink-400': p.visited }">{{ p.name }}</span><span v-if="p.visited" class="text-xs text-green-600">✓ 已到达</span><span class="ml-auto text-xs text-ink-500">{{ p.stayMinutes ? `${p.stayMinutes} 分钟` : '未设停留' }}</span></div>
               <div v-if="p.note" class="text-xs text-ink-500 mt-1 line-clamp-2">{{ p.note }}</div>
               <div class="mt-1 flex gap-2"><button class="text-xs text-accent-600" @click="locatePoint(p)">定位</button><button class="text-xs text-accent-600" @click="handlePointClick(p.id)">编辑</button></div>
             </div>
@@ -1711,6 +1990,7 @@ function goPlaza() {
           :mode="mode"
           :draft-path="draftPath"
           :draft-color="draftColor"
+          :simple-label="simplePointLabel"
           :selected-point-id="selectedPointId"
           :selected-route-id="selectedRouteId"
           @map-click="handleMapClick"
@@ -1828,7 +2108,17 @@ function goPlaza() {
 .travel-map-layer-switcher button { flex: 1; min-width: 0; padding: 6px 5px; color: rgba(255,255,255,.86); font-size: 12px; line-height: 1.2; border: 0; border-radius: 6px; background: transparent; cursor: pointer; transition: color .15s ease, background-color .15s ease, box-shadow .15s ease; }
 .travel-map-layer-switcher button:hover { color: white; background: rgba(255,255,255,.14); }
 .travel-map-layer-switcher button.active { color: #1769d2; background: white; box-shadow: 0 1px 4px rgba(15,23,42,.18); font-weight: 600; }
-.travel-map-floating-days { flex: 1; overflow-y: auto; background: #fff; }
+.travel-map-layer-divider { width: 1px; height: 16px; flex: none; margin: 0 3px; background: rgba(255,255,255,.35); }
+.travel-map-floating-days { position: relative; flex: 1; overflow-y: auto; background: #fff; }
+/* 保存状态条（头部蓝底上的小字） */
+.travel-map-save-state { display: flex; align-items: center; gap: 5px; margin: 9px 14px 0; color: rgba(255, 255, 255, 0.85); font-size: 11px; line-height: 1.2; }
+.travel-map-save-state.is-saved { color: #bbf7d0; }
+.travel-map-save-state.is-error { color: #fecaca; }
+.travel-map-save-spinner { width: 10px; height: 10px; flex: none; border: 1.5px solid rgba(255, 255, 255, 0.4); border-top-color: #fff; border-radius: 50%; animation: travel-map-save-rotate 0.8s linear infinite; }
+.travel-map-save-retry { margin-left: 2px; color: #fff; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.travel-map-save-retry:hover { opacity: 0.85; }
+@keyframes travel-map-save-rotate { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .travel-map-save-spinner { animation: none; } }
 .travel-map-floating-day { border-bottom: 1px solid #e2e8f0; }
 .travel-map-floating-day.active { background: #f5f9ff; }
 .travel-map-day-head { width: 100%; height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 14px; color: #475569; font-size: 14px; text-align: left; cursor: pointer; }
@@ -1856,7 +2146,9 @@ function goPlaza() {
 .travel-map-day-date-input :deep(.el-input__inner) { height: 30px; color: #334155; font-size: 12px; }
 .travel-map-day-meta { padding: 2px 0 8px 30px; color: #64748b; font-size: 12px; }
 .travel-map-stop, .travel-map-route-summary { width: 100%; display: flex; align-items: center; gap: 8px; min-height: 38px; color: #475569; font-size: 13px; text-align: left; border: 0; background: transparent; }
-.travel-map-stop-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 7px; min-height: 28px; }
+.travel-map-stop-main { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 1px; min-height: 28px; }
+.travel-map-stop-row { display: flex; align-items: center; gap: 7px; min-height: 28px; }
+.travel-map-stop-note { overflow: hidden; color: #94a3b8; font-size: 11px; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
 .travel-map-stop-category-select { flex: none; width: 108px; }
 .travel-map-stop-category-select :deep(.el-select__wrapper) { min-height: 28px; padding: 0 7px; color: #64748b; background: transparent; box-shadow: none; }
 .travel-map-stop-category-select :deep(.el-select__selected-item) { font-size: 11px; }
@@ -1864,11 +2156,25 @@ function goPlaza() {
 .travel-map-stop-category-select :deep(.el-select__wrapper:hover), .travel-map-stop-category-select :deep(.el-select__wrapper.is-focused) { background: #eef5ff; box-shadow: inset 0 0 0 1px #bfdbfe; }
 .travel-map-stop { cursor: pointer; }
 .travel-map-stop:hover { color: #1769d2; }
-.travel-map-stop-index { width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; flex: none; color: white; border-radius: 50%; background: #1595ed; font-size: 12px; }
+.travel-map-stop:focus-visible { outline: 2px solid #1595ed; outline-offset: -2px; border-radius: 6px; }
+.travel-map-stop-index { width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; flex: none; padding: 0; color: white; border: 0; border-radius: 50%; background: #1595ed; font-size: 12px; cursor: pointer; }
+.travel-map-stop-index:hover { background: #0b78ca; }
+.travel-map-stop-index.visited { background: #16a34a; }
+.travel-map-stop-index.visited:hover { background: #12813c; }
+.travel-map-stop--visited .travel-map-stop-name { color: #94a3b8; }
 .travel-map-stop-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 28px; }
 .travel-map-stop-time { flex: none; color: #1689e7; font-size: 11px; }
 .travel-map-stop-delete { flex: none; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; padding: 0; color: #94a3b8; font-size: 19px; line-height: 1; border: 0; border-radius: 4px; background: transparent; cursor: pointer; }
 .travel-map-stop-delete:hover { color: #dc2626; background: #fef2f2; }
+/* 排序把手：鼠标/触屏拖动，聚焦后 ↑↓ 微调 */
+.travel-map-stop-drag { flex: none; width: 22px; height: 24px; display: inline-flex; align-items: center; justify-content: center; padding: 0; color: #b6c2d4; font-size: 14px; line-height: 1; border: 0; border-radius: 4px; background: transparent; cursor: grab; touch-action: none; }
+.travel-map-stop-drag:hover { color: #1769d2; background: #eef5ff; }
+.travel-map-stop-drag:active { cursor: grabbing; }
+.travel-map-stop-drag:focus-visible { outline: 2px solid #1595ed; outline-offset: -1px; }
+.travel-map-stop-drag-grip { pointer-events: none; user-select: none; letter-spacing: -1px; }
+/* 拖拽中的视觉反馈：占位虚线框 + 被拖行半透明 */
+.travel-map-stop.sortable-ghost { opacity: .4; background: #eef5ff; border-radius: 6px; }
+.travel-map-stop.sortable-chosen { box-shadow: 0 2px 10px rgba(21, 149, 237, .18); border-radius: 6px; }
 .travel-map-route-summary { padding-left: 30px; }
 .travel-map-route-dot { width: 9px; height: 9px; flex: none; border-radius: 50%; }
 .travel-map-add-stop { width: 100%; padding: 12px 0 4px 30px; color: #1689e7; font-size: 12px; text-align: left; border: 0; background: transparent; cursor: pointer; }

@@ -258,15 +258,24 @@ export async function onRequest(context) {
   }
 
   // ---------- GET /api/ai-media-works/categories ----------
+  // 可选 type=image|video：按媒体类型过滤后再聚合，保证分类计数与当前列表筛选一致
   if (request.method === 'GET' && path === 'categories') {
+    const type = (url.searchParams.get('type') || '').trim().toLowerCase()
+    const where = [`audit_status = 'approved'`]
+    const args = []
+    if (type && VALID_TYPES.has(type)) {
+      where.push('media_type = ?')
+      args.push(type)
+    }
     const result = await db
       .prepare(
         `SELECT category, COUNT(*) AS count
          FROM ai_media_works
-         WHERE audit_status = 'approved'
+         WHERE ${where.join(' AND ')}
          GROUP BY category
          ORDER BY count DESC, category ASC`,
       )
+      .bind(...args)
       .all()
     return json({
       success: true,

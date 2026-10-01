@@ -123,6 +123,7 @@ function pointFromRow(row) {
     note: row.note || '',
     dayId: row.day_id || '',
     stayMinutes: Number(row.stay_minutes || 0),
+    visited: Number(row.visited) === 1,
   }
 }
 
@@ -200,6 +201,7 @@ function normalizePoints(rawPoints, days) {
       note: str(p?.note, MAX_NOTE),
       dayId,
       stayMinutes,
+      visited: p?.visited ? 1 : 0,
       sortOrder: index,
     }
   })
@@ -406,13 +408,13 @@ export class TravelMapsService {
     }
 
     for (const group of chunk(points, INSERT_CHUNK)) {
-      const placeholders = group.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ')
+      const placeholders = group.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ')
       const binds = []
       for (const p of group) {
-        binds.push(p.id, id, p.name, p.category, p.lng, p.lat, p.elevation, p.note, p.dayId, p.stayMinutes, p.sortOrder, ts)
+        binds.push(p.id, id, p.name, p.category, p.lng, p.lat, p.elevation, p.note, p.dayId, p.stayMinutes, p.visited, p.sortOrder, ts)
       }
       statements.push(this.db.prepare(`INSERT INTO travel_map_points
-        (id, map_id, name, category, lng, lat, elevation, note, day_id, stay_minutes, sort_order, created_at)
+        (id, map_id, name, category, lng, lat, elevation, note, day_id, stay_minutes, visited, sort_order, created_at)
         VALUES ${placeholders}`).bind(...binds))
     }
 

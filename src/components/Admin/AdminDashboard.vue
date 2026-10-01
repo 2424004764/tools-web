@@ -147,24 +147,36 @@ onMounted(load)
           工具使用次数
         </div>
         <div class="grid grid-cols-3 divide-x divide-ink-100">
-          <div class="pr-2 first:pl-0">
-            <div class="text-[11px] text-ink-400">今日</div>
-            <div class="mt-0.5 text-lg font-semibold text-accent-700 tabular-nums leading-tight">
+          <router-link
+            to="/admin/tool-usage?range=today#usage-detail"
+            class="block pr-2 first:pl-0 group"
+            title="查看今日使用明细"
+          >
+            <div class="text-[11px] text-ink-400 group-hover:text-accent-600 transition-colors">今日</div>
+            <div class="mt-0.5 text-lg font-semibold text-accent-700 group-hover:text-accent-600 tabular-nums leading-tight transition-colors">
               {{ data?.todayToolUsage ?? 0 }}
             </div>
-          </div>
-          <div class="px-2">
-            <div class="text-[11px] text-ink-400">本周</div>
-            <div class="mt-0.5 text-lg font-semibold text-ink-900 tabular-nums leading-tight">
+          </router-link>
+          <router-link
+            to="/admin/tool-usage?range=week#usage-detail"
+            class="block px-2 group"
+            title="查看本周使用明细"
+          >
+            <div class="text-[11px] text-ink-400 group-hover:text-accent-600 transition-colors">本周</div>
+            <div class="mt-0.5 text-lg font-semibold text-ink-900 group-hover:text-accent-600 tabular-nums leading-tight transition-colors">
               {{ data?.weekToolUsage ?? 0 }}
             </div>
-          </div>
-          <div class="pl-2 last:pr-0">
-            <div class="text-[11px] text-ink-400">本月</div>
-            <div class="mt-0.5 text-lg font-semibold text-ink-900 tabular-nums leading-tight">
+          </router-link>
+          <router-link
+            to="/admin/tool-usage?range=month#usage-detail"
+            class="block pl-2 last:pr-0 group"
+            title="查看本月使用明细"
+          >
+            <div class="text-[11px] text-ink-400 group-hover:text-accent-600 transition-colors">本月</div>
+            <div class="mt-0.5 text-lg font-semibold text-ink-900 group-hover:text-accent-600 tabular-nums leading-tight transition-colors">
               {{ data?.monthToolUsage ?? 0 }}
             </div>
-          </div>
+          </router-link>
         </div>
         <div class="text-[11px] text-ink-400 mt-2">
           登录用户进入工具页次数

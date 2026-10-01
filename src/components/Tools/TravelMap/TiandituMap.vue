@@ -25,6 +25,8 @@ const props = withDefaults(defineProps<{
   draftColor?: string
   /** 只读模式下不响应任何点击建点 */
   readonly?: boolean
+  /** 简洁名称模式：点位只显示名称文字（无背景框/emoji/备注），行程连线保留 */
+  simpleLabel?: boolean
   /** 当前正在参与路线绘制的点位 id（沿道路画路线模式下被点中的点位高亮） */
   selectedPointId?: string | null
   /** 当前选中的路线 id（地图上点中路线 → 路线列表选中该项） */
@@ -36,6 +38,7 @@ const props = withDefaults(defineProps<{
   mode: 'browse',
   draftPath: () => [],
   readonly: false,
+  simpleLabel: false,
   selectedPointId: null,
   selectedRouteId: null,
 })
@@ -61,6 +64,7 @@ const missingKey = ref(!hasTiandituKey())
 const mapInstance = shallowRef<any>(null)
 const T = shallowRef<any>(null)
 const pointOverlays = shallowRef<any[]>([])
+const dayLineOverlays = shallowRef<any[]>([])
 const routeOverlays = shallowRef<any[]>([])
 const draftOverlays = shallowRef<any[]>([])
 // 急弯高亮：单独存一份 ref,跟主路线一起被 routes 变化驱动重画，
@@ -143,6 +147,7 @@ function scheduleDrawPoints() {
   drawPointsRaf = requestAnimationFrame(() => {
     drawPointsRaf = 0
     drawPoints()
+    drawDayLine()
   })
 }
 function scheduleDrawRoutes() {
@@ -189,6 +194,19 @@ function drawPoints() {
       //
       // 用一个圆形 + emoji 充当"点位图标"，下面挂一个信息气泡（名称 + 海拔 + 备注）。
       // 整体结构紧凑，点中任何位置都触发点位命中。
+      // 简洁名称模式：只显示名称文字 + 白色描边光晕（无背景框/emoji/备注/海拔），
+      // 行程连线保留，点击命中（data-point-id）行为不变
+      if (props.simpleLabel) {
+        const label = new t.Label({
+          text: `<div class="tt-point-label" data-point-id="${escapeHtml(p.id)}" style="display:inline-block;cursor:pointer;font-size:12px;font-weight:600;color:#1e293b;white-space:nowrap;text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff,0 0 4px rgba(255,255,255,0.95),0 1px 3px rgba(255,255,255,0.9);">${escapeHtml(p.name)}</div>`,
+          position: lnglat,
+          offset: { x: -4, y: -12 },
+        })
+        map.addOverLay(label)
+        created.push(label)
+        return
+      }
+
       const elevPart = p.elevation !== null && p.elevation !== undefined
         ? `<span style="color:#64748b;font-weight:500;font-size:11px;margin-left:2px;">· ${Math.round(p.elevation)}m</span>`
         : ''
@@ -219,6 +237,85 @@ function drawPoints() {
   })
 
   pointOverlays.value = created
+}
+
+/**
+ * 当天行程连线：把当前显示的点位按列表顺序串起来（每天行程的走向一目了然）。
+ *  - props.points 就是激活日的点位（父组件 dayPoints 过滤后传入），顺序即排序结果
+ *  - 排除搜索预览点（temporary-search-place），它还没真正加入行程
+ *  - 不足 2 个点不画；画在点位 label 和用户路线的下层，虚线浅色不抢视觉
+ *  - 线形是 S 弯：每段走二次贝塞尔，控制点取段中垂线偏移（段长 18%）、
+ *    相邻段左右交替 —— 点位近似共线时也能看出弯曲的行进方向
+ */
+function drawDayLine() {
+  const map = mapInstance.value
+  const t = T.value
+  if (!map || !t) return
+
+  clearOverlays(dayLineOverlays)
+  const created: any[] = []
+  const pts = props.points.filter((p) => p.id !== 'temporary-search-place')
+  if (pts.length >= 2) {
+    try {
+      const path = buildCurvedDayPath(pts)
+      if (path.length >= 2) {
+        const line = new t.Polyline(
+          path.map(([lng, lat]) => new t.LngLat(lng, lat)),
+          {
+            color: '#6366f1',
+            weight: 4,
+            opacity: 0.8,
+            // 天地图 Polyline 支持 style: 'dashed'；不支持的版本会忽略该样式退化为实线，
+            // 靛蓝细线本身也足够和用户的彩色路线区分开
+            style: 'dashed',
+            lineJoin: 'round',
+            lineCap: 'round',
+          }
+        )
+        map.addOverLay(line)
+        created.push(line)
+      }
+    } catch (error) {
+      console.error('绘制行程连线失败:', error)
+    }
+  }
+  dayLineOverlays.value = created
+}
+
+/** 相邻段左右交替的垂线偏移比例（相对段长）：小弧度，随段长自然缩放 */
+const DAY_LINE_CURVE_RATIO = 0.12
+/** 每段贝塞尔曲线的采样点数：够平滑即可，节点太多徒增 SVG 体积 */
+const DAY_LINE_SAMPLES = 28
+
+/** 把点位序列变成 S 弯路径：每段一条二次贝塞尔（控制点在中垂线上，左右交替） */
+function buildCurvedDayPath(pts: Array<{ lng: number; lat: number }>): [number, number][] {
+  const path: [number, number][] = []
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i]
+    const b = pts[i + 1]
+    const dx = b.lng - a.lng
+    const dy = b.lat - a.lat
+    const len = Math.hypot(dx, dy)
+    if (len === 0) continue
+    // 段的单位法向量（垂直于行进方向）
+    const nx = -dy / len
+    const ny = dx / len
+    // 控制点：段中点沿法向量偏移（比例小弧度），相邻段左右交替 → 整条链呈柔和的 S 形波浪
+    const side = i % 2 === 0 ? 1 : -1
+    const off = len * DAY_LINE_CURVE_RATIO * side
+    const cx = (a.lng + b.lng) / 2 + nx * off
+    const cy = (a.lat + b.lat) / 2 + ny * off
+    // 二次贝塞尔采样；段间共享端点，跳过每段起点避免重复节点
+    for (let s = i === 0 ? 0 : 1; s <= DAY_LINE_SAMPLES; s++) {
+      const t = s / DAY_LINE_SAMPLES
+      const mt = 1 - t
+      path.push([
+        mt * mt * a.lng + 2 * mt * t * cx + t * t * b.lng,
+        mt * mt * a.lat + 2 * mt * t * cy + t * t * b.lat,
+      ])
+    }
+  }
+  return path
 }
 
 function drawRoutes() {
@@ -585,26 +682,25 @@ async function initMap() {
     map.addEventListener('moveend', syncView)
     map.addEventListener('zoomend', syncView)
 
-    // 动画期间隐藏 Label —— 在 start 设 true,end 设 false。
-    // 不监听 move/zoom 中间态:中间态设的话还没进入缩放就会闪一帧。
-    // 设置 80ms 缓冲:zoomend 后 80ms 再恢复,让 SDK 的重投影彻底完成,
-    // 否则用户会看到"路线出现一瞬间 → 跐跐跐一下 → 稳定"。
-    const startAnim = () => {
+    // 缩放期间隐藏 Label —— zoomstart 设 true，zoomend 后 80ms（缓冲让 SDK 重投影
+    // 彻底完成）再恢复。缩放会改变 label 的像素尺寸/位置，不隐藏会"跐跐跐"跳。
+    //
+    // 平移（拖动）不再隐藏：label 跟着地图容器一起平移，位置不会失真，
+    // 隐藏反而让点位整段消失（用户反馈「拖动的时候点位消失了」）。
+    const startZoomAnim = () => {
       if (animTimer) clearTimeout(animTimer)
       animTimer = null
       isAnimating.value = true
     }
-    const endAnim = () => {
+    const endZoomAnim = () => {
       if (animTimer) clearTimeout(animTimer)
       animTimer = setTimeout(() => {
         isAnimating.value = false
         animTimer = null
       }, 80)
     }
-    map.addEventListener('movestart', startAnim)
-    map.addEventListener('zoomstart', startAnim)
-    map.addEventListener('moveend', endAnim)
-    map.addEventListener('zoomend', endAnim)
+    map.addEventListener('zoomstart', startZoomAnim)
+    map.addEventListener('zoomend', endZoomAnim)
 
     drawRoutes()
     drawPoints()
@@ -651,6 +747,7 @@ onBeforeUnmount(() => {
   document.removeEventListener('contextmenu', handleContextMenu, true)
   document.removeEventListener('click', onGlobalClickForHit, true)
   clearOverlays(pointOverlays)
+  clearOverlays(dayLineOverlays)
   clearOverlays(routeOverlays)
   clearOverlays(sharpTurnOverlays)
   clearOverlays(draftOverlays)
@@ -665,6 +762,8 @@ watch(() => props.draftPath, scheduleDrawDraft, { deep: true })
 watch(() => props.baseLayer, (v) => applyBaseLayer(v))
 // 选中点位 id 变化 → 只换边框样式，但仍要走完整重画（label 内容随选择变化）。
 watch(() => props.selectedPointId, () => scheduleDrawPoints())
+// 简洁名称模式切换 → 点位 label 结构不同，整组重画
+watch(() => props.simpleLabel, () => scheduleDrawPoints())
 // 选中路线 id 变化 → 重画路线（粗细/不透明度/距离标签样式都要换）。
 watch(() => props.selectedRouteId, () => scheduleDrawRoutes())
 

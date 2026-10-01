@@ -36,6 +36,8 @@ export interface MapPoint {
   dayId?: string
   /** 停留时长（分钟） */
   stayMinutes?: number
+  /** 是否已到达（老数据没有该字段，视为未到达） */
+  visited?: boolean
 }
 
 export interface TravelMapDay {

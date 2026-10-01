@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref, watch, computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useIsMobile } from '@/composables/useIsMobile'
 import {
@@ -48,10 +49,20 @@ const filter = reactive({
   uid: '',
   tool_url: '',
   source: '',
-  range: 'today' as '' | 'today' | '7d' | '30d' | 'all',
+  range: 'today' as '' | 'today' | 'week' | 'month' | 'all',
 })
 
+const route = useRoute()
+
+// 支持从仪表盘带 ?range=today|week|month 跳入预选时间维度；
+// 在下方 watch 注册前写入，避免触发重复查询
+const QUERY_RANGES = ['today', 'week', 'month', 'all']
+if (typeof route.query.range === 'string' && QUERY_RANGES.includes(route.query.range)) {
+  filter.range = route.query.range as typeof filter.range
+}
+
 // range → startDate / endDate 转换（YYYY-MM-DD，本地 UTC+8）
+// week/month 与仪表盘口径一致：本周一至今 / 本月 1 日至今
 const rangeToDates = (range: typeof filter.range): { startDate?: string; endDate?: string } => {
   if (range === '' || range === 'all') return {}
   const now = new Date()
@@ -66,12 +77,13 @@ const rangeToDates = (range: typeof filter.range): { startDate?: string; endDate
   if (range === 'today') {
     return { startDate: fmt(end), endDate: fmt(end) }
   }
-  if (range === '7d') {
-    const start = new Date(end.getTime() - 6 * 24 * 3600 * 1000)
+  if (range === 'week') {
+    const daysSinceMonday = (end.getDay() + 6) % 7
+    const start = new Date(end.getTime() - daysSinceMonday * 24 * 3600 * 1000)
     return { startDate: fmt(start), endDate: fmt(end) }
   }
-  if (range === '30d') {
-    const start = new Date(end.getTime() - 29 * 24 * 3600 * 1000)
+  if (range === 'month') {
+    const start = new Date(end.getFullYear(), end.getMonth(), 1)
     return { startDate: fmt(start), endDate: fmt(end) }
   }
   return {}
@@ -202,6 +214,28 @@ onMounted(() => {
   loadStats()
   loadList()
   loadToolsOptions()
+  // 从仪表盘带锚点跳入时（如 /admin/tool-usage?range=week#usage-detail）滚动到目标卡片。
+  // 路由 afterEach 有 RAF 钉顶，且统计卡 / TOP 榜异步渲染会持续改变上方高度，
+  // 因此轮询校正滚动位置，直到贴住锚点（scroll-mt-20 提供吸顶头部偏移）再停止
+  if (route.hash) {
+    const anchorId = route.hash.slice(1)
+    let checks = 0
+    let stable = 0
+    const tick = () => {
+      checks += 1
+      const el = document.getElementById(anchorId)
+      if (!el) return
+      const offset = el.getBoundingClientRect().top
+      if (Math.abs(offset - 80) > 6) {
+        stable = 0
+        el.scrollIntoView({ block: 'start' })
+      } else if (++stable >= 2) {
+        return
+      }
+      if (checks < 16) setTimeout(tick, 250)
+    }
+    setTimeout(tick, 150)
+  }
 })
 </script>
 
@@ -350,8 +384,8 @@ onMounted(() => {
       <el-empty v-else description="暂无数据" :image-size="60" />
     </el-card>
 
-    <!-- 筛选 + 明细表 -->
-    <el-card shadow="never" class="!rounded-xl">
+    <!-- 筛选 + 明细表（仪表盘"工具使用次数"跳转锚点，scroll-mt-20 避开吸顶头部） -->
+    <el-card id="usage-detail" shadow="never" class="!rounded-xl scroll-mt-20">
       <template #header>
         <div class="flex items-center justify-between">
           <span class="font-medium text-ink-900">使用明细</span>
@@ -402,8 +436,8 @@ onMounted(() => {
 
         <el-radio-group v-model="filter.range">
           <el-radio-button value="today">今天</el-radio-button>
-          <el-radio-button value="7d">7 天</el-radio-button>
-          <el-radio-button value="30d">30 天</el-radio-button>
+          <el-radio-button value="week">本周</el-radio-button>
+          <el-radio-button value="month">本月</el-radio-button>
           <el-radio-button value="all">全部</el-radio-button>
         </el-radio-group>
 

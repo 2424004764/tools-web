@@ -227,67 +227,127 @@ const handleBatchDelete = async () => {
   }
 }
 
-/** 批量打包下载：选中合集的所有图走 image-proxy 拉回来，JSZip 打包成 zip 下载。
- *  拉图并发 4，单张失败跳过并计数，最后统一提示。 */
+// ============ 下载 ============
+// 单图下载中的 image id 集合 / 合集打包下载中的 group id 集合（按钮 loading 用）
+const downloadingImageIds = reactive(new Set<number>())
+const downloadingGroupIds = reactive(new Set<number>())
+
+/** 单图下载：R2 直链是跨域的，a[download] 不生效，统一走 image-proxy 拉回 blob 再触发保存 */
+const handleDownloadImage = async (img: AiCreationImage) => {
+  if (!img?.media_url || downloadingImageIds.has(img.id)) return
+  downloadingImageIds.add(img.id)
+  try {
+    const resp = await fetch(`/api/image-proxy?url=${encodeURIComponent(img.media_url)}`)
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+    const blob = await resp.blob()
+    const objUrl = URL.createObjectURL(blob)
+    const ext = extFromUrlOrType(img.media_url)
+    autoDown(objUrl, safeZipFilename(img.filename || `${img.id}.${ext}`))
+    setTimeout(() => URL.revokeObjectURL(objUrl), 1000)
+  } catch (e: any) {
+    console.error('[my-ai-creations] download image error:', e)
+    ElMessage.error('下载失败：' + (e?.message || '未知错误'))
+  } finally {
+    downloadingImageIds.delete(img.id)
+  }
+}
+
+/** 把若干合集的全部图片经 image-proxy 拉回，JSZip 打包成 zip 触发下载。
+ *  拉图并发 4，单张失败跳过并计数；一张都没拉到时提示并返回 null。
+ *  单个合集不建子文件夹，多个合集时每个合集一个子文件夹。 */
+const downloadGroupsAsZip = async (
+  selGroups: AiCreationGroup[],
+  zipName: string,
+): Promise<{ done: number; failed: number } | null> => {
+  const zip = new JSZip()
+  // 组装任务列表：[folder, fileName, url]
+  type ZipTask = { folder: JSZip | null; name: string; url: string }
+  const tasks: ZipTask[] = []
+  const useFolders = selGroups.length > 1
+  for (const g of selGroups) {
+    // 文件夹名：组 id + 标题片段；去掉文件系统非法字符
+    const safeTitle = (groupTitle(g) || '').replace(/[\\/:*?"<>|\s]+/g, '_').slice(0, 30)
+    const folder = useFolders ? zip.folder(`${g.id}-${safeTitle || 'untitled'}`) : zip
+    g.images.forEach((img) => {
+      const ext = extFromUrlOrType(img.media_url)
+      const filename = safeZipFilename(img.filename || `${img.id}.${ext}`)
+      tasks.push({ folder, name: filename, url: img.media_url })
+    })
+  }
+  if (tasks.length === 0) {
+    ElMessage.warning('没有可下载的图片')
+    return null
+  }
+  let done = 0
+  let failed = 0
+  // 简易并发池：4 路并发拉图
+  const queue = [...tasks]
+  const worker = async () => {
+    while (queue.length > 0) {
+      const t = queue.shift()!
+      try {
+        const resp = await fetch(`/api/image-proxy?url=${encodeURIComponent(t.url)}`)
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+        const blob = await resp.blob()
+        t.folder?.file(t.name, blob)
+        done++
+      } catch {
+        failed++
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: 4 }, worker))
+  if (done === 0) {
+    ElMessage.error('图片全部拉取失败，无法打包')
+    return null
+  }
+  const blob = await zip.generateAsync({ type: 'blob' })
+  const objUrl = URL.createObjectURL(blob)
+  autoDown(objUrl, zipName)
+  setTimeout(() => URL.revokeObjectURL(objUrl), 1000)
+  return { done, failed }
+}
+
+/** 批量打包下载：选中合集的所有图打包成一个 zip 下载 */
 const handleBatchDownload = async () => {
   const ids = Array.from(selectedGroupIds)
   if (ids.length === 0 || batchDownloading.value) return
   const selGroups = groups.value.filter((g) => ids.includes(g.id))
-  const zip = new JSZip()
   batchDownloading.value = true
   try {
-    // 组装任务列表：[folderName, fileName, url]
-    type ZipTask = { folder: JSZip | null; name: string; url: string }
-    const tasks: ZipTask[] = []
-    for (const g of selGroups) {
-      // 文件夹名：组 id + 标题片段；去掉文件系统非法字符
-      const safeTitle = (groupTitle(g) || '').replace(/[\\/:*?"<>|\s]+/g, '_').slice(0, 30)
-      const folder = zip.folder(`${g.id}-${safeTitle || 'untitled'}`)
-      g.images.forEach((img) => {
-        const ext = extFromUrlOrType(img.media_url)
-        const filename = safeZipFilename(img.filename || `${img.id}.${ext}`)
-        tasks.push({ folder, name: filename, url: img.media_url })
-      })
-    }
-    if (tasks.length === 0) {
-      ElMessage.warning('所选合集没有可下载的图片')
-      return
-    }
-    let done = 0
-    let failed = 0
-    // 简易并发池：4 路并发拉图
-    const queue = [...tasks]
-    const worker = async () => {
-      while (queue.length > 0) {
-        const t = queue.shift()!
-        try {
-          const resp = await fetch(`/api/image-proxy?url=${encodeURIComponent(t.url)}`)
-          if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-          const blob = await resp.blob()
-          t.folder?.file(t.name, blob)
-          done++
-        } catch {
-          failed++
-        }
-      }
-    }
-    await Promise.all(Array.from({ length: 4 }, worker))
-    if (done === 0) {
-      ElMessage.error('图片全部拉取失败，无法打包')
-      return
-    }
-    const blob = await zip.generateAsync({ type: 'blob' })
-    const objUrl = URL.createObjectURL(blob)
-    autoDown(objUrl, `ai-creations-${new Date().toISOString().slice(0, 10)}.zip`)
-    setTimeout(() => URL.revokeObjectURL(objUrl), 1000)
-    ElMessage.success(
-      failed > 0 ? `已打包 ${done} 张图（${failed} 张拉取失败已跳过）` : `已打包 ${done} 张图`,
+    const res = await downloadGroupsAsZip(
+      selGroups,
+      `ai-creations-${new Date().toISOString().slice(0, 10)}.zip`,
     )
+    if (res) {
+      ElMessage.success(
+        res.failed > 0
+          ? `已打包 ${res.done} 张图（${res.failed} 张拉取失败已跳过）`
+          : `已打包 ${res.done} 张图`,
+      )
+    }
   } catch (e: any) {
     console.error('[my-ai-creations] batch download error:', e)
     ElMessage.error('打包下载失败：' + (e?.message || '未知错误'))
   } finally {
     batchDownloading.value = false
+  }
+}
+
+/** 合集卡片上的下载：多图打包成该合集的 zip，单图直接下载那张图 */
+const handleGroupDownload = async (g: AiCreationGroup) => {
+  if (!g || downloadingGroupIds.has(g.id)) return
+  downloadingGroupIds.add(g.id)
+  try {
+    if (g.images.length > 1) {
+      const safeTitle = (groupTitle(g) || '').replace(/[\\/:*?"<>|\s]+/g, '_').slice(0, 30) || 'untitled'
+      await downloadGroupsAsZip([g], `ai-creations-${g.id}-${safeTitle}.zip`)
+    } else {
+      const img = g.images[0] ?? (g.cover ? coverAsImage(g.cover) : null)
+      if (img) await handleDownloadImage(img)
+    }
+  } finally {
+    downloadingGroupIds.delete(g.id)
   }
 }
 
@@ -1248,6 +1308,19 @@ onUnmounted(() => {
                     </svg>
                     复制URL
                   </button>
+                  <!-- 下载这张图（image-proxy 拉原图，跨域直链 a[download] 不生效） -->
+                  <button
+                    type="button"
+                    class="text-xs px-2 py-1 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-indigo-300 hover:text-indigo-600 transition-all flex items-center gap-1"
+                    :disabled="downloadingImageIds.has(item.image.id)"
+                    title="下载这张图"
+                    @click="handleDownloadImage(item.image)"
+                  >
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    {{ downloadingImageIds.has(item.image.id) ? '下载中…' : '下载' }}
+                  </button>
                   <!-- 发送至「图片切割」：单图卡片没有画廊/详情弹窗入口，操作栏直接给一个 -->
                   <button
                     type="button"
@@ -1381,18 +1454,32 @@ onUnmounted(() => {
                     <span v-if="deletingImageIds.has(img.id)">…</span>
                     <span v-else>×</span>
                   </button>
-                  <!-- 左下角复制 URL 按钮：复制这张图的 media_url -->
-                  <button
-                    type="button"
-                    class="mac-img-copy absolute bottom-1 left-1 text-[10px] px-1.5 py-0.5 rounded bg-black/55 text-white border border-gray-200/40 backdrop-blur hover:bg-indigo-500 active:scale-95 transition-all z-10 flex items-center gap-0.5 opacity-0 group-hover/img:opacity-100"
-                    title="复制这张图的 URL"
-                    @click.stop="copyImageUrl(img.media_url)"
-                  >
-                    <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2v-2m-6-2h8a2 2 0 002-2V5a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                    复制URL
-                  </button>
+                  <!-- 左下角操作：复制 URL + 下载这张图（hover 才显示，触屏常显） -->
+                  <div class="absolute bottom-1 left-1 flex items-center gap-1 z-10">
+                    <button
+                      type="button"
+                      class="mac-img-copy text-[10px] px-1.5 py-0.5 rounded bg-black/55 text-white border border-gray-200/40 backdrop-blur hover:bg-indigo-500 active:scale-95 transition-all flex items-center gap-0.5 opacity-0 group-hover/img:opacity-100"
+                      title="复制这张图的 URL"
+                      @click.stop="copyImageUrl(img.media_url)"
+                    >
+                      <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2v-2m-6-2h8a2 2 0 002-2V5a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                      复制URL
+                    </button>
+                    <button
+                      type="button"
+                      class="mac-img-download text-[10px] px-1.5 py-0.5 rounded bg-black/55 text-white border border-gray-200/40 backdrop-blur hover:bg-indigo-500 active:scale-95 transition-all flex items-center gap-0.5 opacity-0 group-hover/img:opacity-100"
+                      :title="downloadingImageIds.has(img.id) ? '下载中…' : '下载这张图'"
+                      :disabled="downloadingImageIds.has(img.id)"
+                      @click.stop="handleDownloadImage(img)"
+                    >
+                      <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      {{ downloadingImageIds.has(img.id) ? '下载中' : '下载' }}
+                    </button>
+                  </div>
                   <!-- 右下角认领操作按钮：打开认领弹窗 -->
                   <button
                     type="button"
@@ -1656,6 +1743,22 @@ onUnmounted(() => {
                       <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2v-2m-6-2h8a2 2 0 002-2V5a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                     </svg>
                     复制URL
+                  </button>
+                  <!-- 下载：多图合集打包 zip，单图直接下载；批量模式下隐藏（顶部批量条已有打包入口） -->
+                  <button
+                    v-if="!batchMode && item.group.cover"
+                    type="button"
+                    class="text-xs px-2 py-1 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-indigo-300 hover:text-indigo-600 transition-all flex items-center gap-1"
+                    :disabled="downloadingGroupIds.has(item.group.id)"
+                    :title="item.group.image_count > 1 ? '把该合集全部图片打包成 zip 下载' : '下载这张图'"
+                    @click="handleGroupDownload(item.group)"
+                  >
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    {{ downloadingGroupIds.has(item.group.id)
+                      ? (item.group.image_count > 1 ? '打包中…' : '下载中…')
+                      : (item.group.image_count > 1 ? '打包下载' : '下载') }}
                   </button>
                   <!-- 发送至「图片切割」：单图合集点图直接进全屏 viewer，没有画廊/详情里的分割入口，操作栏补一个；
                        多图合集在画廊里有每张图的分割按钮，这里不重复显示 -->
@@ -1933,7 +2036,7 @@ onUnmounted(() => {
 
           <!-- 固定操作栏 -->
           <div class="shrink-0 border-t border-gray-100 p-5 bg-white">
-            <div class="flex gap-2">
+            <div class="flex flex-wrap gap-2">
               <el-button
                 type="primary"
                 size="small"
@@ -1949,6 +2052,18 @@ onUnmounted(() => {
                 @click="copyImageUrl(selectedImage.media_url)"
               >
                 复制链接
+              </el-button>
+              <!-- 下载当前主图：走 image-proxy 拉原图 -->
+              <el-button
+                v-if="selectedImage"
+                size="small"
+                type="primary"
+                plain
+                class="!flex-1"
+                :loading="downloadingImageIds.has(selectedImage.id)"
+                @click="handleDownloadImage(selectedImage)"
+              >
+                下载图片
               </el-button>
               <!-- 发送至「图片切割」：跟画廊里的 hover 入口功能一致，
                    这里放在详情面板让用户在不打开画廊时也能一键跳转 -->
@@ -2125,19 +2240,34 @@ onUnmounted(() => {
                 {{ idx + 1 }}/{{ galleryImages.length }}
               </span>
               <span v-if="img.filename" class="absolute bottom-1.5 left-1.5 max-w-[calc(100%-3rem)] truncate bg-black/55 text-white text-[10px] px-1.5 py-0.5 rounded backdrop-blur pointer-events-none" :title="img.filename">{{ img.filename }}</span>
-              <!-- 复制 URL 按钮：跟在 i/N 角标右侧，hover 才显示 -->
-              <button
-                type="button"
-                class="mac-img-copy absolute top-1.5 left-10 px-1.5 py-0.5 rounded bg-black/55 text-white text-[10px] font-medium backdrop-blur hover:bg-indigo-600 opacity-0 group-hover/img:opacity-100 transition-opacity inline-flex items-center gap-1"
-                :title="`复制第 ${idx + 1} 张的 URL`"
-                :aria-label="`复制第 ${idx + 1} 张的 URL`"
-                @click.stop="copyImageUrl(img.media_url)"
-              >
-                <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2v-2m-6-2h8a2 2 0 002-2V5a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-                <span>复制URL</span>
-              </button>
+              <!-- 复制 URL / 下载按钮：跟在 i/N 角标右侧，hover 才显示 -->
+              <div class="absolute top-1.5 left-10 flex items-center gap-1">
+                <button
+                  type="button"
+                  class="mac-img-copy px-1.5 py-0.5 rounded bg-black/55 text-white text-[10px] font-medium backdrop-blur hover:bg-indigo-600 opacity-0 group-hover/img:opacity-100 transition-opacity inline-flex items-center gap-1"
+                  :title="`复制第 ${idx + 1} 张的 URL`"
+                  :aria-label="`复制第 ${idx + 1} 张的 URL`"
+                  @click.stop="copyImageUrl(img.media_url)"
+                >
+                  <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2v-2m-6-2h8a2 2 0 002-2V5a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  <span>复制URL</span>
+                </button>
+                <button
+                  type="button"
+                  class="mac-img-download px-1.5 py-0.5 rounded bg-black/55 text-white text-[10px] font-medium backdrop-blur hover:bg-indigo-600 opacity-0 group-hover/img:opacity-100 transition-opacity inline-flex items-center gap-1"
+                  :title="`下载第 ${idx + 1} 张`"
+                  :aria-label="`下载第 ${idx + 1} 张`"
+                  :disabled="downloadingImageIds.has(img.id)"
+                  @click.stop="handleDownloadImage(img)"
+                >
+                  <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  <span>{{ downloadingImageIds.has(img.id) ? '下载中' : '下载' }}</span>
+                </button>
+              </div>
               <!-- 认领按钮：左下角，跟 i/N 角标错开避免重叠。
                    跟其它 hover 按钮一样：触屏上 @media (hover: none) 让按钮始终可见。
                    状态显示：未认领灰色描边 + 「认领」；已认领蓝色填充 + 「认领(N)」。 -->
@@ -2354,6 +2484,9 @@ onUnmounted(() => {
     opacity: 0.95 !important;
   }
   .mac-img-copy {
+    opacity: 0.9 !important;
+  }
+  .mac-img-download {
     opacity: 0.9 !important;
   }
   /* 卡片提示词上的复制按钮：触屏没有 hover，常显 */

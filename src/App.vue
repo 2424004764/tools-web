@@ -29,6 +29,15 @@ const RecentToolsFab = defineAsyncComponent({
   loader: () => import('@/components/Common/RecentToolsFab.vue'),
   delay: 100,
 })
+// 异步加载：命令面板（Ctrl+K 快速搜索 / AI 找工具）与意见反馈弹窗（fixed 定位）
+const CommandPalette = defineAsyncComponent({
+  loader: () => import('@/components/Common/CommandPalette.vue'),
+  delay: 100,
+})
+const FeedbackDialog = defineAsyncComponent({
+  loader: () => import('@/components/Common/FeedbackDialog.vue'),
+  delay: 100,
+})
 
 import { useRoute } from 'vue-router';
 import Top from '~icons/ep/top'
@@ -142,6 +151,10 @@ const isMeCreditsPage = computed(() => {
 
     <!-- 最近使用悬浮按钮 -->
     <RecentToolsFab />
+
+    <!-- 命令面板（Ctrl+K）与意见反馈弹窗：后台页与 OAuth 授权页不挂载 -->
+    <CommandPalette v-if="!isAdminPage && !isOAuthAuthorizePage" />
+    <FeedbackDialog v-if="!isAdminPage && !isOAuthAuthorizePage" />
 
     <!-- 回到顶部 -->
     <transition name="backtop-fade">

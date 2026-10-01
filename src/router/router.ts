@@ -714,7 +714,7 @@ export const constantRoute = [
   },
   {
     path: '/ai-outfit/history',
-    component: () => import('@/components/Tools/AiOutfit/GenerationHistoryPage.vue'),
+    component: () => import('@/components/Tools/AiOutfit/AiOutfitHistoryPage.vue'),
     name: 'AiOutfitHistory',
     meta: {
       title: '我的穿搭生成历史',
@@ -1961,6 +1961,16 @@ export const constantRoute = [
           title: '友链审核',
           keywords: '后台友情链接,友链审核',
           description: '审核用户提交的友情链接，通过后展示在全站页脚',
+        },
+      },
+      {
+        path: 'feedback',
+        component: () => import('@/components/Admin/AdminFeedback.vue'),
+        name: 'adminFeedback',
+        meta: {
+          title: '意见反馈',
+          keywords: '后台意见反馈,用户反馈,需求池',
+          description: '查看用户提交的反馈与建议，标记处理状态，形成需求池',
         },
       },
       {

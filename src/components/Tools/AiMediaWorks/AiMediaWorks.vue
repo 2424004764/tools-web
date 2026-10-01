@@ -87,7 +87,8 @@ const closeDetail = () => {
 // ============ 加载 ============
 const loadCategories = async () => {
   try {
-    categories.value = await fetchAiMediaCategories()
+    // 分类计数跟随当前类型筛选，避免"图片 tab 下分类显示 707 但列表为空"的误导
+    categories.value = await fetchAiMediaCategories(activeType.value || undefined)
   } catch (e) {
     // 失败不阻塞
   }
@@ -131,6 +132,16 @@ const handleCategoryChange = (name: string) => {
 const handleTypeChange = (t: '' | 'image' | 'video') => {
   activeType.value = t
   pagination.value.page = 1
+  loadList()
+  loadCategories() // 类型变了，分类计数同步刷新
+}
+
+// 清空筛选并落到指定类型（默认回到全部）
+const resetFilters = (type: '' | 'image' | 'video' = '') => {
+  activeCategory.value = ''
+  activeType.value = type
+  pagination.value.page = 1
+  loadCategories()
   loadList()
 }
 
@@ -251,6 +262,50 @@ const typeTabs: { value: '' | 'image' | 'video'; label: string; icon: string }[]
   { value: 'video', label: '视频', icon: '🎬' },
 ]
 
+// 每个 tab 上直接展示该类型的作品总数，一眼看出某类型有没有数据
+const tabCount = (t: '' | 'image' | 'video') => {
+  if (t === '') return totalCounts.value.total
+  return t === 'image' ? totalCounts.value.image : totalCounts.value.video
+}
+
+// 空状态文案：优先解释"某类型整体为空"的情况
+const emptyText = computed(() => {
+  if (activeType.value === 'image') {
+    return totalCounts.value.image === 0
+      ? '暂无图片作品，当前全部为视频作品'
+      : '该分类下暂无图片作品'
+  }
+  if (activeType.value === 'video') {
+    return totalCounts.value.video === 0
+      ? '暂无视频作品，当前全部为图片作品'
+      : '该分类下暂无视频作品'
+  }
+  return activeCategory.value ? '该分类下暂无作品' : '暂无作品'
+})
+
+// 空状态按钮：当前类型整体为空而另一类型有数据时，一键切过去
+const emptyActionText = computed(() => {
+  if (activeType.value === 'image' && totalCounts.value.image === 0 && totalCounts.value.video > 0)
+    return '查看视频作品'
+  if (activeType.value === 'video' && totalCounts.value.video === 0 && totalCounts.value.image > 0)
+    return '查看图片作品'
+  return '查看全部作品'
+})
+
+const handleEmptyAction = () => {
+  if (activeType.value === 'image' && totalCounts.value.image === 0 && totalCounts.value.video > 0) {
+    resetFilters('video')
+  } else if (
+    activeType.value === 'video' &&
+    totalCounts.value.video === 0 &&
+    totalCounts.value.image > 0
+  ) {
+    resetFilters('image')
+  } else {
+    resetFilters('')
+  }
+}
+
 const currentCategoryName = computed(() => {
   if (!activeCategory.value) return '全部分类'
   const c = categories.value.find((c) => c.name === activeCategory.value)
@@ -330,6 +385,7 @@ function openOriginal(item: any) {
             @click="handleTypeChange(t.value)"
           >
             <span class="mr-1">{{ t.icon }}</span>{{ t.label }}
+            <span class="opacity-70 ml-0.5 tabular-nums">{{ tabCount(t.value) }}</span>
           </button>
 
           <span class="ml-auto text-xs text-gray-400">
@@ -387,7 +443,14 @@ function openOriginal(item: any) {
           class="py-16 text-center text-gray-400"
         >
           <div class="text-5xl mb-2">📭</div>
-          <p>暂无作品</p>
+          <p>{{ emptyText }}</p>
+          <button
+            v-if="activeType || activeCategory"
+            class="mt-4 px-4 py-1.5 rounded-lg text-sm bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors"
+            @click="handleEmptyAction"
+          >
+            {{ emptyActionText }}
+          </button>
         </div>
 
         <div
@@ -531,24 +594,24 @@ function openOriginal(item: any) {
       </div>
     </div>
 
-    <!-- 详情弹窗 -->
+    <!-- 详情弹窗：居中弹窗，媒体大图在上占满，说明放到下方 -->
     <el-dialog
       v-model="detailVisible"
       :show-close="false"
-      width="min(960px, 92vw)"
+      width="min(1100px, 94vw)"
       align-center
       destroy-on-close
-      class="aimw-dialog !p-0"
+      class="aimw-dialog"
       @close="closeDetail"
     >
       <div
         v-if="selected"
         v-loading="detailLoading"
-        class="relative flex flex-col md:flex-row h-[82vh] md:h-[86vh] overflow-hidden"
+        class="relative flex flex-col h-[82vh] md:h-[86vh] overflow-hidden bg-white"
       >
-        <!-- 媒体区：关闭按钮悬浮在自己右上角，避免在桌面布局下压住信息区的类型标签 -->
-        <div class="md:flex-1 bg-black flex items-center justify-center shrink-0 relative">
-          <!-- 关闭按钮（移动端必须一眼可见、可点） -->
+        <!-- 媒体区：占满剩余全部空间，图片/视频 object-contain 尽量大 -->
+        <div class="flex-1 min-h-0 bg-black flex items-center justify-center relative">
+          <!-- 关闭按钮悬浮在媒体区右上角 -->
           <button type="button" class="aimw-close" aria-label="关闭" @click="closeDetail">
             <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
               <path
@@ -565,7 +628,7 @@ function openOriginal(item: any) {
             v-if="selected.media_type === 'image'"
             :src="selected.media_url"
             :alt="selected.prompt"
-            class="max-w-full max-h-[45vh] md:max-h-[86vh] object-contain"
+            class="w-full h-full object-contain"
             @error="onImageError"
           />
           <video
@@ -579,30 +642,35 @@ function openOriginal(item: any) {
             webkit-playsinline
             @loadeddata="onDetailVideoReady"
             @volumechange="onDetailVolumeChange"
-            class="max-w-full max-h-[45vh] md:max-h-[86vh]"
+            class="w-full h-full object-contain"
           />
         </div>
 
-        <!-- 信息区：拆成「可滚动正文 + 固定底部操作栏」，避免按钮被挤出可视区 -->
-        <div class="md:w-80 shrink-0 bg-white flex-1 min-h-0 flex flex-col">
+        <!-- 说明区：固定在媒体下方，最多占 1/3 左右高度，内部滚动 -->
+        <div
+          class="shrink-0 border-t border-gray-100 bg-white flex flex-col max-h-[42vh] md:max-h-[34vh]"
+        >
           <!-- 滚动正文 -->
-          <div class="flex-1 min-h-0 overflow-y-auto p-5">
-            <div class="flex flex-wrap items-center gap-2 mb-3">
+          <div class="flex-1 min-h-0 overflow-y-auto p-4 md:p-5">
+            <div class="flex flex-wrap items-center gap-2 mb-2">
               <el-tag size="small" type="primary" effect="plain">{{ selected.category }}</el-tag>
               <el-tag v-if="selected.media_type === 'video'" size="small" type="warning" effect="plain">
                 🎬 视频
               </el-tag>
               <el-tag v-else size="small" type="success" effect="plain">🖼 图片</el-tag>
+              <span v-if="selected.model_name" class="text-xs text-indigo-500">
+                {{ selected.model_name }}
+              </span>
             </div>
 
-            <h3 class="text-sm font-semibold text-gray-800 mb-2">提示词（Prompt）</h3>
+            <h3 class="text-xs font-semibold text-gray-500 mb-1.5">提示词（Prompt）</h3>
             <div
-              class="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-lg p-3 mb-4 whitespace-pre-wrap break-words"
+              class="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-lg p-3 mb-3 whitespace-pre-wrap break-words"
             >
               {{ selected.prompt }}
             </div>
 
-            <el-descriptions :column="1" border size="small" class="mb-4">
+            <el-descriptions :column="isMobile ? 1 : 3" border size="small">
               <el-descriptions-item v-if="selected.model_name" label="模型">
                 {{ selected.model_name }}
               </el-descriptions-item>
@@ -624,28 +692,20 @@ function openOriginal(item: any) {
             </el-descriptions>
           </div>
 
-          <!-- 固定操作栏：始终位于信息区底部，不随正文滚动 -->
-          <div class="shrink-0 border-t border-gray-100 p-5 bg-white">
-            <div class="flex gap-2">
-              <el-button
-                type="primary"
-                size="small"
-                class="!flex-1"
-                @click="copyLink(selected)"
-              >
+          <!-- 固定操作栏：始终位于说明区底部，不随正文滚动 -->
+          <div class="shrink-0 border-t border-gray-100 px-4 md:px-5 py-3 bg-white">
+            <div class="flex items-center gap-2">
+              <el-button type="primary" size="small" @click="copyLink(selected)">
                 复制链接
               </el-button>
-              <el-button
-                size="small"
-                class="!flex-1"
-                @click="openOriginal(selected)"
-              >
+              <el-button size="small" @click="openOriginal(selected)">
                 打开原图
               </el-button>
+              <span class="ml-auto text-xs text-gray-400 hidden md:inline">按 ESC 关闭</span>
+              <el-button size="small" class="md:!hidden" @click="closeDetail">
+                关闭
+              </el-button>
             </div>
-            <el-button class="!w-full !ml-0 mt-2 md:!hidden" size="small" @click="closeDetail">
-              关闭
-            </el-button>
           </div>
         </div>
       </div>

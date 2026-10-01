@@ -17,6 +17,7 @@ import IconDataAnalysis from '~icons/ep/data-analysis'
 import IconTimer from '~icons/ep/timer'
 import IconLink from '~icons/ep/link'
 import IconChatDotRound from '~icons/ep/chat-dot-round'
+import IconPromotion from '~icons/ep/promotion'
 import IconSetting from '~icons/ep/setting'
 import IconNotebook from '~icons/ep/notebook'
 import IconKey from '~icons/ep/key'
@@ -77,6 +78,7 @@ const groups: MenuGroup[] = [
       { index: '/admin/blog', title: '博客管理', icon: IconNotebook },
       { index: '/admin/comments', title: '评论管理', icon: IconChatDotRound },
       { index: '/admin/friend-links', title: '友链审核', icon: IconLink },
+      { index: '/admin/feedback', title: '意见反馈', icon: IconPromotion },
     ],
   },
   {

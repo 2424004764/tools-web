@@ -3,6 +3,7 @@ import { ref, reactive, onMounted, computed, onUnmounted, nextTick } from 'vue'
 import Search from '~icons/ep/search'
 import IconMoon from '~icons/ep/moon'
 import IconSunny from '~icons/ep/sunny'
+import IconMagicStick from '~icons/ep/magic-stick'
 import { ElMessage } from 'element-plus'
 import { useToolsStore } from '@/store/modules/tools'
 import { useComponentStore } from '@/store/modules/component'
@@ -88,12 +89,30 @@ const searchParam = reactive({
 })
 
 //搜索工具
+const AI_OPTION_ID = -1 // 「AI 帮我找工具」伪条目 id，选中后打开命令面板的 AI 模式
+// el-select 选中后 v-model 会被覆盖为选项 id，这里单独记下用户输入的原文供 AI 搜索使用
+const lastSearchQuery = ref('')
 const searchTools = async (query: string) => {
   loading.value = true
   options.value = []
   if (query) {
+    lastSearchQuery.value = query
     searchParam.title = query
-    options.value = await toolsStore.getTools(searchParam)
+    const matched = await toolsStore.getTools(searchParam)
+    // 有关键词时固定追加一个「AI 帮我找工具」入口：自然语言需求在关键词搜索里很难命中
+    options.value = [
+      ...matched,
+      {
+        id: AI_OPTION_ID,
+        title: 'AI 帮我找工具',
+        desc: `让 AI 理解「${query}」并推荐合适工具`,
+        logo: '',
+        url: '',
+        cate: '',
+      } as ToolsInfo,
+    ]
+  } else {
+    lastSearchQuery.value = ''
   }
   loading.value = false
 }
@@ -114,6 +133,14 @@ const optionClick = (item: any) => {
 // 之前仅在 el-option 上挂 @click，键盘选中不会触发 DOM click 事件，因此回车无反应。
 const handleSelectChange = (selectedId: string | number | undefined | null) => {
   if (selectedId === undefined || selectedId === '' || selectedId === null) return
+  // 选中「AI 帮我找工具」：打开命令面板并直接以当前关键词发起 AI 搜索
+  if (String(selectedId) === String(AI_OPTION_ID)) {
+    const query = lastSearchQuery.value.trim()
+    searchParam.title = ''
+    options.value = []
+    componentStore.openCommandPalette({ mode: 'ai', query })
+    return
+  }
   const item = options.value.find((opt) => String(opt.id) === String(selectedId))
   if (!item) return
   optionClick(item)
@@ -258,7 +285,7 @@ onUnmounted(() => {
         </router-link>
       </div>
 
-      <div class="flex-1 min-w-0 w-full max-w-2xl mr-2 c-xs:mr-0">
+      <div class="flex-1 min-w-0 w-full max-w-2xl mr-2 c-xs:mr-0 flex items-center gap-2">
         <el-select
           v-model="searchParam.title"
           filterable
@@ -270,7 +297,7 @@ onUnmounted(() => {
           placeholder="输入关键词搜索，如文本、json、图片等"
           :remote-method="searchTools"
           :loading="loading"
-          class="w-full c-sm:ml-3"
+          class="w-full flex-1 min-w-0 c-sm:ml-3"
           size="large"
           @change="handleSelectChange"
         >
@@ -280,8 +307,29 @@ onUnmounted(() => {
             :label="item.title + ' - ' + item.desc"
             :value="item.id"
           >
+            <div
+              class="flex items-center gap-1.5"
+              :class="item.id === AI_OPTION_ID ? 'text-accent-600 font-medium' : ''"
+            >
+              <IconMagicStick
+                v-if="item.id === AI_OPTION_ID"
+                class="w-3.5 h-3.5 shrink-0"
+                aria-hidden="true"
+              />
+              <span class="truncate">{{ item.title }} - {{ item.desc }}</span>
+            </div>
           </el-option>
         </el-select>
+        <!-- 命令面板入口：Ctrl+K 快速搜索 / AI 找工具 -->
+        <button
+          type="button"
+          class="shrink-0 w-10 h-10 rounded-full bg-white dark:bg-surface-0 shadow-sm shadow-ink-950/5 border border-border-subtle flex items-center justify-center text-ink-500 hover:text-accent-600 hover:border-accent-300 transition-colors"
+          title="快速搜索 / AI 帮我找工具（Ctrl+K）"
+          aria-label="打开快速搜索或 AI 找工具"
+          @click="componentStore.openCommandPalette()"
+        >
+          <IconMagicStick class="w-5 h-5" aria-hidden="true" />
+        </button>
       </div>
     </div>
 

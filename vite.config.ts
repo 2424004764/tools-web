@@ -9,7 +9,6 @@ import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import ElementPlus from 'unplugin-element-plus/vite'
 import AutoImport from 'unplugin-auto-import/vite'
 import Icons from 'unplugin-icons/vite'
-import viteCompression from 'vite-plugin-compression'
 import { VitePWA } from 'vite-plugin-pwa'
 
 /**
@@ -307,21 +306,9 @@ export default defineConfig(({command, mode}) => {
         // 生成 icons.d.ts 类型声明，配合 vite-env.d.ts 的 ~icons/* shim 解决 TS 报错
         dts: 'src/types/auto-icons.d.ts',
       }),
-      // 仅生产环境压缩
-      ...(isProd ? [
-        viteCompression({
-          algorithm: 'brotliCompress',
-          threshold: 5120, // 5KB 以上才压缩
-          ext: '.br',
-          deleteOriginFile: false,
-        }),
-        viteCompression({
-          algorithm: 'gzip',
-          threshold: 5120,
-          ext: '.gz',
-          deleteOriginFile: false,
-        }),
-      ] : []),
+      // 预压缩文件（.gz/.br）已停止生成：Cloudflare Pages 边缘会自动做 gzip/brotli
+      // 压缩，_headers 里也没有引用预压缩文件的规则，生成了也是死重（每次部署多 ~490
+      // 个文件）。若将来迁到自建 nginx 等需要预压缩的环境再恢复 vite-plugin-compression。
     ],
     resolve: {
       alias: {
