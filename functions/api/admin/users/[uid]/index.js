@@ -52,6 +52,7 @@ async function handleGet(db, uid) {
     .prepare(
       `SELECT id, email, username, avatar, is_admin, is_disabled,
               disabled_reason, disabled_at, third_party_type,
+              (password IS NOT NULL AND password != '') AS has_password,
               created_at, last_login
        FROM user WHERE id = ?`,
     )

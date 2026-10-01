@@ -8,10 +8,13 @@ import IconStarFilled from '~icons/ep/star-filled'
 import IconStar from '~icons/ep/star'
 import IconClose from '~icons/ep/close'
 import IconTop from '~icons/ep/top'
+import IconRank from '~icons/ep/rank'
+import IconLoading from '~icons/ep/loading'
 import { useToolsStore } from '@/store/modules/tools'
 import { useUserStore } from '@/store/modules/user'
 import { useComponentStore } from '@/store/modules/component'
 import { useSpriteLogo } from '@/components/Tools/useSpriteLogo'
+import { useHotSort } from '@/composables/useHotSort'
 import { getCateIcon } from './cateIcons'
 import HotList from './HotList.vue'
 import { fetchRecentUsedTools } from '@/utils/tool-usage'
@@ -27,6 +30,8 @@ import { ElMessage } from 'element-plus'
 const toolsStore = useToolsStore()
 const userStore = useUserStore()
 const componentStore = useComponentStore()
+// 分类工具「按使用热度排序」（数据由接口在服务端排好序，前端只重排展示）
+const { hotLoading, isHot, toggleHot, applyHotSort } = useHotSort()
 const route = useRoute()
 const router = useRouter()
 
@@ -753,12 +758,30 @@ watch(() => toolsStore.cates.length, (newLen, oldLen) => {
           <component :is="getCateIcon(cate.title)" class="w-4 h-4" />
         </span>
         <h2 class="text-h3 font-bold m-0 text-ink-900">{{ cate.title }}</h2>
+        <!-- 按使用热度排序：点击切换 热度序 / 默认序（接口返回序） -->
+        <button
+          type="button"
+          class="h-7 px-3 rounded-full text-xs flex items-center gap-1 border cursor-pointer bg-transparent transition-colors shrink-0"
+          :class="
+            isHot(cate.id)
+              ? 'text-accent-600 border-accent-300 bg-accent-500/10'
+              : 'text-ink-500 border-border-default hover:text-accent-600 hover:border-accent-300'
+          "
+          :disabled="hotLoading && !isHot(cate.id)"
+          :title="isHot(cate.id) ? '已按使用次数从多到少排序，点击恢复默认排序' : '按使用次数从多到少排序'"
+          :aria-pressed="isHot(cate.id)"
+          @click="toggleHot(cate.id)"
+        >
+          <IconLoading v-if="hotLoading && !isHot(cate.id)" class="w-3.5 h-3.5 animate-spin" />
+          <IconRank v-else class="w-3.5 h-3.5" aria-hidden="true" />
+          {{ isHot(cate.id) ? '默认排序' : '按使用热度排序' }}
+        </button>
         <span class="text-xs text-ink-400 ml-auto">{{ cate.list?.length || 0 }} 个工具</span>
       </div>
       <!-- 工具卡片 -->
       <div class="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
         <router-link
-          v-for="item in cate.list"
+          v-for="item in applyHotSort(cate.id, cate.list)"
           :key="item.id"
           :to="item.url"
           class="group block"

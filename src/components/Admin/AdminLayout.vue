@@ -107,7 +107,7 @@ onUnmounted(() => {
     <!-- 主体：左 sidebar + 右 内容 -->
     <div class="flex">
       <aside
-        class="admin-sidebar hidden md:block w-60 shrink-0 border-r border-border-default bg-white dark:bg-surface-0 min-h-[calc(100vh-3.5rem)] sticky top-14 self-start"
+        class="admin-sidebar hidden md:block w-60 shrink-0 border-r border-border-default bg-white dark:bg-surface-0 h-[calc(100vh-3.5rem)] sticky top-14 self-start overflow-hidden"
       >
         <AdminSidebar />
       </aside>
@@ -118,6 +118,7 @@ onUnmounted(() => {
         direction="ltr"
         size="264px"
         :with-header="false"
+        :body-style="{ padding: 0, overflow: 'auto' }"
       >
         <AdminSidebar />
       </el-drawer>

@@ -66,6 +66,28 @@ export async function toggleAdminUserDisabled(
   })
 }
 
+export interface ResetUserPasswordResult {
+  id: string
+  updated: boolean
+  /** 服务端生成的随机密码（仅管理员留空由后端生成时返回，只展示一次） */
+  generated_password?: string
+}
+
+/**
+ * 重置用户密码（仅限邮箱+密码注册的用户）
+ * - password 留空时由后端生成 10 位随机密码并在返回体中返回一次
+ * - 第三方登录（Google 等）用户没有密码，后端会直接拒绝
+ */
+export async function resetAdminUserPassword(
+  uid: string,
+  password?: string,
+): Promise<ResetUserPasswordResult> {
+  const res = await functionsRequest.put(`/api/admin/users/${uid}/password`, {
+    password: password || '',
+  })
+  return res.data.data
+}
+
 export interface CreditLogsParams {
   page?: number
   pageSize?: number

@@ -6,6 +6,9 @@
 
 export const siteOrigin = 'https://tool.fologde.com'
 
+// 站点标题（中间件给博客详情页动态拼 title 用：`${post.title} | ${appTitle}`）
+export const appTitle = '一方工具箱'
+
 export default {
   '/timetran': { title: '时间戳转换工具 - Unix时间戳在线转日期时间 | 一方工具箱', keywords: '时间,日期转换时间戳,Unix时间戳', description: 'Unix时间戳转换可以把Unix时间转成北京时间。', ogUrl: 'https://tool.fologde.com/timetran/' },
   '/md5': { title: 'MD5在线加密工具 - 免费32位/16位MD5加密 | 一方工具箱', keywords: 'md5加密，md5在线加密，md5', description: '在线md5加密，一键生成md5加密字符串，可生成16位或32位md5加密字符串，md5双重加密', ogUrl: 'https://tool.fologde.com/md5/' },
@@ -80,6 +83,8 @@ export default {
   '/flashcards': { title: '闪卡记忆 - 间隔重复复习工具 | 一方工具箱', keywords: '闪卡,间隔重复,SRS,SM-2,记忆,认知,Anki,复习,卡片', description: 'Anki 风格间隔重复闪卡复习系统，自录入卡片、按 SM-2 算法调度到期复习，提升长期记忆效率。', ogUrl: 'https://tool.fologde.com/flashcards/' },
   '/ai-text-to-speech': { title: '文本转语音 - AI语音合成在线朗读 | 一方工具箱', keywords: '在线文本转语音,文本转语音,语音合成,AI语音', description: '提供在线免费无限次数的文本转语音服务', ogUrl: 'https://tool.fologde.com/ai-text-to-speech/' },
   '/about': { title: '关于本站 - 一方工具箱介绍 | 一方工具箱', keywords: '关于ranblogs,关于工具站', description: '', ogUrl: 'https://tool.fologde.com/about/' },
+  '/oauth/authorize': { title: '应用授权 - OAuth授权/统一登录 | 一方工具箱', keywords: 'OAuth授权,应用授权,统一登录', description: '授权第三方应用访问你的工具箱账号', ogUrl: 'https://tool.fologde.com/oauth/authorize/' },
+  '/oauth/docs': { title: 'OAuth2 统一登录接入文档 - OAuth2接入文档/子站统一登录 | 一方工具箱', keywords: 'OAuth2接入文档,子站统一登录,单点登录对接', description: '工具站 OAuth2 授权服务器子站接入指南：授权码模式、令牌刷新、PKCE 与用户资料接口', ogUrl: 'https://tool.fologde.com/oauth/docs/' },
   '/flip-clock': { title: '翻页时钟 - 全屏翻页动画桌面时钟 | 一方工具箱', keywords: '翻页时钟,flip clock,在线时钟,桌面时钟,翻页动画,时间显示', description: '精美翻页时钟，经典机械翻页动画效果，纯CSS实现流畅翻转动画，实时显示时间日期，支持移动端和PC端', ogUrl: 'https://tool.fologde.com/flip-clock/' },
   '/led-display': { title: 'LED弹屏 - LED滚动字幕走马灯工具 | 一方工具箱', keywords: 'LED显示屏,LED走马灯,滚动文字,在线LED,文字滚动', description: '在线 LED 显示屏工具，支持自定义文字内容、颜色、字号、滚动速度、发光效果和点阵背景，一键生成可分享的 LED 走马灯 URL。', ogUrl: 'https://tool.fologde.com/led-display/' },
   '/snake': { title: '贪吃蛇小游戏 - 经典贪吃蛇在线玩 | 一方工具箱', keywords: '贪吃蛇,小游戏,休闲游戏,键盘游戏', description: '经典贪吃蛇游戏，支持键盘控制，挑战你的反应速度', ogUrl: 'https://tool.fologde.com/snake/' },
@@ -169,4 +174,5 @@ export default {
   '/make24': { title: '24点 - 算24点四则运算游戏 | 一方工具箱', keywords: '24点,算24,24点游戏,24 point,数学游戏,口算,益智游戏,加减乘除,四则运算,算术,儿童数学', description: '经典 24 点（算 24）数学游戏：系统随机发 4 张牌，玩家用 +、-、×、÷ 和括号将结果算成 24。提供三档难度、连击记录、参考解法提示与本局历史，规则简单但挑战思维。', ogUrl: 'https://tool.fologde.com/make24/' },
   '/image-color-count': { title: '图片取色 - 颜色数量统计/色板提取 | 一方工具箱', keywords: '图片颜色统计,颜色数量,取色器,调色板,图片分析,palette,color count', description: '在线统计一张图片中出现了多少种不同的颜色，支持采样步长与颜色量化（每通道 bit），按出现次数展示 Top N 调色板，可导出 JSON / CSV，全部在浏览器本地完成。', ogUrl: 'https://tool.fologde.com/image-color-count/' },
   '/world-records': { title: '世界之最 - 自然/地理/科技世界纪录大全 | 一方工具箱', keywords: '世界之最,世界纪录,吉尼斯,世界之最大全,地理之最,动物之最,科技之最,文化之最,自然之最', description: '在线世界之最大全工具，收录自然地理、国家、建筑、动物、植物、人体、科技、文化八大类的世界纪录数据，每条记录包含具体数值、所在地与背景介绍，支持关键词搜索与分类筛选。', ogUrl: 'https://tool.fologde.com/world-records/' },
+  '/blog': { title: '博客 - 技术博客/开发技巧 | 一方工具箱', keywords: '技术博客,开发技巧,工具教程,效率工具,在线工具博客', description: '工具站博客：开发技巧、工具使用教程与效率方法，边学边用，把工具用起来。', ogUrl: 'https://tool.fologde.com/blog/' },
 }

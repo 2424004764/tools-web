@@ -9,6 +9,8 @@ import {
   fetchUserCreditLogs,
   createAdminUser,
   deleteAdminUser,
+  resetAdminUserPassword,
+  type ResetUserPasswordResult,
 } from '@/api/admin/user'
 import type {
   AdminUser,
@@ -480,6 +482,69 @@ const createDialog = reactive({
   result: null as CreateUserResult | null,
 })
 
+// ============ 重置密码弹窗（仅邮箱+密码注册的用户） ============
+const resetPwdDialog = reactive({
+  visible: false,
+  uid: '',
+  userLabel: '',
+  password: '',
+  showPassword: false,
+  submitting: false,
+  result: null as ResetUserPasswordResult | null,
+})
+
+const resetPwdDialogDirty = computed(() => resetPwdDialog.password.length > 0)
+
+const beforeCloseResetPwdDialog = async (done: () => void) => {
+  if (resetPwdDialog.result) return done()
+  if (!resetPwdDialogDirty.value) return done()
+  try {
+    await ElMessageBox.confirm(
+      '已填写的新密码会丢失，确定关闭？',
+      '关闭确认',
+      { type: 'warning', confirmButtonText: '仍要关闭', cancelButtonText: '继续编辑' },
+    )
+    done()
+  } catch {
+    /* 取消 */
+  }
+}
+
+const openResetPwdDialog = (user: AdminUser) => {
+  resetPwdDialog.uid = user.id
+  resetPwdDialog.userLabel = user.username || user.email || user.id
+  resetPwdDialog.password = ''
+  resetPwdDialog.showPassword = false
+  resetPwdDialog.result = null
+  resetPwdDialog.visible = true
+}
+
+const fillResetGeneratedPassword = () => {
+  resetPwdDialog.password = generateLocalPassword(10)
+  resetPwdDialog.showPassword = true
+}
+
+const submitResetPwd = async () => {
+  if (!resetPwdDialog.uid) return
+  resetPwdDialog.submitting = true
+  try {
+    const result = await resetAdminUserPassword(
+      resetPwdDialog.uid,
+      resetPwdDialog.password || undefined,
+    )
+    resetPwdDialog.result = result
+    ElMessage.success('密码已重置')
+  } catch (err: any) {
+    ElMessage.error(err?.response?.data?.error || '重置失败')
+  } finally {
+    resetPwdDialog.submitting = false
+  }
+}
+
+const finishResetPwd = () => {
+  resetPwdDialog.visible = false
+}
+
 // 与 functions/api/admin/users/index.js::generatePassword 字符集/长度严格一致
 const generateLocalPassword = (len = 10): string => {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
@@ -796,6 +861,8 @@ const updateIsMobile = () => {
                 <li class="row-action-item" @click="openCreditDialog(row)">调整积分</li>
                 <li class="row-action-item" @click="openLogsDialog(row)">积分明细</li>
                 <li class="row-action-item" @click="openEditDialog(row)">改名</li>
+                <!-- 第三方登录（Google 等）用户没有密码，不提供后台改密入口 -->
+                <li v-if="row.has_password" class="row-action-item" @click="openResetPwdDialog(row)">改密</li>
                 <li v-if="!row.is_admin" class="row-action-item row-action-divider" @click="handleToggleDisabled(row)">
                   {{ row.is_disabled ? '启用' : '禁用' }}
                 </li>
@@ -1125,6 +1192,120 @@ const updateIsMobile = () => {
           @current-change="handleLogsPageChange"
         />
       </div>
+    </el-dialog>
+
+    <!-- 重置密码弹窗（仅邮箱+密码注册的用户） -->
+    <el-dialog
+      v-model="resetPwdDialog.visible"
+      :title="`重置密码 - ${resetPwdDialog.userLabel}`"
+      :width="isMobile ? '92vw' : '480px'"
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
+      :before-close="beforeCloseResetPwdDialog"
+    >
+      <template v-if="!resetPwdDialog.result">
+        <el-alert
+          type="warning"
+          title="重置后旧密码立即失效，请将新密码告知用户。"
+          :closable="false"
+          show-icon
+          class="!mb-4"
+        />
+        <el-form :label-width="isMobile ? '64px' : '90px'" class="!mt-2">
+          <el-form-item label="新密码">
+            <el-input
+              v-model="resetPwdDialog.password"
+              :type="resetPwdDialog.showPassword ? 'text' : 'password'"
+              placeholder="留空将自动生成 10 位随机密码"
+              maxlength="64"
+              clearable
+            >
+              <template #suffix>
+                <div class="flex items-center gap-1">
+                  <el-tooltip content="生成 10 位随机密码" placement="top">
+                    <el-button
+                      link
+                      size="small"
+                      :icon="Refresh"
+                      @click="fillResetGeneratedPassword"
+                    />
+                  </el-tooltip>
+                  <el-tooltip
+                    :content="resetPwdDialog.showPassword ? '隐藏密码' : '显示密码'"
+                    placement="top"
+                  >
+                    <el-button
+                      link
+                      size="small"
+                      :icon="resetPwdDialog.showPassword ? View : Hide"
+                      @click="resetPwdDialog.showPassword = !resetPwdDialog.showPassword"
+                    />
+                  </el-tooltip>
+                </div>
+              </template>
+            </el-input>
+            <div class="text-xs text-ink-500 mt-1">
+              仅邮箱 + 密码注册的用户支持改密；Google 等第三方登录用户没有密码，不显示此入口。
+            </div>
+          </el-form-item>
+        </el-form>
+      </template>
+
+      <template v-else>
+        <el-alert
+          type="success"
+          title="密码重置成功！请妥善保存以下新密码并告知用户。"
+          :closable="false"
+          show-icon
+          class="!mb-4"
+        />
+        <el-descriptions :column="1" border size="default">
+          <el-descriptions-item label="新密码">
+            <div class="flex items-center gap-2 flex-wrap">
+              <code class="text-sm font-mono text-rose-600 select-all">
+                {{ resetPwdDialog.result.generated_password || resetPwdDialog.password }}
+              </code>
+              <el-tag
+                v-if="resetPwdDialog.result.generated_password"
+                size="small"
+                type="warning"
+                effect="plain"
+              >服务端生成</el-tag>
+              <el-tag v-else size="small" type="info" effect="plain">管理员设置</el-tag>
+              <el-button
+                link
+                size="small"
+                type="primary"
+                @click="copyText(resetPwdDialog.result.generated_password || resetPwdDialog.password, '新密码')"
+              >
+                复制
+              </el-button>
+            </div>
+          </el-descriptions-item>
+        </el-descriptions>
+        <div
+          v-if="resetPwdDialog.result.generated_password"
+          class="text-xs text-danger-600 mt-3"
+        >
+          ⚠️ 此密码仅展示一次，关闭弹窗后无法再次查看，请立即复制并告知用户。
+        </div>
+      </template>
+
+      <template #footer>
+        <template v-if="!resetPwdDialog.result">
+          <el-button @click="resetPwdDialog.visible = false">取消</el-button>
+          <el-button
+            type="primary"
+            :loading="resetPwdDialog.submitting"
+            @click="submitResetPwd"
+          >
+            确认重置
+          </el-button>
+        </template>
+        <template v-else>
+          <el-button type="primary" @click="finishResetPwd">完成</el-button>
+        </template>
+      </template>
     </el-dialog>
 
     <!-- 创建用户弹窗 -->

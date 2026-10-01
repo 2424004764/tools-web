@@ -6,6 +6,7 @@ import { useRoute, useRouter } from 'vue-router'
 import IconGrid from '~icons/ep/grid'
 import IconArrowUp from '~icons/ep/arrow-up'
 import IconInfoFilled from '~icons/ep/info-filled'
+import IconNotebook from '~icons/ep/notebook'
 import { rtrim } from '@/utils/string'
 import { useToolsStore } from '@/store/modules/tools'
 import { useComponentStore } from '@/store/modules/component'
@@ -44,6 +45,9 @@ const isActiveCate = (id: number) => computedActive.value === `cate_${id}`
 const isAboutActive = computed(
   () => route.path === '/about' || route.path.startsWith('/userinfo'),
 )
+
+// 博客入口高亮：/blog 及其子页（列表/详情/写作）
+const isBlogActive = computed(() => route.path === '/blog' || route.path.startsWith('/blog/'))
 
 const closeDrawer = () => componentStore.setleftComDrawerStatus(false)
 
@@ -108,6 +112,11 @@ const gotoAnchor = async (anchor: string) => {
 const gotoAbout = () => {
   closeDrawer()
   router.push('/about')
+}
+
+const gotoBlog = () => {
+  closeDrawer()
+  router.push('/blog')
 }
 
 // 依据路由计算默认高亮分类
@@ -282,8 +291,25 @@ onMounted(async () => {
       </div>
     </el-scrollbar>
 
-    <!-- 底部固定：关于本站（波浪装饰从其后方透出） -->
+    <!-- 底部固定：博客 / 关于本站（波浪装饰从其后方透出） -->
     <div class="relative z-10 px-5 pb-5 pt-2 shrink-0">
+      <button
+        type="button"
+        class="group w-full flex items-center gap-3 h-10 px-3.5 rounded-full text-sm border-0 cursor-pointer transition-colors duration-150"
+        :class="
+          isBlogActive
+            ? 'bg-brand-gradient text-white font-medium shadow-md shadow-accent-500/25'
+            : 'text-ink-800 bg-transparent hover:bg-accent-100 hover:text-accent-700'
+        "
+        @click="gotoBlog"
+      >
+        <IconNotebook
+          class="w-[18px] h-[18px] shrink-0 transition-colors duration-150"
+          :class="isBlogActive ? 'text-white' : 'text-ink-500 group-hover:text-accent-600'"
+          aria-hidden="true"
+        />
+        <span>博客</span>
+      </button>
       <button
         type="button"
         class="group w-full flex items-center gap-3 h-10 px-3.5 rounded-full text-sm border-0 cursor-pointer transition-colors duration-150"

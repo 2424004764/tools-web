@@ -96,10 +96,12 @@ async function onRequestGet(context) {
     const total = totalRow?.c || 0
 
     // 列表（LEFT JOIN 积分表，缺失积分记录的用户余额=0）
+    // has_password：是否有密码（邮箱+密码注册为 1；Google 等第三方登录用户为 0，前端据此隐藏改密入口）
     const list = await db
       .prepare(
         `SELECT u.id, u.email, u.username, u.avatar, u.is_admin, u.is_disabled,
                 u.disabled_reason, u.disabled_at, u.created_at, u.last_login,
+                (u.password IS NOT NULL AND u.password != '') AS has_password,
                 COALESCE(c.balance, 0) AS credits_balance,
                 COALESCE(c.total_earned, 0) AS credits_earned,
                 COALESCE(c.total_spent, 0) AS credits_spent

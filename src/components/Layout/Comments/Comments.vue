@@ -3,11 +3,12 @@
  * 评论入口组件：按后台「站点设置 → 评论系统」配置自动切换
  * - giscus（GitHub Discussions 评论，默认，兼容历史行为）
  * - custom（自建评论系统，需审核，见 CustomComments.vue）
+ * - disabled（关闭全部评论：不渲染评论区）
  */
 import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useTheme } from '@/composables/useTheme'
-import { fetchSiteConfig } from '@/api/site-config'
+import { fetchCommentSystem, fetchGiscusConfig } from '@/api/site-config'
 import CustomComments from './CustomComments.vue'
 
 const route = useRoute()
@@ -16,8 +17,8 @@ const giscusLoaded = ref(false)
 const { isDark } = useTheme()
 const giscusTheme = () => (isDark.value ? 'transparent_dark' : 'light')
 
-/** loading = 配置拉取中；giscus / custom = 后台配置的评论系统 */
-const mode = ref<'loading' | 'giscus' | 'custom'>('loading')
+/** loading = 配置拉取中；giscus / custom = 后台配置的评论系统；disabled = 后台已关闭评论 */
+const mode = ref<'loading' | 'giscus' | 'custom' | 'disabled'>('loading')
 
 // 从环境变量获取配置（后台未配置 giscus repo 时的回退）
 const gitUrl = import.meta.env.VITE_GIT_URL || ''
@@ -89,15 +90,19 @@ const resetGiscus = () => {
 }
 
 onMounted(async () => {
-  // 先读后台配置再决定渲染哪种评论系统（fetchSiteConfig 失败时内部回退 giscus）
-  const config = await fetchSiteConfig()
-  if (config.comment_system === 'custom') {
-    mode.value = 'custom'
-  } else {
-    giscusAttrs.value = buildGiscusAttrs(config.giscus)
-    mode.value = 'giscus'
-    loadGiscus()
+  // 两段式按需请求：先拿评论系统类型，是 giscus 时再拉 giscus 配置（均有模块级缓存，失败内部回退）
+  const commentSystem = await fetchCommentSystem()
+  if (commentSystem === 'disabled') {
+    mode.value = 'disabled'
+    return
   }
+  if (commentSystem === 'custom') {
+    mode.value = 'custom'
+    return
+  }
+  giscusAttrs.value = buildGiscusAttrs(await fetchGiscusConfig())
+  mode.value = 'giscus'
+  loadGiscus()
 })
 
 // 主题切换时通知 giscus iframe 热更新，避免整块重载
@@ -119,7 +124,8 @@ watch(() => route.path, () => {
 </script>
 
 <template>
-  <div class="giscus-wrapper mt-8">
+  <!-- 后台关闭评论时不渲染任何内容 -->
+  <div v-if="mode !== 'disabled'" class="giscus-wrapper mt-8">
     <div class="bg-white dark:bg-surface-0 rounded-2xl border border-border-subtle p-6 shadow-sm">
       <h3 class="text-body-lg font-bold text-ink-900 mb-4 flex items-center gap-2">
         <svg class="w-5 h-5" viewBox="0 0 16 16" fill="currentColor">

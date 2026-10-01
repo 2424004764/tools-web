@@ -92,6 +92,18 @@ router.beforeEach((to, _from, next) => {
     }
   }
 
+  // ===== 博客写作/投稿需登录 =====
+  if (to.path === '/blog/write') {
+    const userStore = useUserStore()
+    userStore.initUserState()
+    if (!userStore.getLoginStatus) {
+      return next({
+        path: '/login',
+        query: { redirect: to.fullPath },
+      })
+    }
+  }
+
   next()
 })
 

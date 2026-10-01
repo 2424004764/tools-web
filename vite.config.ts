@@ -233,6 +233,7 @@ export default defineConfig(({command, mode}) => {
             /^\/api\//,
             /^\/s\//,
             /^\/sitemap\.xml$/,
+            /^\/sitemap-blog\.xml$/,
             /^\/robots\.txt$/,
             /^\/googlee80af792a405bec5\.html$/,
           ],
@@ -525,11 +526,19 @@ export default defineConfig(({command, mode}) => {
           target: 'http://127.0.0.1:8788',
           changeOrigin: true,
         },
+        '/api/blog': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
         '/api/site-config': {
           target: 'http://127.0.0.1:8788',
           changeOrigin: true,
         },
         '/api/tools': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
+        '/api/tools/hot': {
           target: 'http://127.0.0.1:8788',
           changeOrigin: true,
         },

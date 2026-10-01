@@ -10,6 +10,7 @@ Disallow: /.git/
 
 # 站点地图
 Sitemap: https://tool.fologde.com/sitemap.xml
+Sitemap: https://tool.fologde.com/sitemap-blog.xml
 
 # 爬取频率（可选）
 Crawl-delay: 1

@@ -70,6 +70,7 @@ onMounted(() => {
       <el-radio-group v-model="form.comment_system" class="!items-stretch flex-wrap gap-3 mb-1">
         <el-radio-button value="giscus">GitHub 评论（giscus）</el-radio-button>
         <el-radio-button value="custom">自建评论系统</el-radio-button>
+        <el-radio-button value="disabled">关闭评论</el-radio-button>
       </el-radio-group>
 
       <div class="mt-3 text-body-sm text-ink-500">
@@ -78,6 +79,9 @@ onMounted(() => {
         </template>
         <template v-else-if="form.comment_system === 'custom'">
           游客填写昵称 + 邮箱即可评论，注册用户登录后直接评论；<b class="text-ink-700">所有评论需在「评论管理」中审核通过后才会展示</b>。
+        </template>
+        <template v-else-if="form.comment_system === 'disabled'">
+          关闭后全站工具页底部不再展示评论区（已有评论数据保留，重新开启后恢复展示）。
         </template>
         <template v-else>请选择一种评论系统。</template>
       </div>

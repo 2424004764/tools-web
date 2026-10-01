@@ -6,10 +6,13 @@ import IconSearch from '~icons/ep/search'
 import IconArrowRight from '~icons/ep/arrow-right'
 import IconStarFilled from '~icons/ep/star-filled'
 import IconStar from '~icons/ep/star'
+import IconRank from '~icons/ep/rank'
+import IconLoading from '~icons/ep/loading'
 import { useToolsStore } from '@/store/modules/tools'
 import { useUserStore } from '@/store/modules/user'
 import { getCateIcon } from './cateIcons'
 import { useSpriteLogo } from '@/components/Tools/useSpriteLogo'
+import { useHotSort } from '@/composables/useHotSort'
 import {
   fetchFavoriteToolUrls,
   addFavoriteTool,
@@ -22,6 +25,8 @@ const route = useRoute()
 const router = useRouter()
 const toolsStore = useToolsStore()
 const userStore = useUserStore()
+// 按使用热度排序（数据由接口在服务端排好序，前端只重排展示）
+const { hotLoading, isHot, toggleHot, applyHotSort } = useHotSort()
 
 const keyword = ref('')
 
@@ -33,11 +38,13 @@ const cate = computed(() => {
 const cateTitle = computed(() => cate.value?.title || '分类')
 const CateIcon = computed(() => getCateIcon(cateTitle.value))
 
+// 先按当前排序方式（默认 / 热度）取出基础列表，再做关键词过滤
+const sortedList = computed(() => applyHotSort(cate.value?.id ?? 0, cate.value?.list || []))
+
 const filteredList = computed(() => {
-  const list = cate.value?.list || []
   const k = keyword.value.trim().toLowerCase()
-  if (!k) return list
-  return list.filter(
+  if (!k) return sortedList.value
+  return sortedList.value.filter(
     (t) =>
       (t.title || '').toLowerCase().includes(k) ||
       (t.desc || '').toLowerCase().includes(k),
@@ -111,6 +118,24 @@ const goHome = () => router.push('/')
         <component :is="CateIcon" class="w-7 h-7" aria-hidden="true" />
       </div>
       <h1 class="text-h2 font-bold m-0 text-ink-900">{{ cateTitle }}</h1>
+      <!-- 按使用热度排序：点击切换 热度序 / 默认序（接口返回序） -->
+      <button
+        type="button"
+        class="h-8 px-3.5 rounded-full text-xs flex items-center gap-1 border cursor-pointer bg-transparent transition-colors shrink-0"
+        :class="
+          isHot(cate?.id ?? 0)
+            ? 'text-accent-600 border-accent-300 bg-accent-500/10'
+            : 'text-ink-500 border-border-default hover:text-accent-600 hover:border-accent-300'
+        "
+        :disabled="hotLoading && !isHot(cate?.id ?? 0)"
+        :title="isHot(cate?.id ?? 0) ? '已按使用次数从多到少排序，点击恢复默认排序' : '按使用次数从多到少排序'"
+        :aria-pressed="isHot(cate?.id ?? 0)"
+        @click="toggleHot(cate?.id ?? 0)"
+      >
+        <IconLoading v-if="hotLoading && !isHot(cate?.id ?? 0)" class="w-3.5 h-3.5 animate-spin" />
+        <IconRank v-else class="w-3.5 h-3.5" aria-hidden="true" />
+        {{ isHot(cate?.id ?? 0) ? '默认排序' : '按使用热度排序' }}
+      </button>
 
       <div class="ml-auto relative w-full sm:w-64">
         <IconSearch
