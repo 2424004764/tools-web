@@ -85,6 +85,8 @@
     "/api/comments",
     "/api/site-config",
     "/api/friend-links",
+    "/api/feedback",
+    "/api/feedback/*",
     "/api/user-tool-prompts",
     "/api/user-tool-prompts/*",
     "/api/user-tool-prompt-groups",

@@ -62,9 +62,13 @@ export async function fetchAiMediaWork(id: number): Promise<AiMediaWork> {
   return res.data.data
 }
 
-// 公开分类聚合
-export async function fetchAiMediaCategories(): Promise<AiMediaCategory[]> {
-  const res = await functionsRequest.get('/api/ai-media-works/categories')
+// 公开分类聚合（可按媒体类型过滤，保证计数与当前列表筛选一致）
+export async function fetchAiMediaCategories(
+  type?: 'image' | 'video',
+): Promise<AiMediaCategory[]> {
+  const res = await functionsRequest.get('/api/ai-media-works/categories', {
+    params: type ? { type } : undefined,
+  })
   return res.data.data || []
 }
 

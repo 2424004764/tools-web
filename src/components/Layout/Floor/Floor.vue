@@ -2,6 +2,9 @@
 import { ref, computed, reactive, onMounted, onUnmounted } from 'vue';
 import { ElMessage } from 'element-plus'
 import { fetchApprovedFriendLinks, submitFriendLink, type PublicFriendLink } from '@/api/friend-links'
+import { useComponentStore } from '@/store/modules/component'
+
+const componentStore = useComponentStore()
 const appDesc = ref(import.meta.env.VITE_APP_DESC || '')
 const gitUrl = ref(import.meta.env.VITE_GIT_URL || '')
 const siteOrigin = ref(typeof window !== 'undefined' ? window.location.origin : '')
@@ -128,7 +131,11 @@ const elapsedText = computed(() => {
             <div class="flex flex-col sm:flex-row justify-center items-center gap-2 text-caption">
                 <a :href="gitUrl" target="_blank" class="text-ink-700 hover:text-accent-600 transition-colors">Tools-Web</a>
                 <span class="hidden sm:inline">|</span>
-                <a :href="gitUrl + '/issues/new'" target="_blank" class="text-ink-700 hover:text-accent-600 transition-colors">反馈建议</a>
+                <button
+                    type="button"
+                    class="bg-transparent border-0 p-0 cursor-pointer text-ink-700 hover:text-accent-600 transition-colors"
+                    @click="componentStore.setFeedbackDialogVisible(true)"
+                >反馈建议</button>
             </div>
             <!-- 构建时间（pnpm build:pro 时由 vite.config.ts 注入） -->
             <div class="mt-2 text-caption text-ink-500">

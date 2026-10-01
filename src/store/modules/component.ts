@@ -11,9 +11,26 @@ export const useComponentStore = defineStore('component', {
     anchorScrollTarget: '', // 正在滚向的锚点（cate_X），滚动联动防抖用
     navClickLockUntil: 0, // 点击分类后暂停滚动联动的截止时间（ms 时间戳）
     anchorNavFromMenu: false, // 本次导航是否由侧边栏点击分类发起（区别于浏览器返回）
+    commandPaletteVisible: false, // 命令面板（Ctrl+K）显示状态
+    commandPaletteQuery: '', // 打开命令面板时预填的搜索词
+    commandPaletteMode: 'tools' as 'tools' | 'ai', // 命令面板初始模式：tools 关键词 / ai 自然语言找工具
+    feedbackDialogVisible: false, // 意见反馈弹窗显示状态
   }),
   //方法
   actions: {
+    //打开命令面板（可指定初始模式与预填搜索词，如从顶部搜索框的「AI 帮我找工具」入口进入）
+    openCommandPalette(payload?: { mode?: 'tools' | 'ai'; query?: string }) {
+      this.commandPaletteMode = payload?.mode || 'tools'
+      this.commandPaletteQuery = payload?.query || ''
+      this.commandPaletteVisible = true
+    },
+    closeCommandPalette() {
+      this.commandPaletteVisible = false
+    },
+    //打开/关闭意见反馈弹窗（页脚「反馈建议」与命令面板共用）
+    setFeedbackDialogVisible(status: boolean) {
+      this.feedbackDialogVisible = status
+    },
     //设置左侧组件状态
     setLeftComStatus(status: boolean) {
       // console.log(1)

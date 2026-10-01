@@ -10,6 +10,8 @@ import Plus from '~icons/ep/plus'
 import Edit from '~icons/ep/edit'
 import Delete from '~icons/ep/delete'
 import Clock from '~icons/ep/clock'
+import CopyDocument from '~icons/ep/copy-document'
+import { copy } from '@/utils/string'
 
 interface Todo {
   id: string
@@ -65,7 +67,7 @@ const filterData = reactive({
   title: '',
   priority: '',
   category: '',
-  status: [] as number[]
+  status: [0, 2] as number[] // 默认只看「已创建」和「进行中」
 })
 
 const formData = reactive({
@@ -626,6 +628,15 @@ onBeforeUnmount(() => {
                   <span :class="{ 'line-through text-gray-400': todo.completed === 1 }" class="font-medium">
                     {{ todo.title }}
                   </span>
+                  <button
+                    type="button"
+                    class="shrink-0 inline-flex items-center text-gray-400 hover:text-blue-500 transition-colors cursor-pointer"
+                    title="复制标题"
+                    aria-label="复制标题"
+                    @click="copy(todo.title)"
+                  >
+                    <el-icon :size="14"><CopyDocument /></el-icon>
+                  </button>
                   <span
                     class="text-caption px-2.5 py-0.5 rounded-full border leading-5"
                     :class="PRIORITY_PILL[todo.priority] || 'border-ink-300 bg-surface-1 text-ink-500'"
