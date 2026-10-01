@@ -18,7 +18,7 @@
 import { getCORSHeaders, handleCORSPreflight } from './utils/cors.js'
 import { logApiError, UPSTREAM_ERROR_KEY } from './utils/error-log.js'
 import { extractUidFromRequest } from './api/_lib/model-resolver.js'
-import PAGE_META from './_page-meta.js'
+import PAGE_META, { siteOrigin, appTitle } from './_page-meta.js'
 
 // 需要走 CORS 处理的路径前缀
 const CORS_PROTECTED_PREFIXES = [
@@ -31,8 +31,16 @@ const CORS_PROTECTED_PREFIXES = [
   '/s/',
 ]
 
+// OAuth2 公开协议端点：供任意子站跨源调用（客户端凭据即认证，无 cookie 会话），
+// 不做白名单 CORS 覆盖，由端点自带 Access-Control-Allow-Origin: *
+const OAUTH_PUBLIC_PREFIXES = ['/api/oauth/token', '/api/oauth/userinfo', '/api/oauth/revoke']
+
 function needsCORS(path) {
   return CORS_PROTECTED_PREFIXES.some((p) => path === p || path.startsWith(p))
+}
+
+function isOAuthPublicPath(path) {
+  return OAUTH_PUBLIC_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`))
 }
 
 // 错误日志自身相关的路径不记录，避免日志页故障时自我循环放大
@@ -172,13 +180,43 @@ function normalizePagePath(p) {
   return p !== '/' && p.endsWith('/') ? p.slice(0, -1) : p
 }
 
-async function maybeRewritePageMeta(request, path, response) {
+// 博客详情页动态 meta：/blog/<slug> 不在静态 PAGE_META 里（动态路由构建期未知），
+// 这里按 slug 查库取标题/摘要/标签。任何失败都返回 null 走默认 meta，绝不影响页面本身。
+async function getBlogPostMeta(env, path) {
+  try {
+    if (!env || !env.DB) return null
+    const m = normalizePagePath(path).match(/^\/blog\/([a-z0-9-]+)$/i)
+    if (!m) return null
+    const row = await env.DB
+      .prepare(`SELECT title, summary, tags FROM blog_posts WHERE slug = ? AND status = 'published'`)
+      .bind(m[1].toLowerCase())
+      .first()
+    if (!row) return null
+    const title = String(row.title || '').trim()
+    if (!title) return null
+    return {
+      title: `${title} | ${appTitle}`,
+      description: String(row.summary || '').trim() || title,
+      keywords: String(row.tags || '').trim(),
+      ogUrl: `${siteOrigin}/blog/${m[1].toLowerCase()}/`,
+    }
+  } catch (e) {
+    console.error('[middleware] blog meta query failed:', e)
+    return null
+  }
+}
+
+async function maybeRewritePageMeta(request, path, response, env) {
   try {
     if (request.method !== 'GET') return response
     const contentType = response.headers.get('Content-Type') || ''
     if (response.status !== 200 || !contentType.includes('text/html')) return response
 
-    const meta = PAGE_META[normalizePagePath(path)]
+    let meta = PAGE_META[normalizePagePath(path)]
+    if (!meta) {
+      // 博客详情页（动态路由）查库兜底
+      meta = await getBlogPostMeta(env, path)
+    }
     if (!meta) return response // 首页 / 未收录路径：保持全局默认 meta
 
     const html = await response.text()
@@ -221,18 +259,32 @@ export async function onRequest(context) {
   // 非受保护路径直接走原逻辑（页面 HTML 顺带按路径改写 SEO meta）
   if (!needsCORS(path)) {
     const resp = await context.next()
-    const rewritten = await maybeRewritePageMeta(request, path, resp)
+    const rewritten = await maybeRewritePageMeta(request, path, resp, context.env)
     return withSecurityHeaders(rewritten)
   }
 
-  // OPTIONS 预检：白名单校验通过则放行，否则 403
+  // OAuth2 公开端点：保留错误日志与安全头，但不再强制覆盖 CORS（端点自带 *）
+  const oauthPublic = isOAuthPublicPath(path)
+
+  // OPTIONS 预检：OAuth 公开端点允许任意来源；其余走白名单
   if (request.method === 'OPTIONS') {
+    if (oauthPublic) {
+      return new Response(null, {
+        status: 204,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+          'Access-Control-Max-Age': '86400',
+        },
+      })
+    }
     return handleCORSPreflight(origin)
   }
 
   // 统一响应出口：同源不注入 CORS 只加安全头；跨源用白名单覆盖 CORS 头
   const finalize = (resp) => {
-    if (!origin) return withSecurityHeaders(resp)
+    if (!origin || oauthPublic) return withSecurityHeaders(resp)
     const corsHeaders = getCORSHeaders(origin)
     const headers = new Headers(resp.headers)
     for (const [k, v] of Object.entries(corsHeaders)) {

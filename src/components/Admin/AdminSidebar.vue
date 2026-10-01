@@ -18,6 +18,8 @@ import IconTimer from '~icons/ep/timer'
 import IconLink from '~icons/ep/link'
 import IconChatDotRound from '~icons/ep/chat-dot-round'
 import IconSetting from '~icons/ep/setting'
+import IconNotebook from '~icons/ep/notebook'
+import IconKey from '~icons/ep/key'
 
 const route = useRoute()
 const router = useRouter()
@@ -70,11 +72,18 @@ const groups: MenuGroup[] = [
     ],
   },
   {
+    title: '内容',
+    items: [
+      { index: '/admin/blog', title: '博客管理', icon: IconNotebook },
+      { index: '/admin/comments', title: '评论管理', icon: IconChatDotRound },
+      { index: '/admin/friend-links', title: '友链审核', icon: IconLink },
+    ],
+  },
+  {
     title: '系统',
     items: [
       { index: '/admin/settings', title: '站点设置', icon: IconSetting },
-      { index: '/admin/comments', title: '评论管理', icon: IconChatDotRound },
-      { index: '/admin/friend-links', title: '友链审核', icon: IconLink },
+      { index: '/admin/oauth-clients', title: 'OAuth 应用', icon: IconKey },
       { index: '/admin/db-stats', title: '数据统计', icon: IconDataAnalysis },
     ],
   },
@@ -96,9 +105,9 @@ const go = (path: string) => {
 </script>
 
 <template>
-  <nav class="admin-sidebar-nav pb-4">
+  <nav class="admin-sidebar-nav pb-3">
     <!-- 品牌区 -->
-    <div class="flex items-center gap-2.5 px-4 pt-4 pb-3">
+    <div class="flex items-center gap-2.5 px-4 pt-3 pb-2">
       <span
         class="w-8 h-8 rounded-[10px] bg-gradient-to-br from-accent-400 to-accent-600 text-white flex items-center justify-center shadow-[0_4px_12px_-4px_rgb(var(--accent-500)/0.5)]"
         aria-hidden="true"
@@ -135,11 +144,31 @@ const go = (path: string) => {
 </template>
 
 <style scoped>
+/* 导航占满 aside 高度，超出内部滚动（侧栏本体不滚动） */
+.admin-sidebar-nav {
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--border-strong)) transparent;
+}
+.admin-sidebar-nav::-webkit-scrollbar {
+  width: 5px;
+}
+.admin-sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgb(var(--border-strong));
+  border-radius: 999px;
+}
+.admin-sidebar-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 .admin-nav-group-title {
-  padding: 14px 20px 6px;
+  padding: 10px 20px 4px;
   font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.06em;
+  line-height: 1.2;
   color: rgb(var(--ink-400));
   user-select: none;
 }
@@ -147,12 +176,13 @@ const go = (path: string) => {
 .admin-nav-item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   width: calc(100% - 16px);
   margin: 1px 8px;
-  padding: 8px 12px;
-  border-radius: 9px;
-  font-size: 13.5px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.35;
   color: rgb(var(--ink-600));
   text-align: left;
   transition:
@@ -179,8 +209,8 @@ const go = (path: string) => {
 }
 
 .admin-nav-icon {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   flex-shrink: 0;
   color: rgb(var(--ink-400));
   transition: color 0.15s ease;

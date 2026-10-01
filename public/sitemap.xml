@@ -29,6 +29,7 @@
   <url><loc>https://tool.fologde.com/bar</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2026-01-18T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/barrage</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2026-01-18T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/base64</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2026-09-29T00:00:00+00:00</lastmod></url>
+  <url><loc>https://tool.fologde.com/blog</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2026-09-30T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/bookmarks</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2026-09-29T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/calculator</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2026-09-29T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/chinese-name</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2026-09-29T00:00:00+00:00</lastmod></url>
@@ -105,6 +106,8 @@
   <url><loc>https://tool.fologde.com/notes</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2026-09-29T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/number-memory</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2026-09-29T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/numbertochinese</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2026-01-18T00:00:00+00:00</lastmod></url>
+  <url><loc>https://tool.fologde.com/oauth/authorize</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2026-09-30T00:00:00+00:00</lastmod></url>
+  <url><loc>https://tool.fologde.com/oauth/docs</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2026-09-30T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/old-photo-caption</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2026-09-29T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/oss-manager</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2026-09-29T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/palettes</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2026-01-18T00:00:00+00:00</lastmod></url>

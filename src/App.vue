@@ -77,6 +77,11 @@ const isAdminPage = computed(() => {
   return route.path.startsWith('/admin');
 });
 
+// 判断是否为 OAuth 授权页（独立页面，不显示站点菜单/头部/评论等框架）
+const isOAuthAuthorizePage = computed(() => {
+  return route.name === 'oauthAuthorize';
+});
+
 // 判断是否为首页
 const isHomePage = computed(() => {
   return route.name === 'home' || route.path === '/';
@@ -91,8 +96,8 @@ const isMeCreditsPage = computed(() => {
 
 <template>
   <el-config-provider :locale="zhCn">
-    <!-- 后台管理：AdminLayout 自带 Header/侧栏/Floor -->
-    <router-view v-if="isAdminPage" />
+    <!-- 后台管理：AdminLayout 自带 Header/侧栏/Floor；OAuth 授权页：独立渲染，不带站点框架 -->
+    <router-view v-if="isAdminPage || isOAuthAuthorizePage" />
 
     <!-- 正常页面 -->
     <el-container v-else>

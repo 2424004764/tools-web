@@ -65,8 +65,8 @@ const composeTitle = (norm, title) => {
 // 不引 TS 文件，按「path: 到下一个 path: 之间是一个路由块」切段后逐块抓 meta 字段。
 const source = readFileSync(routerPath, 'utf-8')
 
-// 不需要暴露给爬虫的页面：登录/后台/个人中心等
-const SKIP_PATHS = [/^\/$/, /^\/login/, /^\/userinfo/, /^\/admin/, /^\/404/, /^\/search/]
+// 不需要暴露给爬虫的页面：登录/后台/个人中心/博客编辑器等
+const SKIP_PATHS = [/^\/$/, /^\/login/, /^\/userinfo/, /^\/admin/, /^\/404/, /^\/search/, /^\/blog\/write$/]
 
 const pathRe = /\bpath:\s*(['"])([^'"]*)\1/g
 const entries = []
@@ -175,6 +175,9 @@ const out = `/**
  */
 
 export const siteOrigin = '${esc(SITE_ORIGIN)}'
+
+// 站点标题（中间件给博客详情页动态拼 title 用：\`\${post.title} | \${appTitle}\`）
+export const appTitle = '${esc(APP_TITLE)}'
 
 export default {
 ${mapLines}

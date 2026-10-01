@@ -784,6 +784,28 @@ export const constantRoute = [
       description: 'Tools-Web工具箱用户登录页面，登录后享受更多个性化功能',
     }
   },
+  // OAuth2 授权确认页（工具站作为授权服务器，子站跳转到此登录/授权）
+  {
+    path: '/oauth/authorize',
+    component: () => import('@/components/OAuth/OAuthAuthorize.vue'),
+    name: 'oauthAuthorize',
+    meta: {
+      title: '应用授权',
+      keywords: 'OAuth授权,应用授权,统一登录',
+      description: '授权第三方应用访问你的工具箱账号',
+    }
+  },
+  // OAuth2 子站接入文档（公开，供接入开发者在线查阅）
+  {
+    path: '/oauth/docs',
+    component: () => import('@/components/OAuth/OAuthDocs.vue'),
+    name: 'oauthDocs',
+    meta: {
+      title: 'OAuth2 统一登录接入文档',
+      keywords: 'OAuth2接入文档,子站统一登录,单点登录对接',
+      description: '工具站 OAuth2 授权服务器子站接入指南：授权码模式、令牌刷新、PKCE 与用户资料接口',
+    }
+  },
   {
     path: '/flip-clock',
     component: () => import('@/components/Tools/FlipClock/FlipClock.vue'),
@@ -1773,6 +1795,40 @@ export const constantRoute = [
     }
   },
 
+  // ===== 博客 =====
+  {
+    path: '/blog',
+    component: () => import('@/components/Blog/BlogList.vue'),
+    name: 'blog',
+    meta: {
+      title: '博客',
+      keywords: '技术博客,开发技巧,工具教程,效率工具,在线工具博客',
+      description: '工具站博客：开发技巧、工具使用教程与效率方法，边学边用，把工具用起来。',
+    },
+  },
+  {
+    // 写作/投稿页：前台登录用户投稿，管理员发文；需登录（守卫见 router/index.ts）
+    path: '/blog/write',
+    component: () => import('@/components/Blog/BlogEditor.vue'),
+    name: 'blogWrite',
+    meta: {
+      title: '写文章',
+      keywords: '写文章,投稿,博客创作',
+      description: '撰写博客文章：管理员可直接发布，登录用户可投稿。',
+    },
+  },
+  {
+    // 动态路由：SEO meta 由 functions/_middleware.js 查库动态改写（见 _middleware.js）
+    path: '/blog/:slug',
+    component: () => import('@/components/Blog/BlogDetail.vue'),
+    name: 'blogDetail',
+    meta: {
+      title: '博客文章',
+      keywords: '技术博客,工具教程,开发技巧',
+      description: '博客文章详情',
+    },
+  },
+
   // ===== 管理后台 =====
   // 由 AdminLayout 统一承载，自带侧栏与顶栏，绕过默认 App.vue 的 Header/Footer/Left。
   // 鉴权由 router/index.ts 的 beforeEach 守卫与后端 _middleware.js 双重把关。
@@ -1918,6 +1974,26 @@ export const constantRoute = [
         },
       },
       {
+        path: 'blog',
+        component: () => import('@/components/Admin/AdminBlog.vue'),
+        name: 'adminBlog',
+        meta: {
+          title: '博客管理',
+          keywords: '后台博客管理,博客审核,文章审核',
+          description: '管理博客文章：发文、审核用户投稿、编辑、删除',
+        },
+      },
+      {
+        path: 'blog/write',
+        component: () => import('@/components/Blog/BlogEditor.vue'),
+        name: 'adminBlogWrite',
+        meta: {
+          title: '写文章',
+          keywords: '后台写文章,发布文章',
+          description: '撰写并发布博客文章，支持存草稿',
+        },
+      },
+      {
         path: 'settings',
         component: () => import('@/components/Admin/AdminSettings.vue'),
         name: 'adminSettings',
@@ -1925,6 +2001,16 @@ export const constantRoute = [
           title: '站点设置',
           keywords: '后台站点设置,评论系统设置',
           description: '配置站点级开关，如评论系统切换（giscus / 自建评论）',
+        },
+      },
+      {
+        path: 'oauth-clients',
+        component: () => import('@/components/Admin/AdminOAuth.vue'),
+        name: 'adminOAuthClients',
+        meta: {
+          title: 'OAuth 应用',
+          keywords: '后台OAuth应用,子站统一登录,OAuth客户端',
+          description: '管理 OAuth2 客户端应用，为子站提供统一登录',
         },
       },
       {

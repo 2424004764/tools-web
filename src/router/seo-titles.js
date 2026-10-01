@@ -177,4 +177,7 @@ export default {
   '/make24': '24点 - 算24点四则运算游戏',
   '/image-color-count': '图片取色 - 颜色数量统计/色板提取',
   '/world-records': '世界之最 - 自然/地理/科技世界纪录大全',
+  '/blog': '博客 - 技术博客/开发技巧',
+  '/oauth/authorize': '应用授权 - OAuth授权/统一登录',
+  '/oauth/docs': 'OAuth2 统一登录接入文档 - OAuth2接入文档/子站统一登录',
 }

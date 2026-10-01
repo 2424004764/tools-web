@@ -12,8 +12,8 @@ const corsHeaders = {
 // 允许后台写入的配置键 → 固定备注 + 校验规则
 const ALLOWED_KEYS = {
   comment_system: {
-    remark: '评论系统类型：giscus = GitHub 评论（默认），custom = 自建评论（需审核后展示）',
-    validate: (v) => (['giscus', 'custom'].includes(v) ? v : null),
+    remark: '评论系统类型：giscus = GitHub 评论（默认），custom = 自建评论（需审核后展示），disabled = 关闭全部评论',
+    validate: (v) => (['giscus', 'custom', 'disabled'].includes(v) ? v : null),
   },
   giscus_repo: {
     remark: 'giscus 仓库，格式 owner/repo 或完整 GitHub 地址；留空回退环境变量 VITE_GIT_URL',

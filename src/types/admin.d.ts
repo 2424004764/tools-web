@@ -22,6 +22,8 @@ export interface AdminUser {
   disabled_at: string | null
   created_at: string
   last_login: string | null
+  /** 是否设置过密码（邮箱+密码注册为 1；Google 等第三方登录为 0，无密码不可后台改密） */
+  has_password?: number
   credits_balance?: number
   credits_earned?: number
   credits_spent?: number
