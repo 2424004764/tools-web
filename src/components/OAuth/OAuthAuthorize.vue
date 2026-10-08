@@ -90,10 +90,6 @@ async function decide(deny: boolean) {
     window.location.href = data.redirect_to
   } catch (e: any) {
     submitting.value = false
-    // 401 时 functionsRequest 拦截器已清掉过期 token，这里引导重新走登录
-    if (e.response?.status === 401) {
-      window.location.href = `/login?redirect=${encodeURIComponent(currentAuthorizeUrl)}`
-    }
   }
 }
 

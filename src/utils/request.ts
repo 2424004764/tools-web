@@ -1,6 +1,6 @@
 import axios from "axios";
 import { ElMessage } from "element-plus";
-import { handle401Error, handleHttpError } from './errorHandler'
+import { handleHttpError } from './errorHandler'
 
 //创建axios实例
 let request = axios.create({
@@ -20,12 +20,8 @@ request.interceptors.request.use(config => {
 //响应拦截器
 request.interceptors.response.use((response) => {
     if (response.data.code == 401) {
-        //登录过期 - 使用统一错误处理
-        handle401Error({
-            autoRedirectLogin: false, // 保持原有的刷新页面逻辑
-            showMessage: false // 避免重复提示
-        })
-        location.reload()
+        handleHttpError(401)
+        return response.data
     }
     return response.data;
 }, (error) => {
