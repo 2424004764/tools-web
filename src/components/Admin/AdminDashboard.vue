@@ -265,7 +265,7 @@ onMounted(load)
               <IconBell class="w-3.5 h-3.5" />
               待审核
             </div>
-            <div class="grid grid-cols-2 divide-x divide-ink-100">
+            <div class="grid grid-cols-3 divide-x divide-ink-100">
               <div class="pr-2">
                 <div class="text-[11px] text-ink-400">评论</div>
                 <div class="mt-0.5 text-lg font-semibold tabular-nums leading-tight"
@@ -278,7 +278,7 @@ onMounted(load)
                   </router-link>
                 </div>
               </div>
-              <div class="pl-2">
+              <div class="px-2">
                 <div class="text-[11px] text-ink-400">友链</div>
                 <div class="mt-0.5 text-lg font-semibold tabular-nums leading-tight"
                   :class="data?.pendingFriendLinks ? 'text-amber-600' : 'text-ink-900'">
@@ -286,6 +286,18 @@ onMounted(load)
                 </div>
                 <div class="text-[11px] mt-1">
                   <router-link to="/admin/friend-links" class="text-accent-600 hover:text-accent-700 font-medium">
+                    去审核 →
+                  </router-link>
+                </div>
+              </div>
+              <div class="pl-2">
+                <div class="text-[11px] text-ink-400">文章</div>
+                <div class="mt-0.5 text-lg font-semibold tabular-nums leading-tight"
+                  :class="data?.pendingBlogPosts ? 'text-amber-600' : 'text-ink-900'">
+                  {{ data?.pendingBlogPosts ?? 0 }}
+                </div>
+                <div class="text-[11px] mt-1">
+                  <router-link to="/admin/blog/review" class="text-accent-600 hover:text-accent-700 font-medium">
                     去审核 →
                   </router-link>
                 </div>

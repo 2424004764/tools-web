@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, reactive } from "vue";
+import { ref, onMounted, onUnmounted, computed, reactive, type Ref } from "vue";
 import { ElMessage } from "element-plus";
 import Loading from '~icons/ep/loading'
 import { jwtDecode } from "jwt-decode";
@@ -24,6 +24,10 @@ declare global {
 }
 
 const loading = ref(false);
+const githubLoading = ref(false);
+const linuxdoLoading = ref(false);
+const qqLoading = ref(false);
+const giteeLoading = ref(false);
 const googleInitialized = ref(false);
 const userStore = useUserStore();
 
@@ -41,9 +45,14 @@ const sendingCode = ref(false)
 const countdown = ref(0)
 
 // 登录成功后跳转的目标地址，优先使用 redirect 参数
+// 仅允许站内相对路径：以 / 开头且不以 // 或 /\ 开头（反斜杠会被浏览器归一化为 /，绕过 // 检查）
 const redirectUrl = computed(() => {
   const params = new URLSearchParams(window.location.search)
-  return params.get('redirect') || '/userinfo'
+  const target = params.get('redirect')
+  if (target && target.startsWith('/') && !target.startsWith('//') && !target.startsWith('/\\')) {
+    return target
+  }
+  return '/userinfo'
 })
 
 // 谷歌登录配置
@@ -72,6 +81,14 @@ onMounted(() => {
     initializeGoogleSignIn();
   };
   document.head.appendChild(script);
+
+  // 监听GitHub弹窗回传的登录结果
+  window.addEventListener("message", handleLoginMessage);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("message", handleLoginMessage);
+  stopAllPopupPolls();
 });
 
 // 添加自定义谷歌登录处理函数
@@ -170,6 +187,84 @@ const handleGoogleSignIn = async (response: any) => {
   }
 };
 
+// ---------- 第三方 OAuth 弹窗登录（GitHub / LinuxDo / QQ / Gitee） ----------
+// 统一流程：先同步开窗防弹窗拦截 → POST 对应端点拿授权地址 → 弹窗跳转授权 →
+// 回调页（/api/xxx-auth）postMessage 回传结果，由 handleLoginMessage 统一处理。
+// 弹窗在回传前被用户关闭时（授权失败停在错误页、回调地址未在平台后台登记导致
+// 弹窗无法跳回等），轮询 popup.closed 复位按钮，避免"登录中..."永久卡住
+const oauthLabels = { github: "GitHub", linuxdo: "LinuxDo", qq: "QQ", gitee: "Gitee" } as const;
+type OAuthProvider = keyof typeof oauthLabels;
+
+const popupTimers: Partial<Record<OAuthProvider, number>> = {};
+const stopPopupPoll = (name: OAuthProvider) => {
+  if (popupTimers[name] !== undefined) {
+    window.clearInterval(popupTimers[name]);
+    delete popupTimers[name];
+  }
+};
+const stopAllPopupPolls = () => (Object.keys(popupTimers) as OAuthProvider[]).forEach(stopPopupPoll);
+
+const openOAuthLogin = async (name: OAuthProvider, loading: Ref<boolean>) => {
+  if (loading.value) return;
+  loading.value = true;
+
+  // 先同步开窗避免被弹窗拦截，拿到授权地址后再跳转
+  const popup = window.open("about:blank", `${name}-auth`, "width=600,height=600,scrollbars=yes,resizable=yes");
+  if (!popup) {
+    loading.value = false;
+    ElMessage.error("无法打开登录窗口，请检查浏览器弹窗设置");
+    return;
+  }
+
+  stopPopupPoll(name);
+  popupTimers[name] = window.setInterval(() => {
+    if (popup.closed) {
+      stopPopupPoll(name);
+      loading.value = false;
+    }
+  }, 500);
+
+  try {
+    const result = await axios.post(`/${name}-auth`);
+    if (!result.data.success || !result.data.auth_url) {
+      throw new Error(result.data.error || "获取授权链接失败");
+    }
+    popup.location.href = result.data.auth_url;
+  } catch (error: any) {
+    stopPopupPoll(name);
+    popup.close();
+    loading.value = false;
+    ElMessage.error(error.response?.data?.error || error.message || `${oauthLabels[name]}登录失败，请重试`);
+  }
+};
+
+// 回调页通过postMessage回传的登录结果
+const handleLoginMessage = (event: MessageEvent) => {
+  // 回调页由本站 /api/*-auth 端点提供，只接受同源消息
+  if (event.origin !== window.location.origin) return;
+  const data = event.data;
+  if (!data || typeof data !== "object" || !["success", "error"].includes(data.type)) return;
+
+  githubLoading.value = false;
+  linuxdoLoading.value = false;
+  qqLoading.value = false;
+  giteeLoading.value = false;
+  stopAllPopupPolls();
+  if (data.type === "success" && data.success) {
+    localStorage.setItem("TOKEN", data.data.token);
+    userStore.initUserState();
+    ElMessage.success(data.message || "登录成功");
+    window.location.href = redirectUrl.value;
+  } else {
+    ElMessage.error(data.message || "登录失败，请重试");
+  }
+};
+
+const handleGithubLogin = () => openOAuthLogin("github", githubLoading);
+const handleLinuxdoLogin = () => openOAuthLogin("linuxdo", linuxdoLoading);
+const handleQqLogin = () => openOAuthLogin("qq", qqLoading);
+const handleGiteeLogin = () => openOAuthLogin("gitee", giteeLoading);
+
 // 发送验证码
 const sendVerificationCode = async () => {
   if (!emailForm.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailForm.email)) {
@@ -241,7 +336,7 @@ const handleEmailCodeLogin = async () => {
     })
 
     if (result.data.token) {
-      ElMessage.success(`欢迎回来，${result.data.username}！`)
+      ElMessage.success(result.data.isNewUser ? `注册成功，欢迎 ${result.data.username}！` : `欢迎回来，${result.data.username}！`)
       localStorage.setItem('TOKEN', result.data.token)
       userStore.initUserState()
       window.location.href = redirectUrl.value
@@ -306,186 +401,6 @@ const handleResetPassword = async () => {
   }
 }
 
-// Linux.do登录处理
-// const handleLinuxdoLogin = async () => {
-//   try {
-//     linuxdoLoading.value = true;
-
-//     // 请求获取Linux.do授权URL
-//     const result = await axios.post(siteUrl.value + "/linuxdo-auth", {
-//       params: {
-//         action: "getAuthUrl",
-//       },
-//     });
-
-//     if (!result.data.success) {
-//       throw new Error("Linux.do登录配置错误");
-//     }
-
-//     // 打开授权页面
-//     const authWindow = window.open(
-//       result.data.auth_url,
-//       "linuxdo-auth",
-//       "width=600,height=600,scrollbars=yes,resizable=yes"
-//     );
-
-//     if (!authWindow) {
-//       throw new Error("无法打开登录窗口，请检查浏览器弹窗设置");
-//     }
-//   } catch (error) {
-//     console.error("Linux.do login error:", error);
-//     ElMessage.error("Linux.do登录失败，请重试");
-//     linuxdoLoading.value = false;
-//   }
-// };
-
-// Gitee登录处理 (替换原QQ登录处理)
-// const handleGiteeLogin = async () => {
-//   try {
-//     giteeLoading.value = true;
-
-//     // 请求获取Gitee授权URL
-//     const result = await axios.post(siteUrl.value + "/gitee-auth", {
-//       params: {
-//         action: "getAuthUrl",
-//       },
-//     });
-
-//     if (!result.data.success) {
-//       throw new Error("Gitee登录配置错误");
-//     }
-
-//     // 打开授权页面
-//     const authWindow = window.open(
-//       result.data.auth_url,
-//       "gitee-auth",
-//       "width=600,height=600,scrollbars=yes,resizable=yes"
-//     );
-
-//     if (!authWindow) {
-//       throw new Error("无法打开登录窗口，请检查浏览器弹窗设置");
-//     }
-//   } catch (error) {
-//     console.error("Gitee login error:", error);
-//     ElMessage.error("Gitee登录失败，请重试");
-//     giteeLoading.value = false;
-//   }
-// };
-
-// GitHub登录处理
-// const handleGithubLogin = async () => {
-//   try {
-//     githubLoading.value = true;
-
-//     // 请求获取GitHub授权URL
-//     const result = await axios.post(siteUrl.value + "/github-auth", {
-//       params: {
-//         action: "getAuthUrl",
-//       },
-//     });
-
-//     if (!result.data.success) {
-//       throw new Error("GitHub登录配置错误");
-//     }
-
-//     // 打开授权页面
-//     const authWindow = window.open(
-//       result.data.auth_url,
-//       "github-auth",
-//       "width=600,height=600,scrollbars=yes,resizable=yes"
-//     );
-
-//     if (!authWindow) {
-//       throw new Error("无法打开登录窗口，请检查浏览器弹窗设置");
-//     }
-//   } catch (error) {
-//     console.error("GitHub login error:", error);
-//     ElMessage.error("GitHub登录失败，请重试");
-//     githubLoading.value = false;
-//   }
-// };
-
-// QQ登录处理
-// const handleQQLogin = async () => {
-//   try {
-//     qqLoading.value = true;
-
-//     // 请求获取QQ授权URL
-//     const result = await axios.post(siteUrl.value + "/qq-auth", {
-//       params: {
-//         action: "getAuthUrl",
-//       },
-//     });
-
-//     if (!result.data.success) {
-//       throw new Error("QQ登录配置错误");
-//     }
-
-//     // 打开授权页面
-//     const authWindow = window.open(
-//       result.data.auth_url,
-//       "qq-auth",
-//       "width=600,height=600,scrollbars=yes,resizable=yes"
-//     );
-
-//     if (!authWindow) {
-//       throw new Error("无法打开登录窗口，请检查浏览器弹窗设置");
-//     }
-//   } catch (error) {
-//     console.error("QQ login error:", error);
-//     ElMessage.error("QQ登录失败，请重试");
-//     qqLoading.value = false;
-//   }
-// };
-
-// 处理登录窗口消息 - 统一处理所有第三方登录
-// const handleLoginMessage = (event: MessageEvent) => {
-//   // 验证消息来源 - 只接受来自可信域名的消息
-//   const trustedOrigins = [
-//     'https://connect.linux.do', // Linux.do官方域名
-//     'https://gitee.com', // Gitee官方域名 (替换QQ域名)
-//     'https://github.com', // GitHub官方域名
-//     'https://graph.qq.com', // QQ官方域名
-//     siteUrl.value, // 添加当前站点域名
-//     window.location.origin, // 添加当前页面域名
-//   ];
-
-//   if (!trustedOrigins.some(origin => event.origin.startsWith(origin))) {
-//     return; // 忽略不可信来源的消息
-//   }
-
-//   // 验证消息格式
-//   if (!event.data || typeof event.data !== 'object') {
-//     return; // 忽略格式不正确的消息
-//   }
-
-//   // 验证消息类型
-//   if (!['success', 'error'].includes(event.data?.type)) {
-//     return; // 忽略非登录相关的消息
-//   }
-
-//   // 处理登录结果
-//   if (event.data.type === 'success' && event.data.success) {
-//     // 保存 JWT
-//     localStorage.setItem("TOKEN", event.data.data.token);
-//     // 更新store中的用户状态
-//     userStore.initUserState();
-//     // 显示成功消息
-//     ElMessage.success(event.data.message || "登录成功");
-//     // 跳转
-//     window.location.href = redirectUrl.value;
-//   } else if (event.data.type === 'error' || !event.data.success) {
-//     // 显示错误消息
-//     ElMessage.error(event.data.message || "登录失败，请重试");
-//   }
-
-//   // 重置加载状态
-//   linuxdoLoading.value = false;
-//   giteeLoading.value = false;
-//   githubLoading.value = false;  // 新增
-//   qqLoading.value = false;  // 添加QQ loading重置
-// };
-
 const handleSignOut = () => {
   if (typeof window.google !== "undefined") {
     window.google.accounts.id.disableAutoSelect();
@@ -540,6 +455,7 @@ const handleSignOut = () => {
                 </el-button>
               </div>
               <el-button type="primary" class="w-full" @click="handleEmailCodeLogin" :loading="loading">登录</el-button>
+              <p class="text-caption text-gray-400 text-center">未注册的邮箱验证通过后将自动注册</p>
             </div>
           </div>
 
@@ -603,6 +519,84 @@ const handleSignOut = () => {
           </button>
         </div>
 
+        <!-- GitHub登录按钮 -->
+        <div class="flex justify-center">
+          <button
+            @click="handleGithubLogin"
+            :disabled="githubLoading"
+            class="flex items-center justify-center w-full h-[40px] border border-gray-300 rounded-md bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors px-4"
+          >
+            <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" class="h-5 w-5 mr-3 flex-shrink-0 text-gray-800">
+              <path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/>
+            </svg>
+            <span v-if="!githubLoading" class="text-body-sm font-medium text-gray-600 truncate">使用 GitHub 登录</span>
+            <div v-else class="flex items-center">
+              <el-icon class="is-loading mr-2"><Loading /></el-icon>
+              <span class="text-body-sm text-gray-600">登录中...</span>
+            </div>
+          </button>
+        </div>
+
+        <!-- LinuxDo登录按钮 -->
+        <div class="flex justify-center">
+          <button
+            @click="handleLinuxdoLogin"
+            :disabled="linuxdoLoading"
+            class="flex items-center justify-center w-full h-[40px] border border-gray-300 rounded-md bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors px-4"
+          >
+            <img
+              src="/linuxdo-logo.png"
+              alt="LinuxDo"
+              class="h-5 w-5 mr-3 flex-shrink-0"
+            />
+            <span v-if="!linuxdoLoading" class="text-body-sm font-medium text-gray-600 truncate">使用 LinuxDo 登录</span>
+            <div v-else class="flex items-center">
+              <el-icon class="is-loading mr-2"><Loading /></el-icon>
+              <span class="text-body-sm text-gray-600">登录中...</span>
+            </div>
+          </button>
+        </div>
+
+        <!-- QQ登录按钮 -->
+        <div class="flex justify-center">
+          <button
+            @click="handleQqLogin"
+            :disabled="qqLoading"
+            class="flex items-center justify-center w-full h-[40px] border border-gray-300 rounded-md bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors px-4"
+          >
+            <img
+              src="/qq-logo.png"
+              alt="QQ"
+              class="h-5 w-5 mr-3 flex-shrink-0"
+            />
+            <span v-if="!qqLoading" class="text-body-sm font-medium text-gray-600 truncate">使用 QQ 登录</span>
+            <div v-else class="flex items-center">
+              <el-icon class="is-loading mr-2"><Loading /></el-icon>
+              <span class="text-body-sm text-gray-600">登录中...</span>
+            </div>
+          </button>
+        </div>
+
+        <!-- Gitee登录按钮 -->
+        <div class="flex justify-center">
+          <button
+            @click="handleGiteeLogin"
+            :disabled="giteeLoading"
+            class="flex items-center justify-center w-full h-[40px] border border-gray-300 rounded-md bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors px-4"
+          >
+            <img
+              src="/gitee-logo.png"
+              alt="Gitee"
+              class="h-5 w-5 mr-3 flex-shrink-0"
+            />
+            <span v-if="!giteeLoading" class="text-body-sm font-medium text-gray-600 truncate">使用 Gitee 登录</span>
+            <div v-else class="flex items-center">
+              <el-icon class="is-loading mr-2"><Loading /></el-icon>
+              <span class="text-body-sm text-gray-600">登录中...</span>
+            </div>
+          </button>
+        </div>
+
         <!-- 隐藏的Google SDK按钮 -->
         <div style="display: none;">
           <div id="google-signin-button"></div>
@@ -616,7 +610,7 @@ const handleSignOut = () => {
 
         <!-- 登录说明 -->
         <div class="text-center text-gray-500 text-caption sm:text-body-sm px-2">
-          <p>支持邮箱验证码登录 / 谷歌账号登录</p>
+          <p>支持邮箱验证码登录（未注册将自动注册）及 Google / GitHub / LinuxDo / QQ / Gitee 第三方登录</p>
           <p class="mt-2">登录后可以享受更多个性化功能</p>
         </div>
 

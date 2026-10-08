@@ -1,7 +1,8 @@
 // Admin 工具使用记录 API
 //   GET /api/admin/tool-usage?page=1&pageSize=20&uid=...&tool_url=...&startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
 //     鉴权：目录中间件 _middleware.js 已保证 admin
-//     返回：明细 + 分页
+//     返回：明细 + 分页；每行附 ip_ban_id（该 IP 处于封禁中时为 ip_bans 行 id，
+//     供前端展示「已封禁」标签与解封按钮，null 表示未封禁）
 //
 // 时间约定：used_at 是秒级时间戳，SQL 内统一用秒比较；
 //   startDate/endDate 是 YYYY-MM-DD（本地 UTC+8），被解析为当天的 00:00:00 与次日 00:00:00（含当天）。
@@ -9,6 +10,8 @@
 // 路由说明：本文件精确匹配 /api/admin/tool-usage（GET 明细列表）。
 //   子路径 /api/admin/tool-usage/stats 单独走 stats.js，是 Cloudflare Pages Functions 的
 //   拆分惯例（与 credits/transactions.js 一致）。
+
+import { normalizeBanKey } from '../../utils/ip-ban.js'
 
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
@@ -118,10 +121,26 @@ export async function onRequestGet(context) {
       .bind(...args, pageSize, offset)
       .all()
 
+    // 标注每行 IP 是否处于封禁中（IPv6 记录按 /64 前缀匹配封禁键）
+    let banIdByKey = new Map()
+    try {
+      const bans = await db
+        .prepare(`SELECT id, ip FROM ip_bans WHERE expires_at IS NULL OR expires_at > datetime('now')`)
+        .all()
+      banIdByKey = new Map((bans.results || []).map((r) => [r.ip, r.id]))
+    } catch (e) {
+      // ip_bans 表未迁移时兜底：不标注，前端按未封禁处理
+      console.warn('[admin/tool-usage] load ip_bans failed:', e?.message || e)
+    }
+    const rows = (list.results || []).map((r) => ({
+      ...r,
+      ip_ban_id: r.ip ? (banIdByKey.get(normalizeBanKey(r.ip)) ?? null) : null,
+    }))
+
     const totalPages = Math.ceil(total / pageSize)
 
     return json({
-      list: list.results || [],
+      list: rows,
       pagination: {
         total,
         page,

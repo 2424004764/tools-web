@@ -36,6 +36,7 @@ function jsonError(message, status = 400) {
 
 export const SCOPE_DESCRIPTIONS = {
   profile: '读取你的账号资料（用户名、邮箱、头像）',
+  storage: '读取你的存储额度（总容量、已用、剩余可上传空间）',
 }
 
 // 把 code/state 拼到回调地址上（兼容已有 query 和 hash）

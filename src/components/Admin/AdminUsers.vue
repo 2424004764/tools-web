@@ -27,6 +27,7 @@ import {
   ArrowDown,
 } from '@element-plus/icons-vue'
 import { formatLocation } from '@/utils/geo-name'
+import { formatStorageBytes } from '@/api/storageQuota'
 import defaultAvatar from '@/assets/default_avatar.png'
 
 const loading = ref(false)
@@ -690,54 +691,68 @@ const updateIsMobile = () => {
       </span>
     </div>
 
-    <el-card shadow="never" class="!rounded-xl">
+    <el-card shadow="never" class="!rounded-xl user-list-card">
       <el-table
         :data="list"
         stripe
-        size="default"
+        size="small"
+        class="user-list-table"
         @selection-change="handleSelectionChange"
       >
         <el-table-column
           type="selection"
-          width="48"
+          width="42"
           :selectable="isSelectable"
         />
-<el-table-column label="头像" width="68" align="center">
+        <el-table-column label="头像" width="56" align="center">
           <template #default="{ row }">
             <img
               :src="row.avatar || defaultAvatar"
               :alt="row.username || row.email"
               :title="row.username || row.email"
-              class="w-9 h-9 rounded-full object-cover border border-border-default bg-ink-50"
+              class="w-8 h-8 rounded-full object-cover border border-border-default bg-ink-50"
               loading="lazy"
               @error="onAvatarError"
             />
           </template>
         </el-table-column>
-        <el-table-column label="邮箱 / UID" min-width="220">
+        <el-table-column label="邮箱 / UID" min-width="190">
           <template #default="{ row }">
-            <div class="flex flex-col gap-0.5 leading-snug">
-              <span class="text-ink-900 break-all">{{ row.email || '-' }}</span>
-              <div class="flex items-center gap-1">
-                <code class="text-[10px] text-ink-400 font-mono">{{ row.id.slice(0, 10) }}…</code>
-                <el-button link size="small" class="!p-0 !text-xs" @click="copyUid(row.id)">复制 UID</el-button>
+            <div class="flex min-w-0 flex-col gap-0 leading-tight">
+              <span
+                class="truncate text-ink-900"
+                :title="row.email || '-'"
+              >{{ row.email || '-' }}</span>
+              <div class="flex min-w-0 items-center gap-1">
+                <code class="min-w-0 truncate text-[10px] text-ink-400 font-mono" :title="row.id">{{ row.id.slice(0, 10) }}…</code>
+                <el-button link size="small" class="!shrink-0 !p-0 !text-xs" @click="copyUid(row.id)">复制 UID</el-button>
               </div>
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="用户名" min-width="160">
+        <el-table-column label="用户名" min-width="110">
           <template #default="{ row }">
-            <span class="text-ink-700">{{ row.username || '-' }}</span>
+            <span class="block truncate text-ink-700" :title="row.username || '-'">{{ row.username || '-' }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="积分余额" width="120" align="right">
+        <el-table-column label="积分余额" width="82" align="right">
           <template #default="{ row }">
             <el-tag type="success" effect="plain" size="small">
               {{ row.credits_balance ?? 0 }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="72">
+        <el-table-column label="已用 / 可用存储" width="132" align="right">
+          <template #default="{ row }">
+            <span
+              class="block truncate text-xs text-ink-700 tabular-nums"
+              :title="`已用 ${formatStorageBytes(row.storage_used_bytes ?? 0)} / 可用 ${formatStorageBytes(row.storage_available_bytes ?? 0)}`"
+            >
+              {{ formatStorageBytes(row.storage_used_bytes ?? 0) }} / {{ formatStorageBytes(row.storage_available_bytes ?? 0) }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column label="状态" width="68">
           <template #default="{ row }">
             <el-tag
               v-if="row.is_admin"
@@ -754,7 +769,7 @@ const updateIsMobile = () => {
             <el-tag v-else type="success" effect="plain" size="small">正常</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="今日使用工具" width="160" align="center">
+        <el-table-column label="今日使用工具" width="128" align="center">
           <template #default="{ row }">
             <template v-if="(row.today_usage_count ?? 0) > 0">
               <el-popover
@@ -804,7 +819,7 @@ const updateIsMobile = () => {
             <span v-else class="text-xs text-ink-400">-</span>
           </template>
         </el-table-column>
-        <el-table-column label="注册位置" width="150">
+        <el-table-column label="注册位置" width="112">
           <template #default="{ row }">
             <div class="flex flex-col gap-0.5 leading-tight">
               <span
@@ -827,7 +842,7 @@ const updateIsMobile = () => {
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="注册 / 最后登录" min-width="170">
+        <el-table-column label="注册 / 最后登录" min-width="145">
           <template #default="{ row }">
             <div class="flex flex-col gap-0.5 leading-tight">
               <div class="flex items-center gap-1 text-[11px]">
@@ -841,7 +856,7 @@ const updateIsMobile = () => {
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="88" fixed="right" align="center">
+        <el-table-column label="操作" width="72" fixed="right" align="center">
           <template #default="{ row }">
             <el-popover
               placement="bottom-end"
@@ -1478,6 +1493,19 @@ const updateIsMobile = () => {
 </template>
 
 <style scoped>
+.user-list-card :deep(.el-card__body) {
+  padding: 12px;
+}
+
+.user-list-table :deep(.el-table__cell) {
+  padding: 6px 0;
+}
+
+.user-list-table :deep(.cell) {
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
 /* 行操作 popover 内部菜单：替代 el-dropdown-menu 的自定义 ul/li 渲染。
    用 popover 比 el-dropdown 在触屏上更可靠（一次 tap 直接显示，无 focus 二次点击问题）。 */
 .row-action-menu {

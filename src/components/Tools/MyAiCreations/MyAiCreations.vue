@@ -27,6 +27,7 @@ import {
 import ClaimDialog from './ClaimDialog.vue'
 import ManualUploadDialog from './ManualUploadDialog.vue'
 import TagEditDialog from './TagEditDialog.vue'
+import LoadingIcon from '~icons/ep/loading'
 import Expand from '~icons/ep/expand'
 import Fold from '~icons/ep/fold'
 import Star from '~icons/ep/star'
@@ -241,8 +242,7 @@ const handleDownloadImage = async (img: AiCreationImage) => {
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
     const blob = await resp.blob()
     const objUrl = URL.createObjectURL(blob)
-    const ext = extFromUrlOrType(img.media_url)
-    autoDown(objUrl, safeZipFilename(img.filename || `${img.id}.${ext}`))
+    autoDown(objUrl, downloadNameOf(img))
     setTimeout(() => URL.revokeObjectURL(objUrl), 1000)
   } catch (e: any) {
     console.error('[my-ai-creations] download image error:', e)
@@ -269,9 +269,7 @@ const downloadGroupsAsZip = async (
     const safeTitle = (groupTitle(g) || '').replace(/[\\/:*?"<>|\s]+/g, '_').slice(0, 30)
     const folder = useFolders ? zip.folder(`${g.id}-${safeTitle || 'untitled'}`) : zip
     g.images.forEach((img) => {
-      const ext = extFromUrlOrType(img.media_url)
-      const filename = safeZipFilename(img.filename || `${img.id}.${ext}`)
-      tasks.push({ folder, name: filename, url: img.media_url })
+      tasks.push({ folder, name: downloadNameOf(img), url: img.media_url })
     })
   }
   if (tasks.length === 0) {
@@ -361,6 +359,17 @@ const extFromUrlOrType = (url: string): string => {
 const safeZipFilename = (filename: string): string => {
   const safe = filename.replace(/[\\/:*?"<>|\s]+/g, '_').trim()
   return safe || 'image.png'
+}
+
+// 生成器写回的默认文件名（image.png / generated_1.jpg 等）毫无区分度，全部重名，
+// 下载时会互相覆盖（浏览器自动追加 (1)(2)）。这类名字视为未命名，改用点位 uuid。
+const GENERIC_FILENAME_RE = /^(image|img|photo|picture|generated|output|result|untitled)[\s\-_.]*\d*\.(png|jpe?g|webp|gif)$/i
+
+/** 下载文件名：有真实文件名用之；为空或是 image.png 这类默认名时用点位 uuid（唯一） */
+const downloadNameOf = (img: AiCreationImage): string => {
+  const raw = (img.filename || '').trim()
+  if (raw && !GENERIC_FILENAME_RE.test(raw)) return safeZipFilename(raw)
+  return `${img.id}.${extFromUrlOrType(img.media_url)}`
 }
 
 // ============ 收藏 / 星标 ============
@@ -1273,7 +1282,8 @@ onUnmounted(() => {
                     {{ (item.parent.tags || []).length > 0 ? '✏️' : '+ 标签' }}
                   </button>
                 </div>
-                <div class="flex items-center justify-between mt-2 gap-2 flex-wrap">
+                <!-- 按钮行不用 justify-between：换行后会把按钮撑开到整行，显得散；ml-auto 负责右对齐 -->
+                <div class="flex items-center mt-2 gap-2 flex-wrap">
                   <span v-if="item.image.filename" class="text-[11px] text-gray-500 truncate max-w-full" :title="item.image.filename">{{ item.image.filename }}</span>
                   <span v-if="item.parent.model_name" class="text-[11px] text-indigo-500 truncate max-w-[40%]">
                     {{ item.parent.model_name }}
@@ -1308,7 +1318,8 @@ onUnmounted(() => {
                     </svg>
                     复制URL
                   </button>
-                  <!-- 下载这张图（image-proxy 拉原图，跨域直链 a[download] 不生效） -->
+                  <!-- 下载这张图（image-proxy 拉原图，跨域直链 a[download] 不生效）；
+                       下载中保持文案不变只换旋转图标，避免按钮宽度变化挤变形 -->
                   <button
                     type="button"
                     class="text-xs px-2 py-1 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-indigo-300 hover:text-indigo-600 transition-all flex items-center gap-1"
@@ -1316,10 +1327,11 @@ onUnmounted(() => {
                     title="下载这张图"
                     @click="handleDownloadImage(item.image)"
                   >
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true">
+                    <el-icon v-if="downloadingImageIds.has(item.image.id)" class="is-loading"><LoadingIcon /></el-icon>
+                    <svg v-else class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
-                    {{ downloadingImageIds.has(item.image.id) ? '下载中…' : '下载' }}
+                    下载
                   </button>
                   <!-- 发送至「图片切割」：单图卡片没有画廊/详情弹窗入口，操作栏直接给一个 -->
                   <button
@@ -1470,14 +1482,15 @@ onUnmounted(() => {
                     <button
                       type="button"
                       class="mac-img-download text-[10px] px-1.5 py-0.5 rounded bg-black/55 text-white border border-gray-200/40 backdrop-blur hover:bg-indigo-500 active:scale-95 transition-all flex items-center gap-0.5 opacity-0 group-hover/img:opacity-100"
-                      :title="downloadingImageIds.has(img.id) ? '下载中…' : '下载这张图'"
+                      title="下载这张图"
                       :disabled="downloadingImageIds.has(img.id)"
                       @click.stop="handleDownloadImage(img)"
                     >
-                      <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true">
+                      <el-icon v-if="downloadingImageIds.has(img.id)" class="is-loading"><LoadingIcon /></el-icon>
+                      <svg v-else class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                       </svg>
-                      {{ downloadingImageIds.has(img.id) ? '下载中' : '下载' }}
+                      下载
                     </button>
                   </div>
                   <!-- 右下角认领操作按钮：打开认领弹窗 -->
@@ -1689,7 +1702,8 @@ onUnmounted(() => {
                     {{ (item.group.tags || []).length > 0 ? '✏️' : '+ 标签' }}
                   </button>
                 </div>
-                <div class="flex items-center justify-between mt-2 gap-2 flex-wrap">
+                <!-- 按钮行不用 justify-between：换行后会把按钮撑开到整行；ml-auto 负责右对齐 -->
+                <div class="flex items-center mt-2 gap-2 flex-wrap">
                   <span v-if="item.group.model_name" class="text-[11px] text-indigo-500 truncate max-w-[40%]">
                     {{ item.group.model_name }}
                   </span>
@@ -1744,7 +1758,8 @@ onUnmounted(() => {
                     </svg>
                     复制URL
                   </button>
-                  <!-- 下载：多图合集打包 zip，单图直接下载；批量模式下隐藏（顶部批量条已有打包入口） -->
+                  <!-- 下载：多图合集打包 zip，单图直接下载；批量模式下隐藏（顶部批量条已有打包入口）；
+                       下载中保持文案不变只换旋转图标，避免按钮宽度变化挤变形 -->
                   <button
                     v-if="!batchMode && item.group.cover"
                     type="button"
@@ -1753,12 +1768,11 @@ onUnmounted(() => {
                     :title="item.group.image_count > 1 ? '把该合集全部图片打包成 zip 下载' : '下载这张图'"
                     @click="handleGroupDownload(item.group)"
                   >
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true">
+                    <el-icon v-if="downloadingGroupIds.has(item.group.id)" class="is-loading"><LoadingIcon /></el-icon>
+                    <svg v-else class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" aria-hidden="true">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
-                    {{ downloadingGroupIds.has(item.group.id)
-                      ? (item.group.image_count > 1 ? '打包中…' : '下载中…')
-                      : (item.group.image_count > 1 ? '打包下载' : '下载') }}
+                    {{ item.group.image_count > 1 ? '打包下载' : '下载' }}
                   </button>
                   <!-- 发送至「图片切割」：单图合集点图直接进全屏 viewer，没有画廊/详情里的分割入口，操作栏补一个；
                        多图合集在画廊里有每张图的分割按钮，这里不重复显示 -->
@@ -2262,10 +2276,11 @@ onUnmounted(() => {
                   :disabled="downloadingImageIds.has(img.id)"
                   @click.stop="handleDownloadImage(img)"
                 >
-                  <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true">
+                  <el-icon v-if="downloadingImageIds.has(img.id)" class="is-loading"><LoadingIcon /></el-icon>
+                  <svg v-else class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.4" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                   </svg>
-                  <span>{{ downloadingImageIds.has(img.id) ? '下载中' : '下载' }}</span>
+                  <span>下载</span>
                 </button>
               </div>
               <!-- 认领按钮：左下角，跟 i/N 角标错开避免重叠。

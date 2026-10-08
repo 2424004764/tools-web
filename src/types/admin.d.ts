@@ -27,6 +27,12 @@ export interface AdminUser {
   credits_balance?: number
   credits_earned?: number
   credits_spent?: number
+  /** 用户存储已使用的字节数 */
+  storage_used_bytes?: number
+  /** 扣除有效上传预留后的可用存储字节数 */
+  storage_available_bytes?: number
+  /** 总存储配额字节数 */
+  storage_quota_bytes?: number
   /** 今日（本地 UTC+8 00:00 至今）使用过的工具数（DISTINCT tool_url）；0 表示今日未使用 */
   today_tool_count?: number
   /** 今日（本地 UTC+8 00:00 至今）工具使用总次数（每次进入工具页 = 1 次） */
@@ -187,6 +193,8 @@ export interface AdminDashboard {
   /** 待审核数（依赖 comments / friend_links 表；未迁移兜底为 0） */
   pendingComments?: number
   pendingFriendLinks?: number
+  /** 待审核博客文章数；未迁移兜底为 0 */
+  pendingBlogPosts?: number
 }
 
 /** 慢日志按时间窗聚合（UTC+8 自然日 / 周一 / 1 号起） */
@@ -229,6 +237,8 @@ export interface ToolUsageRecord {
   uid: string
   /** 客户端 IP（CF-Connecting-IP）；匿名用户靠这个标识，登录用户也存便于审计 */
   ip: string | null
+  /** 该 IP 处于封禁中时为 ip_bans 行 id（解封用）；null 表示未封禁 */
+  ip_ban_id?: string | null
   tool_url: string
   tool_title: string
   used_at: number
@@ -275,6 +285,22 @@ export interface ToolUsageStats {
   rangeStart?: string | null
   /** 整张表的最新记录日期（UTC+8 'YYYY-MM-DD'）；用于标注统计区间 */
   rangeEnd?: string | null
+}
+
+/** IP 封禁规则（后台「工具使用记录」页管理） */
+export interface IpBanRule {
+  id: string
+  /** 封禁键：IPv4 完整地址；IPv6 为 /64 前缀（如 '2408:820a:1234:5678::/64'） */
+  ip: string
+  /** 管理员提交的原始 IP（IPv6 完整地址，展示用） */
+  original_ip: string
+  reason: string
+  banned_by: string | null
+  banned_by_email: string
+  /** UTC 'YYYY-MM-DD HH:MM:SS' */
+  created_at: string
+  /** UTC 'YYYY-MM-DD HH:MM:SS'；NULL = 永久 */
+  expires_at: string | null
 }
 
 /** 生成记录（AI 工具调用日志） */

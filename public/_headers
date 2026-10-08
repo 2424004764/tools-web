@@ -13,7 +13,9 @@
   #  - img-src 加 data: blob:：Canvas 截图、Base64 图片、PDF.js worker 渲染。
   #  - connect-src *：AI 代理/外部 API 多为 * 调用（Agnes、Pollinations、Supabase 等）。
   #  - script-src / frame-src / style-src 加 https://giscus.app：评论区使用 giscus（加载 client.js、default.css 并内嵌 giscus iframe）。
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com https://accounts.google.com https://giscus.app https://api.tianditu.gov.cn; style-src 'self' 'unsafe-inline' https://giscus.app; img-src 'self' data: blob: https:; media-src 'self' https: blob:; font-src 'self' data:; connect-src 'self' https: wss:; frame-src https://giscus.app; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://accounts.google.com
+#  - frame-src 加 4 个 jx.* 域名：视频解析工具（/video-parser/）内嵌的第三方解析线路 iframe。
+#    与 VideoParser.vue 里 PARSE_LINES 的 url 保持同步；解析服务商换域名时此处需同步更新。
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com https://accounts.google.com https://giscus.app https://api.tianditu.gov.cn; style-src 'self' 'unsafe-inline' https://giscus.app; img-src 'self' data: blob: https:; media-src 'self' https: blob:; font-src 'self' data:; connect-src 'self' https: wss:; frame-src https://giscus.app https://jx.xmflv.com https://jx.m3u8.tv https://jx.playerjy.com https://jx.hls.one; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://accounts.google.com
 
 /js/*
   Cache-Control: public, max-age=31536000, immutable
@@ -24,9 +26,27 @@
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
 
-/*.js
+# sw.js 是不带 hash 的固定 URL、每次发版内容都变，必须每次回源校验。
+# 2026-10 线上实测：no-cache 形式会被 Cloudflare zone 的 Browser Cache TTL(4h)
+# 改写成 max-age=14400，浏览器 4 小时拿不到新 sw.js → 发版后旧 SW 滞留。
+# 改用与 /index.html 相同的 no-store 形式（Browser Cache TTL 不改写 no-store）；
+# main.ts 侧另有 register(..., { updateViaCache: 'none' }) 双保险，即使该规则
+# 再被覆盖也不影响 SW 更新检查。
+# （CF _headers 多规则同时命中时 header 会合并而不是覆盖，所以这里用精确规则，
+# 避免与 /* 的默认头冲突）
+/sw.js
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+  Pragma: no-cache
+  Content-Type: application/javascript; charset=utf-8
+
+# 根路径其余 .js 只有内容 hash 的 workbox 运行时，可放心长缓存
+/workbox-*.js
   Cache-Control: public, max-age=31536000, immutable
   Content-Type: application/javascript; charset=utf-8
+
+# /lib 下的第三方库（gif.js 等）不带 hash 但内容基本不变，保持长缓存
+/lib/*
+  Cache-Control: public, max-age=31536000, immutable
 
 /*.css
   Cache-Control: public, max-age=31536000, immutable

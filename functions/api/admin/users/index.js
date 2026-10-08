@@ -4,6 +4,8 @@
 //
 // 鉴权：上游 functions/api/admin/_middleware.js 已校验 Bearer JWT + is_admin=1
 
+import { STORAGE_RESERVATION_TTL_SECONDS } from '../../../config/storage.js'
+
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
@@ -104,9 +106,12 @@ async function onRequestGet(context) {
                 (u.password IS NOT NULL AND u.password != '') AS has_password,
                 COALESCE(c.balance, 0) AS credits_balance,
                 COALESCE(c.total_earned, 0) AS credits_earned,
-                COALESCE(c.total_spent, 0) AS credits_spent
+                COALESCE(c.total_spent, 0) AS credits_spent,
+                COALESCE(sq.quota_bytes, 0) AS storage_quota_bytes,
+                COALESCE(sq.used_bytes, 0) AS storage_used_bytes
          FROM user u
          LEFT JOIN user_credits c ON c.uid = u.id
+         LEFT JOIN user_storage_quota sq ON sq.uid = u.id
          ${whereSql}
          ORDER BY u.created_at DESC, u.id DESC
          LIMIT ? OFFSET ?`,
@@ -137,6 +142,20 @@ async function onRequestGet(context) {
         .all()
       const usageMap = new Map(
         (usageResult.results || []).map((u) => [u.uid, u]),
+      )
+
+      const reservationResult = await db
+        .prepare(
+          `SELECT uid, COALESCE(SUM(bytes), 0) AS pending_bytes
+           FROM storage_reservations
+           WHERE uid IN (${placeholders})
+             AND created_at >= datetime('now', ?)
+           GROUP BY uid`,
+        )
+        .bind(...uids, `-${STORAGE_RESERVATION_TTL_SECONDS} seconds`)
+        .all()
+      const reservationMap = new Map(
+        (reservationResult.results || []).map((r) => [r.uid, Number(r.pending_bytes) || 0]),
       )
 
       // 今日具体工具列表（按 use_count 倒序；悬浮 popover 用）
@@ -181,8 +200,13 @@ async function onRequestGet(context) {
       rows = rows.map((r) => {
         const u = usageMap.get(r.id)
         const loc = locationMap.get(r.id)
+        const pendingBytes = reservationMap.get(r.id) || 0
         return {
           ...r,
+          storage_available_bytes: Math.max(
+            0,
+            Number(r.storage_quota_bytes) - Number(r.storage_used_bytes) - pendingBytes,
+          ),
           today_tool_count: u?.tool_count ?? 0,
           today_usage_count: u?.use_count ?? 0,
           today_tools: toolsMap.get(r.id) || [],

@@ -17,7 +17,6 @@ import { useUserStore } from './store/modules/user'
 import { initializeAIProviders } from './spi/init'
 import { injectCloudflareAnalytics } from './utils/analytics'
 import { initTheme } from './composables/useTheme'
-import CodeMirror from 'codemirror'
 
 const app = createApp(App)
 app.use(pinia)
@@ -25,12 +24,6 @@ app.use(router)
 
 // 恢复主题偏好（light/dark，见 useTheme.ts），须在挂载前执行避免闪白
 initTheme()
-
-// CodeMirror 行号对齐修复：fixedGutter 的横向滚动补偿依赖易失效的量测，
-// 会让不同批次渲染的行号基准不一致（行号分裂成两列 / 盖住行首）。
-// 本站编辑器均为自动换行模式，关闭 fixedGutter 后所有行统一以
-// -gutterWidth 定位，行号槽背景列永远与行号对齐。
-CodeMirror.defaults.fixedGutter = false
 
 // v-md-editor 懒加载：仅在 /markdown/ 页面首次访问时动态 import 并注册，
 // 避免首屏就把 v-md-editor + prism + vuepress 主题一起打包进来。
@@ -62,10 +55,27 @@ if (import.meta.env.PROD) {
   injectCloudflareAnalytics()
 }
 
-// PWA Service Worker：仅生产环境、非自动化环境注册（与 vite.config injectRegister: null 配套，
-// 等价于原注入脚本——registerType: 'prompt'，只注册不自动刷新）。
-// puppeteer 预渲染时 navigator.webdriver === true，必须跳过 —— 否则 SW 的
-// navigateFallback 会把后续预渲染路由都替换成缓存的首页壳，静态 HTML 全部失效
+// PWA Service Worker：仅生产环境、非自动化环境注册（与 vite.config injectRegister: null 配套）。
+// vite.config 里 registerType: 'autoUpdate'：生成的 sw.js 自带 skipWaiting + clientsClaim，
+// 发版后新 SW 装完立即接管，这里裸注册即可，无需手动发 SKIP_WAITING。
+// puppeteer 预渲染时 navigator.webdriver === true，必须跳过，避免 SW 缓存逻辑干扰快照产物
 if (import.meta.env.PROD && !navigator.webdriver) {
-  navigator.serviceWorker.register('/sw.js').catch(() => { /* SW 注册失败静默 */ })
+  // updateViaCache: 'none'：SW 更新检查一律绕过 HTTP 缓存。
+  // 2026-10 线上实测 sw.js 被 Cloudflare 以 max-age=14400 下发（_headers 的 no-cache
+  // 被 zone 的 Browser Cache TTL 改写），4 小时内浏览器拿不到新 sw.js，发版后旧 SW 滞留
+  const hadController = !!navigator.serviceWorker.controller
+  navigator.serviceWorker
+    .register('/sw.js', { updateViaCache: 'none' })
+    .catch(() => { /* SW 注册失败静默 */ })
+
+  // 新 SW（skipWaiting）接管本页时刷新一次：接管瞬间可能出现"旧 HTML 引用的
+  // 旧 hash 资源已 404"（无样式页面），刷新后 SW / HTML / 资源三者重新一致。
+  // 首次安装（本页此前没有 controller）不刷；OAuth 回调页不刷（code 是一次性的）
+  let refreshing = false
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController || refreshing) return
+    if (/\/(?:github|google|gitee|qq|linuxdo)-auth$/.test(location.pathname)) return
+    refreshing = true
+    window.location.reload()
+  })
 }

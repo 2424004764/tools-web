@@ -134,7 +134,9 @@ async function main() {
     },
   })
     .composite(composites)
-    .png({ compressionLevel: 9 })
+    // palette 量化：工具 logo 是扁平色块小图，调色板模式体积只有全色 RGBA 的 1/3~1/6
+    // （实测 545KB → ~100KB），首页/分类页首屏直接省下这笔流量；坐标 JSON 不受影响
+    .png({ compressionLevel: 9, palette: true, quality: 90 })
     .toFile(PNG_OUT)
 
   // 写坐标 JSON —— key 用 logo URL（唯一），不依赖 tools.ts 里质量堪忧的 id

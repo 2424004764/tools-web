@@ -28,13 +28,18 @@ async function getAuthUrl(request, env, origin) {
     try {
         // QQ互联配置信息
         const CLIENT_ID = env.QQ_CLIENT_ID;
-        const REDIRECT_URI = env.QQ_REDIRECT_URI || `${env.SITE_URL || 'https://tools.ranblogs.com'}/qq-auth`;
         const AUTH_URL = 'https://graph.qq.com/oauth2.0/authorize';
 
         // 检查必要的配置
         if (!CLIENT_ID) {
             throw new Error('缺少QQ_CLIENT_ID环境变量配置');
         }
+
+        // 回调地址固定用 /api/qq-auth：站点是 PWA，Service Worker 的
+        // navigateFallback 会拦截非 /api/ 路径的页面导航并返回缓存的 SPA 壳
+        // （旧版 SW 的 denylist 只有 /^\/api\//），导致 OAuth 回调页到不了函数、
+        // 弹窗落在 /404。/api/ 路径任何版本的 SW 都放行（与 github-auth 相同策略）。
+        const redirectUri = `${new URL(request.url).origin}/api/qq-auth`;
 
         // 生成state参数防止CSRF攻击
         const state = crypto.randomUUID();
@@ -43,7 +48,7 @@ async function getAuthUrl(request, env, origin) {
         const params = new URLSearchParams({
             response_type: 'code',
             client_id: CLIENT_ID,
-            redirect_uri: REDIRECT_URI,
+            redirect_uri: redirectUri,
             state: state,
             scope: 'get_user_info',
         });
@@ -84,8 +89,13 @@ async function handleAuthCallback(request, env, origin) {
             });
         }
 
+        // redirect_uri 必须与授权链接里的一致才能换 token；
+        // 从回调请求自身重建（origin + path），/api/qq-auth 与旧版 /qq-auth 链接都能对上
+        const callbackUrl = new URL(request.url);
+        const redirectUri = callbackUrl.origin + callbackUrl.pathname;
+
         // 交换访问令牌
-        const tokenResponse = await exchangeCodeForToken(code, env);
+        const tokenResponse = await exchangeCodeForToken(code, env, redirectUri);
         if (!tokenResponse.success) {
             return createCallbackResponse('error', {
                 success: false,
@@ -152,11 +162,10 @@ function createCallbackResponse(type, data) {
 }
 
 // 交换授权码为访问令牌
-async function exchangeCodeForToken(code, env) {
+async function exchangeCodeForToken(code, env, redirectUri) {
     try {
         const clientId = env.QQ_CLIENT_ID;
         const clientSecret = env.QQ_CLIENT_SECRET;
-        const redirectUri = env.QQ_REDIRECT_URI;
 
         if (!clientId || !clientSecret) {
             throw new Error('缺少QQ应用配置');

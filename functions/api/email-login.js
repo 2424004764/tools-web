@@ -24,6 +24,13 @@ const generateJWT = async (payload, secret) => {
   return `${data}.${signatureB64}`
 }
 
+// 从邮箱前缀生成用户名，重名时追加随机数字后缀
+const generateUsername = async (env, email) => {
+  const prefix = email.split('@')[0].replace(/[^a-zA-Z0-9_\-\u4e00-\u9fa5]/g, '').slice(0, 20) || 'user'
+  const exists = await env.DB.prepare('SELECT id FROM user WHERE username = ?').bind(prefix).first()
+  return exists ? `${prefix}${Math.floor(1000 + Math.random() * 9000)}` : prefix
+}
+
 export async function onRequest(context) {
   const { request, env } = context
 
@@ -44,15 +51,25 @@ export async function onRequest(context) {
     }
 
     // 查询用户
-    const user = await env.DB.prepare('SELECT id, email, username, avatar, is_admin FROM user WHERE email = ?').bind(email).first()
+    let user = await env.DB.prepare('SELECT id, email, username, avatar, is_admin FROM user WHERE email = ?').bind(email).first()
+    let isNewUser = false
+
+    // 未注册则自动注册（邮箱所有权已通过验证码验证）
     if (!user) {
-      return ApiResponse.error('用户不存在', request.headers.get('Origin'))
+      const userId = crypto.randomUUID()
+      const username = await generateUsername(env, email)
+      const now = new Date().toISOString()
+      await env.DB.prepare(
+        'INSERT INTO user (id, email, username, password, salt, avatar, created_at, last_login) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+      ).bind(userId, email, username, '', '', '', now, now).run()
+      user = { id: userId, email, username, avatar: '', is_admin: 0 }
+      isNewUser = true
     }
 
     // 生成JWT
     const token = await generateJWT({ uid: user.id, email: user.email, username: user.username, avatar: user.avatar || '', is_admin: user.is_admin ? 1 : 0 }, env.JWT_SECRET)
 
-    return ApiResponse.success({ token, username: user.username }, request.headers.get('Origin'))
+    return ApiResponse.success({ token, username: user.username, isNewUser }, request.headers.get('Origin'))
   } catch (error) {
     console.error('Email login error:', error)
     return ApiResponse.error('登录失败', request.headers.get('Origin'), 500)

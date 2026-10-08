@@ -1243,7 +1243,7 @@ export const constantRoute = [
     }
   },
   {
-    // 手机端专用：积分流水独立页面（桌面端走弹窗 CreditTransactionsDialog）
+    // 积分与存储空间独立页（手机端菜单直跳；桌面端从积分弹窗标题旁的「独立页面」按钮进入）
     path: '/me/credits',
     component: () => import('@/components/User/CreditTransactionsPage.vue'),
     name: 'me-credits',
@@ -1981,6 +1981,16 @@ export const constantRoute = [
           title: '评论管理',
           keywords: '后台评论管理,评论审核',
           description: '审核自建评论系统的用户评论，通过后展示在工具页',
+        },
+      },
+      {
+        path: 'blog/review',
+        component: () => import('@/components/Admin/AdminBlog.vue'),
+        name: 'adminBlogReview',
+        meta: {
+          title: '文章审核',
+          keywords: '后台文章审核,博客投稿审核',
+          description: '审核用户投稿文章，通过或驳回待审核内容',
         },
       },
       {

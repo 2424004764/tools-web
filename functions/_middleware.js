@@ -2,6 +2,7 @@
  * 全局中间件 — 统一处理 CORS 与基础安全头
  *
  * 职责：
+ *  0. IP 封禁拦截（ip_bans 表命中即 403；/api/admin/* 豁免，见 utils/ip-ban.js）
  *  1. 对受保护路径（/api/*、OAuth 回调、短链接）注入白名单 CORS 头
  *  2. OPTIONS 预检统一走 cors.js 的 handleCORSPreflight
  *  3. 给所有响应添加 X-Content-Type-Options / X-Frame-Options / Referrer-Policy
@@ -17,6 +18,7 @@
 
 import { getCORSHeaders, handleCORSPreflight } from './utils/cors.js'
 import { logApiError, UPSTREAM_ERROR_KEY } from './utils/error-log.js'
+import { isIpBanned } from './utils/ip-ban.js'
 import { extractUidFromRequest } from './api/_lib/model-resolver.js'
 import PAGE_META, { siteOrigin, appTitle } from './_page-meta.js'
 
@@ -33,7 +35,7 @@ const CORS_PROTECTED_PREFIXES = [
 
 // OAuth2 公开协议端点：供任意子站跨源调用（客户端凭据即认证，无 cookie 会话），
 // 不做白名单 CORS 覆盖，由端点自带 Access-Control-Allow-Origin: *
-const OAUTH_PUBLIC_PREFIXES = ['/api/oauth/token', '/api/oauth/userinfo', '/api/oauth/revoke']
+const OAUTH_PUBLIC_PREFIXES = ['/api/oauth/token', '/api/oauth/userinfo', '/api/oauth/storage-quota', '/api/oauth/revoke']
 
 function needsCORS(path) {
   return CORS_PROTECTED_PREFIXES.some((p) => path === p || path.startsWith(p))
@@ -212,22 +214,53 @@ async function maybeRewritePageMeta(request, path, response, env) {
     const contentType = response.headers.get('Content-Type') || ''
     if (response.status !== 200 || !contentType.includes('text/html')) return response
 
-    let meta = PAGE_META[normalizePagePath(path)]
+    const normPath = normalizePagePath(path)
+    let meta = PAGE_META[normPath]
     if (!meta) {
       // 博客详情页（动态路由）查库兜底
       meta = await getBlogPostMeta(env, path)
     }
-    if (!meta) return response // 首页 / 未收录路径：保持全局默认 meta
 
     const html = await response.text()
-    let out = html.replace(/<title\b[^>]*>[\s\S]*?<\/title>/i, `<title>${escapeHtmlAttr(meta.title)}</title>`)
-    out = replaceMetaContent(out, 'description', meta.description)
-    out = replaceMetaContent(out, 'keywords', meta.keywords)
-    out = replaceMetaContent(out, 'og:title', meta.title)
-    out = replaceMetaContent(out, 'og:description', meta.description)
-    out = replaceMetaContent(out, 'og:url', meta.ogUrl)
-    out = replaceMetaContent(out, 'twitter:title', meta.title)
-    out = replaceMetaContent(out, 'twitter:description', meta.description)
+    let out = html
+
+    // ---- canonical：所有经过中间件的 200 HTML 都改写为路径自引用。
+    // 基础模板里的 canonical 指向首页，若工具页不改写，会被搜索引擎当作首页重复
+    const canonicalUrl = normPath === '/' ? `${siteOrigin}/` : `${siteOrigin}${normPath}/`
+    const canonicalTag = `<link rel="canonical" href="${escapeHtmlAttr(canonicalUrl)}">`
+    if (out.includes('rel="canonical"')) {
+      out = out.replace(/<link\s+rel="canonical"[^>]*>/i, canonicalTag)
+    } else {
+      out = out.replace(/<\/head>/i, `${canonicalTag}\n  </head>`)
+    }
+
+    if (meta) {
+      out = out.replace(/<title\b[^>]*>[\s\S]*?<\/title>/i, `<title>${escapeHtmlAttr(meta.title)}</title>`)
+      out = replaceMetaContent(out, 'description', meta.description)
+      out = replaceMetaContent(out, 'keywords', meta.keywords)
+      out = replaceMetaContent(out, 'og:title', meta.title)
+      out = replaceMetaContent(out, 'og:description', meta.description)
+      out = replaceMetaContent(out, 'og:url', meta.ogUrl)
+      out = replaceMetaContent(out, 'twitter:title', meta.title)
+      out = replaceMetaContent(out, 'twitter:description', meta.description)
+
+      // ---- 工具页结构化数据：SoftwareApplication，争取搜索富摘要。
+      // 仅静态收录的工具页注入；博客详情走 og:url 的 canonical 即可
+      if (PAGE_META[normPath]) {
+        const ld = {
+          '@context': 'https://schema.org',
+          '@type': 'SoftwareApplication',
+          name: meta.title,
+          url: meta.ogUrl,
+          applicationCategory: 'UtilitiesApplication',
+          operatingSystem: 'Web',
+          offers: { '@type': 'Offer', price: '0', priceCurrency: 'CNY' },
+        }
+        // `<` 转义为 unicode，防止文本里出现 </script> 提前闭合标签
+        const ldJson = JSON.stringify(ld).replace(/</g, '\\u003c')
+        out = out.replace(/<\/head>/i, `  <script type="application/ld+json">${ldJson}</script>\n  </head>`)
+      }
+    }
 
     const headers = new Headers(response.headers)
     headers.delete('Content-Length') // body 已变，交给运行时按实际长度生成
@@ -244,10 +277,32 @@ async function maybeRewritePageMeta(request, path, response, env) {
   }
 }
 
+// 被封禁 IP 看到的 HTML 提示页（页面请求）；API 请求返回 JSON 403
+const BANNED_HTML = `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>访问受限</title></head><body style="font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;color:#333;background:#f5f6f7"><div style="text-align:center"><div style="font-size:40px">🚫</div><h1 style="font-size:18px;margin:12px 0 8px">访问受限</h1><p style="color:#777;font-size:14px;margin:0">您的网络对本站的访问已被限制，如有疑问请联系站长。</p></div></body></html>`
+
 export async function onRequest(context) {
-  const { request } = context
+  const { request, env } = context
   const path = new URL(request.url).pathname
   const startedAt = Date.now()
+
+  // ---- IP 封禁拦截（ip_bans 表，后台「工具使用记录」页管理）----
+  // 管理端点豁免：若管理员 IP 被误封（如与滥用者同一出口 IP），仍能进后台解封；
+  // /api/admin/* 本身有 JWT + is_admin 鉴权，豁免不构成暴露面
+  if (!path.startsWith('/api/admin')) {
+    const clientIp = request.headers.get('CF-Connecting-IP')
+    if (clientIp && (await isIpBanned(env?.DB, clientIp))) {
+      if ((request.headers.get('Accept') || '').includes('text/html')) {
+        return new Response(BANNED_HTML, {
+          status: 403,
+          headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
+        })
+      }
+      return new Response(JSON.stringify({ success: false, error: '您的访问已被限制' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+      })
+    }
+  }
 
   // 静态资源直通：不经过任何 middleware 处理，避免 context.next() 包装导致 stream 断裂
   if (/\.(js|css|png|jpg|svg|ico|woff2?|ttf|webp|json|xml|txt)$/.test(path)) {

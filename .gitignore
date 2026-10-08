@@ -10,6 +10,7 @@ tmpclaude-*-cwd
 
 node_modules
 dist
+_worker.bundle
 dist-ssr
 *.local
 .env.development
@@ -36,6 +37,12 @@ dist-ssr
 public/sitemap.txt
 .claude/settings.local.json
 .claude/skills/
+
+# vite-plugin-pwa dev 模式的临时 Service Worker 产物（pnpm dev 自动生成）
+dev-dist/
+# 崩溃转储 / Vite 配置加载残留
+*.stackdump
+*.timestamp-*.mjs
 
 # 搜索引擎推送快照（运行 scripts/submit-search.mjs 生成）
 .search-submissions.json

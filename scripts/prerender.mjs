@@ -23,12 +23,12 @@
  */
 
 import { exec } from 'node:child_process'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import puppeteer from 'puppeteer'
 // 与 functions/_middleware.js 同源的路由 meta 表（构建前由 generate-page-meta.mjs 生成）
-import pageMeta from '../functions/_page-meta.js'
+import pageMeta, { siteOrigin } from '../functions/_page-meta.js'
 
 const root = process.cwd()
 const distDir = path.join(root, 'dist')
@@ -42,6 +42,48 @@ const routes = Object.keys(pageMeta)
 if (routes.length === 0) {
   console.log('[prerender] 路由表为空，跳过')
   process.exit(0)
+}
+
+// ---- 博客详情：从线上 API 拉已发布文章，一并纳入预渲染 ----
+// 此前 /blog/<slug> 是动态路由不预渲染，无 JS 爬虫（百度）抓到的只有空壳。
+// vite preview 只托管静态文件、没有 functions，渲染时 /api/blog/posts/<slug>
+// 由请求拦截（见 newRenderPage）用这里预取好的线上数据应答。
+// API 不可达只降级（本次跳过博客），绝不阻塞构建。
+const blogApiMocks = new Map() // slug -> 详情接口 JSON 字符串
+try {
+  const slugs = []
+  for (let pageNo = 1; pageNo <= 40; pageNo++) {
+    const res = await fetch(`${siteOrigin}/api/blog/posts?page=${pageNo}&pageSize=50`)
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const json = await res.json()
+    for (const item of json?.data?.list || []) {
+      if (item?.slug) slugs.push(String(item.slug))
+    }
+    if (!json?.data?.pagination?.hasNext) break
+  }
+  const uniqSlugs = [...new Set(slugs)]
+  const details = await Promise.all(
+    uniqSlugs.map(async (slug) => {
+      try {
+        const res = await fetch(`${siteOrigin}/api/blog/posts/${encodeURIComponent(slug)}`)
+        if (!res.ok) return null
+        const json = await res.json()
+        if (!json?.data?.post) return null
+        return [slug, JSON.stringify(json)]
+      } catch {
+        return null
+      }
+    }),
+  )
+  for (const d of details) {
+    if (d) blogApiMocks.set(d[0], d[1])
+  }
+  for (const slug of uniqSlugs) {
+    if (blogApiMocks.has(slug)) routes.push(`/blog/${slug}`)
+  }
+  console.log(`[prerender] 博客：线上取到 ${uniqSlugs.length} 篇，成功预取 ${blogApiMocks.size} 篇详情`)
+} catch (e) {
+  console.warn(`[prerender] ⚠️ 博客列表拉取失败（${e.message}），本次跳过博客详情预渲染`)
 }
 
 const CONCURRENCY = Math.max(1, Math.min(12, Number(process.env.PRERENDER_CONCURRENCY) || 6))
@@ -116,7 +158,12 @@ function startPreview() {
 // ---- 并发渲染 ----
 
 async function renderRoute(page, local, route) {
-  // 带尾斜杠确保命中 dist/<route>/index.html；文件尚不存在时 preview 走 SPA
+  const file = path.join(distDir, route, 'index.html')
+  // 先删旧产物：preview 对不存在的路径走 SPA 壳 fallback。否则上一轮构建的
+  // 预渲染 HTML（引用旧 hash 资源、内容可能已过期）会被 waitForFunction
+  // 直接判定就绪、原样快照落盘 —— 对内容会变的博客详情尤其致命
+  rmSync(file, { force: true })
+  // 带尾斜杠确保命中 dist/<route>/index.html；文件已被删除，preview 走 SPA
   // fallback 返回壳 HTML，SPA 挂载后同样渲染出目标页，二者等价
   await page.goto(`${local}${route}/`, { waitUntil: 'load', timeout: 30_000 })
   await page.waitForSelector('body', { timeout: 15_000 })
@@ -139,7 +186,6 @@ async function renderRoute(page, local, route) {
   // 把序列化时补全的本地 origin 去掉，资源路径恢复为根相对（/js/...）
   html = html.split(local).join('')
   html = injectPageMeta(html, route)
-  const file = path.join(distDir, route, 'index.html')
   mkdirSync(path.dirname(file), { recursive: true })
   writeFileSync(file, html)
 }
@@ -164,8 +210,27 @@ async function main() {
     process.exit(0)
   }
 
+  // 每个标签页都挂请求拦截：渲染博客详情时，用预取的线上数据应答
+  // /api/blog/posts/<slug>（vite preview 没挂 functions，不拦截拿不到正文）
+  async function newRenderPage() {
+    const page = await browser.newPage()
+    await page.setRequestInterception(true)
+    page.on('request', (req) => {
+      const m = req.url().match(/\/api\/blog\/posts\/([^/?#]+)/)
+      const slug = m ? decodeURIComponent(m[1]) : null
+      if (slug && blogApiMocks.has(slug)) {
+        req
+          .respond({ status: 200, contentType: 'application/json; charset=utf-8', body: blogApiMocks.get(slug) })
+          .catch(() => req.abort().catch(() => {}))
+        return
+      }
+      req.continue().catch(() => {})
+    })
+    return page
+  }
+
   const pages = []
-  for (let i = 0; i < CONCURRENCY; i++) pages.push(await browser.newPage())
+  for (let i = 0; i < CONCURRENCY; i++) pages.push(await newRenderPage())
 
   let next = 0
   const okRoutes = []
@@ -185,7 +250,7 @@ async function main() {
           await page.close()
         } catch { /* 忽略 */ }
         try {
-          const fresh = await browser.newPage()
+          const fresh = await newRenderPage()
           pages[pages.indexOf(page)] = fresh
           page = fresh
           await renderRoute(page, local, route)
