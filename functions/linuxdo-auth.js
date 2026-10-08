@@ -28,18 +28,24 @@ async function getAuthUrl(request, env, origin) {
   try {
     // 配置信息
     const CLIENT_ID = env.LINUXDO_CLIENT_ID;
-    const REDIRECT_URI = env.LINUXDO_REDIRECT_URI;
     const AUTH_URL = 'https://connect.linux.do/oauth2/authorize';
-    
+
     // 检查必要的配置
     if (!CLIENT_ID) {
       throw new Error('缺少LINUXDO_CLIENT_ID环境变量配置');
     }
-    
+
+    // 回调地址固定用 /api/linuxdo-auth 而非环境变量里的 /linuxdo-auth：
+    // 站点是 PWA，Service Worker 的 navigateFallback 会拦截非 /api/ 路径的
+    // 页面导航并返回缓存的 SPA 壳（旧版 SW 的 denylist 只有 /^\/api\//），
+    // 导致 OAuth 回调页永远到不了函数、弹窗落在 /404。/api/ 路径任何版本
+    // 的 SW 都放行（与 github-auth 相同策略）。
+    const redirectUri = `${new URL(request.url).origin}/api/linuxdo-auth`;
+
     // 生成授权链接参数
     const params = new URLSearchParams({
       client_id: CLIENT_ID,
-      redirect_uri: REDIRECT_URI,
+      redirect_uri: redirectUri,
       response_type: 'code',
       scope: 'user'
     });
@@ -78,9 +84,14 @@ async function handleAuthCallback(request, env, origin) {
         message: '缺少授权码'
       });
     }
-    
+
+    // redirect_uri 必须与授权链接里的一致才能换 token；
+    // 从回调请求自身重建（origin + path），/api/linuxdo-auth 与旧版 /linuxdo-auth 链接都能对上
+    const callbackUrl = new URL(request.url);
+    const redirectUri = callbackUrl.origin + callbackUrl.pathname;
+
     // 交换访问令牌
-    const tokenResponse = await exchangeCodeForToken(code, env);
+    const tokenResponse = await exchangeCodeForToken(code, env, redirectUri);
     if (!tokenResponse.success) {
       return createCallbackResponse('error', {
         success: false,
@@ -138,12 +149,11 @@ function createCallbackResponse(type, data) {
 }
 
 // 交换授权码为访问令牌
-async function exchangeCodeForToken(code, env) {
+async function exchangeCodeForToken(code, env, redirectUri) {
   try {
     const clientId = env.LINUXDO_CLIENT_ID;
     const clientSecret = env.LINUXDO_CLIENT_SECRET;
-    const redirectUri = env.LINUXDO_REDIRECT_URI;
-    
+
     if (!clientId || !clientSecret) {
       throw new Error('缺少Linux.do应用配置');
     }

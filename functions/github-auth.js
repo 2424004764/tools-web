@@ -27,7 +27,6 @@ export async function onRequest(context) {
 async function getAuthUrl(request, env, origin) {
     try {
         const CLIENT_ID = env.GITHUB_CLIENT_ID;
-        const REDIRECT_URI = env.GITHUB_REDIRECT_URI;
         const AUTH_URL = 'https://github.com/login/oauth/authorize';
 
         if (!CLIENT_ID) {
@@ -37,10 +36,17 @@ async function getAuthUrl(request, env, origin) {
         // 生成state参数防止CSRF攻击
         const state = crypto.randomUUID();
 
+        // 回调地址固定用 /api/github-auth 而非环境变量里的 /github-auth：
+        // 站点是 PWA，Service Worker 的 navigateFallback 会拦截非 /api/ 路径的
+        // 页面导航并返回缓存的 SPA 壳（旧版 SW 的 denylist 只有 /^\/api\//），
+        // 导致 OAuth 回调页永远到不了函数、弹窗落在 /404。/api/ 路径任何版本
+        // 的 SW 都放行。GitHub OAuth App 只要求 redirect_uri 与后台回调 URL 同域。
+        const redirectUri = `${new URL(request.url).origin}/api/github-auth`;
+
         // 根据GitHub文档生成授权链接参数
         const params = new URLSearchParams({
             client_id: CLIENT_ID,
-            redirect_uri: REDIRECT_URI,
+            redirect_uri: redirectUri,
             scope: 'user:email',
             state: state
         });
@@ -82,7 +88,12 @@ async function handleAuthCallback(request, env, origin) {
             });
         }
 
-        const tokenResponse = await exchangeCodeForToken(code, env);
+        // redirect_uri 必须与授权链接里的一致才能换 token；
+        // 从回调请求自身重建（origin + path），/api/github-auth 与旧版 /github-auth 链接都能对上
+        const callbackUrl = new URL(request.url);
+        const redirectUri = callbackUrl.origin + callbackUrl.pathname;
+
+        const tokenResponse = await exchangeCodeForToken(code, env, redirectUri);
         if (!tokenResponse.success) {
             return createCallbackResponse('error', {
                 success: false,
@@ -138,11 +149,10 @@ function createCallbackResponse(type, data) {
 }
 
 // 交换授权码为访问令牌
-async function exchangeCodeForToken(code, env) {
+async function exchangeCodeForToken(code, env, redirectUri) {
     try {
         const clientId = env.GITHUB_CLIENT_ID;
         const clientSecret = env.GITHUB_CLIENT_SECRET;
-        const redirectUri = env.GITHUB_REDIRECT_URI;
 
         if (!clientId || !clientSecret) {
             throw new Error('缺少GitHub应用配置');

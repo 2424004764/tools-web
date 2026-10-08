@@ -2,7 +2,7 @@
 // 博客管理：文章列表 + 审核投稿 + 编辑/删除
 // 编辑与新建跳 /admin/blog/write（复用前台 BlogEditor 组件）
 import { onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   fetchAdminBlogPosts,
@@ -14,6 +14,7 @@ import {
 } from '@/api/admin/blog'
 import type { AdminPagination } from '@/types/admin'
 
+const route = useRoute()
 const router = useRouter()
 
 const loading = ref(false)
@@ -30,7 +31,7 @@ const pagination = ref<AdminPagination>({
 
 const filter = reactive({
   keyword: '',
-  status: 'pending' as AdminBlogPostStatus | '',
+  status: (route.name === 'adminBlogReview' ? 'pending' : '') as AdminBlogPostStatus | '',
 })
 
 const statusOptions = [
@@ -175,7 +176,9 @@ onMounted(() => {
 <template>
   <div v-loading="loading">
     <div class="flex flex-wrap items-end gap-3 mb-4">
-      <h2 class="text-xl font-semibold text-ink-900 mr-auto">博客管理</h2>
+      <h2 class="text-xl font-semibold text-ink-900 mr-auto">
+        {{ route.name === 'adminBlogReview' ? '文章审核' : '博客管理' }}
+      </h2>
       <el-tag
         :effect="filter.status === 'pending' ? 'dark' : 'plain'"
         type="warning"

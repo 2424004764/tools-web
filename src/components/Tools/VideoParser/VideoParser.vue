@@ -5,15 +5,9 @@ import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { ElMessage } from 'element-plus'
 
 const videoUrl = ref('')
-const parseUrl = ref('')
-const activeApiIndex = ref(0)
 
-const parseApis = [
-  { name: '线路一', url: 'https://jx.xmflv.com/?url=' },
-  { name: '线路二', url: 'https://jx.m3u8.tv/jiexi/?url=' },
-  { name: '线路三', url: 'https://jx.playerjy.com/?url=' },
-  { name: '线路四', url: 'https://jx.hls.one/?url=' },
-]
+// 仅线路二可用，其余线路已失效
+const parseApi = 'https://jx.m3u8.tv/jiexi/?url='
 
 const isValidUrl = computed(() => {
   return videoUrl.value.trim().length > 0
@@ -29,20 +23,11 @@ const handleParse = () => {
     ElMessage.warning('请输入有效的视频地址（以http://或https://开头）')
     return
   }
-  parseUrl.value = parseApis[activeApiIndex.value].url + encodeURIComponent(url)
-}
-
-const switchApi = (index: number) => {
-  activeApiIndex.value = index
-  if (videoUrl.value.trim()) {
-    parseUrl.value = parseApis[index].url + encodeURIComponent(videoUrl.value.trim())
-  }
+  window.open(parseApi + encodeURIComponent(url), '_blank', 'noopener,noreferrer')
 }
 
 const handleClear = () => {
   videoUrl.value = ''
-  parseUrl.value = ''
-  activeApiIndex.value = 0
 }
 
 const videoSites = [
@@ -92,24 +77,6 @@ const videoSites = [
         </el-input>
       </div>
 
-      <!-- 解析线路选择 -->
-      <div class="mb-4">
-        <p class="text-body-sm text-gray-500 mb-2">选择解析线路：</p>
-        <div class="flex flex-wrap gap-2">
-          <button
-            v-for="(api, index) in parseApis"
-            :key="index"
-            class="px-3 py-1.5 text-body-sm rounded-lg transition-all duration-200 border"
-            :class="activeApiIndex === index
-              ? 'bg-blue-500 text-white border-blue-500 shadow-sm'
-              : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400 hover:text-blue-500'"
-            @click="switchApi(index)"
-          >
-            {{ api.name }}
-          </button>
-        </div>
-      </div>
-
       <!-- 操作按钮 -->
       <div class="flex gap-3 mb-4">
         <el-button
@@ -128,28 +95,13 @@ const videoSites = [
         </el-button>
       </div>
 
-      <!-- 视频播放区域 -->
-      <div v-if="parseUrl" class="relative w-full bg-black rounded-xl overflow-hidden aspect-video">
-        <iframe
-          :src="parseUrl"
-          class="w-full h-full"
-          frameborder="0"
-          allowfullscreen
-          allow="autoplay; fullscreen"
-          scrolling="no"
-        ></iframe>
-      </div>
-
       <!-- 默认提示 -->
-      <div
-        v-else
-        class="flex flex-col items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl p-4 md:p-8"
-      >
+      <div class="flex flex-col items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl p-4 md:p-8">
         <svg class="w-20 h-20 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
         </svg>
-        <p class="text-gray-500 text-body-lg">粘贴视频地址后点击"开始解析"即可观看</p>
+        <p class="text-gray-500 text-body-lg">粘贴视频地址后点击"开始解析"，将跳转新标签页播放</p>
       </div>
     </div>
 
@@ -162,7 +114,7 @@ const videoSites = [
         </el-text>
         <el-text tag="div" class="block">
           <span class="font-semibold text-gray-700">2. 解析观看：</span>
-          将复制的视频链接粘贴到上方输入框中，点击"开始解析"按钮即可免费观看VIP内容。
+          将复制的视频链接粘贴到上方输入框中，点击"开始解析"按钮，会在新标签页中打开解析播放页面，即可免费观看VIP内容。
         </el-text>
         <el-text tag="div" class="block">
           <span class="font-semibold text-gray-700">3. 支持平台：</span>

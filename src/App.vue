@@ -86,9 +86,14 @@ const isAdminPage = computed(() => {
   return route.path.startsWith('/admin');
 });
 
-// 判断是否为 OAuth 授权页（独立页面，不显示站点菜单/头部/评论等框架）
+// 判断是否为 OAuth 独立页（授权页 / 接入文档页，不显示站点菜单/头部/评论等框架）
 const isOAuthAuthorizePage = computed(() => {
   return route.name === 'oauthAuthorize';
+});
+
+// OAuth 接入文档页：自带左侧目录的文档布局，同样脱离站点框架（无分类栏/搜索/评论）
+const isOAuthDocsPage = computed(() => {
+  return route.name === 'oauthDocs';
 });
 
 // 判断是否为首页
@@ -105,8 +110,8 @@ const isMeCreditsPage = computed(() => {
 
 <template>
   <el-config-provider :locale="zhCn">
-    <!-- 后台管理：AdminLayout 自带 Header/侧栏/Floor；OAuth 授权页：独立渲染，不带站点框架 -->
-    <router-view v-if="isAdminPage || isOAuthAuthorizePage" />
+    <!-- 后台管理：AdminLayout 自带 Header/侧栏/Floor；OAuth 授权页/文档页：独立渲染，不带站点框架 -->
+    <router-view v-if="isAdminPage || isOAuthAuthorizePage || isOAuthDocsPage" />
 
     <!-- 正常页面 -->
     <el-container v-else>
@@ -152,9 +157,9 @@ const isMeCreditsPage = computed(() => {
     <!-- 最近使用悬浮按钮 -->
     <RecentToolsFab />
 
-    <!-- 命令面板（Ctrl+K）与意见反馈弹窗：后台页与 OAuth 授权页不挂载 -->
-    <CommandPalette v-if="!isAdminPage && !isOAuthAuthorizePage" />
-    <FeedbackDialog v-if="!isAdminPage && !isOAuthAuthorizePage" />
+    <!-- 命令面板（Ctrl+K）与意见反馈弹窗：后台页与 OAuth 独立页不挂载 -->
+    <CommandPalette v-if="!isAdminPage && !isOAuthAuthorizePage && !isOAuthDocsPage" />
+    <FeedbackDialog v-if="!isAdminPage && !isOAuthAuthorizePage && !isOAuthDocsPage" />
 
     <!-- 回到顶部 -->
     <transition name="backtop-fade">

@@ -96,6 +96,16 @@ export async function onRequest(context) {
       console.warn('[admin/dashboard] 待审核统计失败（可能表未创建）:', e?.message || e)
     }
 
+    let pendingBlogPosts = 0
+    try {
+      const pendingBlogPostsRow = await db
+        .prepare("SELECT COUNT(*) AS c FROM blog_posts WHERE status = 'pending'")
+        .first()
+      pendingBlogPosts = pendingBlogPostsRow?.c || 0
+    } catch (e) {
+      console.warn('[admin/dashboard] 待审核文章统计失败（可能表未创建）:', e?.message || e)
+    }
+
     // 工具使用：今日 / 本周 / 本月 / TOP 5（依赖 tool_usage_records，可能因迁移未执行而抛错 → 兜底 0）
     let todayToolUsage = 0
     let weekToolUsage = 0
@@ -229,6 +239,7 @@ export async function onRequest(context) {
       },
       pendingComments,
       pendingFriendLinks,
+      pendingBlogPosts,
     })
   } catch (error) {
     console.error('dashboard API error:', error)

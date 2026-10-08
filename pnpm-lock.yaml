@@ -141,8 +141,8 @@ importers:
         specifier: ^14.2.0
         version: 14.2.0
       terser:
-        specifier: ^5.31.1
-        version: 5.43.1
+        specifier: 5.31.1
+        version: 5.31.1
       three:
         specifier: ^0.160.0
         version: 0.160.1
@@ -194,7 +194,7 @@ importers:
         version: 1.15.9
       '@vitejs/plugin-vue':
         specifier: ^4.5.1
-        version: 4.6.2(vite@4.5.14(@types/node@26.6.3)(less@4.4.0)(sass@1.89.2)(terser@5.43.1))(vue@3.5.18(typescript@5.9.2))
+        version: 4.6.2(vite@4.5.14(@types/node@26.6.3)(less@4.4.0)(sass@1.89.2)(terser@5.31.1))(vue@3.5.18(typescript@5.9.2))
       autoprefixer:
         specifier: ^10.4.16
         version: 10.4.21(postcss@8.5.6)
@@ -251,16 +251,16 @@ importers:
         version: 32.1.0(@nuxt/kit@4.4.7)(vue@3.5.18(typescript@5.9.2))
       vite:
         specifier: ^4.5.1
-        version: 4.5.14(@types/node@26.6.3)(less@4.4.0)(sass@1.89.2)(terser@5.43.1)
+        version: 4.5.14(@types/node@26.6.3)(less@4.4.0)(sass@1.89.2)(terser@5.31.1)
       vite-plugin-html:
         specifier: ^3.2.0
-        version: 3.2.2(vite@4.5.14(@types/node@26.6.3)(less@4.4.0)(sass@1.89.2)(terser@5.43.1))
+        version: 3.2.2(vite@4.5.14(@types/node@26.6.3)(less@4.4.0)(sass@1.89.2)(terser@5.31.1))
       vite-plugin-pwa:
         specifier: ^0.17.5
-        version: 0.17.5(vite@4.5.14(@types/node@26.6.3)(less@4.4.0)(sass@1.89.2)(terser@5.43.1))(workbox-build@7.4.1)(workbox-window@7.4.1)
+        version: 0.17.5(vite@4.5.14(@types/node@26.6.3)(less@4.4.0)(sass@1.89.2)(terser@5.31.1))(workbox-build@7.4.1)(workbox-window@7.4.1)
       vite-plugin-svg-icons:
         specifier: ^2.0.1
-        version: 2.0.1(vite@4.5.14(@types/node@26.6.3)(less@4.4.0)(sass@1.89.2)(terser@5.43.1))
+        version: 2.0.1(vite@4.5.14(@types/node@26.6.3)(less@4.4.0)(sass@1.89.2)(terser@5.31.1))
       vue-router:
         specifier: ^4.2.5
         version: 4.5.1(vue@3.5.18(typescript@5.9.2))
@@ -1307,9 +1307,6 @@ packages:
   '@jridgewell/resolve-uri@3.1.2':
     resolution: {integrity: sha512-bRISgCIjP20/tbWSPWMEi54QVPRZExkuD9lJL+UIxUKtwVJA8wW1Trb1jMs1RFXo1CBTNZ/5hpC9QvmKWdopKw==, tarball: https://registry.npmmirror.com/@jridgewell/resolve-uri/-/resolve-uri-3.1.2.tgz}
     engines: {node: '>=6.0.0'}
-
-  '@jridgewell/source-map@0.3.10':
-    resolution: {integrity: sha512-0pPkgz9dY+bijgistcTTJ5mR+ocqRXLuhXHYdzoMmmoJ2C9S46RCm2GMUbatPEUK9Yjy26IrAy8D/M00lLkv+Q==, tarball: https://registry.npmmirror.com/@jridgewell/source-map/-/source-map-0.3.10.tgz}
 
   '@jridgewell/source-map@0.3.11':
     resolution: {integrity: sha512-ZMp1V8ZFcPG5dIWnQLr3NSI1MiCU7UETdS/A0G8V/XWHvJv3ZsFqutJn1Y5RPmAPX6F3BiE397OqveU/9NCuIA==, tarball: https://registry.npmmirror.com/@jridgewell/source-map/-/source-map-0.3.11.tgz}
@@ -5990,8 +5987,8 @@ packages:
       uglify-js:
         optional: true
 
-  terser@5.43.1:
-    resolution: {integrity: sha512-+6erLbBm0+LROX2sPXlUYx/ux5PyE9K/a92Wrt6oA+WDAoFTdpHE5tCYCI5PNzq2y8df4rA+QgHLJuR4jNymsg==, tarball: https://registry.npmmirror.com/terser/-/terser-5.43.1.tgz}
+  terser@5.31.1:
+    resolution: {integrity: sha512-37upzU1+viGvuFtBo9NPufCb9dwM0+l9hMxYyWfBA+fbwrPqNJAhbZ6W47bBFnZHKHTUBnMvi87434qq+qnxOg==, tarball: https://registry.npmmirror.com/terser/-/terser-5.31.1.tgz}
     engines: {node: '>=10'}
     hasBin: true
 
@@ -7977,11 +7974,6 @@ snapshots:
 
   '@jridgewell/resolve-uri@3.1.2': {}
 
-  '@jridgewell/source-map@0.3.10':
-    dependencies:
-      '@jridgewell/gen-mapping': 0.3.12
-      '@jridgewell/trace-mapping': 0.3.29
-
   '@jridgewell/source-map@0.3.11':
     dependencies:
       '@jridgewell/gen-mapping': 0.3.13
@@ -8588,9 +8580,9 @@ snapshots:
     dependencies:
       vue: 3.5.18(typescript@5.9.2)
 
-  '@vitejs/plugin-vue@4.6.2(vite@4.5.14(@types/node@26.6.3)(less@4.4.0)(sass@1.89.2)(terser@5.43.1))(vue@3.5.18(typescript@5.9.2))':
+  '@vitejs/plugin-vue@4.6.2(vite@4.5.14(@types/node@26.6.3)(less@4.4.0)(sass@1.89.2)(terser@5.31.1))(vue@3.5.18(typescript@5.9.2))':
     dependencies:
-      vite: 4.5.14(@types/node@26.6.3)(less@4.4.0)(sass@1.89.2)(terser@5.43.1)
+      vite: 4.5.14(@types/node@26.6.3)(less@4.4.0)(sass@1.89.2)(terser@5.31.1)
       vue: 3.5.18(typescript@5.9.2)
 
   '@volar/language-core@2.4.20':
@@ -10895,7 +10887,7 @@ snapshots:
       he: 1.2.0
       param-case: 3.0.4
       relateurl: 0.2.7
-      terser: 5.43.1
+      terser: 5.31.1
 
   html-void-elements@2.0.1: {}
 
@@ -13352,10 +13344,10 @@ snapshots:
       csso: 5.0.5
       postcss: 8.5.6
 
-  terser@5.43.1:
+  terser@5.31.1:
     dependencies:
-      '@jridgewell/source-map': 0.3.10
-      acorn: 8.15.0
+      '@jridgewell/source-map': 0.3.11
+      acorn: 8.18.0
       commander: 2.20.3
       source-map-support: 0.5.21
 
@@ -13589,7 +13581,7 @@ snapshots:
 
   unctx@2.5.0:
     dependencies:
-      acorn: 8.15.0
+      acorn: 8.18.0
       estree-walker: 3.0.3
       magic-string: 0.30.21
       unplugin: 2.3.11
@@ -13808,7 +13800,7 @@ snapshots:
 
   viewerjs@1.11.7: {}
 
-  vite-plugin-html@3.2.2(vite@4.5.14(@types/node@26.6.3)(less@4.4.0)(sass@1.89.2)(terser@5.43.1)):
+  vite-plugin-html@3.2.2(vite@4.5.14(@types/node@26.6.3)(less@4.4.0)(sass@1.89.2)(terser@5.31.1)):
     dependencies:
       '@rollup/pluginutils': 4.2.1
       colorette: 2.0.20
@@ -13822,14 +13814,14 @@ snapshots:
       html-minifier-terser: 6.1.0
       node-html-parser: 5.4.2
       pathe: 0.2.0
-      vite: 4.5.14(@types/node@26.6.3)(less@4.4.0)(sass@1.89.2)(terser@5.43.1)
+      vite: 4.5.14(@types/node@26.6.3)(less@4.4.0)(sass@1.89.2)(terser@5.31.1)
 
-  vite-plugin-pwa@0.17.5(vite@4.5.14(@types/node@26.6.3)(less@4.4.0)(sass@1.89.2)(terser@5.43.1))(workbox-build@7.4.1)(workbox-window@7.4.1):
+  vite-plugin-pwa@0.17.5(vite@4.5.14(@types/node@26.6.3)(less@4.4.0)(sass@1.89.2)(terser@5.31.1))(workbox-build@7.4.1)(workbox-window@7.4.1):
     dependencies:
       debug: 4.4.1
       fast-glob: 3.3.3
       pretty-bytes: 6.1.1
-      vite: 4.5.14(@types/node@26.6.3)(less@4.4.0)(sass@1.89.2)(terser@5.43.1)
+      vite: 4.5.14(@types/node@26.6.3)(less@4.4.0)(sass@1.89.2)(terser@5.31.1)
       workbox-build: 7.4.1
       workbox-window: 7.4.1
     transitivePeerDependencies:
@@ -13846,7 +13838,7 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  vite-plugin-svg-icons@2.0.1(vite@4.5.14(@types/node@26.6.3)(less@4.4.0)(sass@1.89.2)(terser@5.43.1)):
+  vite-plugin-svg-icons@2.0.1(vite@4.5.14(@types/node@26.6.3)(less@4.4.0)(sass@1.89.2)(terser@5.31.1)):
     dependencies:
       '@types/svgo': 2.6.4
       cors: 2.8.5
@@ -13856,11 +13848,11 @@ snapshots:
       pathe: 0.2.0
       svg-baker: 1.7.0
       svgo: 2.8.0
-      vite: 4.5.14(@types/node@26.6.3)(less@4.4.0)(sass@1.89.2)(terser@5.43.1)
+      vite: 4.5.14(@types/node@26.6.3)(less@4.4.0)(sass@1.89.2)(terser@5.31.1)
     transitivePeerDependencies:
       - supports-color
 
-  vite@4.5.14(@types/node@26.6.3)(less@4.4.0)(sass@1.89.2)(terser@5.43.1):
+  vite@4.5.14(@types/node@26.6.3)(less@4.4.0)(sass@1.89.2)(terser@5.31.1):
     dependencies:
       esbuild: 0.18.20
       postcss: 8.5.6
@@ -13870,7 +13862,7 @@ snapshots:
       fsevents: 2.3.3
       less: 4.4.0
       sass: 1.89.2
-      terser: 5.43.1
+      terser: 5.31.1
 
   vscode-uri@3.1.0: {}
 

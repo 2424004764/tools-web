@@ -1,5 +1,5 @@
 -- OAuth2 授权服务器：工具站（主站）作为 Provider，子站作为客户端接入
--- 授权码模式（authorization code + refresh token，兼容 PKCE）
+-- 授权码模式（authorization code + refresh token，客户端凭据认证，不支持纯前端接入）
 
 -- OAuth 客户端应用（每个子站一个）
 CREATE TABLE IF NOT EXISTS oauth_clients (
@@ -22,8 +22,8 @@ CREATE TABLE IF NOT EXISTS oauth_authorization_codes (
   user_id TEXT NOT NULL,
   redirect_uri TEXT NOT NULL,
   scope TEXT NOT NULL DEFAULT 'profile',
-  code_challenge TEXT,
-  code_challenge_method TEXT,
+  code_challenge TEXT,                      -- 预留（未启用，无代码写入/读取）
+  code_challenge_method TEXT,               -- 预留（未启用）
   expires_at INTEGER NOT NULL,
   used INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL

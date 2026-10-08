@@ -18,7 +18,8 @@
 | --- | --- |
 | `GET https://tool.fologde.com/oauth/authorize` | 授权页（浏览器跳转） |
 | `POST https://tool.fologde.com/api/oauth/token` | 授权码/刷新令牌 换取令牌（服务端调用） |
-| `GET https://tool.fologde.com/api/oauth/userinfo` | 获取用户资料（需 access_token） |
+| `GET https://tool.fologde.com/api/oauth/userinfo` | 获取用户资料（需 access_token，scope: profile） |
+| `GET https://tool.fologde.com/api/oauth/storage-quota` | 获取用户存储额度（需 access_token，scope: storage） |
 | `POST https://tool.fologde.com/api/oauth/revoke` | 撤销令牌（可选） |
 
 ## 接入步骤（标准授权码流程）
@@ -30,16 +31,22 @@ https://tool.fologde.com/oauth/authorize
   ?client_id=tc_xxxx
   &redirect_uri=https://sub.example.com/auth/callback
   &state=随机字符串
+  &scope=profile storage
 ```
 
 - `state`：子站自行生成的随机串，回跳时原样带回，用于防 CSRF（**务必校验**）。
-- 如需纯前端接入（无服务端），可附加 PKCE 参数（见下文）。
+- `scope`：空格分隔，可选项见下表；不传默认 `profile`。
+
+| scope | 说明 |
+| --- | --- |
+| `profile` | 用户资料（用户名、邮箱、头像） |
+| `storage` | 存储额度（总容量、已用、剩余可上传空间） |
 
 ### 2. 用户在工具站完成登录 + 授权
 
 - 未登录 → 工具站展示登录页，登录后回到授权页；
 - 首次授权 → 展示授权确认页，用户点「同意授权」；
-- 此前已授权过 → **直接静默签发授权码回跳**（这就是单点登录）。
+- 此前已授权过、且本次请求的 scope 未超出已授权范围 → **直接静默签发授权码回跳**（这就是单点登录）；scope 有扩大时会再次展示确认页。
 
 ### 3. 回跳子站，拿到授权码
 
@@ -70,7 +77,7 @@ grant_type=authorization_code
   "token_type": "Bearer",
   "expires_in": 7200,
   "refresh_token": "ort_xxxx",
-  "scope": "profile"
+  "scope": "profile storage"
 }
 ```
 
@@ -107,7 +114,40 @@ Authorization: Bearer oat_xxxx
 
 子站据此完成自家注册/登录（以 `sub` 为准建立本地账号映射），签发子站自己的会话。
 
-### 6. 退出登录（可选）
+### 6. 获取存储额度（scope: storage）
+
+返回用户名下的上传空间额度（与主站「个人中心-存储额度」同一数据源）。子站可据此在上传前做本地预检、展示剩余空间等。
+
+```http
+GET https://tool.fologde.com/api/oauth/storage-quota
+Authorization: Bearer oat_xxxx
+```
+
+响应（单位均为字节）：
+
+```json
+{
+  "sub": "用户唯一ID（与 userinfo 的 sub 一致）",
+  "quota_bytes": 1073741824,
+  "used_bytes": 209715200,
+  "pending_bytes": 0,
+  "remaining_bytes": 864026112,
+  "price": { "credits": 1, "bytes": 104857600 }
+}
+```
+
+| 字段 | 说明 |
+| --- | --- |
+| `quota_bytes` | 总容量 |
+| `used_bytes` | 已用容量（已确认上传的文件） |
+| `pending_bytes` | 预留中容量（已签名、尚未完成或超时失效的上传） |
+| `remaining_bytes` | 剩余可上传容量 = quota - used - pending |
+| `price` | 额度定价参考：1 积分 = 100MB（子站如需展示「购买额度」入口可用） |
+
+- 该端点要求 access_token 含 `storage` scope；令牌只有 `profile` 时返回 `403 insufficient_scope`，需引导用户重新走一次授权（带上 `scope=profile storage`）。
+- 额度由主站在上传签名时预扣、完成后按实际大小结算，子站只需读取，不可直接写入。
+
+### 7. 退出登录（可选）
 
 ```http
 POST https://tool.fologde.com/api/oauth/revoke
@@ -116,15 +156,6 @@ token=oat_xxxx&client_id=tc_xxxx&client_secret=tcs_xxxx
 ```
 
 撤销 access_token 或 refresh_token 均可，无论 token 是否有效都返回 200。
-
-## 纯前端子站（无服务端）：PKCE 模式
-
-无后端的子站无法安全保存 `client_secret`，改用 PKCE：
-
-1. 本地生成随机 `code_verifier`（43~128 位字符串）；
-2. 计算 `code_challenge = BASE64URL(SHA256(code_verifier))`；
-3. 跳转授权页时附加 `&code_challenge=xxx&code_challenge_method=S256`；
-4. 换令牌时不再传 `client_secret`，改传 `&code_verifier=xxx`。
 
 ## 错误处理
 
@@ -142,9 +173,12 @@ https://sub.example.com/auth/callback?error=access_denied&error_description=用�
 
 常见错误：`invalid_client`（密钥错误/应用被停用）、`invalid_grant`（授权码无效/过期/已用、redirect_uri 不一致）、`unsupported_grant_type`。
 
+资源端点（userinfo / storage-quota）的错误遵循 RFC 6750：`invalid_token`（401，令牌无效/过期）、`insufficient_scope`（403，令牌未授予所需 scope，如拿只有 `profile` 的令牌调 storage-quota）。
+
 ## 安全要求
 
 - `state` 必须校验；`client_secret` 只能存服务端，不可下发到浏览器；
+- 暂不支持纯前端（无服务端）子站接入：换令牌必须提供 `client_secret`，因此子站必须有服务端；
 - 回调地址必须 HTTPS（本地开发可用 http）；
 - 授权码一次性，收到 `invalid_grant` 时应视为该次登录失败；
 - 停用应用 / 重置密钥会立即撤销该应用所有已签发令牌。
@@ -154,7 +188,7 @@ https://sub.example.com/auth/callback?error=access_denied&error_description=用�
 ```bash
 # 1. 后台创建应用拿到 client_id / client_secret，回调地址填 https://httpbin.org/get
 # 2. 浏览器打开（登录工具站并同意授权）：
-#    https://tool.fologde.com/oauth/authorize?client_id=tc_xxx&redirect_uri=https://httpbin.org/get&state=test123
+#    https://tool.fologde.com/oauth/authorize?client_id=tc_xxx&redirect_uri=https://httpbin.org/get&state=test123&scope=profile%20storage
 # 3. 从回跳 URL 里取出 code：
 curl -X POST https://tool.fologde.com/api/oauth/token \
   -d "grant_type=authorization_code" \
@@ -165,4 +199,7 @@ curl -X POST https://tool.fologde.com/api/oauth/token \
 
 # 4. 用 access_token 拉用户信息：
 curl https://tool.fologde.com/api/oauth/userinfo -H "Authorization: Bearer oat_xxx"
+
+# 5. 拉存储额度（授权时需带 scope=profile storage）：
+curl https://tool.fologde.com/api/oauth/storage-quota -H "Authorization: Bearer oat_xxx"
 ```

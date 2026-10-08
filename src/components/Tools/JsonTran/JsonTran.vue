@@ -5,6 +5,7 @@ import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { transferred, copy } from '@/utils/string';
 import Codemirror from "codemirror-editor-vue3";
+import "@/utils/codemirror-compat";
 import "codemirror/mode/javascript/javascript.js";
 
 const info = reactive({

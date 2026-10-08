@@ -4,6 +4,7 @@ import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { copy } from '@/utils/string';
 import Codemirror from "codemirror-editor-vue3";
+import "@/utils/codemirror-compat";
 import "codemirror/mode/javascript/javascript.js";
 import * as prettier from "prettier/standalone";
 import * as parserBabel from 'prettier/parser-babel';

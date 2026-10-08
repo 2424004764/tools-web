@@ -21,6 +21,7 @@ import IconPromotion from '~icons/ep/promotion'
 import IconSetting from '~icons/ep/setting'
 import IconNotebook from '~icons/ep/notebook'
 import IconKey from '~icons/ep/key'
+import IconCircleCheck from '~icons/ep/circle-check'
 
 const route = useRoute()
 const router = useRouter()
@@ -75,6 +76,7 @@ const groups: MenuGroup[] = [
   {
     title: '内容',
     items: [
+      { index: '/admin/blog/review', title: '文章审核', icon: IconCircleCheck },
       { index: '/admin/blog', title: '博客管理', icon: IconNotebook },
       { index: '/admin/comments', title: '评论管理', icon: IconChatDotRound },
       { index: '/admin/friend-links', title: '友链审核', icon: IconLink },
@@ -94,6 +96,7 @@ const groups: MenuGroup[] = [
 const isActive = (path: string) => {
   // 仪表盘菜单索引是 /admin，但实际路由是 /admin/dashboard
   if (path === '/admin') return route.path === '/admin' || route.path.startsWith('/admin/dashboard')
+  if (path === '/admin/blog') return route.path === path
   return route.path.startsWith(path)
 }
 

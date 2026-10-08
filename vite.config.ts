@@ -205,9 +205,14 @@ export default defineConfig(({command, mode}) => {
         }
       }),
       VitePWA({
-        registerType: 'prompt',
-        // 不自动注入注册脚本：改由 main.ts 手动注册，预渲染（puppeteer）时能跳过，
-        // 否则 SW 的 navigateFallback 会把预渲染路由替换成缓存的首页壳
+        // autoUpdate：生成的 sw.js 自带 skipWaiting + clientsClaim，新 SW 安装完立即接管。
+        // 不能用 'prompt'：本项目没有任何地方发送 SKIP_WAITING，新 SW 会永远停在 waiting，
+        // 旧 SW 持续用旧 precache 服务旧 index.html —— 发版后旧 chunk 已从服务器删除，
+        // 用户普通刷新必白屏（Unexpected token '<'），只有硬刷新才能进（2026-10 线上事故）
+        registerType: 'autoUpdate',
+        // 不自动注入注册脚本：改由 main.ts 手动注册（带 updateViaCache: 'none'，
+        // 防止 CF Browser Cache TTL 把 sw.js 缓存 4 小时导致发版后旧 SW 滞留），
+        // 预渲染（puppeteer）时也能跳过，避免 SW 缓存逻辑干扰快照产物
         injectRegister: null,
         includeAssets: ['favicon.ico', 'logo192.png', 'logo512.png'],
         manifest: {
@@ -226,22 +231,22 @@ export default defineConfig(({command, mode}) => {
         },
         workbox: {
           cacheId: 'tools-web-pwa',
-          navigateFallback: '/index.html',
-          // API / 短链跳转 / SEO 文件不能被 SPA fallback 拦截
-          navigateFallbackDenylist: [
-            /^\/api\//,
-            /^\/s\//,
-            /^\/sitemap\.xml$/,
-            /^\/sitemap-blog\.xml$/,
-            /^\/robots\.txt$/,
-            /^\/googlee80af792a405bec5\.html$/,
-          ],
-          // 预缓存只保留首屏外壳（入口 HTML + 入口静态依赖 + 主样式，约 2MB）。
+          navigateFallback: undefined,
+          // 注意：必须显式禁用 navigateFallback 并预缓存去掉 index.html（2026-10 线上事故根因）。
+          // vite-plugin-pwa 对 navigateFallback 有默认值 'index.html'，不写等于启用；
+          // 而 index.html 一旦不在 precache 里，createHandlerBoundToURL 会在 SW
+          // 求值时直接抛异常，整个 SW 注册失败，所以这里必须显式传 undefined。
+          // navigateFallback 让 SW 用 precache 的旧 index.html 应答导航，而 autoUpdate 的
+          // skipWaiting + cleanupOutdatedCaches 会让新 SW 在页面加载途中接管并删掉旧
+          // precache —— 旧 HTML 引用的旧 hash CSS/JS 随即 404，用户看到"有内容无样式"
+          // 的页面，刷新一次才恢复。现在导航一律走下方 NetworkFirst：在线时 HTML 永远
+          // 来自网络，与最新部署的 hash 资源天然一致；断网/超时才退回最近缓存的一份。
+          //
+          // 预缓存只保留入口静态依赖（不含 HTML，约 2MB）。
           // 之前用 `**/*.{js,css,html,ico,png,svg,woff2}` 会把 dist 里 900+ 个文件
           // （全部 80+ 工具路由的 chunk、字体、图片，共 14MB）打进 precache，
           // 首访/发版后 Service Worker 在后台整站下载一遍，网络面板里 700+ 请求。
           globPatterns: [
-            'index.html',
             'js/index-*.js',
             'js/vue-vendor-*.js',
             'js/element-plus-*.js',
@@ -249,6 +254,26 @@ export default defineConfig(({command, mode}) => {
             'css/index-*.css',
           ],
           runtimeCaching: [
+            // HTML 导航：NetworkFirst（3s 超时/断网回退最近缓存），杜绝 SW 用旧壳
+            // 应答导航的发版竞态。鉴权回调 / API / 短链 / SEO 文件不进 SW
+            // （沿用原 navigateFallbackDenylist 语义：OAuth 回调带一次性 code，
+            // 被缓存或替换都会破坏登录流程）
+            {
+              urlPattern: ({ request, url }) => {
+                if (request.mode !== 'navigate') return false
+                const p = url.pathname
+                if (p.startsWith('/api/') || p.startsWith('/s/')) return false
+                if (/^\/(?:github|google|gitee|qq|linuxdo)-auth$/.test(p)) return false
+                if (/^\/(?:sitemap(?:-blog)?\.xml|robots\.txt|googlee80af792a405bec5\.html)$/.test(p)) return false
+                return true
+              },
+              handler: 'NetworkFirst',
+              options: {
+                cacheName: 'tools-web-pwa-html',
+                networkTimeoutSeconds: 3,
+                expiration: { maxEntries: 30, maxAgeSeconds: 7 * 24 * 60 * 60 },
+              },
+            },
             // 其余路由的 JS/CSS：访问过哪个工具就缓存哪个，后续可离线复用
             {
               urlPattern: ({ request }) =>
@@ -320,13 +345,9 @@ export default defineConfig(({command, mode}) => {
       target: 'es2020',
       cssCodeSplit: true,
       sourcemap: false,
-      minify: 'terser',
-      terserOptions: {
-        compress: {
-          drop_console: true,
-          drop_debugger: true,
-        },
-      },
+      // esbuild 压缩比 terser 快一倍以上（全量构建 66s → ~40s），产物大 ~3-5%，
+      // 经 CF brotli 后差距可忽略；console/debugger 的删除由上面 esbuild.drop 承担
+      minify: 'esbuild',
       reportCompressedSize: false,
       rollupOptions: {
         output: {
@@ -614,6 +635,38 @@ export default defineConfig(({command, mode}) => {
           changeOrigin: true,
         },
         '/s/': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
+        '/github-auth': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
+        '/api/github-auth': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
+        '/linuxdo-auth': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
+        '/api/linuxdo-auth': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
+        '/qq-auth': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
+        '/api/qq-auth': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
+        '/gitee-auth': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
+        '/api/gitee-auth': {
           target: 'http://127.0.0.1:8788',
           changeOrigin: true,
         },

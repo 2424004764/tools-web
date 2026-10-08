@@ -1,9 +1,8 @@
 // OAuth2 令牌端点
 // POST /api/oauth/token   Content-Type: application/x-www-form-urlencoded（也接受 JSON）
-//   grant_type=authorization_code: code, redirect_uri, client_id, client_secret[, code_verifier]
+//   grant_type=authorization_code: code, redirect_uri, client_id, client_secret
 //   grant_type=refresh_token:      refresh_token, client_id, client_secret
 // 客户端凭据也支持 HTTP Basic（Authorization: Basic base64(client_id:client_secret)）
-// 启用 PKCE 的授权码可免 client_secret（纯前端子站场景）
 import {
   oauthJson,
   oauthError,
@@ -13,7 +12,6 @@ import {
   verifyClientSecret,
   extractClientCredentials,
   issueTokenPair,
-  verifyPkce,
 } from './_lib.js'
 
 export async function onRequest(context) {
@@ -60,7 +58,6 @@ export async function onRequest(context) {
 async function handleAuthorizationCode(db, env, client, { clientSecret, params }) {
   const code = (params.get('code') || '').trim()
   const redirectUri = (params.get('redirect_uri') || '').trim()
-  const codeVerifier = params.get('code_verifier') || ''
 
   if (!code) return oauthError('invalid_request', '缺少 code')
   const codeHash = await sha256Hex(code)
@@ -76,23 +73,10 @@ async function handleAuthorizationCode(db, env, client, { clientSecret, params }
     return oauthError('invalid_grant', 'redirect_uri 与授权请求不一致')
   }
 
-  // 客户端认证：有 PKCE challenge 时可用 verifier 替代 secret
-  // （必须在消费授权码之前完成认证，认证失败不消费，避免合法 code 被无关请求烧掉）
-  const pkceOk = await verifyPkce(row.code_challenge, row.code_challenge_method, codeVerifier)
-  if (!pkceOk) return oauthError('invalid_grant', 'code_verifier 校验失败')
-
-  if (row.code_challenge) {
-    // PKCE 流程：secret 可选，但提供了就必须正确
-    if (clientSecret) {
-      const secretOk = await verifyClientSecret(db, env, client, clientSecret)
-      if (!secretOk) return oauthError('invalid_client', 'client_secret 错误', 401)
-    }
-  } else {
-    // 常规流程：必须校验 secret
-    if (!clientSecret) return oauthError('invalid_client', '缺少 client_secret', 401)
-    const secretOk = await verifyClientSecret(db, env, client, clientSecret)
-    if (!secretOk) return oauthError('invalid_client', 'client_secret 错误', 401)
-  }
+  // 客户端认证：必须在消费授权码之前完成，认证失败不消费，避免合法 code 被无关请求烧掉
+  if (!clientSecret) return oauthError('invalid_client', '缺少 client_secret', 401)
+  const secretOk = await verifyClientSecret(db, env, client, clientSecret)
+  if (!secretOk) return oauthError('invalid_client', 'client_secret 错误', 401)
 
   // 一次性消费：原子更新，防止并发重放
   const consume = await db

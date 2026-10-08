@@ -65,13 +65,16 @@ export async function onRequest(context) {
       }
     }
 
-    // 检查邮箱是否存在（登录和重置密码时检查）
-    if (type === 'login' || type === 'reset') {
+    // 检查邮箱是否存在（重置密码时未注册直接拒绝；登录时未注册也放行，验证通过后自动注册）
+    let registered = true
+    if (type === 'reset') {
       const existing = await env.DB.prepare('SELECT id FROM user WHERE email = ?').bind(email).first()
       if (!existing) {
         attachUpstreamError(context, { stage: 'auth', extra: { email, type, reason: 'email_not_registered' } })
         return ApiResponse.error('该邮箱未注册', request.headers.get('Origin'), 404)
       }
+    } else if (type === 'login') {
+      registered = !!(await env.DB.prepare('SELECT id FROM user WHERE email = ?').bind(email).first())
     }
 
     // 生成验证码
@@ -120,7 +123,10 @@ export async function onRequest(context) {
       return ApiResponse.error('验证码发送失败，请稍后重试', request.headers.get('Origin'), 500)
     }
 
-    return ApiResponse.success({ message: '验证码已发送，请查收邮件' }, request.headers.get('Origin'))
+    const message = type === 'login' && !registered
+      ? '验证码已发送，该邮箱未注册，验证通过后将自动注册'
+      : '验证码已发送，请查收邮件'
+    return ApiResponse.success({ message }, request.headers.get('Origin'))
   } catch (error) {
     console.error('Send verification code error:', error)
     return ApiResponse.error('服务器错误', request.headers.get('Origin'), 500)

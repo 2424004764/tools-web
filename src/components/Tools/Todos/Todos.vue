@@ -343,13 +343,14 @@ const changeStatus = async (todo: Todo, status: number) => {
     })
 
     if (response.status === 200) {
+      // 只本地更新状态，让该条保留在原位置（已完成会有删除线），列表不重新拉取，
+      // 避免默认筛选下刚完成的待办立刻消失、看不出是哪一条；用户点刷新或改筛选时才重新加载
+      todo.completed = status
       ElMessage.success(`状态已更新为「${getStatusText(status)}」`)
-      await fetchTodos(pagination.value.page, pagination.value.pageSize)
     }
   } catch (error) {
     console.error('更新状态失败:', error)
     ElMessage.error('更新状态失败')
-    await fetchTodos(pagination.value.page, pagination.value.pageSize)
   }
 }
 

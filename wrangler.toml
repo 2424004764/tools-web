@@ -1,10 +1,14 @@
 name = "tool-web"
-account_id = "974e77b1692d56d57b27a1cef7fcc08c"
+# Pages 项目通过 Wrangler 登录状态 / 环境变量识别 account，无需在配置中声明。
 # type = "typescript"  # 或者 "typescript" 根据你使用的语言类型
 
 # 锁定 Cloudflare Workers 运行时版本，避免 wrangler 升级后行为不一致
 # 参考：https://developers.cloudflare.com/workers/configuration/compatibility-dates/
 compatibility_date = "2024-09-23"
+
+# pages_build_output_dir 是顶层 Pages 设置，必须在 [[d1_databases]] 表声明前
+# 与 pnpm build:pro 产出的位置保持一致
+pages_build_output_dir = "dist"
 
 # D1 数据库配置 仅用以本地调试，线上走pages绑定的db
 [[d1_databases]]
@@ -38,7 +42,6 @@ database_id = "afdabfae-6edd-4def-8e77-6a1171009b9c"
 # 本地启动调试服务（dev后面的.也是命令的一部分，别漏了）：wrangler pages dev .   测试登录的话 需要另开一个窗口启动调试服务
 # pages_build_output_dir：明确指定 `wrangler pages deploy` 不带参时的静态资源目录
 # 与 pnpm build:pro 产出的位置保持一致
-pages_build_output_dir = "dist"
 # 本地调试设置环境变量（线上的环境变量是绑定在pages的变量和机密里）：
 # ─── 警告 ────────────────────────────────────────────────────
 # 敏感密钥 (*_SECRET / API_KEY / JWT_SECRET) 不得在此文件明文存储！
@@ -51,14 +54,11 @@ pages_build_output_dir = "dist"
 # 站点名称（邮件标题、邮件正文等后端文案使用；前端请用 VITE_APP_TITLE）
 SITE_NAME = "一方工具箱"
 RESEND_FROM_EMAIL = "一方工具箱 <noreply@tool-helper.fologde.com>"
-LINUXDO_CLIENT_ID = "ndZjdtb3uuqsdQsLXVP9EryepP4g9p1C"          # OAuth client_id 公开安全
-LINUXDO_REDIRECT_URI = "http://127.0.0.1:8788/linuxdo-auth"
-# QQ登录配置（已隐藏）
+LINUXDO_CLIENT_ID = "ndZjdtb3uuqsdQsLXVP9EryepP4g9p1C"          # OAuth client_id 公开安全（回调地址由代码按请求 origin 计算为 /api/linuxdo-auth）
+# QQ登录配置（回调地址由代码按请求 origin 计算为 /api/qq-auth）
 QQ_CLIENT_ID = "102806259"
-QQ_REDIRECT_URI = "http://127.0.0.1:8788/qq-auth"
-# Gitee登录配置
+# Gitee登录配置（回调地址由代码按请求 origin 计算为 /api/gitee-auth）
 GITEE_CLIENT_ID = "a33bfc0232834f1fd309dc2c1696821bc821e5f746ef28869496d88fb7b4b104"
-GITEE_REDIRECT_URI = "http://127.0.0.1:8788/gitee-auth"
 # Github登录配置
 GITHUB_CLIENT_ID = "Ov23lih4DozBgCiAwLWe"
 GITHUB_REDIRECT_URI = "http://127.0.0.1:8788/github-auth"
@@ -97,33 +97,3 @@ id = "c7ad6378e7ce4e219d4268e6524711aa"
 binding = "MEDIA"
 bucket_name = "tools-web"
 preview_bucket_name = "tools-web-preview"
-
-# ---------- AI 媒体作品 推送 API Key ----------
-# 注意：本地随意填一个；线上部署时必须在 Cloudflare Pages Dashboard 改绑上线值
-# 填在 toml [vars] 是为了让 .dev.vars 缓存怪问题下也能被 wrangler 正确注入到函数 env
-[env.dev.vars]
-AIMW_KEY = "dev-local-test-key-7f3a9b2c1e8d"
-# bafang.me（AI 图片编辑 / AI 穿搭建议 共用）
-# 重要：per [[memory:wrangler-dot-dev-vars-not-propagated]]，单独写在 .dev.vars 不够，
-# 必须也写在 wrangler.toml 的 [env.dev.vars] 里，wrangler 4.59.2 才会注入到函数运行时 env。
-BAFANG_API_KEY = "REPLACE_WITH_YOUR_ACCOUNT_ID"
-# Cloudflare R2（音乐播放列表本地 SigV4 凭据）
-# 必须也写在 .dev.vars 里（真实值），wrangler 启动时会以 .dev.vars 优先覆盖这里
-R2_ACCOUNT_ID = "REPLACE_WITH_YOUR_ACCOUNT_ID"
-R2_ACCESS_KEY_ID = "REPLACE_WITH_YOUR_ACCESS_KEY"
-R2_SECRET_ACCESS_KEY = "REPLACE_WITH_YOUR_SECRET_KEY"
-# Supabase（后端专用 service_role key，bypass RLS）
-# ⚠️ 必须放在本地 .dev.vars（gitignored）；线上部署在 Cloudflare Dashboard 设为 Secret。
-# 这里写一个占位防止 wrangler 注入失败
-SUPABASE_URL = "https://wvdyjqjwkhfvfcmjpaoo.supabase.co"
-SUPABASE_SERVICE_KEY = "REPLACE_WITH_SECRET_KEY"
-
-
-[env.production.vars]
-# 线上绑定时填入真实值（带引号保护特殊字符）
-AIMW_KEY = "eB16n6DlEDKBN@Of"
-# 线上绑定方式：在 Cloudflare Pages Dashboard → Settings → Variables and secrets → 设为 Secret
-BAFANG_API_KEY = "REPLACE_AT_CF_DASHBOARD"
-# Supabase（service_role key 同 dev，必须在 Dashboard 设为 Secret；toml 这里只放占位）
-SUPABASE_URL = "https://wvdyjqjwkhfvfcmjpaoo.supabase.co"
-SUPABASE_SERVICE_KEY = "REPLACE_AT_CF_DASHBOARD"

@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref, watch, computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useIsMobile } from '@/composables/useIsMobile'
 import {
   fetchToolUsageRecords,
   fetchToolUsageStats,
 } from '@/api/admin/tool-usage'
+import { fetchIpBans, createIpBan, deleteIpBan } from '@/api/admin/ip-ban'
 import { functionsRequest } from '@/utils/functionsRequest'
 import { formatLocation } from '@/utils/geo-name'
 import { SOURCE_LABELS, getSourceLabel } from '@/utils/source'
@@ -15,6 +16,7 @@ import type {
   ToolUsageRecord,
   ToolUsageStats,
   ToolFeature,
+  IpBanRule,
 } from '@/types/admin'
 
 const loading = ref(false)
@@ -207,6 +209,104 @@ watch(
   },
 )
 
+// ============ IP 封禁管理 ============
+
+// 生效中的封禁规则（底部管理卡片数据源）
+const banRules = ref<IpBanRule[]>([])
+const bansLoading = ref(false)
+const banSubmitting = ref(false)
+
+const banDialog = reactive({
+  visible: false,
+  ip: '',
+  // 从记录行打开时锁定 IP，仅允许填原因/时长
+  ipLocked: false,
+  reason: '',
+  durationHours: 24,
+})
+
+const loadBanRules = async () => {
+  bansLoading.value = true
+  try {
+    banRules.value = await fetchIpBans()
+  } catch (err: any) {
+    console.error('[tool-usage] ip-bans error:', err)
+  } finally {
+    bansLoading.value = false
+  }
+}
+
+// ip 传入时为「从记录行封禁」（锁定）；不传为「手动新增」
+const openBanDialog = (ip?: string) => {
+  banDialog.ip = ip || ''
+  banDialog.ipLocked = Boolean(ip)
+  banDialog.reason = ''
+  banDialog.durationHours = 24
+  banDialog.visible = true
+}
+
+const submitBan = async () => {
+  if (!banDialog.ip.trim()) {
+    ElMessage.warning('请输入 IP')
+    return
+  }
+  banSubmitting.value = true
+  try {
+    await createIpBan({
+      ip: banDialog.ip.trim(),
+      reason: banDialog.reason.trim() || undefined,
+      duration_hours: banDialog.durationHours,
+    })
+    ElMessage.success('已封禁，最迟 15 秒内在各节点生效')
+    banDialog.visible = false
+    await Promise.all([loadBanRules(), loadList()])
+  } catch {
+    // 错误提示由 functionsRequest 拦截器统一弹出
+  } finally {
+    banSubmitting.value = false
+  }
+}
+
+const handleUnban = async (id: string, ip: string) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定解除对 ${ip} 的封禁吗？解封后该 IP 立即恢复访问（最迟 15 秒生效）。`,
+      '解封确认',
+      { type: 'warning', confirmButtonText: '解封', cancelButtonText: '取消' },
+    )
+  } catch {
+    return
+  }
+  try {
+    await deleteIpBan(id)
+    ElMessage.success('已解封，最迟 15 秒内在各节点生效')
+    await Promise.all([loadBanRules(), loadList()])
+  } catch {
+    // 同上，拦截器已提示
+  }
+}
+
+// 'YYYY-MM-DD HH:MM:SS'（UTC）→ 本地化时间
+const formatBanTime = (s: string | null | undefined) => {
+  if (!s) return '-'
+  const ts = new Date(s.replace(' ', 'T') + 'Z').getTime()
+  if (Number.isNaN(ts)) return s
+  return new Date(ts).toLocaleString('zh-CN', { hour12: false })
+}
+
+// 到期字段 → 剩余时间描述
+const formatBanExpiry = (rule: IpBanRule) => {
+  if (!rule.expires_at) return '永久'
+  const ts = new Date(rule.expires_at.replace(' ', 'T') + 'Z').getTime()
+  if (Number.isNaN(ts)) return rule.expires_at
+  const diff = ts - Date.now()
+  if (diff <= 0) return '已过期'
+  const hours = Math.floor(diff / 3600_000)
+  if (hours >= 24) return `${Math.floor(hours / 24)} 天后到期`
+  if (hours >= 1) return `${hours} 小时后到期`
+  return `${Math.max(1, Math.floor(diff / 60_000))} 分钟后到期`
+}
+
 // 移动端分页器适配：< 640px 时切精简布局 + 5 个页码 + small 模式
 const { isMobile } = useIsMobile()
 
@@ -214,6 +314,7 @@ onMounted(() => {
   loadStats()
   loadList()
   loadToolsOptions()
+  loadBanRules()
   // 从仪表盘带锚点跳入时（如 /admin/tool-usage?range=week#usage-detail）滚动到目标卡片。
   // 路由 afterEach 有 RAF 钉顶，且统计卡 / TOP 榜异步渲染会持续改变上方高度，
   // 因此轮询校正滚动位置，直到贴住锚点（scroll-mt-20 提供吸顶头部偏移）再停止
@@ -469,9 +570,23 @@ onMounted(() => {
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="IP" min-width="130">
+        <el-table-column label="IP" min-width="150">
           <template #default="{ row }">
-            <span class="text-xs text-ink-500 font-mono">{{ row.ip || '-' }}</span>
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="text-xs text-ink-500 font-mono">{{ row.ip || '-' }}</span>
+              <template v-if="row.ip">
+                <el-tag v-if="row.ip_ban_id" size="small" type="danger" effect="light">已封禁</el-tag>
+                <el-button
+                  link
+                  :type="row.ip_ban_id ? 'primary' : 'danger'"
+                  size="small"
+                  class="!p-0"
+                  @click="row.ip_ban_id ? handleUnban(row.ip_ban_id, row.ip) : openBanDialog(row.ip)"
+                >
+                  {{ row.ip_ban_id ? '解除封禁' : '封禁' }}
+                </el-button>
+              </template>
+            </div>
           </template>
         </el-table-column>
         <el-table-column label="位置" min-width="170">
@@ -536,5 +651,106 @@ onMounted(() => {
         />
       </div>
     </el-card>
+
+    <!-- IP 封禁规则管理 -->
+    <el-card v-loading="bansLoading" shadow="never" class="!rounded-xl mt-4">
+      <template #header>
+        <div class="flex items-center justify-between gap-3 flex-wrap">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="font-medium text-ink-900 shrink-0">IP 封禁（{{ banRules.length }}）</span>
+            <span class="text-xs text-ink-400 truncate">
+              拦截全站请求（管理接口除外）；IPv6 按 /64 网段封禁；规则变更最迟 15 秒生效
+            </span>
+          </div>
+          <el-button type="danger" plain size="small" @click="openBanDialog()">新增封禁</el-button>
+        </div>
+      </template>
+
+      <el-table v-if="banRules.length" :data="banRules" stripe size="small">
+        <el-table-column label="封禁对象" min-width="200">
+          <template #default="{ row }">
+            <div class="flex flex-col">
+              <span class="text-xs text-ink-900 font-mono break-all">{{ row.ip }}</span>
+              <span
+                v-if="row.original_ip && row.original_ip !== row.ip"
+                class="text-[10px] text-ink-400 font-mono break-all"
+              >
+                原始：{{ row.original_ip }}
+              </span>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="原因" min-width="140">
+          <template #default="{ row }">
+            <span class="text-xs text-ink-600" :title="row.reason">{{ row.reason || '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作人" min-width="160">
+          <template #default="{ row }">
+            <span class="text-xs text-ink-600">{{ row.banned_by_email || row.banned_by || '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="封禁时间" min-width="150">
+          <template #default="{ row }">
+            <span class="text-xs text-ink-500">{{ formatBanTime(row.created_at) }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="到期" min-width="110">
+          <template #default="{ row }">
+            <span
+              class="text-xs"
+              :class="row.expires_at ? 'text-ink-500' : 'text-red-500'"
+              :title="row.expires_at ? `到期时间：${formatBanTime(row.expires_at)}` : '永久封禁'"
+            >
+              {{ formatBanExpiry(row) }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="70">
+          <template #default="{ row }">
+            <el-button link type="primary" size="small" @click="handleUnban(row.id, row.ip)">
+              解除封禁
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-empty v-else description="暂无封禁规则" :image-size="60" />
+    </el-card>
+
+    <!-- 封禁弹窗：从记录行打开时 IP 锁定；手动新增时可编辑 -->
+    <el-dialog
+      v-model="banDialog.visible"
+      :title="banDialog.ipLocked ? '封禁 IP' : '新增 IP 封禁'"
+      width="430px"
+    >
+      <el-form label-width="72px" @submit.prevent>
+        <el-form-item label="IP">
+          <el-input
+            v-model="banDialog.ip"
+            :disabled="banDialog.ipLocked"
+            placeholder="IPv4 如 1.2.3.4，或 IPv6 地址"
+          />
+        </el-form-item>
+        <el-form-item label="原因">
+          <el-input v-model="banDialog.reason" maxlength="100" placeholder="选填，如：恶意刷接口" />
+        </el-form-item>
+        <el-form-item label="时长">
+          <el-select v-model="banDialog.durationHours" class="!w-full">
+            <el-option label="1 小时" :value="1" />
+            <el-option label="1 天" :value="24" />
+            <el-option label="7 天" :value="168" />
+            <el-option label="30 天" :value="720" />
+            <el-option label="永久" :value="0" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <div class="text-xs text-ink-400 -mt-1">
+        IPv6 地址将按其 /64 网段封禁（同网段全部拦截）；封禁后该 IP 无法访问本站（管理接口除外），最迟 15 秒生效。
+      </div>
+      <template #footer>
+        <el-button @click="banDialog.visible = false">取消</el-button>
+        <el-button type="danger" :loading="banSubmitting" @click="submitBan">确认封禁</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>

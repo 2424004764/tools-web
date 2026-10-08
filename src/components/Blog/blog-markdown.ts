@@ -35,6 +35,28 @@ export function renderMarkdown(source: string): string {
   return md.render(source)
 }
 
+/** 渲染 Markdown 为 HTML，并给 h2/h3 注入锚点 id，同时提取目录（文档页左侧目录用） */
+export function renderMarkdownWithToc(
+  source: string,
+): { html: string; toc: { id: string; text: string; level: number }[] } {
+  if (!source) return { html: '', toc: [] }
+  const tokens = md.parse(source, {})
+  const toc: { id: string; text: string; level: number }[] = []
+  let pending: { id: string; text: string; level: number } | null = null
+  let n = 0
+  for (const token of tokens) {
+    if (token.type === 'heading_open' && (token.tag === 'h2' || token.tag === 'h3')) {
+      pending = { id: `doc-h-${++n}`, text: '', level: token.tag === 'h2' ? 2 : 3 }
+      token.attrSet('id', pending.id)
+    } else if (pending && token.type === 'inline' && !pending.text) {
+      pending.text = token.content.trim()
+      toc.push(pending)
+      pending = null
+    }
+  }
+  return { html: md.renderer.render(tokens, md.options, {}), toc }
+}
+
 /** 剥掉 Markdown 语法取纯文本（列表卡片摘要兜底用） */
 export function stripMarkdown(text: string): string {
   if (!text) return ''

@@ -44,7 +44,7 @@ export function formatNow() {
 }
 
 // ---------- scope ----------
-export const SUPPORTED_SCOPES = ['profile']
+export const SUPPORTED_SCOPES = ['profile', 'storage']
 
 export function normalizeScope(raw) {
   const requested = String(raw || '').split(/[\s+,]/).filter(Boolean)
@@ -107,13 +107,13 @@ export function extractClientCredentials(request, params) {
 // ---------- 授权码 ----------
 const CODE_TTL = 10 * 60 // 10 分钟
 
-export async function createAuthorizationCode(db, { clientId, userId, redirectUri, scope, codeChallenge, codeChallengeMethod }) {
+export async function createAuthorizationCode(db, { clientId, userId, redirectUri, scope }) {
   const code = 'oac_' + randomHex(32)
   await db
     .prepare(
       `INSERT INTO oauth_authorization_codes
-        (code_hash, client_id, user_id, redirect_uri, scope, code_challenge, code_challenge_method, expires_at, used, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?)`,
+        (code_hash, client_id, user_id, redirect_uri, scope, expires_at, used, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, 0, ?)`,
     )
     .bind(
       await sha256Hex(code),
@@ -121,8 +121,6 @@ export async function createAuthorizationCode(db, { clientId, userId, redirectUr
       userId,
       redirectUri,
       scope,
-      codeChallenge || null,
-      codeChallengeMethod || null,
       Math.floor(Date.now() / 1000) + CODE_TTL,
       formatNow(),
     )
@@ -182,11 +180,7 @@ export function isTokenUsable(row) {
   return Boolean(row && !row.revoked && row.expires_at > Math.floor(Date.now() / 1000) && !row.client_disabled)
 }
 
-// PKCE S256 校验
-export async function verifyPkce(challenge, method, verifier) {
-  if (!challenge) return true // 未启用 PKCE
-  if (!verifier) return false
-  if ((method || 'S256') !== 'S256') return false // 暂不支持 plain
-  const computed = await sha256Hex(verifier)
-  return computed === challenge
+// access_token 是否被授予了某个 scope
+export function tokenHasScope(row, scope) {
+  return Boolean(row && String(row.scope || '').split(' ').includes(scope))
 }
