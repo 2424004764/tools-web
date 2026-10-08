@@ -17,6 +17,7 @@ import { useUserStore } from './store/modules/user'
 import { initializeAIProviders } from './spi/init'
 import { injectCloudflareAnalytics } from './utils/analytics'
 import { initTheme } from './composables/useTheme'
+import { installFetch401Handler, registerAuthStateClearer } from './utils/errorHandler'
 
 const app = createApp(App)
 app.use(pinia)
@@ -24,6 +25,9 @@ app.use(router)
 
 // 恢复主题偏好（light/dark，见 useTheme.ts），须在挂载前执行避免闪白
 initTheme()
+const userStore = useUserStore()
+registerAuthStateClearer(() => userStore.clearUser())
+installFetch401Handler()
 
 // v-md-editor 懒加载：仅在 /markdown/ 页面首次访问时动态 import 并注册，
 // 避免首屏就把 v-md-editor + prism + vuepress 主题一起打包进来。

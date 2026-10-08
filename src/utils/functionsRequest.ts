@@ -1,6 +1,7 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
 import { ElMessage } from 'element-plus'
-import { getLocalToken, logout } from './user'
+import { getLocalToken } from './user'
+import { handleHttpError } from './errorHandler'
 
 // 创建functions代理专用的axios实例
 class FunctionsRequest {
@@ -35,27 +36,21 @@ class FunctionsRequest {
     // 响应拦截器 - 处理错误
     this.instance.interceptors.response.use(
       (response: AxiosResponse) => {
+        if (Number(response.data?.code) === 401) {
+          handleHttpError(401)
+        }
         return response
       },
       (error) => {
         let message = '请求失败'
-        // 优先展示后端返回的具体错误信息（各 API 均以 { success, error } 形式返回）
-        const backendError = error.response?.data?.error
-        if (typeof backendError === 'string' && backendError) {
-          message = backendError
+        const status = error.response?.status
+        if (status === 401) {
+          handleHttpError(status)
+        } else if (typeof error.response?.data?.error === 'string' && error.response.data.error) {
+          message = error.response.data.error
+          ElMessage.error(message)
         } else if (error.response) {
-          const status = error.response.status
           switch (status) {
-            case 401:
-              message = '登录已过期，请重新登录'
-              // 清空本地登录态
-              logout()
-              // 跳转到登录页面，带上当前页面地址作为 redirect
-              setTimeout(() => {
-                const currentPath = window.location.pathname
-                window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`
-              }, 1000)
-              break
             case 403:
               message = '无权限访问'
               break
@@ -68,11 +63,13 @@ class FunctionsRequest {
             default:
               message = `请求失败: ${status}`
           }
+          ElMessage.error(message)
         } else if (error.request) {
-          message = '网络连接失败'
+          ElMessage.error('网络连接失败')
+        } else {
+          ElMessage.error(message)
         }
 
-        ElMessage.error(message)
         return Promise.reject(error)
       }
     )

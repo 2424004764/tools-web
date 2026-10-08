@@ -56,6 +56,7 @@ export const useUserStore = defineStore('user', {
       this.isLoggedIn = false
       this.credits = { balance: 0, total_earned: 0, total_spent: 0, updated_at: null }
       this.creditsLoaded = false
+      this._creditsFetchSeq += 1
     },
 
     // 退出登录

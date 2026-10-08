@@ -1,6 +1,13 @@
 import { ElMessage } from 'element-plus'
 import { logout, isTokenExpired, getLocalToken } from './user'
 
+let clearInMemoryAuthState: (() => void) | undefined
+let handling401 = false
+
+export function registerAuthStateClearer(clearer: () => void): void {
+  clearInMemoryAuthState = clearer
+}
+
 export interface ErrorHandlerOptions {
   /** 是否显示错误消息 */
   showMessage?: boolean
@@ -23,7 +30,8 @@ export function handle401Error(options: ErrorHandlerOptions = {}) {
     isSpecialApi = false
   } = options
 
-  // 检查token是否过期
+  if (!isSpecialApi && handling401) return
+
   const token = getLocalToken()
   const expired = token ? isTokenExpired(token) : true
 
@@ -36,7 +44,25 @@ export function handle401Error(options: ErrorHandlerOptions = {}) {
     }
   }
 
-  // 显示错误消息
+  if (isSpecialApi) {
+    if (showMessage) {
+      ElMessage({
+        message,
+        type: 'error',
+        duration: 2500,
+        showClose: true
+      })
+    }
+    return
+  }
+
+  handling401 = true
+  setTimeout(() => {
+    handling401 = false
+  }, 1000)
+  logout()
+  clearInMemoryAuthState?.()
+
   if (showMessage) {
     ElMessage({
       message,
@@ -46,24 +72,44 @@ export function handle401Error(options: ErrorHandlerOptions = {}) {
     })
   }
 
-  // 对于特殊API（如笔记），不自动处理登录态
-  if (isSpecialApi) {
-    return
-  }
-
-  // 清空登录态
-  logout()
-
-  // 自动跳转登录页
-  if (autoRedirectLogin) {
+  if (autoRedirectLogin && typeof window !== 'undefined') {
     setTimeout(() => {
-      // 如果当前不在登录页，则跳转
       if (!window.location.pathname.includes('/login')) {
-        const currentPath = window.location.pathname
+        const currentPath = window.location.pathname + window.location.search + window.location.hash
         window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`
       }
-    }, 1000)
+    }, 0)
   }
+}
+
+function isSameOriginApiRequest(input: RequestInfo | URL): boolean {
+  if (typeof window === 'undefined') return false
+
+  const requestUrl = input instanceof Request ? input.url : String(input)
+  try {
+    const url = new URL(requestUrl, window.location.href)
+    return url.origin === window.location.origin && (url.pathname === '/api' || url.pathname.startsWith('/api/'))
+  } catch {
+    return false
+  }
+}
+
+export function installFetch401Handler(): void {
+  if (typeof window === 'undefined') return
+  const fetch = window.fetch as typeof window.fetch & { __handlesApi401?: boolean }
+  if (fetch.__handlesApi401) return
+
+  const originalFetch = window.fetch.bind(window)
+  const wrappedFetch = ((input: RequestInfo | URL, init?: RequestInit) =>
+    originalFetch(input, init).then((response) => {
+      if (response.status === 401 && isSameOriginApiRequest(input)) {
+        handle401Error()
+      }
+      return response
+    })) as typeof window.fetch & { __handlesApi401?: boolean }
+
+  wrappedFetch.__handlesApi401 = true
+  window.fetch = wrappedFetch
 }
 
 /**
