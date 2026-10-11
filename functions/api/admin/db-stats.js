@@ -111,6 +111,8 @@ const TABLE_META = {
   comments:                    { comment: '站点评论',           timeCol: 'created_at',  timeKind: 'text' },
   site_config:                 { comment: '站点配置',           timeCol: 'updated_at',  timeKind: 'text' },
   music_user_quota:            { comment: '音乐上传配额',       timeCol: 'updated_at',  timeKind: 'text' },
+  subsite_uploads:             { comment: '子站上传记录',       timeCol: 'created_at',  timeKind: 'text' },
+  oauth_clients:               { comment: 'OAuth 客户端',       timeCol: 'created_at',  timeKind: 'text' },
 }
 
 // 统计口径阈值：今日 / 近7日 / 近30日（含当天）

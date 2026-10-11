@@ -15,3 +15,10 @@ export const STORAGE_RESERVATION_TTL_SECONDS = 3600
 
 /** 预留清扫：超过该时间（秒）的预留行在任意用户 reserve 时被顺带删除 */
 export const STORAGE_RESERVATION_SWEEP_SECONDS = 86400
+
+/** 子站上传凭证单文件上限（500MB，防呆值；真实上限仍受用户剩余额度约束）。
+ *  R2 单次 PUT 上限约 5GiB，大文件分片暂不支持，后续需要再扩展凭证接口 */
+export const SUBSITE_UPLOAD_MAX_BYTES = 500 * 1024 * 1024
+
+/** 子站上传记录过期时间（秒）：超时仍未实扣的 pending 记录由 tools-web-worker 定时任务标为 expired */
+export const SUBSITE_UPLOAD_EXPIRE_SECONDS = 48 * 3600

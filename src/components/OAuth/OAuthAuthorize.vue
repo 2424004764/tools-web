@@ -13,6 +13,8 @@ import { getLocalToken, isTokenExpired } from '@/utils/user'
 
 const userStore = useUserStore()
 
+const APP_TITLE = (import.meta.env.VITE_APP_TITLE as string) || '一方工具箱'
+
 const loading = ref(true)
 const submitting = ref(false)
 const errorMsg = ref('')
@@ -117,7 +119,7 @@ onMounted(async () => {
         <div class="w-12 h-12 rounded-full bg-red-50 text-red-500 flex items-center justify-center text-2xl">✕</div>
         <div class="text-body font-medium text-ink-800">无法继续授权</div>
         <div class="text-body-sm text-ink-500 break-all">{{ errorMsg }}</div>
-        <a href="/" class="text-body-sm text-accent-600 hover:underline mt-2">返回工具箱首页</a>
+        <a href="/" class="text-body-sm text-accent-600 hover:underline mt-2">返回{{ APP_TITLE }}首页</a>
       </div>
 
       <!-- 静默跳转中（SSO / 已完成授权） -->

@@ -1,4 +1,10 @@
 // OAuth2 存储额度结算端点（R2 PUT 成功后调用）
+//
+// ⚠️【已废弃 2026-10】子站上传的实扣不再走本端点自报。统一上传凭证
+// （POST /api/oauth/storage-upload-credential）签发的对象，由子站桶的
+// R2 事件通知 → Cloudflare Queue → tools-web-worker 按 upload_id 幂等实扣，
+// 账目以队列事件为唯一可信来源。本端点仅为兼容保留，勿在文档中宣传新接入。
+//
 // POST /api/oauth/storage-settle   Authorization: Bearer <access_token>（scope: storage）
 //   Body: { bytes, reservation_id? }
 //   按 bytes 累加 used_bytes 并删除预留；对象真实大小由调用方子站

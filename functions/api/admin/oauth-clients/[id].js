@@ -70,6 +70,15 @@ export async function onRequest(context) {
       sets.push('logo_url = ?')
       args.push(sanitizeText(body.logo_url, 500))
     }
+    if (body.r2_bucket !== undefined) {
+      // 子站专属 R2 桶名：空 = 未开通子站上传；只能小写字母数字和连字符（R2 桶名规范）
+      const bucketName = String(body.r2_bucket || '').trim()
+      if (bucketName && !/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/.test(bucketName)) {
+        return jsonError('R2 桶名格式不合法（3-63 位小写字母/数字/连字符）')
+      }
+      sets.push('r2_bucket = ?')
+      args.push(bucketName)
+    }
     if (body.redirect_uris !== undefined) {
       const uris = normalizeRedirectUris(body.redirect_uris)
       if (uris.error) return jsonError(uris.error)
@@ -93,7 +102,7 @@ export async function onRequest(context) {
 
     const row = await db
       .prepare(
-        `SELECT client_id, name, description, logo_url, redirect_uris, is_disabled, created_at, updated_at
+        `SELECT client_id, name, description, logo_url, redirect_uris, is_disabled, r2_bucket, created_at, updated_at
          FROM oauth_clients WHERE client_id = ?`,
       )
       .bind(id)

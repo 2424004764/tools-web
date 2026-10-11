@@ -35,7 +35,7 @@ const CORS_PROTECTED_PREFIXES = [
 
 // OAuth2 公开协议端点：供任意子站跨源调用（客户端凭据即认证，无 cookie 会话），
 // 不做白名单 CORS 覆盖，由端点自带 Access-Control-Allow-Origin: *
-const OAUTH_PUBLIC_PREFIXES = ['/api/oauth/token', '/api/oauth/userinfo', '/api/oauth/storage-quota', '/api/oauth/revoke']
+const OAUTH_PUBLIC_PREFIXES = ['/api/oauth/token', '/api/oauth/userinfo', '/api/oauth/storage-quota', '/api/oauth/revoke', '/api/oauth/storage-upload-credential']
 
 function needsCORS(path) {
   return CORS_PROTECTED_PREFIXES.some((p) => path === p || path.startsWith(p))

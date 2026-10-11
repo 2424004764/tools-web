@@ -33,6 +33,7 @@ const form = reactive({
   description: '',
   logo_url: '',
   redirect_uris: '',
+  r2_bucket: '',
 })
 
 // ---- 密钥仅展示一次的弹窗 ----
@@ -88,6 +89,7 @@ const openCreate = () => {
   form.description = ''
   form.logo_url = ''
   form.redirect_uris = ''
+  form.r2_bucket = ''
   dialogVisible.value = true
 }
 
@@ -97,6 +99,7 @@ const openEdit = (row: OAuthClient) => {
   form.description = row.description
   form.logo_url = row.logo_url
   form.redirect_uris = row.redirect_uris
+  form.r2_bucket = row.r2_bucket || ''
   dialogVisible.value = true
 }
 
@@ -296,6 +299,12 @@ onMounted(() => {
           </div>
         </template>
       </el-table-column>
+      <el-table-column label="R2 桶" width="140">
+        <template #default="{ row }">
+          <span v-if="row.r2_bucket" class="text-xs text-ink-600 font-mono break-all">{{ row.r2_bucket }}</span>
+          <span v-else class="text-xs text-ink-400">未开通</span>
+        </template>
+      </el-table-column>
       <el-table-column label="已授权用户" width="100" align="center">
         <template #default="{ row }">
           <span class="text-xs text-ink-600">{{ row.granted_users ?? 0 }}</span>
@@ -369,6 +378,16 @@ onMounted(() => {
             placeholder="每行一个，精确匹配&#10;https://sub.example.com/auth/callback"
           />
           <div class="text-xs text-ink-400 mt-1">每行一个完整 URL，授权时会精确匹配，不支持通配符。</div>
+        </el-form-item>
+        <el-form-item label="R2 桶名">
+          <el-input
+            v-model="form.r2_bucket"
+            maxlength="63"
+            placeholder="如 subsite-notes（选填）"
+          />
+          <div class="text-xs text-ink-400 mt-1">
+            登记子站专属 R2 桶后，该应用才能调用上传凭证接口；桶需已在该 Cloudflare 账号手动创建并挂好事件通知。留空表示未开通。
+          </div>
         </el-form-item>
       </el-form>
       <template #footer>

@@ -10,7 +10,9 @@ import {
   createAdminUser,
   deleteAdminUser,
   resetAdminUserPassword,
+  adjustUserStorage,
   type ResetUserPasswordResult,
+  type AdjustStorageResult,
 } from '@/api/admin/user'
 import type {
   AdminUser,
@@ -20,6 +22,7 @@ import type {
   CreditTransaction,
 } from '@/types/admin'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useRouter } from 'vue-router'
 import {
   Refresh,
   View,
@@ -29,6 +32,13 @@ import {
 import { formatLocation } from '@/utils/geo-name'
 import { formatStorageBytes } from '@/api/storageQuota'
 import defaultAvatar from '@/assets/default_avatar.png'
+
+const router = useRouter()
+
+// 存储列点击 → 存储明细页并直接打开该用户弹窗
+const goStorageDetail = (uid: string) => {
+  router.push({ path: '/admin/storage', query: { uid } })
+}
 
 const loading = ref(false)
 const list = ref<AdminUser[]>([])
@@ -239,6 +249,90 @@ const submitCredit = async () => {
     ElMessage.error(err?.response?.data?.error || '操作失败')
   } finally {
     creditDialog.submitting = false
+  }
+}
+
+// ============ 存储额度调整弹窗（赠送 / 扣减，与积分调整同交互） ============
+const storageDialog = reactive({
+  visible: false,
+  uid: '',
+  userLabel: '',
+  type: 'grant' as 'grant' | 'deduct',
+  /** 调整量，单位 MB */
+  mb: 0,
+  reason: '',
+  /** 打开时的额度快照（字节），用于展示调整前后 */
+  quotaBefore: 0,
+  usedBytes: 0,
+  submitting: false,
+  lastResult: null as AdjustStorageResult | null,
+})
+
+const storageDialogDirty = computed(
+  () => storageDialog.mb > 0 || (storageDialog.reason || '').trim().length > 0,
+)
+
+const beforeCloseStorageDialog = async (done: () => void) => {
+  if (storageDialog.lastResult) return done()
+  if (!storageDialogDirty.value) return done()
+  try {
+    await ElMessageBox.confirm(
+      '已填写的容量/备注会丢失，确定关闭？',
+      '关闭确认',
+      { type: 'warning', confirmButtonText: '仍要关闭', cancelButtonText: '继续编辑' },
+    )
+    done()
+  } catch {
+    /* 取消 */
+  }
+}
+
+const openStorageDialog = (user: AdminUser) => {
+  storageDialog.uid = user.id
+  storageDialog.userLabel = user.username || user.email || user.id
+  storageDialog.type = 'grant'
+  storageDialog.mb = 0
+  storageDialog.reason = ''
+  storageDialog.quotaBefore = user.storage_quota_bytes ?? 0
+  storageDialog.usedBytes = user.storage_used_bytes ?? 0
+  storageDialog.lastResult = null
+  storageDialog.visible = true
+}
+
+const storageQuotaAfter = computed(() => {
+  const delta = storageDialog.mb * 1024 * 1024
+  if (delta <= 0) return storageDialog.quotaBefore
+  if (storageDialog.type === 'grant') return storageDialog.quotaBefore + delta
+  return Math.max(0, storageDialog.quotaBefore - delta)
+})
+
+const submitStorage = async () => {
+  if (!storageDialog.uid) return
+  if (!Number.isInteger(storageDialog.mb) || storageDialog.mb <= 0) {
+    ElMessage.warning('请输入大于 0 的整数容量（MB）')
+    return
+  }
+  storageDialog.submitting = true
+  try {
+    const result = await adjustUserStorage(storageDialog.uid, {
+      type: storageDialog.type,
+      mb: storageDialog.mb,
+      reason: storageDialog.reason || undefined,
+    })
+    storageDialog.lastResult = result
+    ElMessage.success(
+      `${storageDialog.type === 'grant' ? '赠送' : '扣减'}成功：额度 ${formatStorageBytes(result.quotaBytesBefore)} → ${formatStorageBytes(result.quotaBytesAfter)}`,
+    )
+    if (result.overUsed) {
+      ElMessage.warning('调整后额度低于已用：已有文件保留，但剩余可用为 0')
+    }
+    storageDialog.visible = false
+    load()
+  } catch (err: any) {
+    console.error(err)
+    ElMessage.error(err?.response?.data?.error || '操作失败')
+  } finally {
+    storageDialog.submitting = false
   }
 }
 
@@ -742,13 +836,21 @@ const updateIsMobile = () => {
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="已用 / 可用存储" width="132" align="right">
+        <el-table-column label="已用 / 可用 / 预扣" width="158" align="right">
           <template #default="{ row }">
             <span
-              class="block truncate text-xs text-ink-700 tabular-nums"
-              :title="`已用 ${formatStorageBytes(row.storage_used_bytes ?? 0)} / 可用 ${formatStorageBytes(row.storage_available_bytes ?? 0)}`"
+              class="storage-cell block truncate text-xs tabular-nums"
+              :title="`已用 ${formatStorageBytes(row.storage_used_bytes ?? 0)} / 可用 ${formatStorageBytes(row.storage_available_bytes ?? 0)} / 预扣 ${formatStorageBytes(row.storage_pending_bytes ?? 0)}，点击查看存储明细`"
+              @click="goStorageDetail(row.id)"
             >
-              {{ formatStorageBytes(row.storage_used_bytes ?? 0) }} / {{ formatStorageBytes(row.storage_available_bytes ?? 0) }}
+              {{ formatStorageBytes(row.storage_used_bytes ?? 0) }} /
+              {{ formatStorageBytes(row.storage_available_bytes ?? 0) }} /
+              <span
+                v-if="(row.storage_pending_bytes ?? 0) > 0"
+                class="font-medium text-warning-600"
+                title="上传预扣未结算的额度；长期不消说明结算链路异常，可到存储明细清理"
+              >⚠ {{ formatStorageBytes(row.storage_pending_bytes) }}</span>
+              <span v-else class="text-ink-400">{{ formatStorageBytes(row.storage_pending_bytes ?? 0) }}</span>
             </span>
           </template>
         </el-table-column>
@@ -875,6 +977,7 @@ const updateIsMobile = () => {
               <ul class="row-action-menu" @click.stop>
                 <li class="row-action-item" @click="openCreditDialog(row)">调整积分</li>
                 <li class="row-action-item" @click="openLogsDialog(row)">积分明细</li>
+                <li class="row-action-item" @click="openStorageDialog(row)">调整存储</li>
                 <li class="row-action-item" @click="openEditDialog(row)">改名</li>
                 <!-- 第三方登录（Google 等）用户没有密码，不提供后台改密入口 -->
                 <li v-if="row.has_password" class="row-action-item" @click="openResetPwdDialog(row)">改密</li>
@@ -954,6 +1057,84 @@ const updateIsMobile = () => {
             :class="isMobile ? '!w-full !order-1' : '!order-2'"
           >
             确认{{ creditDialog.type === 'grant' ? '赠送' : '扣减' }}
+          </el-button>
+        </div>
+      </template>
+    </el-dialog>
+
+    <!-- 调整存储弹窗（赠送 / 扣减） -->
+    <el-dialog
+      v-model="storageDialog.visible"
+      :title="`调整存储 - ${storageDialog.userLabel}`"
+      :width="isMobile ? '92vw' : '440px'"
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
+      :before-close="beforeCloseStorageDialog"
+    >
+      <el-form :label-width="isMobile ? '64px' : '80px'" class="!mt-2">
+        <el-form-item label="操作类型">
+          <el-radio-group v-model="storageDialog.type">
+            <el-radio-button value="grant">赠送</el-radio-button>
+            <el-radio-button value="deduct">扣减</el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="容量" required>
+          <el-input-number
+            v-model="storageDialog.mb"
+            :min="1"
+            :max="1048576"
+            :step="100"
+            controls-position="right"
+            class="!w-full"
+          />
+          <div class="text-xs text-ink-500 mt-1 w-full">
+            单位 MB，1024 MB = 1 GB（如输入 512 = 512 MB）
+          </div>
+        </el-form-item>
+        <el-form-item label="调整预览">
+          <div class="w-full rounded-md px-3 py-2 text-xs bg-surface-2 text-ink-600 leading-relaxed">
+            当前额度
+            <span class="font-semibold text-ink-900 tabular-nums">{{ formatStorageBytes(storageDialog.quotaBefore) }}</span>
+            <span class="text-ink-400">（已用 {{ formatStorageBytes(storageDialog.usedBytes) }}）</span>
+            <template v-if="storageDialog.mb > 0">
+              <span class="mx-1 text-ink-400">→</span>
+              调整后
+              <span
+                class="font-semibold tabular-nums"
+                :class="storageDialog.type === 'grant' ? 'text-emerald-600' : 'text-rose-600'"
+              >{{ formatStorageBytes(storageQuotaAfter) }}</span>
+              <span
+                v-if="storageDialog.type === 'deduct' && storageQuotaAfter < storageDialog.usedBytes"
+                class="text-danger-600 block mt-0.5"
+              >
+                ⚠️ 调整后额度低于已用：已有文件保留，但剩余可用为 0
+              </span>
+            </template>
+          </div>
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input
+            v-model="storageDialog.reason"
+            placeholder="可选"
+            maxlength="200"
+            show-word-limit
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <!-- 移动端按钮纵向堆叠 + 占满宽度，桌面端保持横向 -->
+        <div :class="isMobile ? 'flex flex-col gap-2 w-full' : 'flex justify-end gap-2'">
+          <el-button
+            @click="storageDialog.visible = false"
+            :class="isMobile ? '!w-full !order-2' : '!order-1'"
+          >取消</el-button>
+          <el-button
+            type="primary"
+            :loading="storageDialog.submitting"
+            @click="submitStorage"
+            :class="isMobile ? '!w-full !order-1' : '!order-2'"
+          >
+            确认{{ storageDialog.type === 'grant' ? '赠送' : '扣减' }}
           </el-button>
         </div>
       </template>
@@ -1504,6 +1685,18 @@ const updateIsMobile = () => {
 .user-list-table :deep(.cell) {
   padding-left: 6px;
   padding-right: 6px;
+}
+
+/* 存储列：链接化样式，点击跳转存储明细页 */
+.storage-cell {
+  color: rgb(var(--accent-600));
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+.storage-cell:hover {
+  text-decoration: underline;
+  color: rgb(var(--accent-700));
 }
 
 /* 行操作 popover 内部菜单：替代 el-dropdown-menu 的自定义 ul/li 渲染。

@@ -8,6 +8,8 @@ export interface OAuthClient {
   logo_url: string
   redirect_uris: string
   is_disabled: number
+  /** 子站专属 R2 桶名：空 = 未开通子站上传 */
+  r2_bucket: string
   created_at: string
   updated_at: string
   granted_users?: number
@@ -31,6 +33,7 @@ export async function createOAuthClient(payload: {
   description?: string
   logo_url?: string
   redirect_uris: string
+  r2_bucket?: string
 }): Promise<{ client_id: string; client_secret: string; name: string }> {
   const res = await functionsRequest.post('/api/admin/oauth-clients', payload)
   return res.data.data
@@ -44,6 +47,7 @@ export async function updateOAuthClient(
     logo_url: string
     redirect_uris: string
     is_disabled: boolean
+    r2_bucket: string
   }>,
 ): Promise<OAuthClient> {
   const res = await functionsRequest.put(`/api/admin/oauth-clients/${encodeURIComponent(id)}`, payload)

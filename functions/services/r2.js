@@ -62,12 +62,15 @@ function encodeS3Key(key) {
  * 签发 R2 预签名 PUT URL
  *
  * @param {object} env       Cloudflare Pages env，需含 R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / R2_ACCOUNT_ID
- * @param {string} bucket    R2 桶名（一般读 env.R2_BUCKET_NAME）
+ * @param {string} bucket    R2 桶名（一般读 env.R2_BUCKET_NAME；子站上传传子站自己的桶名）
  * @param {string} r2Key     对象键（如 ai-creations/{uid}/{groupId}/{uuid}.png）
  * @param {string} contentType MIME 类型（签名锁定的 Content-Type，PUT 时必须一致）
+ * @param {object} [opts]    可选项
+ * @param {number} [opts.contentLength] 把 Content-Length 锁进签名：PUT 的实际 body 大小
+ *   必须等于该值，否则 R2 端 SignatureDoesNotMatch（403），用于子站上传凭证的"声明大小强制一致"
  * @returns {Promise<{uploadUrl: string, r2Key: string, expiresAt: number}>}
  */
-export async function signR2PutUrl(env, bucket, r2Key, contentType) {
+export async function signR2PutUrl(env, bucket, r2Key, contentType, opts = {}) {
   const accessKeyId = env.R2_ACCESS_KEY_ID
   const secretAccessKey = env.R2_SECRET_ACCESS_KEY
   const accountId = env.R2_ACCOUNT_ID
@@ -84,7 +87,8 @@ export async function signR2PutUrl(env, bucket, r2Key, contentType) {
   const encodedKey = encodeS3Key(r2Key)
   const canonicalUri = `/${encodedKey}`
   const credentialScope = `${dateStamp}/auto/s3/aws4_request`
-  const signedHeaders = 'content-type;host'
+  const lockLength = Number.isInteger(opts.contentLength) && opts.contentLength > 0
+  const signedHeaders = lockLength ? 'content-length;content-type;host' : 'content-type;host'
 
   const queryParams = new URLSearchParams({
     'X-Amz-Algorithm': 'AWS4-HMAC-SHA256',
@@ -99,7 +103,9 @@ export async function signR2PutUrl(env, bucket, r2Key, contentType) {
     .map(([k, v]) => `${uriEncode(k)}=${uriEncode(v)}`)
     .join('&')
 
-  const canonicalHeaders = `content-type:${contentType}\nhost:${host}\n`
+  const canonicalHeaders = lockLength
+    ? `content-length:${opts.contentLength}\ncontent-type:${contentType}\nhost:${host}\n`
+    : `content-type:${contentType}\nhost:${host}\n`
   const payloadHash = 'UNSIGNED-PAYLOAD'
   const canonicalRequest = [
     'PUT',

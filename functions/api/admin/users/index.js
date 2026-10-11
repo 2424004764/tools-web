@@ -207,6 +207,8 @@ async function onRequestGet(context) {
             0,
             Number(r.storage_quota_bytes) - Number(r.storage_used_bytes) - pendingBytes,
           ),
+          // 有效上传预留（未过期）：>0 且长时间不消说明结算链路异常，可在存储明细里清理
+          storage_pending_bytes: pendingBytes,
           today_tool_count: u?.tool_count ?? 0,
           today_usage_count: u?.use_count ?? 0,
           today_tools: toolsMap.get(r.id) || [],
