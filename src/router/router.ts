@@ -2075,6 +2075,16 @@ export const constantRoute = [
         },
       },
       {
+        path: 'storage',
+        component: () => import('@/components/Admin/AdminStorage.vue'),
+        name: 'adminStorage',
+        meta: {
+          title: '存储明细',
+          keywords: '后台存储明细,存储空间使用',
+          description: '按用户查看存储额度、已用与来源拆解，跟踪子站上传结算',
+        },
+      },
+      {
         path: 'credits',
         component: () => import('@/components/Admin/AdminCredits.vue'),
         name: 'adminCredits',

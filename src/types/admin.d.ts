@@ -33,6 +33,8 @@ export interface AdminUser {
   storage_available_bytes?: number
   /** 总存储配额字节数 */
   storage_quota_bytes?: number
+  /** 有效上传预留（预扣）字节数：>0 且长期不消说明结算链路异常，可到存储明细清理 */
+  storage_pending_bytes?: number
   /** 今日（本地 UTC+8 00:00 至今）使用过的工具数（DISTINCT tool_url）；0 表示今日未使用 */
   today_tool_count?: number
   /** 今日（本地 UTC+8 00:00 至今）工具使用总次数（每次进入工具页 = 1 次） */

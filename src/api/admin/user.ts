@@ -129,6 +129,57 @@ export async function adjustUserCredits(
   return res.data.data
 }
 
+export interface AdjustStoragePayload {
+  type: 'grant' | 'deduct'
+  /** 调整量，单位 MB（1024 MB = 1 GB） */
+  mb: number
+  reason?: string
+}
+
+export interface AdjustStorageResult {
+  uid: string
+  type: 'grant' | 'deduct'
+  mb: number
+  quotaBytesBefore: number
+  quotaBytesAfter: number
+  usedBytes: number
+  /** true = 扣减后额度低于已用（已有文件保留，但剩余可用为 0） */
+  overUsed: boolean
+}
+
+/**
+ * 赠送/扣减用户存储额度（单位 MB）
+ * - grant：额度累加，无额度记录也可直接赠送
+ * - deduct：额度扣到 0 封底，允许低于已用
+ */
+export async function adjustUserStorage(
+  uid: string,
+  payload: AdjustStoragePayload,
+): Promise<AdjustStorageResult> {
+  const res = await functionsRequest.post(`/api/admin/users/${uid}/storage`, payload)
+  return res.data.data
+}
+
+export interface ClearReservationsResult {
+  uid: string
+  /** 删除的预留行数 */
+  deleted: number
+  /** 清理前的预留总字节 */
+  bytesBefore: number
+  message?: string
+}
+
+/**
+ * 清理用户全部上传预留（预扣）。
+ * 用于预扣长期挂账（结算链路异常）时的手动修复；删除后预留占用的额度立即释放。
+ */
+export async function clearUserStorageReservations(
+  uid: string,
+): Promise<ClearReservationsResult> {
+  const res = await functionsRequest.post(`/api/admin/users/${uid}/clear-reservations`)
+  return res.data.data
+}
+
 /**
  * 批量调整积分
  * - 不传 uids / 传空数组 = 作用于所有非管理员用户（服务端自动排除管理员和发起人）

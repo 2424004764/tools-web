@@ -22,6 +22,7 @@ import IconSetting from '~icons/ep/setting'
 import IconNotebook from '~icons/ep/notebook'
 import IconKey from '~icons/ep/key'
 import IconCircleCheck from '~icons/ep/circle-check'
+import IconPieChart from '~icons/ep/pie-chart'
 
 const route = useRoute()
 const router = useRouter()
@@ -48,6 +49,7 @@ const groups: MenuGroup[] = [
     items: [
       { index: '/admin/users', title: '用户管理', icon: IconUser },
       { index: '/admin/credits', title: '积分流水', icon: IconCoin },
+      { index: '/admin/storage', title: '存储明细', icon: IconPieChart },
     ],
   },
   {

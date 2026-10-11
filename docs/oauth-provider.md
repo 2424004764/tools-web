@@ -20,6 +20,7 @@
 | `POST https://tool.fologde.com/api/oauth/token` | 授权码/刷新令牌 换取令牌（服务端调用） |
 | `GET https://tool.fologde.com/api/oauth/userinfo` | 获取用户资料（需 access_token，scope: profile） |
 | `GET https://tool.fologde.com/api/oauth/storage-quota` | 获取用户存储额度（需 access_token，scope: storage） |
+| `POST https://tool.fologde.com/api/oauth/storage-upload-credential` | 下发子站直传上传凭证（需 access_token，scope: storage） |
 | `POST https://tool.fologde.com/api/oauth/revoke` | 撤销令牌（可选） |
 
 ## 接入步骤（标准授权码流程）
@@ -40,7 +41,7 @@ https://tool.fologde.com/oauth/authorize
 | scope | 说明 |
 | --- | --- |
 | `profile` | 用户资料（用户名、邮箱、头像） |
-| `storage` | 存储额度（总容量、已用、剩余可上传空间） |
+| `storage` | 存储额度查询 + 子站直传上传（额度统一由主站预扣与实扣） |
 
 ### 2. 用户在工具站完成登录 + 授权
 
@@ -156,6 +157,79 @@ token=oat_xxxx&client_id=tc_xxxx&client_secret=tcs_xxxx
 ```
 
 撤销 access_token 或 refresh_token 均可，无论 token 是否有效都返回 200。
+
+## 子站直传上传（scope: storage）
+
+用户在子站上传文件时，文件**不经过子站服务器**，浏览器携带凭证直传该子站在主站登记的专属 R2 桶；存储额度由主站统一预扣与实扣，子站不接触任何云存储密钥。
+
+**前提**：管理员已在后台「OAuth 应用 → 编辑」中为该应用登记 `R2 桶名`（桶需在主站的 Cloudflare 账号中预先创建）。未登记桶名的应用调用凭证接口返回 `403 upload_not_enabled`。
+
+### 1. 申请上传凭证
+
+```http
+POST https://tool.fologde.com/api/oauth/storage-upload-credential
+Authorization: Bearer oat_xxxx
+Content-Type: application/json
+
+{
+  "filename": "photo.png",
+  "bytes": 204800,
+  "content_type": "image/png"
+}
+```
+
+| 字段 | 必填 | 说明 |
+| --- | --- | --- |
+| `filename` | 是 | 文件名（只取最后一段路径，保留中文等 unicode） |
+| `bytes` | 是 | 文件字节数（**必须与实际上传大小完全一致**，原因见下方语义） |
+| `content_type` | 否 | MIME 类型，缺省 `application/octet-stream` |
+
+响应：
+
+```json
+{
+  "ok": true,
+  "upload_id": "0e6c8bd2-....",
+  "upload_url": "https://<子站桶>.r2.cloudflarestorage.com/subsite/<uid>/<upload_id>/photo.png?X-Amz-...",
+  "bucket": "subsite-notes",
+  "object_key": "subsite/<uid>/<upload_id>/photo.png",
+  "bytes": 204800,
+  "content_type": "image/png",
+  "expires_at": "2026-10-11T12:34:56.000Z",
+  "expires_in": 900
+}
+```
+
+**凭证语义（重要）**：
+
+- **预扣**：凭证签发成功即预扣 `bytes` 额度（余额不足返回 `402 quota_exceeded`，附 `remaining_bytes` / `need_bytes`）；15 分钟内未完成上传，预扣自动失效归还；
+- **锁定**：`upload_url` 是一次一用的预签名 PUT，`Content-Length` 与 `Content-Type` 都签进了签名——实际上传的大小或类型与申请时不符，**R2 直接返回 403 拒绝写入**，不存在"先传上去再对账"的窗口；大小不符时子站按实际情况重新申请凭证即可（原预扣已自动回滚）；
+- **实扣**：上传成功后由主站通过 R2 事件通知异步实扣（`used_bytes += bytes`、释放预扣），**子站无需也不应上报结算**，下次拉取 `storage-quota` 即为扣减后的余额；
+- **幂等**：实扣按 `upload_id` 幂等结算，事件重复投递不会重复扣；
+- 单文件上限 500MB（`invalid_request`），大文件分片暂不支持。
+
+### 2. 浏览器直传
+
+```js
+const res = await fetch(credential.upload_url, {
+  method: 'PUT',
+  headers: { 'Content-Type': credential.content_type },
+  body: file, // 大小必须与申请时的 bytes 一致
+});
+// 200/204 = 上传成功；403 = 大小或类型与凭证不符
+```
+
+上传跨域由主站桶的 CORS 配置统一放行，子站无需额外配置。
+
+### 3. 错误码
+
+| error | HTTP | 说明 |
+| --- | --- | --- |
+| `invalid_token` | 401 | access_token 无效或过期 |
+| `insufficient_scope` | 403 | 令牌未授予 `storage` scope |
+| `upload_not_enabled` | 403 | 该应用未登记 R2 桶，未开通上传 |
+| `quota_exceeded` | 402 | 剩余额度不足（附 `remaining_bytes` / `need_bytes`） |
+| `invalid_request` | 400 | 缺 `bytes` / 超单文件上限 / `content_type` 不合法 |
 
 ## 错误处理
 

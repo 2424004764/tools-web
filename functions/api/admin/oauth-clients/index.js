@@ -53,7 +53,7 @@ export async function onRequest(context) {
 
       const list = await db
         .prepare(
-          `SELECT c.client_id, c.name, c.description, c.logo_url, c.redirect_uris, c.is_disabled,
+          `SELECT c.client_id, c.name, c.description, c.logo_url, c.redirect_uris, c.is_disabled, c.r2_bucket,
                   c.created_at, c.updated_at,
                   (SELECT COUNT(*) FROM oauth_user_consents k WHERE k.client_id = c.client_id) AS granted_users
            FROM oauth_clients c ${whereSql}
@@ -90,8 +90,8 @@ export async function onRequest(context) {
 
       await db
         .prepare(
-          `INSERT INTO oauth_clients (client_id, client_secret, name, description, logo_url, redirect_uris, is_disabled, created_by, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?)`,
+          `INSERT INTO oauth_clients (client_id, client_secret, name, description, logo_url, redirect_uris, is_disabled, r2_bucket, created_by, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)`,
         )
         .bind(
           clientId,
@@ -100,6 +100,7 @@ export async function onRequest(context) {
           sanitizeText(body.description, 200),
           sanitizeText(body.logo_url, 500),
           uris.value,
+          sanitizeText(body.r2_bucket, 200),
           context.data?.adminUid || null,
           now,
           now,

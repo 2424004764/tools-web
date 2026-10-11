@@ -67,7 +67,7 @@ export function validateRedirectUri(client, redirectUri) {
 export async function loadActiveClient(db, clientId) {
   if (!clientId) return null
   const row = await db
-    .prepare(`SELECT client_id, client_secret, name, description, logo_url, redirect_uris, is_disabled
+    .prepare(`SELECT client_id, client_secret, name, description, logo_url, redirect_uris, is_disabled, r2_bucket
               FROM oauth_clients WHERE client_id = ?`)
     .bind(clientId)
     .first()

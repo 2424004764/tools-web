@@ -670,6 +670,11 @@ export default defineConfig(({command, mode}) => {
           target: 'http://127.0.0.1:8788',
           changeOrigin: true,
         },
+        // OAuth2 协议端点（子站接入 / 授权页 / 存储凭证下发）本地调试走 8788
+        '/api/oauth': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
       }
     },
     // 依赖优化
