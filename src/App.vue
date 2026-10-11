@@ -76,9 +76,14 @@ const isLetterViewPage = computed(() => {
   return route.name === 'letterView';
 });
 
+// 判断是否为产品跳转中间页（纯净出站过渡，不带站点框架）
+const isAppJumpPage = computed(() => {
+  return route.name === 'app-jump';
+});
+
 // 判断是否为特殊页面（需要隐藏导航等元素）
 const isSpecialPage = computed(() => {
-  return isQAViewPage.value || isLetterViewPage.value;
+  return isQAViewPage.value || isLetterViewPage.value || isAppJumpPage.value;
 });
 
 // 判断是否为后台管理页面（使用 AdminLayout，跳过默认 Header/Left/Floor）
@@ -142,6 +147,11 @@ const isMeCreditsPage = computed(() => {
         <Header />
       </el-header>
       <el-main :class="[isSpecialPage ? '' : 'c-xs:pt-16', componentStore.hideAllUI && !isSpecialPage ? 'c-xs:pt-0' : '']">
+        <!-- 首帧路由未就绪（app.mount 早于 router.isReady，lazy chunk 尚未解析）时显示骨架屏。
+             骨架必须放在 router-view 外面：Transition 的 out-in 模式下「骨架 ↔ 页面组件」的真实 DOM
+             类型切换会因 leave 动画挂起而永远停在空注释占位，导致内容区空白（2026-10 首页空白事故）；
+             首帧 Component 为空时 transition 的子节点是注释节点，注释的 leave 立即完成，不受影响 -->
+        <LayoutSkeleton v-if="!route.matched.length" variant="page" />
         <router-view v-slot="{ Component, route }">
           <transition name="fade" mode="out-in">
             <component :is="Component" :key="route.path"></component>

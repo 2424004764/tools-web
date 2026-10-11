@@ -744,6 +744,23 @@ watch(() => toolsStore.cates.length, (newLen, oldLen) => {
       </div>
     </section>
 
+    <!-- 工具网格加载骨架屏：/api/tools 请求期间占位，避免内容区空白 -->
+    <div
+      v-if="toolsStore.cates.length === 0"
+      aria-busy="true"
+      aria-label="工具列表加载中"
+    >
+      <div v-for="s in 2" :key="s">
+        <div class="mt-10 mb-4 flex items-center gap-2.5">
+          <span class="skel-block w-7 h-7 rounded-lg shrink-0" aria-hidden="true"></span>
+          <span class="skel-block h-5 w-28 rounded" aria-hidden="true"></span>
+        </div>
+        <div class="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+          <div v-for="i in 5" :key="i" class="skel-block h-36 rounded-2xl" aria-hidden="true"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- 全部分类工具网格 -->
     <div v-for="cate in toolsStore.cates" :key="cate.id">
       <!-- 分类标题（锚点目标） -->
@@ -895,5 +912,21 @@ watch(() => toolsStore.cates.length, (newLen, oldLen) => {
 .recent-scroll::-webkit-scrollbar-thumb {
   background: rgb(var(--border-default));
   border-radius: 4px;
+}
+/* 工具网格骨架块：与 LayoutSkeleton / HotList 同款 shimmer */
+.skel-block {
+  display: block;
+  background: linear-gradient(
+    90deg,
+    rgba(229, 222, 211, 0.6) 0%,
+    rgba(244, 240, 232, 0.9) 50%,
+    rgba(229, 222, 211, 0.6) 100%
+  );
+  background-size: 200% 100%;
+  animation: skel-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes skel-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 </style>

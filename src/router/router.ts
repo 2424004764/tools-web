@@ -32,6 +32,17 @@ export const constantRoute = [
       description: 'Unix时间戳转换可以把Unix时间转成北京时间。',
     }
   },
+  // 产品跳转中间页：更多产品下拉经此出站，白名单校验 + 使用记录 + 延迟跳外链
+  {
+    path: '/app-jump/:key',
+    component: () => import('@/components/AppJump/AppJump.vue'),
+    name: 'app-jump',
+    meta: {
+      title: "正在前往产品",
+      keywords: '',
+      description: '一方工具箱产品矩阵跳转页',
+    }
+  },
   {
     path: '/md5',
     component: () => import('@/components/Tools/MD5/MD5.vue'),
@@ -1210,6 +1221,206 @@ export const constantRoute = [
       title: 'AI提示词仓库',
       keywords: 'AI提示词,提示词库,prompt,AI指令,创意提示词,编程提示词,写作提示词',
       description: '精选顶级AI提示词库，涵盖写作、编程、创意、分析等多个领域的优质提示词，助力提升AI对话效果'
+    }
+  },
+  {
+    path: '/text-to-pdf',
+    component: () => import('@/components/Tools/TextToPdf/TextToPdf.vue'),
+    name: 'text-to-pdf',
+    meta: {
+      title: '文本转 PDF',
+      keywords: '文本转PDF,文字转PDF,在线生成PDF,中文转PDF',
+      description: '在线将文本内容转换为 A4 PDF，支持中文、自动换行、长文分页及字号和页边距设置，浏览器本地处理',
+    }
+  },
+  {
+    path: '/mortgage',
+    component: () => import('@/components/Tools/MortgageCalculator/MortgageCalculator.vue'),
+    name: 'mortgage',
+    meta: {
+      title: '房贷计算器',
+      keywords: '房贷计算器,等额本息,等额本金,月供计算,房贷利率,购房贷款计算',
+      description: '在线房贷计算器，支持等额本息与等额本金两种方式，实时计算月供、利息总额与逐年还款明细',
+    }
+  },
+  {
+    path: '/income-tax',
+    component: () => import('@/components/Tools/IncomeTaxCalculator/IncomeTaxCalculator.vue'),
+    name: 'income-tax',
+    meta: {
+      title: '个税计算器',
+      keywords: '个税计算器,个人所得税计算,累计预扣,税后工资计算,五险一金,专项附加扣除',
+      description: '按累计预扣预缴法计算每月个人所得税与税后到手工资，展示税率跳档、逐月明细与全年汇总',
+    }
+  },
+  {
+    path: '/date-calc',
+    component: () => import('@/components/Tools/DateCalculator/DateCalculator.vue'),
+    name: 'date-calc',
+    meta: {
+      title: '日期计算器',
+      keywords: '日期计算器,日期间隔计算,天数计算,日期推算,工作日计算,日期加减',
+      description: '在线日期计算器，计算两个日期相差天数、精确年月天差异，支持日期加减推算与工作日统计',
+    }
+  },
+  {
+    path: '/lunar-calendar',
+    component: () => import('@/components/Tools/LunarCalendar/LunarCalendar.vue'),
+    name: 'lunar-calendar',
+    meta: {
+      title: '农历/万年历',
+      keywords: '农历查询,万年历,公历转农历,农历转公历,黄历,干支,节气,生肖',
+      description: '公农历对照万年历，展示干支纪年、生肖与二十四节气，支持农历生日反查公历日期',
+    }
+  },
+  {
+    path: '/bmi',
+    component: () => import('@/components/Tools/BmiCalculator/BmiCalculator.vue'),
+    name: 'bmi',
+    meta: {
+      title: 'BMI 计算器',
+      keywords: 'BMI计算器,体重指数,身高体重标准,健康体重范围,肥胖计算',
+      description: '在线 BMI 身体质量指数计算器，按中国成人标准评估体重健康状况并给出健康体重范围',
+    }
+  },
+  {
+    path: '/age-calc',
+    component: () => import('@/components/Tools/AgeCalculator/AgeCalculator.vue'),
+    name: 'age-calc',
+    meta: {
+      title: '年龄计算器',
+      keywords: '年龄计算器,周岁计算,虚岁计算,生肖星座,生日倒计时,已活天数',
+      description: '精确计算周岁、虚岁、生肖星座与已活天数，展示下一生日倒计时与人生里程碑日期',
+    }
+  },
+  {
+    path: '/chinese-convert',
+    component: () => import('@/components/Tools/ChineseConvert/ChineseConvert.vue'),
+    name: 'chinese-convert',
+    meta: {
+      title: '简繁体转换',
+      keywords: '简繁体转换,繁体字转换,简体转繁体,繁体转简体,OpenCC,台湾正体,香港繁体',
+      description: '基于 OpenCC 词库的中文简繁体在线转换，支持台湾正体、香港繁体，词汇级精准互转',
+    }
+  },
+  {
+    path: '/pinyin',
+    component: () => import('@/components/Tools/PinyinConvert/PinyinConvert.vue'),
+    name: 'pinyin',
+    meta: {
+      title: '汉字转拼音',
+      keywords: '汉字转拼音,拼音转换,拼音标注,多音字,首字母,声调',
+      description: '汉字转拼音在线工具，支持声调符号/数字/无声调与首字母模式，内置多音字智能识别',
+    }
+  },
+  {
+    path: '/text-sort',
+    component: () => import('@/components/Tools/TextSort/TextSort.vue'),
+    name: 'text-sort',
+    meta: {
+      title: '文本排序',
+      keywords: '文本排序,文字排序,拼音排序,数字排序,去重,随机打乱',
+      description: '在线文本排序工具，按拼音、数字、长度对行或列表排序，支持去重、倒序与随机打乱',
+    }
+  },
+  {
+    path: '/lorem',
+    component: () => import('@/components/Tools/LoremGenerator/LoremGenerator.vue'),
+    name: 'lorem',
+    meta: {
+      title: '假文生成器',
+      keywords: '假文生成器,占位文本,Lorem Ipsum,中文假文,排版测试',
+      description: '在线生成中文假文或 Lorem Ipsum 占位文本，自定义段落与句数，用于原型设计与排版演示',
+    }
+  },
+  {
+    path: '/xml-format',
+    component: () => import('@/components/Tools/XmlFormat/XmlFormat.vue'),
+    name: 'xml-format',
+    meta: {
+      title: 'XML 格式化',
+      keywords: 'XML格式化,XML压缩,XML美化,XML校验,在线XML工具',
+      description: 'XML 在线格式化与压缩工具，支持缩进设置，保留注释、CDATA 与 DOCTYPE，带语法错误提示',
+    }
+  },
+  {
+    path: '/sql-format',
+    component: () => import('@/components/Tools/SqlFormat/SqlFormat.vue'),
+    name: 'sql-format',
+    meta: {
+      title: 'SQL 格式化',
+      keywords: 'SQL格式化,SQL美化,SQL压缩,MySQL格式化,SQL在线工具',
+      description: 'SQL 在线格式化美化工具，支持 MySQL、PostgreSQL 等 15 种方言，可设置关键字大小写与缩进',
+    }
+  },
+  {
+    path: '/css-gradient',
+    component: () => import('@/components/Tools/CssGradient/CssGradient.vue'),
+    name: 'css-gradient',
+    meta: {
+      title: 'CSS 渐变生成器',
+      keywords: 'CSS渐变,渐变生成器,linear-gradient,radial-gradient,conic-gradient,渐变代码',
+      description: 'CSS 渐变在线生成器，可视化调节线性、径向、锥形渐变，多色节点编辑，实时预览并复制代码',
+    }
+  },
+  {
+    path: '/favicon-generator',
+    component: () => import('@/components/Tools/FaviconGenerator/FaviconGenerator.vue'),
+    name: 'favicon-generator',
+    meta: {
+      title: 'Favicon 生成器',
+      keywords: 'favicon生成器,网站图标生成,ico生成,苹果触屏图标,PWA图标',
+      description: '上传图片一键生成 16~512px 全尺寸网站图标、苹果触屏图标与多尺寸合一的 favicon.ico',
+    }
+  },
+  {
+    path: '/image-exif',
+    component: () => import('@/components/Tools/ImageExif/ImageExif.vue'),
+    name: 'image-exif',
+    meta: {
+      title: '图片 EXIF 查看/清除',
+      keywords: 'EXIF查看,EXIF清除,去除图片信息,GPS位置删除,照片隐私保护',
+      description: '在线查看照片 EXIF 拍摄参数与 GPS 位置信息，一键剥离全部元数据后下载，保护照片隐私',
+    }
+  },
+  {
+    path: '/image-palette',
+    component: () => import('@/components/Tools/ImagePalette/ImagePalette.vue'),
+    name: 'image-palette',
+    meta: {
+      title: '图片取色板',
+      keywords: '图片取色,配色提取,主色调提取,调色板生成,设计配色',
+      description: '上传图片自动提取主色调色板，中位切分算法聚类主色，点击色块复制 HEX 值',
+    }
+  },
+  {
+    path: '/grid-image-cut',
+    component: () => import('@/components/Tools/GridImageCut/GridImageCut.vue'),
+    name: 'grid-image-cut',
+    meta: {
+      title: '九宫格切图',
+      keywords: '九宫格切图,朋友圈切图,图片切割,九宫格图片,图片分割',
+      description: '在线九宫格切图，把一张图切成 3×3 或 4×4，支持正方形裁剪、间距预览与打包下载',
+    }
+  },
+  {
+    path: '/lucky-wheel',
+    component: () => import('@/components/Tools/LuckyWheel/LuckyWheel.vue'),
+    name: 'lucky-wheel',
+    meta: {
+      title: '抽奖转盘',
+      keywords: '抽奖转盘,幸运大转盘,随机抽奖,年会抽奖,抽奖工具',
+      description: '在线抽奖转盘，输入选项生成大转盘，点击旋转随机抽奖，支持结果记录与中奖自动移除',
+    }
+  },
+  {
+    path: '/roll-call',
+    component: () => import('@/components/Tools/RandomRollCall/RandomRollCall.vue'),
+    name: 'roll-call',
+    meta: {
+      title: '随机点名器',
+      keywords: '随机点名器,课堂点名,随机点名,抽奖名单,点名工具',
+      description: '在线随机点名器，导入名单滚动点名，支持一次抽多人、不重复抽取与点名记录',
     }
   },
   {
