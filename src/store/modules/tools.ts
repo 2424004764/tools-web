@@ -21,6 +21,8 @@ export const useToolsStore = defineStore('tools', {
     list: [] as ToolsInfo[],
     toolInfo: {} as ToolsInfo,
     cates: [] as ToolCate[],
+    // 分类/工具列表是否正在请求中（供首页等内容区渲染骨架屏，避免加载期间空白）
+    catesLoading: false,
     recommends: [] as ToolsInfo[],
     ipData: {} as IpInfo,
     webInfo: {} as WebInfo,
@@ -35,6 +37,7 @@ export const useToolsStore = defineStore('tools', {
      * 同时把扁平列表写入 state.list（供搜索等场景）。
      */
     async loadToolsFromApi(): Promise<void> {
+      this.catesLoading = true
       try {
         const res = await functionsRequest.get<PublicToolsResponse>('/api/tools')
         const payload = res.data
@@ -52,6 +55,8 @@ export const useToolsStore = defineStore('tools', {
       } catch (err) {
         console.warn('[useToolsStore] /api/tools 加载失败，回退到 tools.ts:', err)
         await this.loadFromLocal()
+      } finally {
+        this.catesLoading = false
       }
     },
 

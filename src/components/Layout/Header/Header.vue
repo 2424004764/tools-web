@@ -4,6 +4,7 @@ import Search from '~icons/ep/search'
 import IconMoon from '~icons/ep/moon'
 import IconSunny from '~icons/ep/sunny'
 import IconMagicStick from '~icons/ep/magic-stick'
+import IconGrid from '~icons/ep/grid'
 import { ElMessage } from 'element-plus'
 import { useToolsStore } from '@/store/modules/tools'
 import { useComponentStore } from '@/store/modules/component'
@@ -13,6 +14,7 @@ import 'element-plus/theme-chalk/display.css'
 import { ToolsInfo } from '@/components/Tools/tools.type.ts';
 
 import UserBalanceBadge from '@/components/User/UserBalanceBadge.vue'
+import { PRODUCTS, productJumpPath } from './products'
 import { useRouter, useRoute } from 'vue-router'
 
 const router = useRouter()
@@ -55,6 +57,10 @@ const { isDark, toggleTheme } = useTheme()
 // 用户相关状态
 const userMenuVisible = ref(false)
 const hideTimeout = ref<number | null>(null)
+
+// 「更多产品」下拉（兄弟产品矩阵），交互与用户菜单一致：桌面悬停 + 点击切换
+const productsMenuVisible = ref(false)
+const productsHideTimeout = ref<number | null>(null)
 
 // 计算属性：判断用户是否已登录
 const isLoggedIn = computed(() => userStore.getLoginStatus)
@@ -222,11 +228,45 @@ const hideUserMenuImmediately = () => {
   userMenuVisible.value = false
 }
 
+// 切换产品下拉显示状态
+const toggleProductsMenu = () => {
+  productsMenuVisible.value = !productsMenuVisible.value
+}
+
+// 显示产品下拉
+const showProductsMenu = () => {
+  if (productsHideTimeout.value) {
+    clearTimeout(productsHideTimeout.value)
+    productsHideTimeout.value = null
+  }
+  productsMenuVisible.value = true
+}
+
+// 隐藏产品下拉（延迟，给用户时间移动到菜单）
+const hideProductsMenu = () => {
+  productsHideTimeout.value = window.setTimeout(() => {
+    productsMenuVisible.value = false
+    productsHideTimeout.value = null
+  }, 150)
+}
+
+// 立即隐藏产品下拉
+const hideProductsMenuImmediately = () => {
+  if (productsHideTimeout.value) {
+    clearTimeout(productsHideTimeout.value)
+    productsHideTimeout.value = null
+  }
+  productsMenuVisible.value = false
+}
+
 // 点击外部区域关闭菜单
 const handleClickOutside = (event: Event) => {
   const target = event.target as HTMLElement
   if (!target.closest('.user-menu-container')) {
     hideUserMenuImmediately()
+  }
+  if (!target.closest('.products-menu-container')) {
+    hideProductsMenuImmediately()
   }
 }
 
@@ -247,6 +287,9 @@ onUnmounted(() => {
   // 清理定时器
   if (hideTimeout.value) {
     clearTimeout(hideTimeout.value)
+  }
+  if (productsHideTimeout.value) {
+    clearTimeout(productsHideTimeout.value)
   }
 })
 </script>
@@ -338,6 +381,54 @@ onUnmounted(() => {
     </div>
 
     <div class="flex items-center gap-2 shrink-0 c-xs:pr-3">
+      <!-- 更多产品：兄弟产品矩阵下拉 -->
+      <div class="relative products-menu-container">
+        <button
+          type="button"
+          class="h-10 c-xs:w-10 c-xs:px-0 px-3 rounded-full bg-white dark:bg-surface-0 shadow-sm shadow-ink-950/5 border border-border-subtle flex items-center justify-center gap-1.5 text-ink-500 hover:text-accent-600 hover:border-accent-300 transition-colors cursor-pointer"
+          aria-haspopup="menu"
+          :aria-expanded="productsMenuVisible"
+          aria-label="更多产品"
+          title="更多产品"
+          @click="toggleProductsMenu"
+          @mouseenter="showProductsMenu"
+          @mouseleave="hideProductsMenu"
+        >
+          <IconGrid class="w-5 h-5" aria-hidden="true" />
+          <span class="text-sm whitespace-nowrap c-xs:hidden">更多产品</span>
+          <!-- 箭头仅桌面端显示：移动端按钮收成纯图标圆钮，挤一个小箭头会显得杂乱 -->
+          <svg class="w-4 h-4 text-ink-400 transition-transform duration-200 c-xs:hidden" :class="{ 'rotate-180': productsMenuVisible }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="6,9 12,15 18,9"></polyline>
+          </svg>
+        </button>
+
+        <!-- 产品下拉面板 -->
+        <div
+          v-show="productsMenuVisible"
+          role="menu"
+          aria-label="更多产品"
+          class="absolute top-full right-0 mt-1 w-[300px] bg-surface-0 dark:bg-surface-0 border border-border-default rounded-2xl shadow-lg py-1.5 z-50 divide-y divide-border-subtle c-xs:fixed c-xs:top-16 c-xs:right-3 c-xs:left-3 c-xs:w-auto c-xs:mt-0"
+          @mouseenter="showProductsMenu"
+          @mouseleave="hideProductsMenu"
+        >
+          <a
+            v-for="p in PRODUCTS"
+            :key="p.key"
+            role="menuitem"
+            :href="productJumpPath(p.key)"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="flex items-center gap-3 px-4 py-2.5 hover:bg-accent-50 dark:hover:bg-surface-3 transition-colors group"
+          >
+            <img :src="p.logo" :alt="p.name + '图标'" class="w-10 h-10 rounded-xl shrink-0" loading="lazy" />
+            <span class="min-w-0">
+              <span class="block text-[15px] leading-5 font-semibold text-ink-800 group-hover:text-accent-700 dark:group-hover:text-accent-300 transition-colors">{{ p.name }}</span>
+              <span class="block text-xs leading-4 text-ink-400 truncate mt-0.5">{{ p.desc }}</span>
+            </span>
+          </a>
+        </div>
+      </div>
+
       <!-- 主题切换 -->
       <button
         type="button"

@@ -11,6 +11,7 @@ import { fetchIpBans, createIpBan, deleteIpBan } from '@/api/admin/ip-ban'
 import { functionsRequest } from '@/utils/functionsRequest'
 import { formatLocation } from '@/utils/geo-name'
 import { SOURCE_LABELS, getSourceLabel } from '@/utils/source'
+import { PRODUCTS } from '@/components/Layout/Header/products'
 import type {
   AdminPagination,
   ToolUsageRecord,
@@ -18,6 +19,17 @@ import type {
   ToolFeature,
   IpBanRule,
 } from '@/types/admin'
+
+/**
+ * /app-jump/:key/ 是「更多产品」的站内跳转中间页埋点（复用 tool_usage_records 表）。
+ * 展示时把路径翻译成「产品跳转 · 题迹」，其余路径原样返回。
+ */
+function displayToolUrl(url: string): string {
+  const m = /^\/app-jump\/([a-z0-9-]+)\/?$/.exec(url || '')
+  if (!m) return url
+  const p = PRODUCTS.find((x) => x.key === m[1])
+  return p ? `产品跳转 · ${p.name}` : `产品跳转 · ${m[1]}`
+}
 
 const loading = ref(false)
 const statsLoading = ref(false)
@@ -410,7 +422,7 @@ onMounted(() => {
               class="text-xs text-blue-600 hover:underline font-mono shrink-0"
               :title="`点击打开 ${t.tool_url}`"
             >
-              {{ t.tool_url }}
+              {{ displayToolUrl(t.tool_url) }}
             </a>
             <span class="text-accent-700 font-medium tabular-nums w-12 text-right">
               {{ t.use_count }}
@@ -631,7 +643,7 @@ onMounted(() => {
               class="text-xs text-blue-600 hover:underline font-mono"
               :title="`点击打开 ${row.tool_url}`"
             >
-              {{ row.tool_url }}
+              {{ displayToolUrl(row.tool_url) }}
             </a>
           </template>
         </el-table-column>

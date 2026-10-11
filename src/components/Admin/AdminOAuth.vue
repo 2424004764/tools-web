@@ -38,8 +38,6 @@ const form = reactive({
 // ---- 密钥仅展示一次的弹窗 ----
 const secretDialogVisible = ref(false)
 const secretInfo = reactive({ client_id: '', client_secret: '' })
-// 正在重置密钥的应用 id（按钮 loading 用）
-const resettingId = ref('')
 
 const showSecret = (clientId: string, clientSecret: string) => {
   secretInfo.client_id = clientId
@@ -154,25 +152,39 @@ const handleToggleDisabled = async (row: OAuthClient) => {
 }
 
 const handleResetSecret = async (row: OAuthClient) => {
+  const resetResult: { value: { client_id: string; client_secret: string } | null } = { value: null }
   try {
     await ElMessageBox.confirm(
       `重置后旧 client_secret 立即失效，该应用所有已登录用户的令牌将被撤销，子站需同步更新密钥。确定重置？`,
       '重置密钥',
-      { confirmButtonText: '重置', cancelButtonText: '取消', type: 'warning' },
+      {
+        confirmButtonText: '重置',
+        cancelButtonText: '取消',
+        type: 'warning',
+        beforeClose: async (action, instance, done) => {
+          if (action !== 'confirm') {
+            done()
+            return
+          }
+          instance.confirmButtonLoading = true
+          try {
+            resetResult.value = await resetOAuthClientSecret(row.client_id)
+            done()
+          } catch (err: any) {
+            ElMessage.error(err?.response?.data?.error || err?.message || '重置失败')
+          } finally {
+            instance.confirmButtonLoading = false
+          }
+        },
+      },
     )
   } catch {
     return
   }
-  resettingId.value = row.client_id
-  try {
-    const result = await resetOAuthClientSecret(row.client_id)
-    await load()
-    showSecret(result.client_id, result.client_secret)
-  } catch (err: any) {
-    ElMessage.error(err?.response?.data?.error || err?.message || '重置失败')
-  } finally {
-    resettingId.value = ''
-  }
+  const result = resetResult.value
+  if (!result) return
+  await load()
+  showSecret(result.client_id, result.client_secret)
 }
 
 const handleDelete = async (row: OAuthClient) => {
@@ -312,7 +324,6 @@ onMounted(() => {
               size="small"
               link
               type="warning"
-              :loading="resettingId === row.client_id"
               @click="handleResetSecret(row)"
             >重置密钥</el-button>
             <el-button size="small" link type="danger" @click="handleDelete(row)">删除</el-button>

@@ -5,7 +5,7 @@
  * 颜色用项目已有的 warm 色系，保持视觉一致。
  */
 defineProps<{
-  variant?: 'header' | 'left' | 'floor'
+  variant?: 'header' | 'left' | 'floor' | 'page'
 }>()
 </script>
 
@@ -29,6 +29,19 @@ defineProps<{
   <!-- Floor 骨架：一行居中文字条 -->
   <div v-else-if="variant === 'floor'" class="w-full p-5 text-center">
     <div class="skel-block h-4 w-2/3 max-w-md mx-auto rounded"></div>
+  </div>
+
+  <!-- 主内容区骨架：模拟首页「热门资讯卡 + 工具卡片网格」，路由 chunk 下载期间的占位 -->
+  <div v-else-if="variant === 'page'" class="space-y-6" aria-busy="true">
+    <div class="rounded-[20px] border border-border-subtle p-6">
+      <div class="skel-block h-6 w-44 rounded"></div>
+      <div class="mt-5 grid gap-3 grid-cols-1 md:grid-cols-2 2xl:grid-cols-3">
+        <div v-for="i in 3" :key="i" class="skel-block h-12 rounded-lg"></div>
+      </div>
+    </div>
+    <div class="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+      <div v-for="i in 10" :key="i" class="skel-block h-36 rounded-2xl"></div>
+    </div>
   </div>
 </template>
 

@@ -89,6 +89,9 @@ importers:
       element-plus:
         specifier: ^2.11.1
         version: 2.11.1(vue@3.5.18(typescript@5.9.2))
+      exifr:
+        specifier: ^7.1.3
+        version: 7.1.3
       figlet:
         specifier: ^1.7.0
         version: 1.8.2
@@ -119,9 +122,15 @@ importers:
       markdown-it:
         specifier: ^14.1.0
         version: 14.1.0
+      opencc-js:
+        specifier: ^1.4.2
+        version: 1.4.2
       pdfjs-dist:
         specifier: ^4.0.379
         version: 4.10.38
+      pinyin-pro:
+        specifier: ^3.29.5
+        version: 3.29.5
       prismjs:
         specifier: ^1.29.0
         version: 1.30.0
@@ -134,9 +143,15 @@ importers:
       randomatic:
         specifier: ^3.1.1
         version: 3.1.1
+      solarlunar:
+        specifier: ^3.1.0
+        version: 3.1.0
       sortablejs:
         specifier: ^1.15.7
         version: 1.15.7
+      sql-formatter:
+        specifier: ^15.9.0
+        version: 15.9.0
       swiper:
         specifier: ^14.2.0
         version: 14.2.0
@@ -3194,6 +3209,9 @@ packages:
     resolution: {integrity: sha512-f9LBi5QWzIW3I6e//uxZoLBlUt9kcp66qo0sSCxL6YZKc75R1c4MFCoe/LaZiBGmgujvQdxc5Bn3QhfyvK5Hsw==, tarball: https://registry.npmmirror.com/dir-glob/-/dir-glob-2.2.2.tgz}
     engines: {node: '>=4'}
 
+  discontinuous-range@1.0.0:
+    resolution: {integrity: sha512-c68LpLbO+7kP/b1Hr1qs8/BJ09F5khZGTxqxZuhzxpmwJKOgRFHJWIb9/KmqnqHhLdO55aOxFH/EGBvUQbL/RQ==, tarball: https://registry.npmmirror.com/discontinuous-range/-/discontinuous-range-1.0.0.tgz}
+
   dlv@1.1.3:
     resolution: {integrity: sha512-+HlytyjlPKnIG8XuRG8WvmBP8xs8P71y+SKKS6ZXWoEgLuePxtDoUEiH7WkdePWrQ5JBpE6aoVqfZfJUQkjXwA==, tarball: https://registry.npmmirror.com/dlv/-/dlv-1.1.3.tgz}
 
@@ -3464,6 +3482,9 @@ packages:
 
   exif-parser@0.1.12:
     resolution: {integrity: sha512-c2bQfLNbMzLPmzQuOr8fy0csy84WmwnER81W88DzTp9CYNPJ6yzOj2EZAh9pywYpqHnshVLHQJ8WzldAyfY+Iw==, tarball: https://registry.npmmirror.com/exif-parser/-/exif-parser-0.1.12.tgz}
+
+  exifr@7.1.3:
+    resolution: {integrity: sha512-g/aje2noHivrRSLbAUtBPWFbxKdKhgj/xr1vATDdUXPOFYJlQ62Ft0oy+72V6XLIpDJfHs6gXLbBLAolqOXYRw==, tarball: https://registry.npmmirror.com/exifr/-/exifr-7.1.3.tgz}
 
   expand-brackets@2.1.4:
     resolution: {integrity: sha512-w/ozOKR9Obk3qoWeY/WDi6MFta9AoMR+zud60mdnbniMcBxRuFJyDt2LdX/14A1UABeqk+Uk+LDfUpvoGKppZA==, tarball: https://registry.npmmirror.com/expand-brackets/-/expand-brackets-2.1.4.tgz}
@@ -4750,6 +4771,9 @@ packages:
   mlly@1.8.2:
     resolution: {integrity: sha512-d+ObxMQFmbt10sretNDytwt85VrbkhhUA/JBGm1MPaWJ65Cl4wOgLaB1NYvJSZ0Ef03MMEU/0xpPMXUIQ29UfA==, tarball: https://registry.npmmirror.com/mlly/-/mlly-1.8.2.tgz}
 
+  moo@0.5.3:
+    resolution: {integrity: sha512-m2fmM2dDm7GZQsY7KK2cme8agi+AAljILjQnof7p1ZMDe6dQ4bdnSMx0cPppudoeNv5hEFQirN6u+O4fDE0IWA==, tarball: https://registry.npmmirror.com/moo/-/moo-0.5.3.tgz}
+
   mri@1.2.0:
     resolution: {integrity: sha512-tzzskb3bG8LvYGFF/mDTpq3jpI6Q9wc3LEmBaghu+DdCssd1FakN7Bc0hVNmEyGq1bq3RgfkCb3cmQLpNPOroA==, tarball: https://registry.npmmirror.com/mri/-/mri-1.2.0.tgz}
     engines: {node: '>=4'}
@@ -4786,6 +4810,10 @@ packages:
   nanomatch@1.2.13:
     resolution: {integrity: sha512-fpoe2T0RbHwBTBUOftAfBPaDEi06ufaUai0mE6Yn1kacc3SnTErfb/h+X94VXzI64rKFHYImXSvdwGGCmwOqCA==, tarball: https://registry.npmmirror.com/nanomatch/-/nanomatch-1.2.13.tgz}
     engines: {node: '>=0.10.0'}
+
+  nearley@2.20.1:
+    resolution: {integrity: sha512-+Mc8UaAebFzgV+KpI5n7DasuuQCHA89dmwm7JXw3TV43ukfNQ9DnBH3Mdb2g/I4Fdxc26pwimBWvjIw0UAILSQ==, tarball: https://registry.npmmirror.com/nearley/-/nearley-2.20.1.tgz}
+    hasBin: true
 
   needle@3.3.1:
     resolution: {integrity: sha512-6k0YULvhpw+RoLNiQCRKOl09Rv1dPLr8hHnVjHqdolKwDrdNyk+Hmrthi4lIGPPz3r39dLx0hsF5s40sZ3Us4Q==, tarball: https://registry.npmmirror.com/needle/-/needle-3.3.1.tgz}
@@ -4909,6 +4937,9 @@ packages:
   onetime@2.0.1:
     resolution: {integrity: sha512-oyyPpiMaKARvvcgip+JV+7zci5L8D1W9RZIz2l1o08AM3pfspitVWnPt3mzHcBPp12oYMTy0pqrFs/C+m3EwsQ==, tarball: https://registry.npmmirror.com/onetime/-/onetime-2.0.1.tgz}
     engines: {node: '>=4'}
+
+  opencc-js@1.4.2:
+    resolution: {integrity: sha512-EdcspgdROiCCZDM+jZR6Pa670xW+EW2QhctPBQ8gRjg6lrx4IHEl+2s+kt5izk/TkxVRgdWuFgaGkaEdIUfdaw==, tarball: https://registry.npmmirror.com/opencc-js/-/opencc-js-1.4.2.tgz}
 
   opencollective-postinstall@2.0.3:
     resolution: {integrity: sha512-8AV/sCtuzUeTo8gQK5qDZzARrulB3egtLzFgteqB2tcT4Mw7B8Kt7JcDHmltjz6FOAHsvTevk70gZEbhM4ZS9Q==, tarball: https://registry.npmmirror.com/opencollective-postinstall/-/opencollective-postinstall-2.0.3.tgz}
@@ -5094,6 +5125,9 @@ packages:
   pinkie@2.0.4:
     resolution: {integrity: sha512-MnUuEycAemtSaeFSjXKW/aroV7akBbY+Sv+RkyqFjgAe73F+MR0TBWKBRDkmfWq/HiFmdavfZ1G7h4SPZXaCSg==, tarball: https://registry.npmmirror.com/pinkie/-/pinkie-2.0.4.tgz}
     engines: {node: '>=0.10.0'}
+
+  pinyin-pro@3.29.5:
+    resolution: {integrity: sha512-Fk5YoRmtdHqJWqAuzYVG/NzvzeCbaG+ZEwbY6Nbps3QAIrvQQEtcm49frcyCM8i2b5najnzPDtYqrHRYTTiuwQ==, tarball: https://registry.npmmirror.com/pinyin-pro/-/pinyin-pro-3.29.5.tgz}
 
   pirates@4.0.7:
     resolution: {integrity: sha512-TfySrs/5nm8fQJDcBDuUng3VOUKsd7S+zqvbOTiGXHfxX4wK31ard+hoNuvkicM/2YFzlpDgABOevKSsB4G/FA==, tarball: https://registry.npmmirror.com/pirates/-/pirates-4.0.7.tgz}
@@ -5300,6 +5334,13 @@ packages:
 
   raf@3.4.1:
     resolution: {integrity: sha512-Sq4CW4QhwOHE8ucn6J34MqtZCeWFP2aQSmrlroYgqAV1PjStIhJXxYuTgUIfkEk7zTLjmIjLmU5q+fbD1NnOJA==, tarball: https://registry.npmmirror.com/raf/-/raf-3.4.1.tgz}
+
+  railroad-diagrams@1.0.0:
+    resolution: {integrity: sha512-cz93DjNeLY0idrCNOH6PviZGRN9GJhsdm9hpn1YCS879fj4W+x5IFJhhkRZcwVgMmFF7R82UA/7Oh+R8lLZg6A==, tarball: https://registry.npmmirror.com/railroad-diagrams/-/railroad-diagrams-1.0.0.tgz}
+
+  randexp@0.4.6:
+    resolution: {integrity: sha512-80WNmd9DA0tmZrw9qQa62GPPWfuXJknrmVmLcxvq4uZBdYqb1wYoKTmnlGUchvVWe0XiLupYkBoXVOxz3C8DYQ==, tarball: https://registry.npmmirror.com/randexp/-/randexp-0.4.6.tgz}
+    engines: {node: '>=0.12'}
 
   randomatic@3.1.1:
     resolution: {integrity: sha512-TuDE5KxZ0J461RVjrJZCJc+J+zCkTb1MbH9AQUq68sMhOMcy9jLcb3BrZKgp9q9Ncltdg4QVqWrH02W2EFFVYw==, tarball: https://registry.npmmirror.com/randomatic/-/randomatic-3.1.1.tgz}
@@ -5707,6 +5748,9 @@ packages:
     resolution: {integrity: sha512-pe4Y2yzru68lXCb38aAqRf5gvN8YdjP1lok5o0J7BOHljkyCGKVz7H3vpVIXKD27rj2giOJ7DwVyk/GWrPHDWA==, tarball: https://registry.npmmirror.com/socks/-/socks-2.8.6.tgz}
     engines: {node: '>= 10.0.0', npm: '>= 3.0.0'}
 
+  solarlunar@3.1.0:
+    resolution: {integrity: sha512-PCJsIeSaMyQVK6TZk+tlPNaoAlk02+2UxhI/DS+K0zdLkwTihMp4px6S+Jv6HPPC0p7QsUM18WSs2/HEC1o0wQ==, tarball: https://registry.npmmirror.com/solarlunar/-/solarlunar-3.1.0.tgz}
+
   sortablejs@1.15.7:
     resolution: {integrity: sha512-Kk8wLQPlS+yi1ZEf48a4+fzHa4yxjC30M/Sr2AnQu+f/MPwvvX9XjZ6OWejiz8crBsLwSq8GHqaxaET7u6ux0A==, tarball: https://registry.npmmirror.com/sortablejs/-/sortablejs-1.15.7.tgz}
 
@@ -5746,6 +5790,10 @@ packages:
 
   sprintf-js@1.1.3:
     resolution: {integrity: sha512-Oo+0REFV59/rz3gfJNKQiBlwfHaSESl1pcGyABQsnnIfWOFt6JNj5gCog2U6MLZ//IGYD+nA8nI+mTShREReaA==, tarball: https://registry.npmmirror.com/sprintf-js/-/sprintf-js-1.1.3.tgz}
+
+  sql-formatter@15.9.0:
+    resolution: {integrity: sha512-3A/N+v+mA5/PDU+FlO4uTFE0L/Mmg63c/Ny161Qv2b1Mxp9IX8War+LLmq17LA/Kgu4KXAR7iutK2JaHWJMMtw==, tarball: https://registry.npmmirror.com/sql-formatter/-/sql-formatter-15.9.0.tgz}
+    hasBin: true
 
   ssf@0.11.2:
     resolution: {integrity: sha512-+idbmIXoYET47hH+d7dfm2epdOMUDjqcB4648sTZ+t2JwoyBFL/insLfB/racrDmsKB3diwsDA696pZMieAC5g==, tarball: https://registry.npmmirror.com/ssf/-/ssf-0.11.2.tgz}
@@ -5989,11 +6037,6 @@ packages:
 
   terser@5.31.1:
     resolution: {integrity: sha512-37upzU1+viGvuFtBo9NPufCb9dwM0+l9hMxYyWfBA+fbwrPqNJAhbZ6W47bBFnZHKHTUBnMvi87434qq+qnxOg==, tarball: https://registry.npmmirror.com/terser/-/terser-5.31.1.tgz}
-    engines: {node: '>=10'}
-    hasBin: true
-
-  terser@5.51.2:
-    resolution: {integrity: sha512-bWnjSNscmuI+GJze6ZupnHP8G/cTcsJF+bXCeQknk2SHQsgbNJnLrqiH9jZ2W4STPVXH2mDKKRX3iwPhc9Cn/Q==, tarball: https://registry.npmmirror.com/terser/-/terser-5.51.2.tgz}
     engines: {node: '>=10'}
     hasBin: true
 
@@ -8281,7 +8324,7 @@ snapshots:
     dependencies:
       serialize-javascript: 7.1.2
       smob: 1.6.2
-      terser: 5.51.2
+      terser: 5.31.1
     optionalDependencies:
       rollup: 4.63.6
 
@@ -9977,6 +10020,8 @@ snapshots:
     dependencies:
       path-type: 3.0.0
 
+  discontinuous-range@1.0.0: {}
+
   dlv@1.1.3: {}
 
   dom-serializer@0.2.2:
@@ -10398,6 +10443,8 @@ snapshots:
   events@3.3.0: {}
 
   exif-parser@0.1.12: {}
+
+  exifr@7.1.3: {}
 
   expand-brackets@2.1.4:
     dependencies:
@@ -11937,6 +11984,8 @@ snapshots:
       pkg-types: 1.3.1
       ufo: 1.6.4
 
+  moo@0.5.3: {}
+
   mri@1.2.0: {}
 
   ms@2.0.0: {}
@@ -11977,6 +12026,13 @@ snapshots:
       to-regex: 3.0.2
     transitivePeerDependencies:
       - supports-color
+
+  nearley@2.20.1:
+    dependencies:
+      commander: 2.20.3
+      moo: 0.5.3
+      railroad-diagrams: 1.0.0
+      randexp: 0.4.6
 
   needle@3.3.1:
     dependencies:
@@ -12093,6 +12149,8 @@ snapshots:
   onetime@2.0.1:
     dependencies:
       mimic-fn: 1.2.0
+
+  opencc-js@1.4.2: {}
 
   opencollective-postinstall@2.0.3: {}
 
@@ -12275,6 +12333,8 @@ snapshots:
       pinkie: 2.0.4
 
   pinkie@2.0.4: {}
+
+  pinyin-pro@3.29.5: {}
 
   pirates@4.0.7: {}
 
@@ -12496,6 +12556,13 @@ snapshots:
     dependencies:
       performance-now: 2.1.0
     optional: true
+
+  railroad-diagrams@1.0.0: {}
+
+  randexp@0.4.6:
+    dependencies:
+      discontinuous-range: 1.0.0
+      ret: 0.1.15
 
   randomatic@3.1.1:
     dependencies:
@@ -13008,6 +13075,8 @@ snapshots:
       ip-address: 9.0.5
       smart-buffer: 4.2.0
 
+  solarlunar@3.1.0: {}
+
   sortablejs@1.15.7: {}
 
   source-map-js@1.2.1: {}
@@ -13040,6 +13109,11 @@ snapshots:
   sprintf-js@1.0.3: {}
 
   sprintf-js@1.1.3: {}
+
+  sql-formatter@15.9.0:
+    dependencies:
+      argparse: 2.0.1
+      nearley: 2.20.1
 
   ssf@0.11.2:
     dependencies:
@@ -13338,20 +13412,13 @@ snapshots:
       '@jridgewell/trace-mapping': 0.3.31
       jest-worker: 27.5.1
       schema-utils: 4.5.0
-      terser: 5.51.2
+      terser: 5.31.1
       webpack: 5.101.0(csso@5.0.5)(postcss@8.5.6)
     optionalDependencies:
       csso: 5.0.5
       postcss: 8.5.6
 
   terser@5.31.1:
-    dependencies:
-      '@jridgewell/source-map': 0.3.11
-      acorn: 8.18.0
-      commander: 2.20.3
-      source-map-support: 0.5.21
-
-  terser@5.51.2:
     dependencies:
       '@jridgewell/source-map': 0.3.11
       acorn: 8.18.0

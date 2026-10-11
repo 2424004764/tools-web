@@ -346,7 +346,34 @@ export function getToolsCate() {
           url: '/code-image/',
           cateId: 2,
           cate: '开发运维',
+        },        {
+          id: 152,
+          title: 'XML 格式化',
+          logo: '/images/logo/xml-format.svg',
+          desc: 'XML 在线格式化与压缩，支持缩进设置，保留注释/CDATA/DOCTYPE，带语法错误提示',
+          url: '/xml-format/',
+          cateId: 2,
+          cate: '开发运维',
         },
+        {
+          id: 153,
+          title: 'SQL 格式化',
+          logo: '/images/logo/sql-format.svg',
+          desc: 'SQL 在线美化，支持 MySQL/PostgreSQL 等 15 种方言、关键字大小写与缩进设置，可压缩为单行',
+          url: '/sql-format/',
+          cateId: 2,
+          cate: '开发运维',
+        },
+        {
+          id: 154,
+          title: 'CSS 渐变生成器',
+          logo: '/images/logo/css-gradient.svg',
+          desc: '可视化调节线性/径向/锥形渐变，多色节点编辑，实时预览并生成 CSS 代码',
+          url: '/css-gradient/',
+          cateId: 2,
+          cate: '开发运维',
+        },
+
       ]
     },
     {
@@ -427,6 +454,15 @@ export function getToolsCate() {
           cate: '文本处理'
         },
         {
+          id: 141,
+          title: '文本转 PDF',
+          logo: '',
+          desc: '在线将文本内容转换为 A4 PDF，支持中文、自动换行、长文分页及字号和页边距设置，浏览器本地处理',
+          url: '/text-to-pdf/',
+          cateId: 3,
+          cate: '文本处理',
+        },
+        {
           id: 35,
           title: '公众号排版',
           logo: '/images/logo/wechat_format.png',
@@ -452,7 +488,43 @@ export function getToolsCate() {
           url: '/text-crypto/',
           cateId: 3,
           cate: '文本处理'
+        },        {
+          id: 148,
+          title: '简繁体转换',
+          logo: '/images/logo/chinese-convert.svg',
+          desc: '基于 OpenCC 词库的简繁转换，支持台湾正体、香港繁体，词汇级精准互转',
+          url: '/chinese-convert/',
+          cateId: 3,
+          cate: '文本处理',
         },
+        {
+          id: 149,
+          title: '汉字转拼音',
+          logo: '/images/logo/pinyin.svg',
+          desc: '汉字转拼音，支持声调符号/数字/无声调、首字母模式，准确处理多音字',
+          url: '/pinyin/',
+          cateId: 3,
+          cate: '文本处理',
+        },
+        {
+          id: 150,
+          title: '文本排序',
+          logo: '/images/logo/text-sort.svg',
+          desc: '按拼音、数字、长度对文本行排序，支持去重、倒序与随机打乱',
+          url: '/text-sort/',
+          cateId: 3,
+          cate: '文本处理',
+        },
+        {
+          id: 151,
+          title: '假文生成器',
+          logo: '/images/logo/lorem.svg',
+          desc: '生成中文假文或 Lorem Ipsum 占位文本，自定义段落句数，用于原型设计与排版测试',
+          url: '/lorem/',
+          cateId: 3,
+          cate: '文本处理',
+        },
+
       ]
     },
     {
@@ -729,7 +801,61 @@ export function getToolsCate() {
           url: '/compound-interest/',
           cateId: 4,
           cate: '教育学术',
+        },        {
+          id: 142,
+          title: '房贷计算器',
+          logo: '/images/logo/mortgage.svg',
+          desc: '等额本息/等额本金月供计算，展示利息总额、还款总额与逐年还款明细，支持常用利率档位',
+          url: '/mortgage/',
+          cateId: 4,
+          cate: '教育学术',
         },
+        {
+          id: 143,
+          title: '个税计算器',
+          logo: '/images/logo/income-tax.svg',
+          desc: '按累计预扣预缴法计算每月个税与税后收入，展示税率跳档、逐月明细与全年汇总',
+          url: '/income-tax/',
+          cateId: 4,
+          cate: '教育学术',
+        },
+        {
+          id: 144,
+          title: '日期计算器',
+          logo: '/images/logo/date-calc.svg',
+          desc: '计算两个日期相差天数与精确年月天，支持日期推算（加减天/周/月/年）与工作日统计',
+          url: '/date-calc/',
+          cateId: 4,
+          cate: '教育学术',
+        },
+        {
+          id: 145,
+          title: '农历/万年历',
+          logo: '/images/logo/lunar-calendar.svg',
+          desc: '公农历对照万年历，展示干支纪年、生肖与节气，支持农历生日反查公历日期',
+          url: '/lunar-calendar/',
+          cateId: 4,
+          cate: '教育学术',
+        },
+        {
+          id: 146,
+          title: 'BMI 计算器',
+          logo: '/images/logo/bmi.svg',
+          desc: '身高体重实时计算 BMI 指数，按中国成人标准评估偏瘦/正常/偏胖/肥胖并给出健康体重范围',
+          url: '/bmi/',
+          cateId: 4,
+          cate: '教育学术',
+        },
+        {
+          id: 147,
+          title: '年龄计算器',
+          logo: '/images/logo/age-calc.svg',
+          desc: '精确计算周岁、虚岁、生肖星座与已活天数，展示下一生日倒计时与人生里程碑日期',
+          url: '/age-calc/',
+          cateId: 4,
+          cate: '教育学术',
+        },
+
       ]
     },
     {
@@ -889,7 +1015,43 @@ export function getToolsCate() {
           url: '/doodle-pad/',
           cateId: 5,
           cate: '图片处理',
+        },        {
+          id: 155,
+          title: 'Favicon 生成器',
+          logo: '/images/logo/favicon-generator.svg',
+          desc: '上传图片一键生成 16~512px 全尺寸网站图标、苹果触屏图标与多尺寸合一 favicon.ico',
+          url: '/favicon-generator/',
+          cateId: 5,
+          cate: '图片处理',
         },
+        {
+          id: 156,
+          title: '图片 EXIF 查看/清除',
+          logo: '/images/logo/image-exif.svg',
+          desc: '查看照片 EXIF 拍摄参数与 GPS 位置，一键剥离全部元数据后下载，保护隐私',
+          url: '/image-exif/',
+          cateId: 5,
+          cate: '图片处理',
+        },
+        {
+          id: 157,
+          title: '图片取色板',
+          logo: '/images/logo/image-palette.svg',
+          desc: '中位切分算法提取图片主色调色板，点击色块复制 HEX，设计配色好帮手',
+          url: '/image-palette/',
+          cateId: 5,
+          cate: '图片处理',
+        },
+        {
+          id: 158,
+          title: '九宫格切图',
+          logo: '/images/logo/grid-image-cut.svg',
+          desc: '一张图切成 3×3/4×4 九宫格，正方形裁剪、间距预览、逐块或打包下载',
+          url: '/grid-image-cut/',
+          cateId: 5,
+          cate: '图片处理',
+        },
+
       ]
     },
     {
@@ -1145,7 +1307,16 @@ export function getToolsCate() {
           url: '/tic-tac-toe/',
           cateId: 11,
           cate: '趣味互动',
+        },        {
+          id: 159,
+          title: '抽奖转盘',
+          logo: '/images/logo/lucky-wheel.svg',
+          desc: '输入选项生成大转盘，点击旋转抽奖，支持结果记录与中奖自动移除',
+          url: '/lucky-wheel/',
+          cateId: 11,
+          cate: '趣味互动',
         },
+
       ]
     },
     {
@@ -1197,7 +1368,16 @@ export function getToolsCate() {
           url: '/chinese-name/',
           cateId: 9,
           cate: '选择随机',
+        },        {
+          id: 160,
+          title: '随机点名器',
+          logo: '/images/logo/roll-call.svg',
+          desc: '导入名单滚动点名，一次抽多人、不重复抽取、记录点名结果，适合课堂与活动',
+          url: '/roll-call/',
+          cateId: 9,
+          cate: '选择随机',
         },
+
       ]
     },
     // {

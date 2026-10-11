@@ -506,9 +506,24 @@ onMounted(() => {
           </el-table-column>
           <el-table-column label="工具" min-width="200">
             <template #default="{ row }">
-              <div class="flex flex-col">
-                <span class="text-ink-900 font-medium">{{ row.title }}</span>
-                <span class="text-xs text-ink-400 truncate max-w-md">{{ row.description }}</span>
+              <div class="flex items-center gap-2.5 min-w-0">
+                <img
+                  v-if="row.logo"
+                  :src="row.logo"
+                  loading="lazy"
+                  class="w-9 h-9 rounded-lg object-contain border border-border-subtle shrink-0"
+                  :alt="row.title"
+                />
+                <div
+                  v-else
+                  class="w-9 h-9 rounded-lg bg-accent-100 text-accent-700 flex items-center justify-center text-sm font-medium shrink-0"
+                >
+                  {{ (row.title || '?').slice(0, 1) }}
+                </div>
+                <div class="flex flex-col min-w-0">
+                  <span class="text-ink-900 font-medium">{{ row.title }}</span>
+                  <span class="text-xs text-ink-400 truncate max-w-md">{{ row.description }}</span>
+                </div>
               </div>
             </template>
           </el-table-column>
