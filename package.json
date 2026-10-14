@@ -15,6 +15,7 @@
     "prerender": "node scripts/prerender.mjs",
     "sync:functions": "node scripts/sync-functions.mjs",
     "deploy:cf": "pnpm build:pro && node -e \"require('node:fs').rmSync('dist/functions',{recursive:true,force:true})\" && pnpm exec wrangler pages deploy dist --project-name tools-web && node scripts/deploy-cf.mjs",
+    "deploy:only": "wrangler pages deploy dist --project-name tools-web",
     "submit:search": "node scripts/submit-search.mjs",
     "preview": "vite preview",
     "generate:sitemap": "node scripts/generate-sitemap.mjs"

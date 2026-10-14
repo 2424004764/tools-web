@@ -178,6 +178,16 @@ export interface ToolCategorySummary {
 export interface AdminDashboard {
   totalUsers: number
   todayNew: number
+  /** 本周新增用户（UTC+8 自然周周一起算） */
+  weekNewUsers?: number
+  /** 本月新增用户（UTC+8 自然月 1 日起） */
+  monthNewUsers?: number
+  /** 用户注册趋势（UTC+8 口径；每日近 90 天 / 每周近 12 周周一 / 每月近 12 月，稀疏点由前端补零） */
+  userTrend?: {
+    daily: ToolUsageTrendPoint[]
+    weekly: ToolUsageTrendPoint[]
+    monthly: ToolUsageTrendPoint[]
+  }
   disabledUsers: number
   totalBalance: number
   totalEarned: number
@@ -189,7 +199,14 @@ export interface AdminDashboard {
   todayToolUsage?: number
   weekToolUsage?: number
   monthToolUsage?: number
+  totalToolUsage?: number
   topTools?: TopToolSummary[]
+  /** 工具使用趋势（UTC+8 口径；每日近 30 天 / 每周近 12 周周一 / 每月近 12 月，稀疏点由前端补零） */
+  usageTrend?: {
+    daily: ToolUsageTrendPoint[]
+    weekly: ToolUsageTrendPoint[]
+    monthly: ToolUsageTrendPoint[]
+  }
   /** 慢日志统计（依赖 slow_query_logs 表；未迁移兜底全为 0） */
   slowQueries?: SlowQuerySummary
   /** 待审核数（依赖 comments / friend_links 表；未迁移兜底为 0） */
@@ -197,6 +214,15 @@ export interface AdminDashboard {
   pendingFriendLinks?: number
   /** 待审核博客文章数；未迁移兜底为 0 */
   pendingBlogPosts?: number
+  /** 待处理意见反馈数；未迁移兜底为 0 */
+  pendingFeedback?: number
+}
+
+/** 工具使用趋势单个数据点（稀疏，缺失日期由前端补零） */
+export interface ToolUsageTrendPoint {
+  /** 每日/每周为 'YYYY-MM-DD'（每周为周一日期），每月为 'YYYY-MM' */
+  date: string
+  count: number
 }
 
 /** 慢日志按时间窗聚合（UTC+8 自然日 / 周一 / 1 号起） */

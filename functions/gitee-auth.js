@@ -1,5 +1,6 @@
 // Gitee 登录认证
 import { handleCORSPreflight, createCORSResponse, createCORSErrorResponse } from './utils/cors.js'
+import { buildStateCookie, clearStateCookie, readStateCookie } from './utils/oauth-state.js'
 
 export async function onRequest(context) {
     const { request, env } = context;
@@ -10,10 +11,10 @@ export async function onRequest(context) {
         return handleCORSPreflight(origin)
     }
 
-    // 处理回调请求
-    if (request.method === 'GET') {
-        return handleAuthCallback(request, env, origin);
-    }
+// 处理回调请求
+if (request.method === 'GET') {
+    return handleAuthCallback(request, env, origin);
+}
 
     // 处理获取授权链接请求
     if (request.method === 'POST') {
@@ -22,6 +23,10 @@ export async function onRequest(context) {
 
     return new Response('Method not allowed', { status: 405 });
 }
+
+// ---------- OAuth state CSRF 防护 ----------
+// 实现在 ./utils/oauth-state.js（github / gitee / linuxdo / qq 共用）：
+// 发起授权时把 state 同时放进授权链接和 HttpOnly cookie，回调时比对，用后即删。
 
 // 生成授权链接
 async function getAuthUrl(request, env, origin) {
@@ -49,15 +54,19 @@ async function getAuthUrl(request, env, origin) {
             client_id: CLIENT_ID,
             redirect_uri: redirectUri,
             response_type: 'code',
-            scope: 'user_info'
+            scope: 'user_info',
+            state
         });
 
         const authUrl = AUTH_URL + '?' + params.toString();
 
-        return createCORSResponse({
+        const response = createCORSResponse({
             success: true,
             auth_url: authUrl
         }, origin);
+        // state 同步种到 HttpOnly cookie，供回调时比对（弹窗顶级导航会携带 SameSite=Lax cookie）
+        response.headers.append('Set-Cookie', buildStateCookie('gitee', state, request.url));
+        return response;
 
     } catch (error) {
         console.error('获取 Gitee 授权链接错误:', error);
@@ -65,8 +74,14 @@ async function getAuthUrl(request, env, origin) {
     }
 }
 
-// 处理OAuth回调
+// 处理OAuth回调：无论成败都作废 state cookie，保证 state 一次性
 async function handleAuthCallback(request, env, origin) {
+    const response = await doHandleAuthCallback(request, env);
+    response.headers.append('Set-Cookie', clearStateCookie('gitee'));
+    return response;
+}
+
+async function doHandleAuthCallback(request, env) {
     try {
         const url = new URL(request.url);
         const code = url.searchParams.get('code');
@@ -85,6 +100,16 @@ async function handleAuthCallback(request, env, origin) {
             return createCallbackResponse('error', {
                 success: false,
                 message: '缺少授权码'
+            });
+        }
+
+        // CSRF 校验：回跳的 state 必须与发起授权时种下的 cookie 一致。
+        // 部署前发起的旧授权没有 state，会得到明确提示重新登录。
+        const cookieState = readStateCookie('gitee', request);
+        if (!state || !cookieState || state !== cookieState) {
+            return createCallbackResponse('error', {
+                success: false,
+                message: '登录状态校验失败，请重新发起登录'
             });
         }
 

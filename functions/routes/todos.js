@@ -38,6 +38,10 @@ export class TodosRouter {
           const reorderData = await request.json()
           return await this.controller.reorder(reorderData, user, origin)
         }
+        if (id === 'batch') {
+          const batchData = await request.json()
+          return await this.controller.batchStore(batchData, user, origin)
+        }
         if (hasId) {
           return ApiResponse.error('创建待办事项不需要提供ID', origin, 400)
         }

@@ -12,6 +12,7 @@ import { functionsRequest } from '@/utils/functionsRequest'
 import { formatLocation } from '@/utils/geo-name'
 import { SOURCE_LABELS, getSourceLabel } from '@/utils/source'
 import { PRODUCTS } from '@/components/Layout/Header/products'
+import { fetchProductsConfig } from '@/api/site-config'
 import type {
   AdminPagination,
   ToolUsageRecord,
@@ -23,12 +24,18 @@ import type {
 /**
  * /app-jump/:key/ 是「更多产品」的站内跳转中间页埋点（复用 tool_usage_records 表）。
  * 展示时把路径翻译成「产品跳转 · 题迹」，其余路径原样返回。
+ * key → 名称映射 = 内置列表 + 站点配置（后台改了名字/新增的产品也能翻译，缺失时回退裸 key）。
  */
+const appJumpNames = ref<Record<string, string>>({})
+for (const p of PRODUCTS) appJumpNames.value[p.key] = p.name
+fetchProductsConfig().then((list) => {
+  for (const p of list) appJumpNames.value[p.key] = p.name
+})
+
 function displayToolUrl(url: string): string {
   const m = /^\/app-jump\/([a-z0-9-]+)\/?$/.exec(url || '')
   if (!m) return url
-  const p = PRODUCTS.find((x) => x.key === m[1])
-  return p ? `产品跳转 · ${p.name}` : `产品跳转 · ${m[1]}`
+  return `产品跳转 · ${appJumpNames.value[m[1]] || m[1]}`
 }
 
 const loading = ref(false)
@@ -459,9 +466,18 @@ onMounted(() => {
     <el-card shadow="never" class="!rounded-xl mb-6">
       <template #header>
         <div class="flex items-center justify-between gap-3 flex-wrap">
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 flex-wrap">
             <span class="font-medium text-ink-900">推广来源 TOP 10</span>
             <span class="text-xs text-ink-400">utm_source 优先 → referer 指纹 → direct</span>
+            <!-- 总计 = 所有来源次数之和（每条记录必归一个来源，NULL 已归 direct），含未进 TOP 10 的来源 -->
+            <span
+              class="text-xs text-ink-500"
+              title="所有来源的使用次数合计（含未进 TOP 10 的来源）"
+            >
+              · 总计
+              <span class="font-medium text-ink-700 tabular-nums">{{ stats?.totalCount ?? 0 }}</span>
+              次
+            </span>
           </div>
           <span class="text-xs text-ink-500">
             统计区间：

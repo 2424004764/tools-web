@@ -50,6 +50,8 @@ const info = reactive({
 })
 
 const todos = ref<Todo[]>([])
+// 各分类的真实总数（后端聚合返回，不受分页影响），分组标题旁的徽标用它
+const categoryCounts = ref<Record<string, number>>({})
 const showForm = ref(false)
 const isEditing = ref(false)
 const editingTodoId = ref<string | null>(null)
@@ -78,6 +80,7 @@ const formData = reactive({
 })
 
 // 换行批量创建：勾选后标题变为多行输入，一行一条待办（仅新建模式生效）
+// MAX_BATCH 是单次批量请求的上限（后端 /api/todos/batch 单次最多 50 条），超出自动分多次请求
 const MAX_BATCH = 50
 const batchMode = ref(false)
 const batchCount = computed(() =>
@@ -102,7 +105,8 @@ const groupedTodos = computed<TodoGroup[]>(() => {
     if (!groups.has(category)) groups.set(category, [])
     groups.get(category)!.push(todo)
   })
-  if (!groups.has('默认')) groups.set('默认', [])
+  // 只渲染当前页有条目的分组：分页是按分类各自切片的，
+  // 某分类在当前页没有条目时（已翻到该分类的页码范围之外）不再渲染空组误导人
   return Array.from(groups.entries()).map(([category, groupTodos]) => ({ category, todos: groupTodos }))
 })
 
@@ -161,6 +165,8 @@ const initSortables = async () => {
 const userCategories = computed(() => {
   const categories = new Set<string>()
   categories.add('默认')
+  // 分类总数来自后端聚合（不受分页影响），保证当前页没有某分类条目时筛选下拉仍可选它
+  Object.keys(categoryCounts.value).forEach(category => categories.add(category))
   todos.value.forEach(todo => {
     if (todo.category) {
       categories.add(todo.category)
@@ -190,8 +196,16 @@ const fetchTodos = async (page = 1, pageSize = 10) => {
     if (response.status === 200) {
       const data = response.data
       todos.value = data.data || []
+      if (data.categoryCounts) {
+        categoryCounts.value = data.categoryCounts
+      }
       if (data.pagination) {
         pagination.value = data.pagination
+        // 删除等操作后当前页可能超出总页数，自动落到最后一页
+        if (data.pagination.total > 0 && page > data.pagination.totalPages) {
+          await fetchTodos(data.pagination.totalPages, pageSize)
+          return
+        }
       }
       await initSortables()
     }
@@ -231,25 +245,29 @@ const createTodo = async () => {
       ElMessage.warning('请至少输入一条待办')
       return
     }
-    if (lines.length > MAX_BATCH) {
-      ElMessage.warning(`一次最多创建 ${MAX_BATCH} 条，请分批操作`)
-      return
-    }
     const tooLong = lines.findIndex(line => line.length > 200)
     if (tooLong !== -1) {
       ElMessage.warning(`第 ${tooLong + 1} 行超过 200 字，请缩短后再创建`)
       return
     }
 
+    // 按 MAX_BATCH 分块，每块只调一次批量创建接口（接口单次上限 50 条）
+    const chunks: string[][] = []
+    for (let i = 0; i < lines.length; i += MAX_BATCH) {
+      chunks.push(lines.slice(i, i + MAX_BATCH))
+    }
+
     try {
       operationLoading.value = true
       let success = 0
-      // 顺序创建，遇到第一条失败即停止（其余保留在输入框可重试）
-      for (const line of lines) {
+      // 顺序提交，某一批失败即停止（该批及之后的行保留在输入框可重试）
+      for (const chunk of chunks) {
         try {
-          const response = await functionsRequest.post('/api/todos', { title: line, ...createTodoPayload() })
+          const response = await functionsRequest.post('/api/todos/batch', {
+            items: chunk.map(line => ({ title: line, ...createTodoPayload() }))
+          })
           if (response.status !== 201) break
-          success += 1
+          success += chunk.length
         } catch {
           break
         }
@@ -259,7 +277,8 @@ const createTodo = async () => {
         return
       }
       const failed = lines.slice(success)
-      await fetchTodos(pagination.value.page, pagination.value.pageSize)
+      // 新待办排在其分类第 1 页最前，回到第 1 页让用户能看到刚创建的条目
+      await fetchTodos(1, pagination.value.pageSize)
       if (failed.length) {
         // 部分失败：对话框保持打开，未创建的行留在输入框里可直接重试
         ElMessage.warning(`成功创建 ${success} 条，${failed.length} 条失败：${failed[0]}${failed.length > 1 ? ' 等' : ''}`)
@@ -294,7 +313,8 @@ const createTodo = async () => {
       ElMessage.success('创建成功')
       showForm.value = false
       resetForm()
-      await fetchTodos(pagination.value.page, pagination.value.pageSize)
+      // 新待办排在其分类第 1 页最前，回到第 1 页让用户能看到刚创建的条目
+      await fetchTodos(1, pagination.value.pageSize)
     }
   } catch (error) {
     console.error('创建待办事项失败:', error)
@@ -528,7 +548,7 @@ onBeforeUnmount(() => {
             v-model="formData.title"
             type="textarea"
             :rows="6"
-            placeholder="一行一个待办，换行分隔，最多 50 条"
+            placeholder="一行一个待办，换行分隔，每 50 条自动分批提交"
           />
           <el-input
             v-else
@@ -538,7 +558,7 @@ onBeforeUnmount(() => {
             show-word-limit
           />
           <p v-if="batchMode && !isEditing" class="mt-1 text-caption text-gray-500">
-            将创建 <span class="font-medium" :class="batchCount > MAX_BATCH ? 'text-red-500' : ''">{{ batchCount }}</span> / {{ MAX_BATCH }} 条待办，共用下方优先级、分类与截止时间
+            将创建 {{ batchCount }} 条待办（每 {{ MAX_BATCH }} 条自动分一次请求），共用下方优先级、分类与截止时间
           </p>
         </div>
         <div class="grid grid-cols-2 gap-4">
@@ -591,7 +611,7 @@ onBeforeUnmount(() => {
             <span class="flex items-center gap-2 font-semibold text-gray-800">
               <span class="text-xs text-gray-500">{{ isCategoryCollapsed(group.category) ? '▶' : '▼' }}</span>
               <span>{{ group.category }}</span>
-              <span class="text-caption font-normal text-gray-500">{{ group.todos.length }}</span>
+              <span class="text-caption font-normal text-gray-500">{{ categoryCounts[group.category] ?? group.todos.length }}</span>
             </span>
             <span class="text-caption text-gray-500">拖动调整组内顺序</span>
           </button>
@@ -670,11 +690,13 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <!-- 分页：只有一页时不渲染，避免出现无意义的翻页控件 -->
+    <!-- 分页：按分类各自切片，页码数取后端算好的 totalPages（条数最多的分类的页数）；
+         total 仅用于「共 X 条」展示，el-pagination 传 page-count 时页码以它为准 -->
     <div v-if="pagination.totalPages > 1" class="mt-4 flex justify-center">
       <el-pagination
         v-model:current-page="pagination.page"
         :page-size="pagination.pageSize"
+        :page-count="pagination.totalPages"
         :total="pagination.total"
         layout="prev, pager, next, total"
         @current-change="handlePageChange"

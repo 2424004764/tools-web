@@ -24,6 +24,8 @@ const SOURCES = [
   { key: 'sspai', label: '少数派', icon: '✏️' },
   { key: 'github', label: 'GitHub', icon: '⭐' },
   { key: 'hn', label: 'Hacker News', icon: '🌐' },
+  { key: 'baidu', label: '百度热搜', icon: '🔥' },
+  { key: 'v2ex', label: 'V2EX', icon: '💬' },
 ]
 
 // 移动端默认 active tab；桌面端不使用此字段（所有列同时展示）
@@ -192,7 +194,7 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- 第 4 个及之后的源（768-1280px 补齐 2x2；≥1280px 换行到第二行） -->
+      <!-- 第 4 个及之后的源（768-1280px 补齐 2 列网格；≥1280px 换行到第二行） -->
       <article
         v-for="src in SOURCES.slice(3)"
         :key="src.key"

@@ -67,6 +67,9 @@ const cut = () => {
 
   for (let r = 0; r < lineNum.value; r++) {
       for (let c = 0; c < lineNum.value; c++) {
+          // canvas 在循环里复用，drawImage 是合成不是覆盖：
+          // 透明底 PNG 若不清掉上一块，透明区会透出更早画的块，看起来像图片叠加
+          ctx?.clearRect(0, 0, wpiece, hpiece);
           ctx?.drawImage(
               img,
               c * wpiece,
@@ -103,6 +106,8 @@ const splitHorizontal = () => {
   ctx?.drawImage(img, 0, 0, wpiece, hpiece, 0, 0, wpiece, hpiece);
   results.push(canvas.toDataURL());
 
+  // 清掉上半部分再画下半，避免透明区透出上一块
+  ctx?.clearRect(0, 0, wpiece, hpiece);
   // 下半部分
   ctx?.drawImage(img, 0, hpiece, wpiece, hpiece, 0, 0, wpiece, hpiece);
   results.push(canvas.toDataURL());
@@ -129,6 +134,8 @@ const splitVertical = () => {
   ctx?.drawImage(img, 0, 0, wpiece, hpiece, 0, 0, wpiece, hpiece);
   results.push(canvas.toDataURL());
 
+  // 清掉左半部分再画右半，避免透明区透出上一块
+  ctx?.clearRect(0, 0, wpiece, hpiece);
   // 右半部分
   ctx?.drawImage(img, wpiece, 0, wpiece, hpiece, 0, 0, wpiece, hpiece);
   results.push(canvas.toDataURL());

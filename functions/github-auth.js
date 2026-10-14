@@ -1,5 +1,6 @@
 // GitHub 登录认证
 import { handleCORSPreflight, createCORSResponse, createCORSErrorResponse } from './utils/cors.js'
+import { buildStateCookie, clearStateCookie, readStateCookie } from './utils/oauth-state.js'
 
 export async function onRequest(context) {
     const { request, env } = context;
@@ -53,10 +54,13 @@ async function getAuthUrl(request, env, origin) {
 
         const authUrl = AUTH_URL + '?' + params.toString();
 
-        return createCORSResponse({
+        const response = createCORSResponse({
             success: true,
             auth_url: authUrl
         }, origin);
+        // state 同步种到 HttpOnly cookie，供回调时比对（弹窗顶级导航会携带 SameSite=Lax cookie）
+        response.headers.append('Set-Cookie', buildStateCookie('github', state, request.url));
+        return response;
 
     } catch (error) {
         console.error('[github-auth] getAuthUrl error:', error.message);
@@ -64,13 +68,20 @@ async function getAuthUrl(request, env, origin) {
     }
 }
 
-// 处理OAuth回调
+// 处理OAuth回调：无论成败都作废 state cookie，保证 state 一次性
 async function handleAuthCallback(request, env, origin) {
+    const response = await doHandleAuthCallback(request, env);
+    response.headers.append('Set-Cookie', clearStateCookie('github'));
+    return response;
+}
+
+async function doHandleAuthCallback(request, env) {
     try {
         const url = new URL(request.url);
         const code = url.searchParams.get('code');
         const error = url.searchParams.get('error');
         const error_description = url.searchParams.get('error_description');
+        const state = url.searchParams.get('state');
 
         if (error) {
             console.error('[github-auth] 授权错误:', { error, error_description });
@@ -85,6 +96,16 @@ async function handleAuthCallback(request, env, origin) {
             return createCallbackResponse('error', {
                 success: false,
                 message: '缺少授权码'
+            });
+        }
+
+        // CSRF 校验：回跳的 state 必须与发起授权时种下的 cookie 一致。
+        // 部署前发起的旧授权没有 state，会得到明确提示重新登录。
+        const cookieState = readStateCookie('github', request);
+        if (!state || !cookieState || state !== cookieState) {
+            return createCallbackResponse('error', {
+                success: false,
+                message: '登录状态校验失败，请重新发起登录'
             });
         }
 

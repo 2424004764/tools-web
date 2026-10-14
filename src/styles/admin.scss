@@ -302,3 +302,40 @@ body.admin-mode .el-message-box__title {
   justify-content: center;
   flex-shrink: 0;
 }
+
+/* ---------- 仪表盘卡片拖拽排序 ---------- */
+/* 把手：默认半透明（不干扰阅读），hover 卡片时显形；布局占位恒定不挤压标题 */
+.admin-root .widget-drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  color: rgb(var(--ink-300));
+  opacity: 0.5;
+  cursor: grab;
+  transition:
+    opacity 0.15s ease,
+    color 0.15s ease;
+}
+.admin-root .admin-stat-card:hover .widget-drag-handle,
+.admin-root .el-card:hover .widget-drag-handle {
+  opacity: 1;
+}
+.admin-root .widget-drag-handle:hover {
+  color: rgb(var(--accent-600));
+}
+.admin-root .widget-drag-handle:active {
+  cursor: grabbing;
+}
+
+/* 拖拽中的落点占位：原位置以虚线轮廓提示 */
+.admin-root .widget-ghost {
+  opacity: 0.45;
+}
+.admin-root .widget-ghost > * {
+  outline: 2px dashed rgb(var(--accent-400));
+  outline-offset: -2px;
+}

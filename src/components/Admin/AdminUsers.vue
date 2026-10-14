@@ -258,8 +258,9 @@ const storageDialog = reactive({
   uid: '',
   userLabel: '',
   type: 'grant' as 'grant' | 'deduct',
-  /** 调整量，单位 MB */
-  mb: 0,
+  /** 输入值 + 单位（MB / GB），提交时统一换算为整数 MB */
+  amount: null as number | null,
+  unit: 'GB' as 'MB' | 'GB',
   reason: '',
   /** 打开时的额度快照（字节），用于展示调整前后 */
   quotaBefore: 0,
@@ -269,7 +270,7 @@ const storageDialog = reactive({
 })
 
 const storageDialogDirty = computed(
-  () => storageDialog.mb > 0 || (storageDialog.reason || '').trim().length > 0,
+  () => storageMb.value > 0 || (storageDialog.reason || '').trim().length > 0,
 )
 
 const beforeCloseStorageDialog = async (done: () => void) => {
@@ -291,7 +292,8 @@ const openStorageDialog = (user: AdminUser) => {
   storageDialog.uid = user.id
   storageDialog.userLabel = user.username || user.email || user.id
   storageDialog.type = 'grant'
-  storageDialog.mb = 0
+  storageDialog.amount = null
+  storageDialog.unit = 'GB'
   storageDialog.reason = ''
   storageDialog.quotaBefore = user.storage_quota_bytes ?? 0
   storageDialog.usedBytes = user.storage_used_bytes ?? 0
@@ -299,8 +301,23 @@ const openStorageDialog = (user: AdminUser) => {
   storageDialog.visible = true
 }
 
+// 输入值按单位换算为整数 MB（GB 支持两位小数：1.5 GB = 1536 MB）
+const storageMb = computed(() => {
+  const amount = Number(storageDialog.amount)
+  if (!Number.isFinite(amount) || amount <= 0) return 0
+  return Math.floor(storageDialog.unit === 'GB' ? amount * 1024 : amount)
+})
+
+// 切换单位时同步换算已填数值，避免 512 MB 误变成 512 GB
+const onStorageUnitChange = (unit: 'MB' | 'GB') => {
+  const amount = Number(storageDialog.amount)
+  if (!Number.isFinite(amount) || amount <= 0) return
+  storageDialog.amount =
+    unit === 'GB' ? Number((amount / 1024).toFixed(2)) : Math.round(amount * 1024)
+}
+
 const storageQuotaAfter = computed(() => {
-  const delta = storageDialog.mb * 1024 * 1024
+  const delta = storageMb.value * 1024 * 1024
   if (delta <= 0) return storageDialog.quotaBefore
   if (storageDialog.type === 'grant') return storageDialog.quotaBefore + delta
   return Math.max(0, storageDialog.quotaBefore - delta)
@@ -308,15 +325,19 @@ const storageQuotaAfter = computed(() => {
 
 const submitStorage = async () => {
   if (!storageDialog.uid) return
-  if (!Number.isInteger(storageDialog.mb) || storageDialog.mb <= 0) {
-    ElMessage.warning('请输入大于 0 的整数容量（MB）')
+  if (storageMb.value <= 0) {
+    ElMessage.warning('请输入大于 0 的容量')
+    return
+  }
+  if (storageMb.value > 1048576) {
+    ElMessage.warning('单次调整上限 1 TB（1024 GB）')
     return
   }
   storageDialog.submitting = true
   try {
     const result = await adjustUserStorage(storageDialog.uid, {
       type: storageDialog.type,
-      mb: storageDialog.mb,
+      mb: storageMb.value,
       reason: storageDialog.reason || undefined,
     })
     storageDialog.lastResult = result
@@ -1079,16 +1100,27 @@ const updateIsMobile = () => {
           </el-radio-group>
         </el-form-item>
         <el-form-item label="容量" required>
-          <el-input-number
-            v-model="storageDialog.mb"
-            :min="1"
-            :max="1048576"
-            :step="100"
-            controls-position="right"
-            class="!w-full"
-          />
+          <div class="flex w-full gap-2">
+            <el-input-number
+              v-model="storageDialog.amount"
+              :min="storageDialog.unit === 'GB' ? 0.01 : 1"
+              :max="storageDialog.unit === 'GB' ? 1024 : 1048576"
+              :step="storageDialog.unit === 'GB' ? 1 : 100"
+              :precision="storageDialog.unit === 'GB' ? 2 : 0"
+              controls-position="right"
+              class="!flex-1 min-w-0"
+            />
+            <el-select
+              v-model="storageDialog.unit"
+              class="!w-24"
+              @change="onStorageUnitChange"
+            >
+              <el-option label="MB" value="MB" />
+              <el-option label="GB" value="GB" />
+            </el-select>
+          </div>
           <div class="text-xs text-ink-500 mt-1 w-full">
-            单位 MB，1024 MB = 1 GB（如输入 512 = 512 MB）
+            可选 MB / GB，1 GB = 1024 MB（如赠 2 GB 选 GB 后填 2 即可）
           </div>
         </el-form-item>
         <el-form-item label="调整预览">
@@ -1096,7 +1128,7 @@ const updateIsMobile = () => {
             当前额度
             <span class="font-semibold text-ink-900 tabular-nums">{{ formatStorageBytes(storageDialog.quotaBefore) }}</span>
             <span class="text-ink-400">（已用 {{ formatStorageBytes(storageDialog.usedBytes) }}）</span>
-            <template v-if="storageDialog.mb > 0">
+            <template v-if="storageMb > 0">
               <span class="mx-1 text-ink-400">→</span>
               调整后
               <span

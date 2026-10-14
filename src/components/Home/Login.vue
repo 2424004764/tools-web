@@ -65,6 +65,8 @@ onMounted(() => {
   // 初始化用户状态
   userStore.initUserState();
 
+  lastProvider.value = (localStorage.getItem(LAST_PROVIDER_KEY) as ThirdPartyProvider) || "";
+
   // 如果已登录则跳转
   if (userStore.getLoginStatus) {
     window.location.href = redirectUrl.value;
@@ -171,6 +173,7 @@ const handleGoogleSignIn = async (response: any) => {
         ElMessage.success(`欢迎回来，${jwt.username}！`);
         // 保存 JWT
         localStorage.setItem("TOKEN", result.data.token);
+        markLastProvider("google");
         // 更新store中的用户状态
         userStore.initUserState();
         // 登录成功后跳转
@@ -194,6 +197,23 @@ const handleGoogleSignIn = async (response: any) => {
 // 弹窗无法跳回等），轮询 popup.closed 复位按钮，避免"登录中..."永久卡住
 const oauthLabels = { github: "GitHub", linuxdo: "LinuxDo", qq: "QQ", gitee: "Gitee" } as const;
 type OAuthProvider = keyof typeof oauthLabels;
+// 第三方登录方式（含 Google 走 SDK 回调，不走弹窗流程）
+type ThirdPartyProvider = OAuthProvider | "google";
+
+// 记录上次使用的第三方登录方式（仅存本地），登录失效后回到此页可辨认账号用的哪种方式
+// 邮箱方式登录成功会清除记录，保证"上次使用"对应最近一次登录
+const LAST_PROVIDER_KEY = "lastLoginProvider";
+const lastProvider = ref<ThirdPartyProvider | "">("");
+const markLastProvider = (name: ThirdPartyProvider) => {
+  lastProvider.value = name;
+  localStorage.setItem(LAST_PROVIDER_KEY, name);
+};
+const clearLastProvider = () => {
+  lastProvider.value = "";
+  localStorage.removeItem(LAST_PROVIDER_KEY);
+};
+// 点击第三方按钮时先记下目标方式，等回调成功再落盘，避免点了但没登录成功也算数
+let pendingProvider: OAuthProvider | "" = "";
 
 const popupTimers: Partial<Record<OAuthProvider, number>> = {};
 const stopPopupPoll = (name: OAuthProvider) => {
@@ -207,6 +227,7 @@ const stopAllPopupPolls = () => (Object.keys(popupTimers) as OAuthProvider[]).fo
 const openOAuthLogin = async (name: OAuthProvider, loading: Ref<boolean>) => {
   if (loading.value) return;
   loading.value = true;
+  pendingProvider = name;
 
   // 先同步开窗避免被弹窗拦截，拿到授权地址后再跳转
   const popup = window.open("about:blank", `${name}-auth`, "width=600,height=600,scrollbars=yes,resizable=yes");
@@ -238,10 +259,18 @@ const openOAuthLogin = async (name: OAuthProvider, loading: Ref<boolean>) => {
   }
 };
 
+// 本地开发时 vite(5173) 与 wrangler(8788) 分离，且 vite 代理 changeOrigin 让后端
+// 按Host把授权链接里的 redirect_uri 算成 8788，Gitee 等平台会把弹窗直接回跳到
+// 8788，回调页 postMessage 的 event.origin 是 8788 而非页面 origin。
+// 放行名单仅在开发构建存在；生产构建为空数组，线上仍只接受同源消息。
+const DEV_CALLBACK_ORIGINS = import.meta.env.DEV
+  ? ["http://127.0.0.1:8788", "http://localhost:8788"]
+  : [];
+
 // 回调页通过postMessage回传的登录结果
 const handleLoginMessage = (event: MessageEvent) => {
-  // 回调页由本站 /api/*-auth 端点提供，只接受同源消息
-  if (event.origin !== window.location.origin) return;
+  // 回调页由本站 /api/*-auth 端点提供，只接受同源消息（本地开发放行 wrangler 回调页）
+  if (event.origin !== window.location.origin && !DEV_CALLBACK_ORIGINS.includes(event.origin)) return;
   const data = event.data;
   if (!data || typeof data !== "object" || !["success", "error"].includes(data.type)) return;
 
@@ -251,11 +280,16 @@ const handleLoginMessage = (event: MessageEvent) => {
   giteeLoading.value = false;
   stopAllPopupPolls();
   if (data.type === "success" && data.success) {
+    if (pendingProvider) {
+      markLastProvider(pendingProvider);
+      pendingProvider = "";
+    }
     localStorage.setItem("TOKEN", data.data.token);
     userStore.initUserState();
     ElMessage.success(data.message || "登录成功");
     window.location.href = redirectUrl.value;
   } else {
+    pendingProvider = "";
     ElMessage.error(data.message || "登录失败，请重试");
   }
 };
@@ -311,6 +345,7 @@ const handleEmailRegister = async () => {
     if (result.data.token) {
       ElMessage.success(`注册成功，欢迎 ${result.data.username}！`)
       localStorage.setItem('TOKEN', result.data.token)
+      clearLastProvider()
       userStore.initUserState()
       window.location.href = redirectUrl.value
     }
@@ -338,6 +373,7 @@ const handleEmailCodeLogin = async () => {
     if (result.data.token) {
       ElMessage.success(result.data.isNewUser ? `注册成功，欢迎 ${result.data.username}！` : `欢迎回来，${result.data.username}！`)
       localStorage.setItem('TOKEN', result.data.token)
+      clearLastProvider()
       userStore.initUserState()
       window.location.href = redirectUrl.value
     }
@@ -365,6 +401,7 @@ const handleEmailPasswordLogin = async () => {
     if (result.data.token) {
       ElMessage.success(`欢迎回来，${result.data.user.username}！`)
       localStorage.setItem('TOKEN', result.data.token)
+      clearLastProvider()
       userStore.initUserState()
       window.location.href = redirectUrl.value
     }
@@ -426,7 +463,7 @@ const handleSignOut = () => {
           <!-- Tab 切换 -->
           <div class="flex border-b border-gray-200 mb-4">
             <button @click="activeTab = 'email-login'" :class="['flex-1 pb-2 text-body-sm font-medium', activeTab === 'email-login' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500']">邮箱登录</button>
-            <button @click="activeTab = 'email-register'" :class="['flex-1 pb-2 text-body-sm font-medium', activeTab === 'email-register' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500']">注册</button>
+            <button @click="activeTab = 'email-register'" :class="['flex-1 pb-2 text-body-sm font-medium', activeTab === 'email-register' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500']">邮箱注册</button>
             <button @click="activeTab = 'email-reset'" :class="['flex-1 pb-2 text-body-sm font-medium', activeTab === 'email-reset' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500']">找回密码</button>
           </div>
 
@@ -495,7 +532,7 @@ const handleSignOut = () => {
         </div>
 
         <!-- 自定义谷歌登录按钮 -->
-        <div class="flex justify-center">
+        <div class="relative flex justify-center">
           <button
             @click="handleCustomGoogleLogin"
             :disabled="loading"
@@ -517,10 +554,11 @@ const handleSignOut = () => {
               <span class="text-body-sm text-gray-600">登录中...</span>
             </div>
           </button>
+          <span v-if="lastProvider === 'google'" class="absolute -top-2 right-3 z-10 px-2 py-0.5 rounded-full bg-blue-500 text-white text-xs leading-none shadow-sm">上次使用</span>
         </div>
 
         <!-- GitHub登录按钮 -->
-        <div class="flex justify-center">
+        <div class="relative flex justify-center">
           <button
             @click="handleGithubLogin"
             :disabled="githubLoading"
@@ -535,10 +573,11 @@ const handleSignOut = () => {
               <span class="text-body-sm text-gray-600">登录中...</span>
             </div>
           </button>
+          <span v-if="lastProvider === 'github'" class="absolute -top-2 right-3 z-10 px-2 py-0.5 rounded-full bg-blue-500 text-white text-xs leading-none shadow-sm">上次使用</span>
         </div>
 
         <!-- LinuxDo登录按钮 -->
-        <div class="flex justify-center">
+        <div class="relative flex justify-center">
           <button
             @click="handleLinuxdoLogin"
             :disabled="linuxdoLoading"
@@ -555,10 +594,11 @@ const handleSignOut = () => {
               <span class="text-body-sm text-gray-600">登录中...</span>
             </div>
           </button>
+          <span v-if="lastProvider === 'linuxdo'" class="absolute -top-2 right-3 z-10 px-2 py-0.5 rounded-full bg-blue-500 text-white text-xs leading-none shadow-sm">上次使用</span>
         </div>
 
         <!-- QQ登录按钮 -->
-        <div class="flex justify-center">
+        <div class="relative flex justify-center">
           <button
             @click="handleQqLogin"
             :disabled="qqLoading"
@@ -575,10 +615,11 @@ const handleSignOut = () => {
               <span class="text-body-sm text-gray-600">登录中...</span>
             </div>
           </button>
+          <span v-if="lastProvider === 'qq'" class="absolute -top-2 right-3 z-10 px-2 py-0.5 rounded-full bg-blue-500 text-white text-xs leading-none shadow-sm">上次使用</span>
         </div>
 
         <!-- Gitee登录按钮 -->
-        <div class="flex justify-center">
+        <div class="relative flex justify-center">
           <button
             @click="handleGiteeLogin"
             :disabled="giteeLoading"
@@ -595,6 +636,7 @@ const handleSignOut = () => {
               <span class="text-body-sm text-gray-600">登录中...</span>
             </div>
           </button>
+          <span v-if="lastProvider === 'gitee'" class="absolute -top-2 right-3 z-10 px-2 py-0.5 rounded-full bg-blue-500 text-white text-xs leading-none shadow-sm">上次使用</span>
         </div>
 
         <!-- 隐藏的Google SDK按钮 -->

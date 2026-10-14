@@ -125,10 +125,10 @@ onUnmounted(() => {
 
       <main class="flex-1 min-w-0 p-4 md:p-6 lg:p-8">
         <div class="max-w-[1440px] mx-auto">
+          <!-- 不用 <transition mode="out-in">：其进度依赖 双重RAF+transitionend 回调链，
+               任一环没跑 leave 就永久挂起、新页永不挂载（后台内容区空白）。纯 CSS 进入动画无此风险 -->
           <router-view v-slot="{ Component, route: r }">
-            <transition name="admin-fade" mode="out-in">
-              <component :is="Component" :key="r.path" />
-            </transition>
+            <component :is="Component" :key="r.path" class="page-enter" />
           </router-view>
         </div>
       </main>
@@ -153,19 +153,5 @@ onUnmounted(() => {
 .admin-topbar-btn:hover {
   background: rgb(var(--surface-2));
   color: rgb(var(--ink-900));
-}
-
-.admin-fade-enter-from {
-  opacity: 0;
-  transform: translateY(4px);
-}
-.admin-fade-leave-to {
-  opacity: 0;
-}
-.admin-fade-enter-active,
-.admin-fade-leave-active {
-  transition:
-    opacity 0.18s ease,
-    transform 0.18s ease;
 }
 </style>

@@ -12,7 +12,8 @@
  */
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { PRODUCTS } from '@/components/Layout/Header/products'
+import type { ProductInfo } from '@/components/Layout/Header/products'
+import { fetchProductsConfig } from '@/api/site-config'
 import { postToolUsage } from '@/api/me/tool-usage'
 import { detectSource } from '@/utils/source'
 
@@ -20,7 +21,8 @@ const APP_TITLE = (import.meta.env.VITE_APP_TITLE as string) || '一方工具箱
 const route = useRoute()
 
 const key = computed(() => String(route.params.key || '').trim().toLowerCase())
-const product = computed(() => PRODUCTS.find((p) => p.key === key.value) || null)
+// 产品白名单来自站点配置（仅含 enabled 的产品）：后台下线的产品与未知 key 一样按「已下线」处理
+const product = ref<ProductInfo | null>(null)
 const invalid = computed(() => !product.value)
 
 const countdown = ref(2)
@@ -60,11 +62,8 @@ function recordAppJump() {
   )
 }
 
-onMounted(() => {
+onMounted(async () => {
   // 工具页：不参与 SEO 收录与预渲染
-  document.title = product.value
-    ? `正在前往「${product.value.name}」 | ${APP_TITLE}`
-    : `页面不存在 | ${APP_TITLE}`
   let robots = document.querySelector<HTMLMetaElement>('meta[name="robots"]')
   if (!robots) {
     robots = document.createElement('meta')
@@ -72,6 +71,13 @@ onMounted(() => {
     document.head.appendChild(robots)
   }
   robots.content = 'noindex, nofollow'
+
+  const list = await fetchProductsConfig()
+  product.value = list.find((p) => p.key === key.value) || null
+
+  document.title = product.value
+    ? `正在前往「${product.value.name}」 | ${APP_TITLE}`
+    : `页面不存在 | ${APP_TITLE}`
 
   if (invalid.value) return
 

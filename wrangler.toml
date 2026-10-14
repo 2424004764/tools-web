@@ -1,4 +1,4 @@
-name = "tool-web"
+name = "tools-web"
 # Pages 项目通过 Wrangler 登录状态 / 环境变量识别 account，无需在配置中声明。
 # type = "typescript"  # 或者 "typescript" 根据你使用的语言类型
 
@@ -54,24 +54,21 @@ database_id = "afdabfae-6edd-4def-8e77-6a1171009b9c"
 # 站点名称（邮件标题、邮件正文等后端文案使用；前端请用 VITE_APP_TITLE）
 SITE_NAME = "一方工具箱"
 RESEND_FROM_EMAIL = "一方工具箱 <noreply@tool-helper.fologde.com>"
-LINUXDO_CLIENT_ID = "ndZjdtb3uuqsdQsLXVP9EryepP4g9p1C"          # OAuth client_id 公开安全（回调地址由代码按请求 origin 计算为 /api/linuxdo-auth）
+LINUXDO_CLIENT_ID = "R3vchQ7H75xIcWOWpOBiNAoPuB1qWsdr"          # OAuth client_id 公开安全（回调地址由代码按请求 origin 计算为 /api/linuxdo-auth）
 # QQ登录配置（回调地址由代码按请求 origin 计算为 /api/qq-auth）
-QQ_CLIENT_ID = "102806259"
+QQ_CLIENT_ID = "102809984"
 # Gitee登录配置（回调地址由代码按请求 origin 计算为 /api/gitee-auth）
-GITEE_CLIENT_ID = "a33bfc0232834f1fd309dc2c1696821bc821e5f746ef28869496d88fb7b4b104"
+GITEE_CLIENT_ID = "a3693640087f15e76ec90f73e2adc840b0e34f4fe29911aeb157ac0b186c4fba"
 # Github登录配置
-GITHUB_CLIENT_ID = "Ov23lih4DozBgCiAwLWe"
-GITHUB_REDIRECT_URI = "http://127.0.0.1:8788/github-auth"
 
 # 慢查询日志（functions/utils/slow-query-log.js）
 # 超过该毫秒数的 D1 调用会被记到 slow_query_logs 表。设 "0" 完全关闭。
-SLOW_QUERY_THRESHOLD_MS = "100"
+SLOW_QUERY_THRESHOLD_MS = "1000"
 # 总开关："0" / "false" 关闭，其他值或未配置均为启用
 SLOW_QUERY_ENABLED = "1"
 
 # 音乐播放列表 R2 公开访问域（R2 → 桶设置 → Public Access → R2.dev 子域）
 # 留空表示暂未启用公开读（service 会返回空 publicUrl，前端 <audio> 无法播放）
-R2_PUBLIC_HOST = ""
 # 音乐播放列表 R2 桶名（与 [[r2_buckets]] 的 bucket_name 保持一致；service 通过 env.R2_BUCKET_NAME 读取）
 R2_BUCKET_NAME = "tools-web"
 

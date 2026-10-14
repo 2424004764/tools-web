@@ -66,6 +66,17 @@
   Pragma: no-cache
   Expires: 0
 
+# /login 是唯一不在 _routes.json include 里的 SPA 路由（没有 Function 处理，
+# 走静态 SPA fallback），_headers 按请求路径匹配，必须单独声明 no-store。
+# 其余全部页面路由（/skill-poster/ 等）由 functions/_middleware.js 在返回
+# HTML 时统一 set no-store（2026-10 深链白屏事故：max-age=0 会被 zone 的
+# Browser Cache TTL 改写成 max-age=14400，发版后旧 HTML 引用已删的旧
+# hash chunk → 白屏）。
+/login
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+  Pragma: no-cache
+  Expires: 0
+
 /*.woff2
   Cache-Control: public, max-age=31536000, immutable
   Content-Type: font/woff2

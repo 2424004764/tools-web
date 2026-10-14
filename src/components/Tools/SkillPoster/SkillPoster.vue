@@ -148,7 +148,10 @@ const generateRandomTemplate = (): Template => {
   }
 }
 
-const info = reactive({
+// 所有编辑内容持久化到 localStorage，刷新后恢复上次填写的内容
+const STORAGE_KEY = 'skill-poster-settings-v1'
+
+const defaultInfo = () => ({
   title: "闲鱼技能海报生成器",
   selectedTemplate: generateRandomTemplate(), // 默认使用随机模板
   posterWidth: 750,
@@ -183,6 +186,86 @@ const info = reactive({
     color: 'rgba(255, 255, 255, 0.3)'
   }
 })
+
+// 恢复上次的内容：默认值打底做深合并，脏数据 / 缺字段都兜底回默认值
+const loadInfo = () => {
+  const base = defaultInfo()
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return base
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object') return base
+
+    const clamp = (val: unknown, min: number, max: number, fallback: number) => {
+      const n = Number(val)
+      return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback
+    }
+    const bool = (val: unknown, fallback: boolean) =>
+      typeof val === 'boolean' ? val : fallback
+
+    return {
+      ...base,
+      selectedTemplate:
+        parsed.selectedTemplate && typeof parsed.selectedTemplate === 'object'
+          ? { ...base.selectedTemplate, ...parsed.selectedTemplate }
+          : base.selectedTemplate,
+      posterWidth: clamp(parsed.posterWidth, 100, 2000, base.posterWidth),
+      posterHeight: clamp(parsed.posterHeight, 100, 2000, base.posterHeight),
+      selectedAspectRatio:
+        Number.isInteger(parsed.selectedAspectRatio) &&
+        parsed.selectedAspectRatio >= 0 &&
+        parsed.selectedAspectRatio < aspectRatios.length
+          ? parsed.selectedAspectRatio
+          : base.selectedAspectRatio,
+      isCustomSize: bool(parsed.isCustomSize, base.isCustomSize),
+      mainTitle: typeof parsed.mainTitle === 'string' ? parsed.mainTitle : base.mainTitle,
+      subTitle: typeof parsed.subTitle === 'string' ? parsed.subTitle : base.subTitle,
+      showSubTitle: bool(parsed.showSubTitle, base.showSubTitle),
+      description: typeof parsed.description === 'string' ? parsed.description : base.description,
+      showDescription: bool(parsed.showDescription, base.showDescription),
+      contact: typeof parsed.contact === 'string' ? parsed.contact : base.contact,
+      showContact: bool(parsed.showContact, base.showContact),
+      footerText: typeof parsed.footerText === 'string' ? parsed.footerText : base.footerText,
+      showFooter: bool(parsed.showFooter, base.showFooter),
+      tags: Array.isArray(parsed.tags)
+        ? parsed.tags.filter((t: unknown) => typeof t === 'string')
+        : base.tags,
+      textAlign: ['left', 'center', 'right'].includes(parsed.textAlign)
+        ? parsed.textAlign
+        : base.textAlign,
+      fontSize: {
+        mainTitle: clamp(parsed.fontSize?.mainTitle, 20, 200, base.fontSize.mainTitle),
+        subTitle: clamp(parsed.fontSize?.subTitle, 20, 120, base.fontSize.subTitle),
+        description: clamp(parsed.fontSize?.description, 1, 70, base.fontSize.description),
+        contact: clamp(parsed.fontSize?.contact, 12, 72, base.fontSize.contact)
+      },
+      previewScale: clamp(parsed.previewScale, 0.1, 1, base.previewScale),
+      watermark: {
+        enabled: bool(parsed.watermark?.enabled, base.watermark.enabled),
+        text: typeof parsed.watermark?.text === 'string' ? parsed.watermark.text : base.watermark.text,
+        size: clamp(parsed.watermark?.size, 12, 72, base.watermark.size),
+        opacity: clamp(parsed.watermark?.opacity, 5, 100, base.watermark.opacity),
+        density: clamp(parsed.watermark?.density, 2, 10, base.watermark.density),
+        angle: clamp(parsed.watermark?.angle, -90, 90, base.watermark.angle),
+        color: typeof parsed.watermark?.color === 'string' ? parsed.watermark.color : base.watermark.color
+      }
+    }
+  } catch {
+    // localStorage 不可用（隐私模式）或 JSON 损坏，静默走默认值
+    return base
+  }
+}
+
+const info = reactive(loadInfo())
+
+// 任意编辑内容变化都写回 localStorage
+watch(info, () => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(info))
+  } catch {
+    // 配额满 / 隐私模式，静默忽略
+  }
+}, { deep: true })
 
 const poster = ref()
 const previewContainer = ref<HTMLElement | null>(null)

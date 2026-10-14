@@ -121,6 +121,12 @@ const handleSearch = () => {
   load()
 }
 
+// 点击计数标签按状态筛选，再次点击取消（与右侧状态下拉共用 filter.status，自动联动）
+const handleStatusTag = (s: FeedbackStatus) => {
+  filter.status = filter.status === s ? '' : s
+  handleSearch()
+}
+
 const handlePageChange = (p: number) => {
   pagination.value.page = p
   load()
@@ -198,9 +204,24 @@ onMounted(() => {
   <div v-loading="loading">
     <div class="flex flex-wrap items-end gap-3 mb-4">
       <h2 class="text-xl font-semibold text-ink-900 mr-auto">意见反馈</h2>
-      <el-tag effect="plain" type="warning">待处理 {{ counts.pending }}</el-tag>
-      <el-tag effect="plain" type="success">已处理 {{ counts.resolved }}</el-tag>
-      <el-tag effect="plain" type="info">已关闭 {{ counts.closed }}</el-tag>
+      <el-tag
+        class="cursor-pointer select-none"
+        type="warning"
+        :effect="filter.status === 'pending' ? 'light' : 'plain'"
+        @click="handleStatusTag('pending')"
+      >待处理 {{ counts.pending }}</el-tag>
+      <el-tag
+        class="cursor-pointer select-none"
+        type="success"
+        :effect="filter.status === 'resolved' ? 'light' : 'plain'"
+        @click="handleStatusTag('resolved')"
+      >已处理 {{ counts.resolved }}</el-tag>
+      <el-tag
+        class="cursor-pointer select-none"
+        type="info"
+        :effect="filter.status === 'closed' ? 'light' : 'plain'"
+        @click="handleStatusTag('closed')"
+      >已关闭 {{ counts.closed }}</el-tag>
 
       <el-input
         v-model="filter.keyword"

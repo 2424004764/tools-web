@@ -73,11 +73,19 @@ export async function onRequest(context) {
   if (!configKey) {
     return ApiResponse.success({ data: {} }, origin)
   }
-  if (configKey !== 'comment_system' && configKey !== 'giscus') {
+  if (configKey !== 'comment_system' && configKey !== 'giscus' && configKey !== 'products') {
     return ApiResponse.error(`不支持的 config_key: ${configKey}`, origin, 400)
   }
 
   try {
+    if (configKey === 'products') {
+      // 「更多产品」：未配置（null）时前端回退内置默认列表；配置为空数组表示全部隐藏
+      const row = await db
+        .prepare(`SELECT value FROM site_config WHERE key = 'products_matrix'`)
+        .first()
+      return ApiResponse.success({ data: { products: parseEnabledProducts(row?.value) } }, origin)
+    }
+
     const map = await loadMap(db)
     const effectiveSystem = normalizeSystem(map.comment_system)
 
@@ -90,11 +98,27 @@ export async function onRequest(context) {
     )
   } catch (error) {
     console.error('site-config API error:', error)
+    if (configKey === 'products') {
+      // 配置表缺失等异常时回退 null，前端按内置默认展示，不影响前台
+      return ApiResponse.success({ data: { products: null } }, origin)
+    }
     // 配置表缺失等异常时按默认 giscus 行为兜底，不影响前台
     if (configKey === 'comment_system') {
       return ApiResponse.success({ data: { comment_system: 'giscus' } }, origin)
     }
     return ApiResponse.success({ data: buildGiscusPayload(DEFAULTS, true) }, origin)
+  }
+}
+
+// 解析 products_matrix 存储值，只保留 enabled 的产品；未配置/脏数据一律返回 null（= 用内置默认）
+function parseEnabledProducts(raw) {
+  if (!raw) return null
+  try {
+    const arr = JSON.parse(raw)
+    if (!Array.isArray(arr)) return null
+    return arr.filter((p) => p && typeof p === 'object' && p.enabled !== false)
+  } catch {
+    return null
   }
 }
 

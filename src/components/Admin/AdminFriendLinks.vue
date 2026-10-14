@@ -49,6 +49,12 @@ const statusLabel = (s: string) => {
   return s
 }
 
+// 点击顶部统计标签筛选状态，再次点击已选中标签恢复全部
+const handleCountClick = (status: FriendLinkStatus) => {
+  filter.status = filter.status === status ? ('' as FriendLinkStatus | '') : status
+  handleSearch()
+}
+
 const formatTime = (s: string | null) => {
   if (!s) return '-'
   const d = new Date(s.replace(' ', 'T') + 'Z')
@@ -171,9 +177,27 @@ onMounted(() => {
   <div v-loading="loading">
     <div class="flex flex-wrap items-end gap-3 mb-4">
       <h2 class="text-xl font-semibold text-ink-900 mr-auto">友链审核</h2>
-      <el-tag effect="plain" type="warning">待审 {{ counts.pending }}</el-tag>
-      <el-tag effect="plain" type="success">已过 {{ counts.approved }}</el-tag>
-      <el-tag effect="plain" type="danger">已拒 {{ counts.rejected }}</el-tag>
+      <el-tag
+        :effect="filter.status === 'pending' ? 'dark' : 'plain'"
+        type="warning"
+        class="cursor-pointer select-none opacity-80 hover:opacity-100"
+        title="点击筛选，再次点击恢复全部"
+        @click="handleCountClick('pending')"
+      >待审 {{ counts.pending }}</el-tag>
+      <el-tag
+        :effect="filter.status === 'approved' ? 'dark' : 'plain'"
+        type="success"
+        class="cursor-pointer select-none opacity-80 hover:opacity-100"
+        title="点击筛选，再次点击恢复全部"
+        @click="handleCountClick('approved')"
+      >已过 {{ counts.approved }}</el-tag>
+      <el-tag
+        :effect="filter.status === 'rejected' ? 'dark' : 'plain'"
+        type="danger"
+        class="cursor-pointer select-none opacity-80 hover:opacity-100"
+        title="点击筛选，再次点击恢复全部"
+        @click="handleCountClick('rejected')"
+      >已拒 {{ counts.rejected }}</el-tag>
 
       <el-input
         v-model="filter.keyword"
