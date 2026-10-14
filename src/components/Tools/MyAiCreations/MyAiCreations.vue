@@ -988,14 +988,16 @@ onUnmounted(() => {
           仅展示当前登录用户在 AI 工具中生成或上传的图片素材，按任务分组浏览。
           点击任意图片可全屏查看与切换。
         </p>
-          <button
-            type="button"
-            class="mt-3 inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md bg-indigo-500 text-white hover:bg-indigo-600 active:scale-95 transition-all"
-            @click="goCreate"
-          >
-            去 AI 图片编辑 →
-          </button>
-          <el-button class="mt-3 !ml-2" type="primary" plain @click="openUploadDialog">上传图片</el-button>
+          <div class="mt-3 flex items-center gap-2">
+            <button
+              type="button"
+              class="inline-flex h-8 items-center gap-1 text-sm px-3.5 rounded-md bg-indigo-500 text-white hover:bg-indigo-600 active:scale-95 transition-all"
+              @click="goCreate"
+            >
+              去 AI 图片编辑 →
+            </button>
+            <el-button type="primary" plain @click="openUploadDialog">上传图片</el-button>
+          </div>
       </div>
     </div>
 

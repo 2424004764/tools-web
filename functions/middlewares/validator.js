@@ -306,6 +306,45 @@ export class Validator {
     }
   }
 
+  // 验证待办事项批量创建数据（单次最多50条）
+  static validateBatchCreateTodos(data) {
+    const errors = []
+
+    if (!data || !Array.isArray(data.items) || data.items.length === 0) {
+      errors.push('items必须是非空数组')
+      return { isValid: false, errors }
+    }
+
+    if (data.items.length > 50) {
+      errors.push('单次最多创建50条待办')
+    }
+
+    data.items.forEach((item, index) => {
+      if (!item || typeof item.title !== 'string' || item.title.trim().length === 0) {
+        errors.push(`第${index + 1}条：标题不能为空`)
+      } else if (item.title.length > 200) {
+        errors.push(`第${index + 1}条：标题长度不能超过200个字符`)
+      }
+
+      if (item.priority && !['low', 'medium', 'high'].includes(item.priority)) {
+        errors.push(`第${index + 1}条：优先级必须是 low、medium 或 high`)
+      }
+
+      if (item.completed !== undefined && ![0, 1, 2].includes(item.completed)) {
+        errors.push(`第${index + 1}条：完成状态必须是 0（已创建）、2（进行中）或 1（已完成）`)
+      }
+
+      if (item.category !== undefined && (typeof item.category !== 'string' || item.category.length > 50)) {
+        errors.push(`第${index + 1}条：分类长度不能超过50个字符`)
+      }
+    })
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    }
+  }
+
   // 验证待办事项更新数据
   static validateUpdateTodo(data) {
     const errors = []

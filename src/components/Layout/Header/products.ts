@@ -9,6 +9,8 @@ export interface ProductInfo {
   desc: string
   url: string
   logo: string
+  /** 是否启用；后台 JSON 配置用，内置列表恒为 true（缺省视为 true） */
+  enabled?: boolean
 }
 
 /** 由 key 取规范化后的站内跳转路径（带尾斜杠，与工具路由风格一致） */
@@ -60,3 +62,9 @@ export const PRODUCTS: ProductInfo[] = [
     logo: '/images/logo/product-mbti.svg',
   },
 ]
+
+/**
+ * 内置默认产品矩阵：站点配置（site_config.products_matrix）未设置或拉取失败时的兜底，
+ * 也是后台「更多产品」JSON 编辑器的初始模板。
+ */
+export const DEFAULT_PRODUCTS: ProductInfo[] = PRODUCTS.map((p) => ({ ...p, enabled: true }))

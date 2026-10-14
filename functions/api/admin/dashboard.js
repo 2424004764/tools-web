@@ -39,11 +39,75 @@ export async function onRequest(context) {
       .first()
     const disabledUsers = disabledUsersRow?.c || 0
 
-    // 今日新增（按 created_at 的日期）
+    // 今日新增（按 UTC+8 自然日的 created_at 日期，与其余"今日"口径一致）
     const todayNewRow = await db
-      .prepare("SELECT COUNT(*) AS c FROM user WHERE date(created_at) = date('now')")
+      .prepare(
+        "SELECT COUNT(*) AS c FROM user WHERE date(created_at, '+8 hours') = date('now', '+8 hours')",
+      )
       .first()
     const todayNew = todayNewRow?.c || 0
+
+    // 本周 / 本月新增 + 注册趋势（UTC+8 口径；user.created_at 是 UTC 时间字符串，
+    // 与 tool_usage_records 的 unixepoch 不同，这里直接用 date(created_at, '+8 hours')）
+    let weekNewUsers = 0
+    let monthNewUsers = 0
+    let userTrend = { daily: [], weekly: [], monthly: [] }
+    try {
+      const fmtDate = (d) =>
+        `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
+      const utc8 = new Date(Date.now() + 8 * 3600 * 1000)
+      // 本周一（UTC+8 自然周，周一起算）
+      const monday = new Date(utc8.getTime())
+      monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7))
+      const weekStartStr = fmtDate(monday)
+      const monthStartStr = `${utc8.getUTCFullYear()}-${String(utc8.getUTCMonth() + 1).padStart(2, '0')}-01`
+      const weekNewRow = await db
+        .prepare("SELECT COUNT(*) AS c FROM user WHERE date(created_at, '+8 hours') >= ?")
+        .bind(weekStartStr)
+        .first()
+      weekNewUsers = weekNewRow?.c || 0
+      const monthNewRow = await db
+        .prepare("SELECT COUNT(*) AS c FROM user WHERE date(created_at, '+8 hours') >= ?")
+        .bind(monthStartStr)
+        .first()
+      monthNewUsers = monthNewRow?.c || 0
+
+      // 趋势：每日近 90 天 / 每周近 12 周（'-6 days' + 'weekday 1' 归到所在周周一）/ 每月近 12 个月
+      // 返回稀疏点 { date, count }，前端按完整日期轴补零
+      const dailyRes = await db
+        .prepare(
+          "SELECT date(created_at, '+8 hours') AS d, COUNT(*) AS c FROM user WHERE date(created_at, '+8 hours') >= ? GROUP BY d",
+        )
+        .bind(fmtDate(new Date(utc8.getTime() - 89 * 86400 * 1000)))
+        .all()
+      userTrend.daily = (dailyRes.results || []).map((r) => ({
+        date: r.d,
+        count: Number(r.c || 0),
+      }))
+      const weeklyRes = await db
+        .prepare(
+          "SELECT date(created_at, '+8 hours', '-6 days', 'weekday 1') AS d, COUNT(*) AS c FROM user WHERE date(created_at, '+8 hours') >= ? GROUP BY d",
+        )
+        .bind(fmtDate(new Date(monday.getTime() - 77 * 86400 * 1000)))
+        .all()
+      userTrend.weekly = (weeklyRes.results || []).map((r) => ({
+        date: r.d,
+        count: Number(r.c || 0),
+      }))
+      const month12Start = new Date(Date.UTC(utc8.getUTCFullYear(), utc8.getUTCMonth() - 11, 1))
+      const monthlyRes = await db
+        .prepare(
+          "SELECT strftime('%Y-%m', created_at, '+8 hours') AS m, COUNT(*) AS c FROM user WHERE date(created_at, '+8 hours') >= ? GROUP BY m",
+        )
+        .bind(fmtDate(month12Start))
+        .all()
+      userTrend.monthly = (monthlyRes.results || []).map((r) => ({
+        date: r.m,
+        count: Number(r.c || 0),
+      }))
+    } catch (e) {
+      console.warn('[admin/dashboard] 用户增长聚合失败:', e?.message || e)
+    }
 
     // 积分总余额 / 累计发放
     const creditsRow = await db
@@ -80,9 +144,10 @@ export async function onRequest(context) {
       .prepare('SELECT COUNT(*) AS total, SUM(CASE WHEN is_enabled = 1 THEN 1 ELSE 0 END) AS enabled FROM tool_features')
       .first()
 
-    // 待审核数：评论 / 友链（依赖 comments / friend_links 表，未迁移兜底 0）
+    // 待审核数：评论 / 友链 / 待处理反馈（依赖 comments / friend_links / feedback 表，未迁移兜底 0）
     let pendingComments = 0
     let pendingFriendLinks = 0
+    let pendingFeedback = 0
     try {
       const pendingCommentsRow = await db
         .prepare("SELECT COUNT(*) AS c FROM comments WHERE status = 'pending' AND is_admin = 0")
@@ -92,6 +157,10 @@ export async function onRequest(context) {
         .prepare("SELECT COUNT(*) AS c FROM friend_links WHERE status = 'pending'")
         .first()
       pendingFriendLinks = pendingFriendLinksRow?.c || 0
+      const pendingFeedbackRow = await db
+        .prepare("SELECT COUNT(*) AS c FROM feedback WHERE status = 'pending'")
+        .first()
+      pendingFeedback = pendingFeedbackRow?.c || 0
     } catch (e) {
       console.warn('[admin/dashboard] 待审核统计失败（可能表未创建）:', e?.message || e)
     }
@@ -110,7 +179,11 @@ export async function onRequest(context) {
     let todayToolUsage = 0
     let weekToolUsage = 0
     let monthToolUsage = 0
+    let totalToolUsage = 0
     let topTools = []
+    // 使用趋势（UTC+8 口径）：每日近 90 天 / 每周近 12 周 / 每月近 12 个月
+    // 返回稀疏点 { date, count }，前端按完整日期轴补零
+    let usageTrend = { daily: [], weekly: [], monthly: [] }
     // 慢日志：今日 / 本周 / 本月（依赖 slow_query_logs 表，未迁移兜底 0）
     let slowQueryToday = 0
     let slowQueryWeek = 0
@@ -154,6 +227,8 @@ export async function onRequest(context) {
         .bind(monthStartUTC8)
         .first()
       monthToolUsage = monthRow2?.c || 0
+      const totalRow2 = await db.prepare('SELECT COUNT(*) AS c FROM tool_usage_records').first()
+      totalToolUsage = totalRow2?.c || 0
       const topToolsResult = await db
         .prepare(
           `SELECT tool_url, tool_title, COUNT(*) AS count
@@ -210,6 +285,53 @@ export async function onRequest(context) {
         .bind(monthStartDateStr)
         .first()
       slowQueryMonth = slowMonthRow?.c || 0
+
+      // 使用趋势：'-6 days' + 'weekday 1' 把任意日期归到所在周的周一（UTC+8）
+      // 每日返回近 90 天，前端用 dataZoom 初始只展示近 30 天、可向前滑动翻看
+      const day90StartUTC8 = todayStartUTC8 - 89 * 86400
+      const dailyTrendRes = await db
+        .prepare(
+          `SELECT date(used_at, 'unixepoch', '+8 hours') AS d, COUNT(*) AS c
+           FROM tool_usage_records WHERE used_at >= ? GROUP BY d`,
+        )
+        .bind(day90StartUTC8)
+        .all()
+      usageTrend.daily = (dailyTrendRes.results || []).map((r) => ({
+        date: r.d,
+        count: Number(r.c || 0),
+      }))
+
+      const week12StartUTC8 = weekStartUTC8 - 11 * 7 * 86400
+      const weeklyTrendRes = await db
+        .prepare(
+          `SELECT date(used_at, 'unixepoch', '+8 hours', '-6 days', 'weekday 1') AS d, COUNT(*) AS c
+           FROM tool_usage_records WHERE used_at >= ? GROUP BY d`,
+        )
+        .bind(week12StartUTC8)
+        .all()
+      usageTrend.weekly = (weeklyTrendRes.results || []).map((r) => ({
+        date: r.d,
+        count: Number(r.c || 0),
+      }))
+
+      const month12StartUTC8 = (() => {
+        const utc8 = new Date(now + 8 * 3600 * 1000)
+        const start = new Date(
+          Date.UTC(utc8.getUTCFullYear(), utc8.getUTCMonth() - 11, 1, 0, 0, 0),
+        )
+        return Math.floor((start.getTime() - 8 * 3600 * 1000) / 1000)
+      })()
+      const monthlyTrendRes = await db
+        .prepare(
+          `SELECT strftime('%Y-%m', used_at, 'unixepoch', '+8 hours') AS m, COUNT(*) AS c
+           FROM tool_usage_records WHERE used_at >= ? GROUP BY m`,
+        )
+        .bind(month12StartUTC8)
+        .all()
+      usageTrend.monthly = (monthlyTrendRes.results || []).map((r) => ({
+        date: r.m,
+        count: Number(r.c || 0),
+      }))
     } catch (e) {
       // 迁移未执行等场景：兜底为 0，绝不阻塞仪表盘
       console.warn('[admin/dashboard] tool_usage / slow_query 聚合失败（可能表未创建）:', e?.message || e)
@@ -218,6 +340,9 @@ export async function onRequest(context) {
     return json({
       totalUsers,
       todayNew,
+      weekNewUsers,
+      monthNewUsers,
+      userTrend,
       disabledUsers,
       totalBalance,
       totalEarned,
@@ -231,7 +356,9 @@ export async function onRequest(context) {
       todayToolUsage,
       weekToolUsage,
       monthToolUsage,
+      totalToolUsage,
       topTools,
+      usageTrend,
       slowQueries: {
         today: slowQueryToday,
         week: slowQueryWeek,
@@ -240,6 +367,7 @@ export async function onRequest(context) {
       pendingComments,
       pendingFriendLinks,
       pendingBlogPosts,
+      pendingFeedback,
     })
   } catch (error) {
     console.error('dashboard API error:', error)

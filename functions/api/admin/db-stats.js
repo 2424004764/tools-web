@@ -14,7 +14,8 @@
 //     date  → 'YYYY-MM-DD' 纯日期字符串
 //     int   → 秒级时间戳（unixepoch）
 //     intms → 毫秒级时间戳
-// - 统计口径为 UTC 日界（与 AdminDashboard 的 date('now') 口径一致）
+// - 统计口径为北京时间（UTC+8）日界，与仪表盘"今日新增"等口径一致
+//   （credit_redeem_attempts.attempt_date 本身就是北京日期字符串，date 类型直接比较）
 
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
@@ -115,19 +116,22 @@ const TABLE_META = {
   oauth_clients:               { comment: 'OAuth 客户端',       timeCol: 'created_at',  timeKind: 'text' },
 }
 
-// 统计口径阈值：今日 / 近7日 / 近30日（含当天）
+// 统计口径阈值：今日 / 近7日 / 近30日（含当天），均按北京时间（UTC+8）日界
+// int/intms 列存的是 UTC 时间戳，北京时间 0 点 = 当日日期字符串的 0 点 UTC 再减 8 小时
 function sinceExpr(timeKind, daysAgo) {
-  const d = daysAgo === 0 ? "date('now')" : `date('now', '-${daysAgo} days')`
+  const d = daysAgo === 0
+    ? "date('now', '+8 hours')"
+    : `date('now', '+8 hours', '-${daysAgo} days')`
   switch (timeKind) {
-    case 'int':   return `strftime('%s', ${d})`
-    case 'intms': return `strftime('%s', ${d}) * 1000`
-    default:      return d // text / date：date(col) 与 date('now') 均为 'YYYY-MM-DD'
+    case 'int':   return `strftime('%s', ${d}, '-8 hours')`
+    case 'intms': return `strftime('%s', ${d}, '-8 hours') * 1000`
+    default:      return d // text：date(col, '+8 hours')；date：列本身就是北京日期字符串
   }
 }
 
 function geExpr(timeCol, timeKind, daysAgo) {
   const since = sinceExpr(timeKind, daysAgo)
-  if (timeKind === 'text') return `date(${timeCol}) >= ${since}`
+  if (timeKind === 'text') return `date(${timeCol}, '+8 hours') >= ${since}`
   return `${timeCol} >= ${since}`
 }
 
@@ -237,14 +241,13 @@ export async function onRequest(context) {
       if (!meta || !meta.timeCol) return jsonError('该表不支持增量趋势统计', 400)
 
       const c = meta.timeCol
-      const where30 = meta.timeKind === 'text'
-        ? `date(${c}) >= date('now', '-29 days')`
-        : `${c} >= ${sinceExpr(meta.timeKind, 29)}`
+      // 北京时间（UTC+8）口径：近 30 天每日新增
+      const where30 = geExpr(c, meta.timeKind, 29)
       const groupExpr = meta.timeKind === 'int'
-        ? `date(${c}, 'unixepoch')`
+        ? `date(${c}, 'unixepoch', '+8 hours')`
         : meta.timeKind === 'intms'
-          ? `date(${c} / 1000, 'unixepoch')`
-          : `date(${c})`
+          ? `date(${c} / 1000, 'unixepoch', '+8 hours')`
+          : `date(${c}, '+8 hours')`
 
       const result = await db
         .prepare(`SELECT ${groupExpr} AS d, COUNT(*) AS c FROM ${trendTable} WHERE ${where30} GROUP BY d ORDER BY d`)

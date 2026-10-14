@@ -59,8 +59,12 @@
               return;
             }
             sessionStorage.setItem(RELOAD_KEY, String(count + 1));
-            // 保留 query（OAuth / 房间号 / 首页锚点） + hash
-            window.location.replace(location.pathname + location.search + location.hash);
+            // 必须用 reload() 而不是 location.replace(同URL)：
+            // replace 是普通导航，会原样命中 HTTP 缓存里的旧 HTML（深链 HTML
+            // 一旦被 Browser Cache TTL 缓存 4 小时，等于原地打转），两次预算
+            // 耗尽后用户停在白屏。reload() 对主文档无条件回源校验，等价于
+            // 用户手动 F5，总能拿到最新 HTML（2026-10 深链白屏事故）。
+            window.location.reload();
           })
           .catch(function() { /* 网络/部署瞬时错误，静默 */ });
       }

@@ -100,7 +100,8 @@ export async function fetchMyGenerationRecordImage(
     { responseType: 'blob' },
   )
   const cd = (res.headers as any)?.['content-disposition'] as string | undefined
-  let filename = 'ai-image.png'
+  // 兜底也用记录 uuid 命名，保证每张图下载名唯一（固定名会让浏览器提示“文件已存在”）
+  let filename = `${id}.png`
   if (cd) {
     const m = /filename="?([^";]+)"?/.exec(cd)
     if (m) filename = m[1]

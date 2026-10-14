@@ -6,7 +6,9 @@ import IconReading from '~icons/ep/reading'
 import IconPicture from '~icons/ep/picture'
 import IconCoffee from '~icons/ep/coffee'
 import IconTrendCharts from '~icons/ep/trend-charts'
+import IconRefresh from '~icons/ep/refresh'
 import IconMagicStick from '~icons/ep/magic-stick'
+import IconFootball from '~icons/ep/football'
 import IconStar from '~icons/ep/star'
 import IconCollection from '~icons/ep/collection'
 import IconFilm from '~icons/ep/film'
@@ -31,8 +33,9 @@ const CATE_ICON_RULES: CateIconRule[] = [
   { match: ['生活'], icon: IconCoffee },
   { match: ['数据'], icon: IconDataAnalysis },
   { match: ['图表', '可视化'], icon: IconTrendCharts },
-  { match: ['趣味', '互动', '游戏', '随机'], icon: IconMagicStick },
-  { match: ['AI'], icon: IconMagicStick },
+  { match: ['选择', '随机'], icon: IconRefresh },
+  { match: ['趣味', '互动', '游戏'], icon: IconFootball },
+  { match: ['AI', '人工智能'], icon: IconMagicStick },
   { match: ['好物', '网站'], icon: IconStar },
   { match: ['收藏', '稍后读'], icon: IconCollection },
   { match: ['媒体', '娱乐'], icon: IconFilm },

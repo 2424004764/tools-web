@@ -160,6 +160,18 @@ body {
   }
 }
 
+/* ─── 路由页进入动画 ─── */
+/* 纯 CSS animation（非 Vue <transition>）：动画只作用于新页首帧，不阻塞 DOM 切换，
+   无 JS 过渡状态可卡死；prefers-reduced-motion 下被上方规则压成 0.01ms 即为「无动画」 */
+.page-enter {
+  animation: page-enter 0.18s ease-out;
+}
+@keyframes page-enter {
+  from {
+    opacity: 0;
+  }
+}
+
 /* ─── Element Plus 主题覆盖 ─── */
 :root[data-app],
 html:root {

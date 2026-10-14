@@ -1,8 +1,13 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import * as echarts from 'echarts'
+import type { ECharts } from 'echarts'
+import Sortable from 'sortablejs'
 import { fetchAdminDashboard } from '@/api/admin/dashboard'
-import type { AdminDashboard } from '@/types/admin'
+import type { AdminDashboard, ToolUsageTrendPoint } from '@/types/admin'
+import { fetchAdminSiteConfig, updateAdminSiteConfig } from '@/api/admin/site-config'
 import { ElMessage } from 'element-plus'
+import { useTheme } from '@/composables/useTheme'
 import IconUser from '~icons/ep/user'
 import IconLock from '~icons/ep/lock'
 import IconCoin from '~icons/ep/coin'
@@ -11,19 +16,106 @@ import IconHistogram from '~icons/ep/histogram'
 import IconTrophy from '~icons/ep/trophy'
 import IconTimer from '~icons/ep/timer'
 import IconBell from '~icons/ep/bell'
+import IconRank from '~icons/ep/rank'
 
 const data = ref<AdminDashboard | null>(null)
 const loading = ref(false)
 
-const load = async () => {
-  loading.value = true
+// ============ 卡片布局：可拖拽排序，顺序持久化在 site_config.admin_dashboard_layout ============
+// 卡片 id 是前后端约定的稳定标识；后端只校验格式，新增/下线卡片仅需维护这里
+type WidgetId =
+  | 'users'
+  | 'disabled'
+  | 'credits'
+  | 'tools'
+  | 'usage'
+  | 'userTrend'
+  | 'topTools'
+  | 'slowlog'
+  | 'pending'
+  | 'transactions'
+
+interface WidgetMeta {
+  id: WidgetId
+  /** 网格占列数：基础网格 2 列（移动端），md 起 4 列 */
+  span: string
+}
+
+const DEFAULT_WIDGETS: WidgetMeta[] = [
+  { id: 'users', span: '' },
+  { id: 'disabled', span: '' },
+  { id: 'credits', span: '' },
+  { id: 'tools', span: '' },
+  { id: 'usage', span: 'col-span-2' },
+  { id: 'userTrend', span: 'col-span-2' },
+  { id: 'topTools', span: 'col-span-2' },
+  { id: 'slowlog', span: 'col-span-2' },
+  { id: 'pending', span: 'col-span-2 md:col-span-4' },
+  { id: 'transactions', span: 'col-span-2 md:col-span-4' },
+]
+
+const widgets = ref<WidgetMeta[]>(DEFAULT_WIDGETS.map((w) => ({ ...w })))
+const gridRef = ref<HTMLDivElement | null>(null)
+let sortable: Sortable | null = null
+
+const saveLayout = async () => {
   try {
-    data.value = await fetchAdminDashboard()
+    await updateAdminSiteConfig({
+      admin_dashboard_layout: JSON.stringify(widgets.value.map((w) => w.id)),
+    })
   } catch (err) {
     console.error(err)
-    ElMessage.error('仪表盘数据加载失败')
-  } finally {
-    loading.value = false
+    ElMessage.error('布局保存失败')
+  }
+}
+
+// 读取已保存顺序：未知 id 丢弃，缺省卡片（后续新增）按默认顺序补尾
+const loadLayout = async () => {
+  try {
+    const cfg = await fetchAdminSiteConfig()
+    const raw = String(cfg.values.admin_dashboard_layout ?? '').trim()
+    if (!raw) return
+    const ids: unknown = JSON.parse(raw)
+    if (!Array.isArray(ids)) return
+    const byId = new Map(widgets.value.map((w) => [w.id, w] as const))
+    const next = ids
+      .map((id) => (typeof id === 'string' ? byId.get(id as WidgetId) : undefined))
+      .filter((w): w is WidgetMeta => !!w)
+    for (const w of widgets.value) {
+      if (!next.includes(w)) next.push(w)
+    }
+    widgets.value = next
+  } catch (err) {
+    // 布局读取失败不阻塞页面，按默认顺序展示
+    console.error(err)
+  }
+}
+
+const handleDragEnd = (evt: Sortable.SortableEvent) => {
+  const { oldIndex, newIndex, item, from } = evt
+  if (oldIndex == null || newIndex == null || oldIndex === newIndex) return
+  // Sortable 拖完已直接改动 DOM：先还原，再交给 Vue 按新数组重排，避免虚拟 DOM 与真实 DOM 脱节
+  from.removeChild(item)
+  from.insertBefore(item, from.children[oldIndex] ?? null)
+  const list = widgets.value
+  list.splice(newIndex, 0, list.splice(oldIndex, 1)[0])
+  saveLayout()
+  // 重排会重建图表容器节点，等待 Vue 渲染后按新节点重建两块趋势图
+  nextTick(() => {
+    usagePanel.init()
+    userPanel.init()
+  })
+}
+
+const resetLayout = async () => {
+  widgets.value = DEFAULT_WIDGETS.map((w) => ({ ...w }))
+  try {
+    // 置空即视为未配置，后端按默认顺序处理
+    await updateAdminSiteConfig({ admin_dashboard_layout: '' })
+    ElMessage.success('已恢复默认布局')
+  } catch (err) {
+    console.error(err)
+    ElMessage.error('布局保存失败')
   }
 }
 
@@ -64,322 +156,723 @@ const sourceClass = (s: 'system' | 'admin' | 'tool' | null | undefined) => {
   }
 }
 
-onMounted(load)
+// ============ 趋势曲线（工具使用次数 / 用户总数注册趋势共用一套图逻辑） ============
+const TREND_RANGES = [
+  { key: 'daily', label: '每日' },
+  { key: 'weekly', label: '每周' },
+  { key: 'monthly', label: '每月' },
+] as const
+type TrendRangeKey = (typeof TREND_RANGES)[number]['key']
+
+// 图表配色跟随主题：html.dark 翻转 CSS 变量后，构建 option 时实时解析即得当前主题色
+const { isDark } = useTheme()
+function themeVar(name: string, alpha = 1): string {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+  const parts = raw.split(/\s+/)
+  if (parts.length < 3) return raw
+  return `rgba(${parts.join(', ')}, ${alpha})`
+}
+
+const pad2 = (n: number) => String(n).padStart(2, '0')
+// 统一按 UTC+8 生成日期轴（与后端聚合口径一致，不受浏览者时区影响）
+const utc8Now = () => new Date(Date.now() + 8 * 3600 * 1000)
+
+function buildDailyAxis(days: number): string[] {
+  const list: string[] = []
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(utc8Now().getTime() - i * 86400000)
+    list.push(`${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`)
+  }
+  return list
+}
+
+function buildWeeklyAxis(weeks: number): string[] {
+  const utc8 = utc8Now()
+  const daysSinceMonday = (utc8.getUTCDay() + 6) % 7
+  const monday = Date.UTC(
+    utc8.getUTCFullYear(),
+    utc8.getUTCMonth(),
+    utc8.getUTCDate() - daysSinceMonday,
+  )
+  const list: string[] = []
+  for (let i = weeks - 1; i >= 0; i--) {
+    const d = new Date(monday - i * 7 * 86400000)
+    list.push(`${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`)
+  }
+  return list
+}
+
+function buildMonthlyAxis(months: number): string[] {
+  const utc8 = utc8Now()
+  const list: string[] = []
+  for (let i = months - 1; i >= 0; i--) {
+    const d = new Date(Date.UTC(utc8.getUTCFullYear(), utc8.getUTCMonth() - i, 1))
+    list.push(`${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}`)
+  }
+  return list
+}
+
+function fillTrend(points: ToolUsageTrendPoint[] | undefined, dates: string[]): number[] {
+  const map = new Map((points || []).map((p) => [p.date, p.count]))
+  return dates.map((d) => map.get(d) || 0)
+}
+
+/** 一条趋势线的完整日期轴 + 补零后的计数 */
+type TrendSeries = Record<TrendRangeKey, { dates: string[]; counts: number[] }>
+type TrendPoints = NonNullable<AdminDashboard['usageTrend']>
+
+// 一块面板一张图：粒度切换 / 主题重绘 / dataZoom 都内聚在此，工具使用与用户注册各建一份
+function createTrendPanel(verb: string, unit: string) {
+  const trendRange = ref<TrendRangeKey>('daily')
+  const chartRef = ref<HTMLDivElement | null>(null)
+  let chartInstance: ECharts | null = null
+  // 后端返回稀疏点，这里缓存按完整日期轴补零后的数据，切换粒度 / 主题重绘时复用
+  let series: TrendSeries | null = null
+
+  function applyOption() {
+    if (!chartInstance || !series) return
+    const { dates, counts } = series[trendRange.value]
+    const isMonthly = trendRange.value === 'monthly'
+    // 每日共 90 天，初始只展示近 30 天；可拖动图表或底部滑块向前翻看更早日期
+    const total = dates.length
+    const visible = trendRange.value === 'daily' ? 30 : total
+    const hasZoom = total > visible
+    const zoomStart = Math.max(0, total - visible)
+    const dataZoom = hasZoom
+      ? [
+          {
+            type: 'inside',
+            startValue: zoomStart,
+            endValue: total - 1,
+            zoomOnMouseWheel: false, // 不劫持页面滚轮
+          },
+          {
+            type: 'slider',
+            startValue: zoomStart,
+            endValue: total - 1,
+            height: 16,
+            bottom: 0,
+            brushSelect: false,
+            borderColor: themeVar('--border-subtle'),
+            fillerColor: themeVar('--accent-500', 0.12),
+            handleStyle: { color: themeVar('--surface-0') },
+            moveHandleStyle: { color: themeVar('--accent-200') },
+            emphasis: { moveHandleStyle: { color: themeVar('--accent-300') } },
+            textStyle: { color: 'transparent' },
+          },
+        ]
+      : []
+    chartInstance.setOption(
+      {
+        grid: { left: 36, right: 12, top: 18, bottom: hasZoom ? 40 : 24 },
+        dataZoom,
+        tooltip: {
+          trigger: 'axis',
+          backgroundColor: themeVar('--surface-0'),
+          borderColor: themeVar('--border-default'),
+          textStyle: { color: themeVar('--ink-700') },
+          formatter: (params: unknown) => {
+            const p = (Array.isArray(params) ? params[0] : params) as { name: string; marker: string; value: number }
+            return `${p.name}<br/>${p.marker} ${verb} <b>${(p.value || 0).toLocaleString('zh-CN')}</b> ${unit}`
+          },
+        },
+        xAxis: {
+          type: 'category',
+          data: dates,
+          boundaryGap: false,
+          axisLabel: {
+            color: themeVar('--ink-500'),
+            interval: isMonthly ? 1 : 4,
+            formatter: (v: string) => (isMonthly ? v : v.slice(5)),
+          },
+          axisLine: { lineStyle: { color: themeVar('--border-default') } },
+        },
+        yAxis: {
+          type: 'value',
+          minInterval: 1,
+          axisLabel: { color: themeVar('--ink-500') },
+          splitLine: { lineStyle: { color: themeVar('--border-subtle') } },
+        },
+        series: [
+          {
+            name: `${verb}${unit}`,
+            type: 'line',
+            data: counts,
+            smooth: true,
+            showSymbol: false,
+            itemStyle: { color: themeVar('--accent-500') },
+            lineStyle: { width: 2, color: themeVar('--accent-500') },
+            areaStyle: {
+              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                { offset: 0, color: themeVar('--accent-500', 0.22) },
+                { offset: 1, color: themeVar('--accent-500', 0.02) },
+              ]),
+            },
+          },
+        ],
+      },
+      { notMerge: true },
+    )
+  }
+
+  // 后端返回稀疏点，按完整日期轴补零后缓存
+  function build(trend?: TrendPoints) {
+    const t = trend || { daily: [], weekly: [], monthly: [] }
+    const dailyDates = buildDailyAxis(90)
+    const weeklyDates = buildWeeklyAxis(12)
+    const monthlyDates = buildMonthlyAxis(12)
+    series = {
+      daily: { dates: dailyDates, counts: fillTrend(t.daily, dailyDates) },
+      weekly: { dates: weeklyDates, counts: fillTrend(t.weekly, weeklyDates) },
+      monthly: { dates: monthlyDates, counts: fillTrend(t.monthly, monthlyDates) },
+    }
+    applyOption()
+  }
+
+  watch(trendRange, () => applyOption())
+
+  async function init() {
+    await nextTick()
+    // 卡片在 v-for 里，模板 ref 会被 Vue 收集成数组，取首个元素
+    const raw = chartRef.value as HTMLDivElement | HTMLDivElement[] | null
+    const el = Array.isArray(raw) ? raw[0] : raw
+    if (!el) return
+    // 拖拽排序后 Vue 会重建容器节点：旧实例挂载的节点已脱卸，需要销毁重建
+    if (chartInstance && (!el.isConnected || chartInstance.getDom() !== el)) {
+      chartInstance.dispose()
+      chartInstance = null
+    }
+    if (!chartInstance) chartInstance = echarts.init(el)
+    // 数据先于图表容器就绪时（如缓存命中），初始化后补一次渲染
+    applyOption()
+  }
+
+  return {
+    trendRange,
+    chartRef,
+    build,
+    applyOption,
+    init,
+    resize: () => chartInstance?.resize(),
+    dispose: () => {
+      chartInstance?.dispose()
+      chartInstance = null
+    },
+  }
+}
+
+const usagePanel = createTrendPanel('使用', '次')
+const userPanel = createTrendPanel('新增', '人')
+// 解构出的 ref 仍是响应式的，模板里直接绑定 ref / v-model
+const { trendRange: usageTrendRange, chartRef: usageChartEl } = usagePanel
+const { trendRange: userTrendRange, chartRef: userChartEl } = userPanel
+
+const load = async () => {
+  loading.value = true
+  try {
+    data.value = await fetchAdminDashboard()
+    usagePanel.build(data.value.usageTrend)
+    userPanel.build(data.value.userTrend)
+  } catch (err) {
+    console.error(err)
+    ElMessage.error('仪表盘数据加载失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 主题切换时用缓存数据按新主题色重绘（不重新请求接口）
+watch(isDark, () => {
+  usagePanel.applyOption()
+  userPanel.applyOption()
+})
+
+const handleResize = () => {
+  usagePanel.resize()
+  userPanel.resize()
+}
+
+onMounted(async () => {
+  load()
+  loadLayout()
+  await Promise.all([usagePanel.init(), userPanel.init()])
+  if (gridRef.value && !sortable) {
+    sortable = Sortable.create(gridRef.value, {
+      handle: '.widget-drag-handle', // 仅从把手发起拖拽，不影响图表缩放 / 链接等交互
+      animation: 150,
+      ghostClass: 'widget-ghost',
+      // 触屏长按进入拖拽，避免与页面滚动冲突；鼠标拖拽无延迟
+      delay: 150,
+      delayOnTouchOnly: true,
+      onEnd: handleDragEnd,
+    })
+  }
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
+  sortable?.destroy()
+  sortable = null
+  usagePanel.dispose()
+  userPanel.dispose()
+})
 </script>
 
 <template>
   <div v-loading="loading">
-    <h2 class="text-xl font-semibold mb-4 text-ink-900">仪表盘</h2>
-
-    <!-- 统计卡片 -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-      <div class="admin-stat-card">
-        <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0">
-            <div class="text-sm text-ink-500">用户总数</div>
-            <div class="mt-1.5 text-2xl font-semibold text-ink-900 tabular-nums">
-              {{ data?.totalUsers ?? '-' }}
-            </div>
-            <div class="text-xs text-ink-400 mt-1.5">
-              今日新增 {{ data?.todayNew ?? 0 }}
-            </div>
-          </div>
-          <span class="admin-stat-icon bg-accent-50 text-accent-600" aria-hidden="true">
-            <IconUser class="w-4 h-4" />
-          </span>
-        </div>
-      </div>
-      <div class="admin-stat-card">
-        <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0">
-            <div class="text-sm text-ink-500">禁用用户</div>
-            <div class="mt-1.5 text-2xl font-semibold text-danger-600 tabular-nums">
-              {{ data?.disabledUsers ?? '-' }}
-            </div>
-            <div class="text-xs text-ink-400 mt-1.5">无法登录账号</div>
-          </div>
-          <span class="admin-stat-icon bg-danger-50 text-danger-600" aria-hidden="true">
-            <IconLock class="w-4 h-4" />
-          </span>
-        </div>
-      </div>
-      <div class="admin-stat-card">
-        <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0">
-            <div class="text-sm text-ink-500">积分总余额</div>
-            <div class="mt-1.5 text-2xl font-semibold text-accent-700 tabular-nums">
-              {{ data?.totalBalance ?? '-' }}
-            </div>
-            <div class="text-xs text-ink-400 mt-1.5">
-              累计发放 {{ data?.totalEarned ?? 0 }}
-              <span class="mx-1">·</span>
-              今日消耗 {{ data?.todayCreditSpent ?? 0 }}
-            </div>
-          </div>
-          <span class="admin-stat-icon bg-amber-50 text-amber-600" aria-hidden="true">
-            <IconCoin class="w-4 h-4" />
-          </span>
-        </div>
-      </div>
-      <div class="admin-stat-card">
-        <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0">
-            <div class="text-sm text-ink-500">工具启用</div>
-            <div class="mt-1.5 text-2xl font-semibold text-ink-900 tabular-nums">
-              {{ data?.tools.enabled ?? '-' }}
-              <span class="text-sm font-normal text-ink-400">/ {{ data?.tools.total ?? '-' }}</span>
-            </div>
-            <div class="text-xs text-ink-400 mt-1.5">已启用工具数</div>
-          </div>
-          <span class="admin-stat-icon bg-emerald-50 text-emerald-600" aria-hidden="true">
-            <IconSetUp class="w-4 h-4" />
-          </span>
-        </div>
+    <div class="flex items-center justify-between gap-3 mb-4">
+      <h2 class="text-xl font-semibold text-ink-900">仪表盘</h2>
+      <div class="flex items-center gap-3">
+        <span class="hidden sm:inline text-xs text-ink-400">拖动卡片标题旁的把手可调整位置</span>
+        <el-button link type="primary" size="small" @click="resetLayout">恢复默认布局</el-button>
       </div>
     </div>
 
-    <!-- 第 1 行：工具使用次数 + 慢日志数（各占 2 列） -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-      <!-- 工具使用次数（来自 tool_usage_records；老版本迁移前为 0） -->
-      <div class="admin-stat-card md:col-span-2">
-        <div class="text-sm text-ink-500 mb-2 flex items-center gap-1.5">
-          <IconHistogram class="w-3.5 h-3.5" />
-          工具使用次数
-        </div>
-        <div class="grid grid-cols-3 divide-x divide-ink-100">
-          <router-link
-            to="/admin/tool-usage?range=today#usage-detail"
-            class="block pr-2 first:pl-0 group"
-            title="查看今日使用明细"
-          >
-            <div class="text-[11px] text-ink-400 group-hover:text-accent-600 transition-colors">今日</div>
-            <div class="mt-0.5 text-lg font-semibold text-accent-700 group-hover:text-accent-600 tabular-nums leading-tight transition-colors">
-              {{ data?.todayToolUsage ?? 0 }}
-            </div>
-          </router-link>
-          <router-link
-            to="/admin/tool-usage?range=week#usage-detail"
-            class="block px-2 group"
-            title="查看本周使用明细"
-          >
-            <div class="text-[11px] text-ink-400 group-hover:text-accent-600 transition-colors">本周</div>
-            <div class="mt-0.5 text-lg font-semibold text-ink-900 group-hover:text-accent-600 tabular-nums leading-tight transition-colors">
-              {{ data?.weekToolUsage ?? 0 }}
-            </div>
-          </router-link>
-          <router-link
-            to="/admin/tool-usage?range=month#usage-detail"
-            class="block pl-2 last:pr-0 group"
-            title="查看本月使用明细"
-          >
-            <div class="text-[11px] text-ink-400 group-hover:text-accent-600 transition-colors">本月</div>
-            <div class="mt-0.5 text-lg font-semibold text-ink-900 group-hover:text-accent-600 tabular-nums leading-tight transition-colors">
-              {{ data?.monthToolUsage ?? 0 }}
-            </div>
-          </router-link>
-        </div>
-        <div class="text-[11px] text-ink-400 mt-2">
-          登录用户进入工具页次数
-        </div>
-      </div>
-
-      <!-- 慢日志数（阈值 100ms） -->
-      <div class="admin-stat-card md:col-span-2">
-        <div class="text-sm text-ink-500 mb-2 flex items-center gap-1.5">
-          <IconTimer class="w-3.5 h-3.5" />
-          慢日志数 <span class="text-[11px] text-ink-400 font-normal">（阈值 100ms）</span>
-        </div>
-        <div class="grid grid-cols-3 divide-x divide-ink-100">
-          <div class="pr-2 first:pl-0">
-            <div class="text-[11px] text-ink-400">今日</div>
-            <div class="mt-0.5 text-lg font-semibold text-ink-900 tabular-nums leading-tight">
-              {{ data?.slowQueries?.today ?? 0 }}
-            </div>
-          </div>
-          <div class="px-2">
-            <div class="text-[11px] text-ink-400">本周</div>
-            <div class="mt-0.5 text-lg font-semibold text-ink-900 tabular-nums leading-tight">
-              {{ data?.slowQueries?.week ?? 0 }}
-            </div>
-          </div>
-          <div class="pl-2 last:pr-0">
-            <div class="text-[11px] text-ink-400">本月</div>
-            <div class="mt-0.5 text-lg font-semibold text-ink-900 tabular-nums leading-tight">
-              {{ data?.slowQueries?.month ?? 0 }}
-            </div>
-          </div>
-        </div>
-        <div class="text-[11px] text-ink-400 mt-2">
-          <router-link to="/admin/slow-query-logs" class="text-accent-600 hover:text-accent-700 font-medium">
-            查看明细 →
-          </router-link>
-        </div>
-      </div>
-    </div>
-
-    <!-- 第 2 行：TOP 5 工具（占 2 列；右侧留空给后续报表） -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-      <div class="admin-stat-card md:col-span-2">
-        <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0 flex-1">
-            <div class="text-sm text-ink-500 mb-2">TOP 5 工具</div>
-            <div v-if="data?.topTools?.length" class="space-y-1.5">
-              <div
-                v-for="(t, i) in data.topTools"
-                :key="t.tool_url"
-                class="flex items-center gap-2 text-sm"
-              >
-                <span class="text-ink-400 w-4 text-right tabular-nums">{{ i + 1 }}.</span>
-                <a
-                  v-if="t.tool_url"
-                  :href="t.tool_url"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="text-ink-900 truncate flex-1 hover:text-accent-600 hover:underline transition-colors"
-                  :title="`跳转到 ${t.tool_title}`"
-                >
-                  {{ t.tool_title }}
-                </a>
-                <span v-else class="text-ink-900 truncate flex-1">{{ t.tool_title }}</span>
-                <span class="text-accent-700 font-medium tabular-nums">{{ t.count }}</span>
+    <!-- 全部卡片：顺序可拖拽调整（持久化在 site_config.admin_dashboard_layout） -->
+    <div ref="gridRef" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div
+        v-for="w in widgets"
+        :key="w.id"
+        :data-widget="w.id"
+        class="min-w-0"
+        :class="w.span"
+      >
+        <!-- 用户总数 -->
+        <div v-if="w.id === 'users'" class="admin-stat-card h-full">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <div class="flex items-center gap-1.5 text-sm text-ink-500">
+                <span class="widget-drag-handle" title="拖动调整位置">
+                  <IconRank class="w-3.5 h-3.5" />
+                </span>
+                用户总数
+              </div>
+              <div class="mt-1.5 text-2xl font-semibold text-ink-900 tabular-nums">
+                {{ data?.totalUsers ?? '-' }}
+              </div>
+              <div class="text-xs text-ink-400 mt-1.5">
+                今日新增 {{ data?.todayNew ?? 0 }}
               </div>
             </div>
-            <div v-else class="text-xs text-ink-400">暂无数据</div>
-            <div class="text-xs text-ink-400 mt-3">
-              <router-link to="/admin/tool-usage" class="text-accent-600 hover:text-accent-700 font-medium">
-                查看全部 TOP →
+            <span class="admin-stat-icon bg-accent-50 text-accent-600" aria-hidden="true">
+              <IconUser class="w-4 h-4" />
+            </span>
+          </div>
+        </div>
+
+        <!-- 禁用用户 -->
+        <div v-else-if="w.id === 'disabled'" class="admin-stat-card h-full">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <div class="flex items-center gap-1.5 text-sm text-ink-500">
+                <span class="widget-drag-handle" title="拖动调整位置">
+                  <IconRank class="w-3.5 h-3.5" />
+                </span>
+                禁用用户
+              </div>
+              <div class="mt-1.5 text-2xl font-semibold text-danger-600 tabular-nums">
+                {{ data?.disabledUsers ?? '-' }}
+              </div>
+              <div class="text-xs text-ink-400 mt-1.5">无法登录账号</div>
+            </div>
+            <span class="admin-stat-icon bg-danger-50 text-danger-600" aria-hidden="true">
+              <IconLock class="w-4 h-4" />
+            </span>
+          </div>
+        </div>
+
+        <!-- 积分总余额 -->
+        <div v-else-if="w.id === 'credits'" class="admin-stat-card h-full">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <div class="flex items-center gap-1.5 text-sm text-ink-500">
+                <span class="widget-drag-handle" title="拖动调整位置">
+                  <IconRank class="w-3.5 h-3.5" />
+                </span>
+                积分总余额
+              </div>
+              <div class="mt-1.5 text-2xl font-semibold text-accent-700 tabular-nums">
+                {{ data?.totalBalance ?? '-' }}
+              </div>
+              <div class="text-xs text-ink-400 mt-1.5">
+                累计发放 {{ data?.totalEarned ?? 0 }}
+                <span class="mx-1">·</span>
+                今日消耗 {{ data?.todayCreditSpent ?? 0 }}
+              </div>
+            </div>
+            <span class="admin-stat-icon bg-amber-50 text-amber-600" aria-hidden="true">
+              <IconCoin class="w-4 h-4" />
+            </span>
+          </div>
+        </div>
+
+        <!-- 工具启用 -->
+        <div v-else-if="w.id === 'tools'" class="admin-stat-card h-full">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <div class="flex items-center gap-1.5 text-sm text-ink-500">
+                <span class="widget-drag-handle" title="拖动调整位置">
+                  <IconRank class="w-3.5 h-3.5" />
+                </span>
+                工具启用
+              </div>
+              <div class="mt-1.5 text-2xl font-semibold text-ink-900 tabular-nums">
+                {{ data?.tools.enabled ?? '-' }}
+                <span class="text-sm font-normal text-ink-400">/ {{ data?.tools.total ?? '-' }}</span>
+              </div>
+              <div class="text-xs text-ink-400 mt-1.5">已启用工具数</div>
+            </div>
+            <span class="admin-stat-icon bg-emerald-50 text-emerald-600" aria-hidden="true">
+              <IconSetUp class="w-4 h-4" />
+            </span>
+          </div>
+        </div>
+
+        <!-- 工具使用次数（来自 tool_usage_records；老版本迁移前为 0） -->
+        <div v-else-if="w.id === 'usage'" class="admin-stat-card h-full">
+          <div class="text-sm text-ink-500 mb-2 flex items-center gap-1.5 flex-wrap">
+            <span class="widget-drag-handle" title="拖动调整位置">
+              <IconRank class="w-3.5 h-3.5" />
+            </span>
+            <span class="flex items-center gap-1.5">
+              <IconHistogram class="w-3.5 h-3.5" />
+              工具使用次数
+            </span>
+            <el-radio-group v-model="usageTrendRange" size="small" class="!ml-auto">
+              <el-radio-button
+                v-for="r in TREND_RANGES"
+                :key="r.key"
+                :value="r.key"
+              >
+                {{ r.label }}
+              </el-radio-button>
+            </el-radio-group>
+          </div>
+          <div class="grid grid-cols-4 divide-x divide-ink-100">
+            <router-link
+              to="/admin/tool-usage?range=today#usage-detail"
+              class="block pr-2 first:pl-0 group"
+              title="查看今日使用明细"
+            >
+              <div class="text-[11px] text-ink-400 group-hover:text-accent-600 transition-colors">今日</div>
+              <div class="mt-0.5 text-lg font-semibold text-accent-700 group-hover:text-accent-600 tabular-nums leading-tight transition-colors">
+                {{ data?.todayToolUsage ?? 0 }}
+              </div>
+            </router-link>
+            <router-link
+              to="/admin/tool-usage?range=week#usage-detail"
+              class="block px-2 group"
+              title="查看本周使用明细"
+            >
+              <div class="text-[11px] text-ink-400 group-hover:text-accent-600 transition-colors">本周</div>
+              <div class="mt-0.5 text-lg font-semibold text-ink-900 group-hover:text-accent-600 tabular-nums leading-tight transition-colors">
+                {{ data?.weekToolUsage ?? 0 }}
+              </div>
+            </router-link>
+            <router-link
+              to="/admin/tool-usage?range=month#usage-detail"
+              class="block px-2 group"
+              title="查看本月使用明细"
+            >
+              <div class="text-[11px] text-ink-400 group-hover:text-accent-600 transition-colors">本月</div>
+              <div class="mt-0.5 text-lg font-semibold text-ink-900 group-hover:text-accent-600 tabular-nums leading-tight transition-colors">
+                {{ data?.monthToolUsage ?? 0 }}
+              </div>
+            </router-link>
+            <router-link
+              to="/admin/tool-usage?range=all#usage-detail"
+              class="block pl-2 last:pr-0 group"
+              title="查看累计使用明细"
+            >
+              <div class="text-[11px] text-ink-400 group-hover:text-accent-600 transition-colors">累计</div>
+              <div class="mt-0.5 text-lg font-semibold text-ink-900 group-hover:text-accent-600 tabular-nums leading-tight transition-colors">
+                {{ data?.totalToolUsage ?? 0 }}
+              </div>
+            </router-link>
+          </div>
+          <div class="text-[11px] text-ink-400 mt-2">
+            登录用户进入工具页次数
+          </div>
+          <div ref="usageChartEl" class="w-full h-[200px] mt-2"></div>
+        </div>
+
+        <!-- 用户总数（注册趋势）：与 TOP 5 工具位置对调，紧挨工具使用次数便于对照 -->
+        <div v-else-if="w.id === 'userTrend'" class="admin-stat-card h-full">
+          <div class="text-sm text-ink-500 mb-2 flex items-center gap-1.5 flex-wrap">
+            <span class="widget-drag-handle" title="拖动调整位置">
+              <IconRank class="w-3.5 h-3.5" />
+            </span>
+            <span class="flex items-center gap-1.5">
+              <IconUser class="w-3.5 h-3.5" />
+              用户总数
+            </span>
+            <el-radio-group v-model="userTrendRange" size="small" class="!ml-auto">
+              <el-radio-button
+                v-for="r in TREND_RANGES"
+                :key="r.key"
+                :value="r.key"
+              >
+                {{ r.label }}
+              </el-radio-button>
+            </el-radio-group>
+          </div>
+          <div class="grid grid-cols-4 divide-x divide-ink-100">
+            <div class="pr-2 first:pl-0">
+              <div class="text-[11px] text-ink-400">今日</div>
+              <div class="mt-0.5 text-lg font-semibold text-accent-700 tabular-nums leading-tight">
+                {{ data?.todayNew ?? 0 }}
+              </div>
+            </div>
+            <div class="px-2">
+              <div class="text-[11px] text-ink-400">本周</div>
+              <div class="mt-0.5 text-lg font-semibold text-ink-900 tabular-nums leading-tight">
+                {{ data?.weekNewUsers ?? 0 }}
+              </div>
+            </div>
+            <div class="px-2">
+              <div class="text-[11px] text-ink-400">本月</div>
+              <div class="mt-0.5 text-lg font-semibold text-ink-900 tabular-nums leading-tight">
+                {{ data?.monthNewUsers ?? 0 }}
+              </div>
+            </div>
+            <div class="pl-2 last:pr-0">
+              <div class="text-[11px] text-ink-400">累计</div>
+              <div class="mt-0.5 text-lg font-semibold text-ink-900 tabular-nums leading-tight">
+                {{ data?.totalUsers ?? 0 }}
+              </div>
+            </div>
+          </div>
+          <div class="text-[11px] text-ink-400 mt-2">
+            今日 / 本周 / 本月为新增注册用户数，累计为用户总数
+          </div>
+          <div ref="userChartEl" class="w-full h-[200px] mt-2"></div>
+        </div>
+
+        <!-- TOP 5 工具（原用户总数趋势位置，对调后移到下一行） -->
+        <div v-else-if="w.id === 'topTools'" class="admin-stat-card h-full">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-1.5 text-sm text-ink-500 mb-2">
+                <span class="widget-drag-handle" title="拖动调整位置">
+                  <IconRank class="w-3.5 h-3.5" />
+                </span>
+                TOP 5 工具
+              </div>
+              <div v-if="data?.topTools?.length" class="space-y-1.5">
+                <div
+                  v-for="(t, i) in data.topTools"
+                  :key="t.tool_url"
+                  class="flex items-center gap-2 text-sm"
+                >
+                  <span class="text-ink-400 w-4 text-right tabular-nums">{{ i + 1 }}.</span>
+                  <a
+                    v-if="t.tool_url"
+                    :href="t.tool_url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="text-ink-900 truncate flex-1 hover:text-accent-600 hover:underline transition-colors"
+                    :title="`跳转到 ${t.tool_title}`"
+                  >
+                    {{ t.tool_title }}
+                  </a>
+                  <span v-else class="text-ink-900 truncate flex-1">{{ t.tool_title }}</span>
+                  <span class="text-accent-700 font-medium tabular-nums">{{ t.count }}</span>
+                </div>
+              </div>
+              <div v-else class="text-xs text-ink-400">暂无数据</div>
+              <div class="text-xs text-ink-400 mt-3">
+                <router-link to="/admin/tool-usage" class="text-accent-600 hover:text-accent-700 font-medium">
+                  查看全部 TOP →
+                </router-link>
+              </div>
+            </div>
+            <span class="admin-stat-icon bg-amber-50 text-amber-600" aria-hidden="true">
+              <IconTrophy class="w-4 h-4" />
+            </span>
+          </div>
+        </div>
+
+        <!-- 慢日志数（阈值 100ms） -->
+        <div v-else-if="w.id === 'slowlog'" class="admin-stat-card h-full">
+          <div class="text-sm text-ink-500 mb-2 flex items-center gap-1.5">
+            <span class="widget-drag-handle" title="拖动调整位置">
+              <IconRank class="w-3.5 h-3.5" />
+            </span>
+            <IconTimer class="w-3.5 h-3.5" />
+            慢日志数 <span class="text-[11px] text-ink-400 font-normal">（阈值 100ms）</span>
+          </div>
+          <div class="grid grid-cols-3 divide-x divide-ink-100">
+            <div class="pr-2 first:pl-0">
+              <div class="text-[11px] text-ink-400">今日</div>
+              <div class="mt-0.5 text-lg font-semibold text-ink-900 tabular-nums leading-tight">
+                {{ data?.slowQueries?.today ?? 0 }}
+              </div>
+            </div>
+            <div class="px-2">
+              <div class="text-[11px] text-ink-400">本周</div>
+              <div class="mt-0.5 text-lg font-semibold text-ink-900 tabular-nums leading-tight">
+                {{ data?.slowQueries?.week ?? 0 }}
+              </div>
+            </div>
+            <div class="pl-2 last:pr-0">
+              <div class="text-[11px] text-ink-400">本月</div>
+              <div class="mt-0.5 text-lg font-semibold text-ink-900 tabular-nums leading-tight">
+                {{ data?.slowQueries?.month ?? 0 }}
+              </div>
+            </div>
+          </div>
+          <div class="text-[11px] text-ink-400 mt-2">
+            <router-link to="/admin/slow-query-logs" class="text-accent-600 hover:text-accent-700 font-medium">
+              查看明细 →
+            </router-link>
+          </div>
+        </div>
+
+        <!-- 待审核：评论 / 友链 / 文章 / 反馈（独占一整行） -->
+        <div v-else-if="w.id === 'pending'" class="admin-stat-card h-full">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0 flex-1">
+              <div class="text-sm text-ink-500 mb-2 flex items-center gap-1.5">
+                <span class="widget-drag-handle" title="拖动调整位置">
+                  <IconRank class="w-3.5 h-3.5" />
+                </span>
+                <IconBell class="w-3.5 h-3.5" />
+                待审核
+              </div>
+              <div class="grid grid-cols-4 divide-x divide-ink-100">
+                <div class="pr-2">
+                  <div class="text-[11px] text-ink-400">评论</div>
+                  <div class="mt-0.5 text-lg font-semibold tabular-nums leading-tight"
+                    :class="data?.pendingComments ? 'text-amber-600' : 'text-ink-900'">
+                    {{ data?.pendingComments ?? 0 }}
+                  </div>
+                  <div class="text-[11px] mt-1">
+                    <router-link to="/admin/comments" class="text-accent-600 hover:text-accent-700 font-medium">
+                      去审核 →
+                    </router-link>
+                  </div>
+                </div>
+                <div class="px-2">
+                  <div class="text-[11px] text-ink-400">友链</div>
+                  <div class="mt-0.5 text-lg font-semibold tabular-nums leading-tight"
+                    :class="data?.pendingFriendLinks ? 'text-amber-600' : 'text-ink-900'">
+                    {{ data?.pendingFriendLinks ?? 0 }}
+                  </div>
+                  <div class="text-[11px] mt-1">
+                    <router-link to="/admin/friend-links" class="text-accent-600 hover:text-accent-700 font-medium">
+                      去审核 →
+                    </router-link>
+                  </div>
+                </div>
+                <div class="px-2">
+                  <div class="text-[11px] text-ink-400">文章</div>
+                  <div class="mt-0.5 text-lg font-semibold tabular-nums leading-tight"
+                    :class="data?.pendingBlogPosts ? 'text-amber-600' : 'text-ink-900'">
+                    {{ data?.pendingBlogPosts ?? 0 }}
+                  </div>
+                  <div class="text-[11px] mt-1">
+                    <router-link to="/admin/blog/review" class="text-accent-600 hover:text-accent-700 font-medium">
+                      去审核 →
+                    </router-link>
+                  </div>
+                </div>
+                <div class="pl-2 last:pr-0">
+                  <div class="text-[11px] text-ink-400">反馈</div>
+                  <div class="mt-0.5 text-lg font-semibold tabular-nums leading-tight"
+                    :class="data?.pendingFeedback ? 'text-amber-600' : 'text-ink-900'">
+                    {{ data?.pendingFeedback ?? 0 }}
+                  </div>
+                  <div class="text-[11px] mt-1">
+                    <router-link to="/admin/feedback" class="text-accent-600 hover:text-accent-700 font-medium">
+                      去处理 →
+                    </router-link>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <span class="admin-stat-icon bg-amber-50 text-amber-600" aria-hidden="true">
+              <IconBell class="w-4 h-4" />
+            </span>
+          </div>
+        </div>
+
+        <!-- 最近积分流水 -->
+        <el-card v-else-if="w.id === 'transactions'" shadow="never" class="!rounded-xl h-full">
+          <template #header>
+            <div class="flex items-center justify-between">
+              <span class="font-medium text-ink-900 flex items-center gap-1.5">
+                <span class="widget-drag-handle" title="拖动调整位置">
+                  <IconRank class="w-3.5 h-3.5" />
+                </span>
+                最近积分流水
+              </span>
+              <router-link
+                to="/admin/credits"
+                class="text-sm text-accent-600 hover:text-accent-700"
+              >
+                查看全部 →
               </router-link>
             </div>
-          </div>
-          <span class="admin-stat-icon bg-amber-50 text-amber-600" aria-hidden="true">
-            <IconTrophy class="w-4 h-4" />
-          </span>
-        </div>
-      </div>
+          </template>
 
-      <!-- 待审核：评论 / 友链 -->
-      <div class="admin-stat-card md:col-span-2">
-        <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0 flex-1">
-            <div class="text-sm text-ink-500 mb-2 flex items-center gap-1.5">
-              <IconBell class="w-3.5 h-3.5" />
-              待审核
-            </div>
-            <div class="grid grid-cols-3 divide-x divide-ink-100">
-              <div class="pr-2">
-                <div class="text-[11px] text-ink-400">评论</div>
-                <div class="mt-0.5 text-lg font-semibold tabular-nums leading-tight"
-                  :class="data?.pendingComments ? 'text-amber-600' : 'text-ink-900'">
-                  {{ data?.pendingComments ?? 0 }}
+          <el-table
+            v-if="data?.recentTransactions?.length"
+            :data="data.recentTransactions"
+            stripe
+            size="small"
+            :show-header="true"
+          >
+            <el-table-column prop="created_at" label="时间" min-width="160">
+              <template #default="{ row }">
+                <span class="text-xs text-ink-500">{{ formatTime(row.created_at) }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="用户" min-width="200">
+              <template #default="{ row }">
+                <span class="text-ink-900">{{ row.user_name || row.user_email || row.uid }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="类型" width="80">
+              <template #default="{ row }">
+                <div class="flex flex-col items-start gap-0.5">
+                  <el-tag
+                    :type="row.type === 'grant' ? 'success' : 'danger'"
+                    size="small"
+                    effect="plain"
+                  >
+                    {{ row.type === 'grant' ? '赠送' : row.type === 'deduct' ? '扣减' : row.type }}
+                  </el-tag>
+                  <span
+                    class="text-[10px] px-1 py-0.5 rounded"
+                    :class="sourceClass(row.source)"
+                  >{{ sourceLabel(row.source) }}</span>
                 </div>
-                <div class="text-[11px] mt-1">
-                  <router-link to="/admin/comments" class="text-accent-600 hover:text-accent-700 font-medium">
-                    去审核 →
-                  </router-link>
-                </div>
-              </div>
-              <div class="px-2">
-                <div class="text-[11px] text-ink-400">友链</div>
-                <div class="mt-0.5 text-lg font-semibold tabular-nums leading-tight"
-                  :class="data?.pendingFriendLinks ? 'text-amber-600' : 'text-ink-900'">
-                  {{ data?.pendingFriendLinks ?? 0 }}
-                </div>
-                <div class="text-[11px] mt-1">
-                  <router-link to="/admin/friend-links" class="text-accent-600 hover:text-accent-700 font-medium">
-                    去审核 →
-                  </router-link>
-                </div>
-              </div>
-              <div class="pl-2">
-                <div class="text-[11px] text-ink-400">文章</div>
-                <div class="mt-0.5 text-lg font-semibold tabular-nums leading-tight"
-                  :class="data?.pendingBlogPosts ? 'text-amber-600' : 'text-ink-900'">
-                  {{ data?.pendingBlogPosts ?? 0 }}
-                </div>
-                <div class="text-[11px] mt-1">
-                  <router-link to="/admin/blog/review" class="text-accent-600 hover:text-accent-700 font-medium">
-                    去审核 →
-                  </router-link>
-                </div>
-              </div>
-            </div>
-          </div>
-          <span class="admin-stat-icon bg-amber-50 text-amber-600" aria-hidden="true">
-            <IconBell class="w-4 h-4" />
-          </span>
-        </div>
+              </template>
+            </el-table-column>
+            <el-table-column label="变动" width="100" align="right">
+              <template #default="{ row }">
+                <span
+                  :class="row.amount > 0 ? 'text-success-600' : 'text-danger-600'"
+                  class="font-medium"
+                >
+                  {{ fmtAmount(row.amount) }}
+                </span>
+              </template>
+            </el-table-column>
+            <el-table-column label="余额后" width="100" align="right" prop="balance_after" />
+            <el-table-column label="操作人" min-width="160">
+              <template #default="{ row }">
+                <span class="text-ink-700">
+                  {{ row.operator_uid === 'SYSTEM' ? '系统' : (row.operator_uid.slice(0, 12) + (row.operator_uid.length > 12 ? '…' : '')) }}
+                </span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="reason" label="备注" min-width="160" show-overflow-tooltip />
+          </el-table>
+          <el-empty v-else description="暂无流水" :image-size="60" />
+        </el-card>
       </div>
     </div>
-
-    <!-- 最近流水 -->
-    <el-card shadow="never" class="!rounded-xl">
-      <template #header>
-        <div class="flex items-center justify-between">
-          <span class="font-medium text-ink-900">最近积分流水</span>
-          <router-link
-            to="/admin/credits"
-            class="text-sm text-accent-600 hover:text-accent-700"
-          >
-            查看全部 →
-          </router-link>
-        </div>
-      </template>
-
-      <el-table
-        v-if="data?.recentTransactions?.length"
-        :data="data.recentTransactions"
-        stripe
-        size="small"
-        :show-header="true"
-      >
-        <el-table-column prop="created_at" label="时间" min-width="160">
-          <template #default="{ row }">
-            <span class="text-xs text-ink-500">{{ formatTime(row.created_at) }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="用户" min-width="200">
-          <template #default="{ row }">
-            <span class="text-ink-900">{{ row.user_name || row.user_email || row.uid }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="类型" width="80">
-          <template #default="{ row }">
-            <div class="flex flex-col items-start gap-0.5">
-              <el-tag
-                :type="row.type === 'grant' ? 'success' : 'danger'"
-                size="small"
-                effect="plain"
-              >
-                {{ row.type === 'grant' ? '赠送' : row.type === 'deduct' ? '扣减' : row.type }}
-              </el-tag>
-              <span
-                class="text-[10px] px-1 py-0.5 rounded"
-                :class="sourceClass(row.source)"
-              >{{ sourceLabel(row.source) }}</span>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="变动" width="100" align="right">
-          <template #default="{ row }">
-            <span
-              :class="row.amount > 0 ? 'text-success-600' : 'text-danger-600'"
-              class="font-medium"
-            >
-              {{ fmtAmount(row.amount) }}
-            </span>
-          </template>
-        </el-table-column>
-        <el-table-column label="余额后" width="100" align="right" prop="balance_after" />
-        <el-table-column label="操作人" min-width="160">
-          <template #default="{ row }">
-            <span class="text-ink-700">
-              {{ row.operator_uid === 'SYSTEM' ? '系统' : (row.operator_uid.slice(0, 12) + (row.operator_uid.length > 12 ? '…' : '')) }}
-            </span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="reason" label="备注" min-width="160" show-overflow-tooltip />
-      </el-table>
-      <el-empty v-else description="暂无流水" :image-size="60" />
-    </el-card>
   </div>
 </template>

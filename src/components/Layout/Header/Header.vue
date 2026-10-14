@@ -14,7 +14,8 @@ import 'element-plus/theme-chalk/display.css'
 import { ToolsInfo } from '@/components/Tools/tools.type.ts';
 
 import UserBalanceBadge from '@/components/User/UserBalanceBadge.vue'
-import { PRODUCTS, productJumpPath } from './products'
+import { productJumpPath, type ProductInfo } from './products'
+import { fetchProductsConfig } from '@/api/site-config'
 import { useRouter, useRoute } from 'vue-router'
 
 const router = useRouter()
@@ -61,6 +62,13 @@ const hideTimeout = ref<number | null>(null)
 // 「更多产品」下拉（兄弟产品矩阵），交互与用户菜单一致：桌面悬停 + 点击切换
 const productsMenuVisible = ref(false)
 const productsHideTimeout = ref<number | null>(null)
+
+// 产品矩阵来自站点配置（后台可开关/增删）；拉取完成前不渲染入口，
+// 全部下线时配置为空数组，整个「更多产品」按钮隐藏
+const products = ref<ProductInfo[]>([])
+fetchProductsConfig().then((list) => {
+  products.value = list
+})
 
 // 计算属性：判断用户是否已登录
 const isLoggedIn = computed(() => userStore.getLoginStatus)
@@ -381,8 +389,8 @@ onUnmounted(() => {
     </div>
 
     <div class="flex items-center gap-2 shrink-0 c-xs:pr-3">
-      <!-- 更多产品：兄弟产品矩阵下拉 -->
-      <div class="relative products-menu-container">
+      <!-- 更多产品：兄弟产品矩阵下拉（后台站点设置可配置；列表为空时整体隐藏） -->
+      <div v-if="products.length" class="relative products-menu-container">
         <button
           type="button"
           class="h-10 c-xs:w-10 c-xs:px-0 px-3 rounded-full bg-white dark:bg-surface-0 shadow-sm shadow-ink-950/5 border border-border-subtle flex items-center justify-center gap-1.5 text-ink-500 hover:text-accent-600 hover:border-accent-300 transition-colors cursor-pointer"
@@ -412,7 +420,7 @@ onUnmounted(() => {
           @mouseleave="hideProductsMenu"
         >
           <a
-            v-for="p in PRODUCTS"
+            v-for="p in products"
             :key="p.key"
             role="menuitem"
             :href="productJumpPath(p.key)"

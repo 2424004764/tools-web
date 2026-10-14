@@ -72,7 +72,8 @@ export async function onRequest(context) {
         status: 200,
         headers: {
           'Content-Type': contentType,
-          'Content-Disposition': `inline; filename="ai-image.${ext}"`,
+          // 用记录 uuid 命名：每张图名字唯一，浏览器不会提示“文件已存在”
+          'Content-Disposition': `inline; filename="${id}.${ext}"`,
           'Cache-Control': 'public, max-age=86400',
           ...corsHeaders,
         },
@@ -96,8 +97,9 @@ export async function onRequest(context) {
       status: 200,
       headers: {
         'Content-Type': contentType,
-        // 提示浏览器下载，文件名由前端 autoDown 决定，这里给个 fallback
-        'Content-Disposition': `inline; filename="ai-image.${ext}"`,
+        // 用记录 uuid 命名（id 即 crypto.randomUUID()），前端 autoDown 直接采用；
+        // 固定叫 ai-image.png 会导致每次下载都重名，浏览器提示“文件已存在”
+        'Content-Disposition': `inline; filename="${id}.${ext}"`,
         // 缓存：图片生成后 URL 一般永久有效，给 1 天
         'Cache-Control': 'public, max-age=86400',
         ...corsHeaders,

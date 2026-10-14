@@ -2,7 +2,7 @@
 // GET /api/hotlist              -> 返回所有源（合并概览）
 // GET /api/hotlist/:type        -> 返回单个源
 //
-// 支持的 type: toutiao | sspai | github | hn
+// 支持的 type: toutiao | sspai | github | hn | baidu | v2ex
 //
 // 数据源历史：
 //   v1 用过 vvhan 聚合 API，但当时该域名在 Worker 网络下频繁超时/失败。
@@ -28,6 +28,8 @@ const SOURCES = {
   sspai: { title: '少数派', fetcher: fetchSspai },
   github: { title: 'GitHub Trending', fetcher: fetchGithub },
   hn: { title: 'Hacker News', fetcher: fetchHackerNews },
+  baidu: { title: '百度热搜', fetcher: fetchBaidu },
+  v2ex: { title: 'V2EX', fetcher: fetchV2ex },
 }
 
 const COMMON_HEADERS = {
@@ -157,6 +159,51 @@ async function fetchHackerNews() {
         url: d.url,
         hot: `${d.score ?? 0} 分`,
       })),
+  }
+}
+
+// ---------- 百度热搜 ----------
+// top.baidu.com 官方接口，对海外机房 IP 无风控。
+// 注：国内三大热榜里 B站（全端点 412）、知乎（401 鉴权）、微博（需 cookie）
+// 均封 Cloudflare 机房 IP，实测仅百度放行，故「全国」维度用它补位。
+// 字段：data.cards[].content（结构在 content / content[].content 间变过，做扁平容错）
+// item: word / url / hotScore
+async function fetchBaidu() {
+  const resp = await safeFetch('https://top.baidu.com/api/board?platform=pc&tab=realtime', {
+    headers: { ...COMMON_HEADERS, Referer: 'https://top.baidu.com/board' },
+  })
+  if (!resp.ok) throw new Error(`baidu ${resp.status}`)
+  const json = await resp.json()
+  const cards = Array.isArray(json?.data?.cards) ? json.data.cards : []
+  const raw = cards
+    .flatMap((c) => (Array.isArray(c?.content) ? c.content : []))
+    .flatMap((c) => (Array.isArray(c?.content) ? c.content : c?.word ? [c] : []))
+    .filter((it) => it && it.word)
+  if (!raw.length) throw new Error('baidu empty list')
+  return {
+    items: raw.slice(0, 20).map((it) => ({
+      title: it.word,
+      url: it.url || `https://www.baidu.com/s?wd=${encodeURIComponent(it.word)}`,
+      hot: formatHotNumber(it.hotScore),
+    })),
+  }
+}
+
+// ---------- V2EX ----------
+// 官方 v1 公开 API，无需 token（限速 120/h/IP），配 D1 缓存足够。
+// 字段：[{ title, url, replies }]
+async function fetchV2ex() {
+  const resp = await safeFetch('https://www.v2ex.com/api/topics/hot.json', {
+    headers: COMMON_HEADERS,
+  })
+  if (!resp.ok) throw new Error(`v2ex ${resp.status}`)
+  const list = await resp.json()
+  return {
+    items: (Array.isArray(list) ? list : []).slice(0, 20).map((it) => ({
+      title: it.title || '',
+      url: it.url || '',
+      hot: it.replies ? `${it.replies} 回复` : '',
+    })),
   }
 }
 

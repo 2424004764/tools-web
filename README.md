@@ -39,11 +39,13 @@
 在线站点：<a href="https://tool.fologde.com/" target="_blank">Tools-Web</a>
 
 ## 网站效果图
-<img width="1896" height="939" alt="image" src="https://github.com/user-attachments/assets/a84b26dc-561f-41b9-92a3-5c8ec8c34828" />
-<img width="1895" height="838" alt="image" src="https://github.com/user-attachments/assets/bc2e19b0-d788-460c-9199-93ae142b7dec" />
-<img width="1873" height="970" alt="image" src="https://github.com/user-attachments/assets/92784ca1-f570-43fc-888b-b7e95203e2f8" />
-<img width="1878" height="980" alt="image" src="https://github.com/user-attachments/assets/a9e2597e-5327-409d-a45f-c04f6546fdd7" />
-<img width="1721" height="866" alt="image" src="https://github.com/user-attachments/assets/2d6e6c4c-af25-49d3-9a19-354823a3d507" />
+
+> 截图于 2026-10，图片位于 [docs/screenshots/](docs/screenshots/)。
+
+<img width="1600" alt="首页（浅色模式）" src="docs/screenshots/home-light.webp" />
+<img width="1600" alt="首页（暗色模式）" src="docs/screenshots/home-dark.webp" />
+<img width="1600" alt="旅游地图" src="docs/screenshots/travel-map.webp" />
+<img width="1600" alt="AI 对话" src="docs/screenshots/ai-chat.webp" />
 
 
 ## 开始使用
@@ -109,6 +111,9 @@ pnpm deploy:cf --push
 
 # 构建 + 部署 + 全量推（忽略本地增量快照）
 pnpm deploy:cf --push --force
+
+# 跳过编译，直接复用现有 dist/ 部署（只改了 functions/ 后端代码时用）
+pnpm deploy:only
 ```
 
 > `dist/` 是本地构建产物，已加入 `.gitignore`，不提交到 Git。执行 `pnpm deploy:cf` 时会重新生成 `dist/` 并由 Wrangler 上传。
@@ -154,6 +159,14 @@ pnpm deploy:cf
 pnpm build:pro
 pnpm exec wrangler pages deploy dist --project-name tools-web
 ```
+
+如果这次只改了 `functions/`（后端），前端没动，可以跳过构建、直接复用上次构建的 `dist/` 部署：
+
+```bash
+pnpm deploy:only
+```
+
+等效于 `pnpm exec wrangler pages deploy dist --project-name tools-web`：上传现有 `dist/` 静态资源，Functions 由根目录 `functions/` 打包，会带上最新后端代码。注意 `dist/` 必须是上次 `build:pro` 的产物且没被删；如果改了 `src/` 下的前端代码但没编译，线上不会体现。
 
 部署前请确认 `.env.production` 已正确配置，并已在 Cloudflare Pages 控制台配置 D1、KV、环境变量和密钥绑定。
 

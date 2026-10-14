@@ -1,15 +1,16 @@
 <script setup lang="ts">
-// 博客详情页：Markdown 正文渲染 + 相关工具推荐（引流位）+ 标签
+// 博客详情页：Markdown 正文渲染 + 左侧文章目录（自动识别 h2/h3）+ 相关工具推荐（引流位）+ 标签
 // 评论区由 App.vue 的全局 Discuss 自动挂载（page_path = /blog/<slug>）
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { fetchBlogPost, type BlogPost } from '@/api/blog'
-import { renderMarkdown } from './blog-markdown'
+import { renderMarkdownWithToc } from './blog-markdown'
 import { useToolsStore } from '@/store/modules/tools'
 import { functionsRequest } from '@/utils/functionsRequest'
 import type { ToolsInfo } from '@/components/Tools/tools.type'
 import View from '~icons/ep/view'
 import Back from '~icons/ep/back'
+import Menu from '~icons/ep/menu'
 import magicStick from '~icons/ep/magic-stick'
 
 const route = useRoute()
@@ -20,7 +21,40 @@ const loading = ref(true)
 const notFound = ref(false)
 const post = ref<BlogPost | null>(null)
 
-const html = computed(() => (post.value ? renderMarkdown(post.value.content) : ''))
+// 一次解析同时得到正文 HTML 与目录（markdown h2/h3 自动提取并注入锚点 id）
+const rendered = computed(() =>
+  post.value ? renderMarkdownWithToc(post.value.content) : { html: '', toc: [] },
+)
+const html = computed(() => rendered.value.html)
+const toc = computed(() => rendered.value.toc)
+
+// ---- 左侧目录交互（与 OAuthDocs 同一套模式：点击跳转 + 滚动高亮 + 移动端抽屉） ----
+const activeId = ref('')
+const tocDrawer = ref(false)
+
+const jumpTo = (id: string) => {
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  history.replaceState(null, '', `#${id}`)
+  tocDrawer.value = false
+}
+
+// 滚动高亮：取视口顶部以下最近的一个标题
+let ticking = false
+const onScroll = () => {
+  if (ticking) return
+  ticking = true
+  requestAnimationFrame(() => {
+    ticking = false
+    let current = ''
+    for (const item of toc.value) {
+      const el = document.getElementById(item.id)
+      if (!el) continue
+      if (el.getBoundingClientRect().top <= 120) current = item.id
+      else break
+    }
+    activeId.value = current
+  })
+}
 
 const tagsOf = computed(() =>
   String(post.value?.tags || '').split(',').map((t) => t.trim()).filter(Boolean),
@@ -97,6 +131,13 @@ const load = async () => {
     post.value = await fetchBlogPost(slug)
     document.title = `${post.value.title} | 博客`
     await loadRelatedTools()
+    // 正文渲染后初始化目录高亮；URL 带 #锚点 时直达对应章节
+    await nextTick()
+    onScroll()
+    const anchor = location.hash.slice(1)
+    if (anchor && document.getElementById(anchor)) {
+      document.getElementById(anchor)!.scrollIntoView({ block: 'start' })
+    }
   } catch (e: any) {
     // 404/其它错误统一按未找到处理
     notFound.value = true
@@ -109,11 +150,15 @@ watch(() => route.params.slug, (nv, ov) => {
   if (nv && nv !== ov && route.path.startsWith('/blog/')) load()
 })
 
-onMounted(load)
+onMounted(() => {
+  load()
+  window.addEventListener('scroll', onScroll, { passive: true })
+})
+onUnmounted(() => window.removeEventListener('scroll', onScroll))
 </script>
 
 <template>
-  <div class="max-w-4xl mx-auto px-4 pt-6 pb-2 w-full">
+  <div class="max-w-6xl mx-auto px-4 pt-6 pb-2 w-full">
     <!-- 加载中 -->
     <div v-if="loading" class="mt-16 text-center text-sm text-ink-400">加载中…</div>
 
@@ -124,6 +169,31 @@ onMounted(load)
     </div>
 
     <template v-else>
+      <div class="flex items-start gap-8">
+        <!-- 左侧目录：自动识别 markdown 正文里的 h2/h3 标题（桌面端） -->
+        <aside
+          v-if="toc.length"
+          class="hidden lg:block w-56 shrink-0 sticky top-6 max-h-[calc(100vh-48px)] overflow-y-auto pb-4"
+        >
+          <div class="text-xs font-medium text-ink-400 mb-2 px-3">目录</div>
+          <nav>
+            <a
+              v-for="item in toc"
+              :key="item.id"
+              :href="`#${item.id}`"
+              class="block py-1.5 pr-3 rounded-lg text-[13px] leading-snug transition-colors no-underline"
+              :class="[
+                item.level === 3 ? 'pl-7' : 'pl-3 font-medium',
+                activeId === item.id
+                  ? 'text-accent-600 bg-accent-100 dark:bg-accent-500/15'
+                  : 'text-ink-600 dark:text-ink-300 hover:text-ink-900 dark:hover:text-ink-100 hover:bg-surface-2 dark:hover:bg-surface-3',
+              ]"
+              @click.prevent="jumpTo(item.id)"
+            >{{ item.text }}</a>
+          </nav>
+        </aside>
+
+        <div class="flex-1 min-w-0 max-w-4xl mx-auto w-full">
       <article class="rounded-2xl border border-border-subtle bg-white dark:bg-surface-1 px-6 md:px-10 py-8">
         <!-- 标题与元信息 -->
         <h1 class="text-2xl md:text-3xl font-bold text-ink-900 dark:text-ink-100 leading-snug m-0">
@@ -237,6 +307,41 @@ onMounted(load)
           返回博客列表
         </button>
       </div>
+        </div>
+      </div>
+
+      <!-- 目录（移动端）：悬浮按钮 + 抽屉，避开右下角回到顶部按钮 -->
+      <template v-if="toc.length">
+        <button
+          type="button"
+          aria-label="文章目录"
+          title="文章目录"
+          class="lg:hidden fixed right-[30px] bottom-[112px] z-40 w-10 h-10 rounded-full bg-white dark:bg-surface-2 border border-border-subtle shadow-lg flex items-center justify-center text-ink-600 dark:text-ink-300 cursor-pointer hover:text-accent-600 transition-colors"
+          @click="tocDrawer = true"
+        >
+          <Menu class="w-4.5 h-4.5" aria-hidden="true" />
+        </button>
+        <el-drawer v-model="tocDrawer" size="260px" direction="ltr" :with-header="false" :lock-scroll="false">
+          <div class="h-full overflow-y-auto py-2">
+            <div class="text-xs font-medium text-ink-400 mb-2 px-3">目录</div>
+            <nav>
+              <a
+                v-for="item in toc"
+                :key="item.id"
+                :href="`#${item.id}`"
+                class="block py-1.5 pr-3 rounded-lg text-[13px] leading-snug transition-colors no-underline"
+                :class="[
+                  item.level === 3 ? 'pl-7' : 'pl-3 font-medium',
+                  activeId === item.id
+                    ? 'text-accent-600 bg-accent-100 dark:bg-accent-500/15'
+                    : 'text-ink-600 dark:text-ink-300 hover:bg-surface-2 dark:hover:bg-surface-3',
+                ]"
+                @click.prevent="jumpTo(item.id)"
+              >{{ item.text }}</a>
+            </nav>
+          </div>
+        </el-drawer>
+      </template>
     </template>
   </div>
 </template>
@@ -257,6 +362,8 @@ onMounted(load)
   font-weight: 700;
   line-height: 1.4;
   margin: 1.6em 0 0.7em;
+  /* 目录锚点跳转时预留固定 header 的高度 */
+  scroll-margin-top: 76px;
 }
 html.dark .blog-markdown :deep(h1),
 html.dark .blog-markdown :deep(h2),

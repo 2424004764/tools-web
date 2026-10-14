@@ -454,6 +454,22 @@ const handleScroll = () => {
     }
   }
 
+  // 滚回顶部（首个分类区之上，检测不到活跃分类）：清掉滚动联动写入的 ?value=cate_X，
+  // 否则停留在顶部时刷新，会按残留的旧锚点重新定位而不是回到首页顶部
+  if (!activeCategory) {
+    if (componentStore.activeCategory) {
+      componentStore.setActiveCategory('')
+    }
+    if (route.query?.value) {
+      // 标记为滚动触发的更新，避免被当作菜单导航拉起锚点定位
+      isScrollTriggeredUpdate.value = true
+      router.replace({ path: '/' }).finally(() => {
+        isScrollTriggeredUpdate.value = false
+      })
+    }
+    return
+  }
+
   // 如果检测到的活跃分类与正在滚向的目标一致，跳过 URL 更新
   // 避免残余滚动事件又把 URL 改写成不同值（本组件 scrollToAnchor 或 Left 同锚点直滚时设置）
   const anchorLock = pendingScrollAnchor.value || componentStore.anchorScrollTarget

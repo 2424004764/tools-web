@@ -264,6 +264,20 @@ async function maybeRewritePageMeta(request, path, response, env) {
 
     const headers = new Headers(response.headers)
     headers.delete('Content-Length') // body 已变，交给运行时按实际长度生成
+
+    // ---- 页面 HTML 一律 no-store（2026-10 深链白屏二次事故）----
+    // _headers 只能按请求路径匹配：/ 与 /index.html 有 no-store 规则，
+    // 但工具页深链（/skill-poster/ 等 _routes.json 收录的 281 条路由）经本
+    // 中间件返回，只拿到 Pages 默认的 max-age=0 —— 实测该形式会被 zone 的
+    // Browser Cache TTL 改写成 max-age=14400，浏览器 4 小时内不再回源。
+    // 发版后旧 HTML 引用的旧 hash chunk 已删 → 白屏；index.html 的 inline
+    // 版本守卫会探测到并 reload，但普通导航仍命中同一份缓存，耗尽 2 次预算
+    // 后停在白屏，手动 F5（强制回源）才恢复。no-store 形式不会被 TTL 改写
+    // （与 _headers 的 / 规则同一结论）。HTML 只有 ~7KB 且 cf-cache-status
+    // 本就是 DYNAMIC，不回源到边缘缓存，重复回源成本可忽略。
+    headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+    headers.set('Pragma', 'no-cache')
+    headers.set('Expires', '0')
     headers.set('X-Page-Meta', 'rewritten')
     return new Response(out, {
       status: response.status,

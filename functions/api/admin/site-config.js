@@ -42,6 +42,72 @@ const ALLOWED_KEYS = {
     remark: 'giscus 页面映射方式（Mapping）：title / pathname / url / number',
     validate: (v) => (['title', 'pathname', 'url', 'number'].includes(v) ? v : null),
   },
+  products_matrix: {
+    remark:
+      '「更多产品」矩阵，JSON 数组：[{"key":"tiji","name":"题迹","desc":"一句话简介","url":"https://xxx","logo":"/images/logo/product-tiji.svg","enabled":true}]；key 为站内跳转白名单（小写字母/数字/连字符，全局唯一），enabled=false 隐藏该项，全部隐藏时前台不展示「更多产品」入口；留空 = 使用内置默认',
+    validate: validateProductsMatrix,
+  },
+  admin_dashboard_layout: {
+    remark:
+      '管理后台仪表盘卡片顺序，JSON 数组（元素为卡片 id），如 ["users","disabled","credits","tools","usage","topTools","slowlog","pending","transactions"]；只校验格式（卡片 id 由前端代码维护），未出现的卡片由前端按默认顺序补尾；留空 = 使用内置默认顺序',
+    validate: validateDashboardLayout,
+  },
+}
+
+// 校验仪表盘卡片顺序：JSON 字符串数组（id 去重、单个 ≤40 字符、总数 ≤50）；'' = 恢复默认顺序
+function validateDashboardLayout(v) {
+  const raw = String(v ?? '').trim()
+  if (raw === '') return ''
+
+  let arr
+  try {
+    arr = JSON.parse(raw)
+  } catch {
+    return null
+  }
+  if (!Array.isArray(arr) || arr.length > 50) return null
+
+  const seen = new Set()
+  for (const item of arr) {
+    if (typeof item !== 'string' || !/^[\w-]{1,40}$/.test(item) || seen.has(item)) return null
+    seen.add(item)
+  }
+  return JSON.stringify(arr)
+}
+
+// 校验并归一化「更多产品」JSON 配置
+// 入参为任意值，返回归一化后的紧凑 JSON 字符串；'' = 未配置（前台用内置默认），null = 不合法
+function validateProductsMatrix(v) {
+  const raw = String(v ?? '').trim()
+  if (raw === '') return ''
+
+  let arr
+  try {
+    arr = JSON.parse(raw)
+  } catch {
+    return null
+  }
+  if (!Array.isArray(arr) || arr.length > 50) return null
+
+  const seen = new Set()
+  const out = []
+  for (const item of arr) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return null
+    const key = String(item.key ?? '').trim().toLowerCase()
+    if (!/^[a-z0-9-]{1,40}$/.test(key) || seen.has(key)) return null
+    const name = String(item.name ?? '').trim()
+    if (!name || name.length > 30) return null
+    const desc = String(item.desc ?? '').trim()
+    if (desc.length > 60) return null
+    const url = String(item.url ?? '').trim()
+    if (!/^https?:\/\/\S+$/i.test(url)) return null
+    const logo = String(item.logo ?? '').trim()
+    if (!/^(https?:\/\/\S+|\/\S+)$/i.test(logo)) return null
+    seen.add(key)
+    // enabled 缺省视为开启，显式 false 才隐藏
+    out.push({ key, name, desc, url, logo, enabled: item.enabled !== false })
+  }
+  return JSON.stringify(out)
 }
 
 function json(data, status = 200) {

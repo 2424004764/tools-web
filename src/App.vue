@@ -152,10 +152,13 @@ const isMeCreditsPage = computed(() => {
              类型切换会因 leave 动画挂起而永远停在空注释占位，导致内容区空白（2026-10 首页空白事故）；
              首帧 Component 为空时 transition 的子节点是注释节点，注释的 leave 立即完成，不受影响 -->
         <LayoutSkeleton v-if="!route.matched.length" variant="page" />
+        <!-- 路由切换不用 <transition>：out-in 的进度完全依赖 双重RAF + transitionend 回调链，
+             任何一环没跑（页面不可见 RAF 冻结 / reduced-motion 竞态）leave 就永久挂起，
+             旧页卡在 opacity:0、新页永不挂载 → 内容区空白（2026-10 退出登录后首页空白事故）。
+             改用纯 CSS 进入动画：动画只作用于新页首帧渲染，不阻塞 DOM 切换、没有可卡死的 JS 状态，
+             最坏情况（帧冻结/减少动效）只是没有动画，内容始终立即可见 -->
         <router-view v-slot="{ Component, route }">
-          <transition name="fade" mode="out-in">
-            <component :is="Component" :key="route.path"></component>
-          </transition>
+          <component :is="Component" :key="route.path" class="page-enter"></component>
         </router-view>
         <Discuss v-if="!isSpecialPage && !isHomePage && !isMeCreditsPage && !componentStore.hideAllUI" />
       </el-main>
@@ -189,23 +192,10 @@ const isMeCreditsPage = computed(() => {
 </template>
 
 <style scoped>
-/* 更轻量的淡入淡出动画 */
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-
-.fade-enter-to,
-.fade-leave-from {
-  opacity: 1;
-}
-
-.fade-enter-active {
-  transition: opacity 0.15s ease-out;
-}
-
-.fade-leave-active {
-  transition: opacity 0.1s ease-in;
+/* 站点由 window 统一滚动，el-main 保持 EP 默认的 overflow:auto 会让内部所有
+   position:sticky 相对这个永不滚动的容器定位而失效（元素跟着页面滚走），放开裁剪 */
+.el-main {
+  overflow: visible;
 }
 
 /* 回到顶部按钮淡入淡出 */
