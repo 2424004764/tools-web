@@ -27,9 +27,9 @@
 
       // 1) 取当前页面真正在跑的入口 hash
       function readCurrentHash() {
-        var scripts = document.querySelectorAll('script[src*="/js/index-"]');
+        var scripts = document.querySelectorAll('script[src*="/js/"]');
         for (var i = 0; i < scripts.length; i++) {
-          var sm = scripts[i].src.match(/\/js\/index-([a-f0-9]+)\.js/);
+          var sm = scripts[i].src.match(/\/js\/([a-z0-9]+)-index-[a-f0-9]+\.js/i);
           if (sm) return sm[1];
         }
         return '';
@@ -45,7 +45,7 @@
           .then(function(r) { return r.ok ? r.text() : '' })
           .then(function(html) {
             if (!html) return;
-            var m = html.match(/\/js\/index-([a-f0-9]+)\.js/);
+            var m = html.match(/\/js\/([a-z0-9]+)-index-[a-f0-9]+\.js/i);
             var serverHash = m ? m[1] : '';
             if (!serverHash) return; // 服务端格式变化或被截断，宁可不刷
             if (serverHash === currentHash) {

@@ -192,30 +192,25 @@ router.onError((error) => {
       'padding:10px 20px;border-radius:8px;border:1px solid #dcdfe6;background:#fff;color:#409EFF;' +
       'font-size:14px;cursor:pointer;font-weight:500'
     cleanBtn.textContent = '🧹 清理缓存并刷新'
-    cleanBtn.addEventListener('click', () => {
+    cleanBtn.addEventListener('click', async () => {
+      cleanBtn.disabled = true
       try {
-        if (navigator.serviceWorker) {
-          navigator.serviceWorker.getRegistrations().then((rs) =>
-            Promise.all(
-              rs
-                .filter((r) => {
-                  const url = new URL(r.active?.scriptURL || r.installing?.scriptURL || r.waiting?.scriptURL || '')
-                  return url.origin === location.origin && /\/(?:dev-)?sw\.js$/.test(url.pathname)
-                })
-                .map((r) => r.unregister()),
-            ),
-          )
+        if ('serviceWorker' in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations()
+          await Promise.all(registrations.map(async (registration) => {
+            const scriptURL = registration.active?.scriptURL || registration.installing?.scriptURL || registration.waiting?.scriptURL
+            if (!scriptURL) return
+            const url = new URL(scriptURL)
+            if (url.origin === location.origin && /\/(?:dev-)?sw\.js$/.test(url.pathname)) {
+              await registration.unregister()
+            }
+          }))
         }
-        if (window.caches) {
-          caches.keys().then((ks) =>
-            Promise.all(ks.filter((k) => k.startsWith('tools-web-pwa-')).map((k) => caches.delete(k))),
-          )
+        if ('caches' in window) {
+          const keys = await caches.keys()
+          await Promise.all(keys.filter((key) => key.startsWith('tools-web-pwa-')).map((key) => caches.delete(key)))
         }
-        try {
-          sessionStorage.clear()
-        } catch (e) {
-          // 忽略
-        }
+        sessionStorage.clear()
       } finally {
         location.replace(buildReloadUrl())
       }

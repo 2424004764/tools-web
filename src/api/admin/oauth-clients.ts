@@ -6,6 +6,7 @@ export interface OAuthClient {
   name: string
   description: string
   logo_url: string
+  app_url: string
   redirect_uris: string
   is_disabled: number
   /** 子站专属 R2 桶名：空 = 未开通子站上传 */
@@ -32,6 +33,7 @@ export async function createOAuthClient(payload: {
   name: string
   description?: string
   logo_url?: string
+  app_url?: string
   redirect_uris: string
   r2_bucket?: string
 }): Promise<{ client_id: string; client_secret: string; name: string }> {
@@ -45,6 +47,7 @@ export async function updateOAuthClient(
     name: string
     description: string
     logo_url: string
+    app_url: string
     redirect_uris: string
     is_disabled: boolean
     r2_bucket: string

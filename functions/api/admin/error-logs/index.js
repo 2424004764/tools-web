@@ -91,9 +91,9 @@ export async function onRequest(context) {
       args.push(uidFilter)
     }
     if (keyword) {
-      where.push('(error_message LIKE ? OR error_stack LIKE ? OR upstream_body LIKE ? OR path LIKE ?)')
+      where.push('(error_message LIKE ? OR error_stack LIKE ? OR upstream_body LIKE ? OR path LIKE ? OR extra LIKE ?)')
       const like = `%${keyword}%`
-      args.push(like, like, like, like)
+      args.push(like, like, like, like, like)
     }
     if (resolvedFilter === '0' || resolvedFilter === '1') {
       where.push('is_resolved = ?')

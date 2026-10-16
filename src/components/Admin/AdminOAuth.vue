@@ -32,6 +32,7 @@ const form = reactive({
   name: '',
   description: '',
   logo_url: '',
+  app_url: '',
   redirect_uris: '',
   r2_bucket: '',
 })
@@ -88,6 +89,7 @@ const openCreate = () => {
   form.name = ''
   form.description = ''
   form.logo_url = ''
+  form.app_url = ''
   form.redirect_uris = ''
   form.r2_bucket = ''
   dialogVisible.value = true
@@ -98,6 +100,7 @@ const openEdit = (row: OAuthClient) => {
   form.name = row.name
   form.description = row.description
   form.logo_url = row.logo_url
+  form.app_url = row.app_url || ''
   form.redirect_uris = row.redirect_uris
   form.r2_bucket = row.r2_bucket || ''
   dialogVisible.value = true
@@ -279,7 +282,16 @@ onMounted(() => {
               {{ row.name.slice(0, 1) }}
             </div>
             <div class="flex flex-col min-w-0">
-              <span class="font-medium text-ink-900 truncate">{{ row.name }}</span>
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="font-medium text-ink-900 truncate">{{ row.name }}</span>
+                <a
+                  v-if="row.app_url"
+                  :href="row.app_url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-xs text-accent-600 hover:underline shrink-0"
+                >访问应用 ↗</a>
+              </div>
               <span v-if="row.description" class="text-xs text-ink-500 truncate max-w-[200px]">{{ row.description }}</span>
             </div>
           </div>
@@ -369,6 +381,9 @@ onMounted(() => {
         </el-form-item>
         <el-form-item label="Logo 地址">
           <el-input v-model="form.logo_url" placeholder="https://…（可选，展示在授权确认页）" />
+        </el-form-item>
+        <el-form-item label="应用连接">
+          <el-input v-model="form.app_url" placeholder="https://example.com（可选，列表中用于访问应用）" />
         </el-form-item>
         <el-form-item label="回调地址" required>
           <el-input

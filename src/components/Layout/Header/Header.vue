@@ -59,6 +59,11 @@ const { isDark, toggleTheme } = useTheme()
 const userMenuVisible = ref(false)
 const hideTimeout = ref<number | null>(null)
 
+// 触屏设备没有悬停语义：tap 会先合成 mouseenter 再派发 click，
+// 悬停展开会被随后的 click 切换立即关掉，导致触屏永远打不开菜单。
+// 悬停展开仅在真正支持 hover 的指针设备（PC）生效，触屏只走点击切换。
+const canHover = typeof window !== 'undefined' && window.matchMedia('(hover: hover)').matches
+
 // 「更多产品」下拉（兄弟产品矩阵），交互与用户菜单一致：桌面悬停 + 点击切换
 const productsMenuVisible = ref(false)
 const productsHideTimeout = ref<number | null>(null)
@@ -210,6 +215,7 @@ const toggleUserMenu = () => {
 
 // 显示用户菜单
 const showUserMenu = () => {
+  if (!canHover) return
   // 清除之前的隐藏定时器
   if (hideTimeout.value) {
     clearTimeout(hideTimeout.value)
@@ -243,6 +249,7 @@ const toggleProductsMenu = () => {
 
 // 显示产品下拉
 const showProductsMenu = () => {
+  if (!canHover) return
   if (productsHideTimeout.value) {
     clearTimeout(productsHideTimeout.value)
     productsHideTimeout.value = null
@@ -410,30 +417,33 @@ onUnmounted(() => {
           </svg>
         </button>
 
-        <!-- 产品下拉面板 -->
+        <!-- 产品下拉面板：PC 两列列表；手机端两列图标磁贴。max-h+滚动兜底，产品再多也不溢出屏幕 -->
         <div
           v-show="productsMenuVisible"
           role="menu"
           aria-label="更多产品"
-          class="absolute top-full right-0 mt-1 w-[300px] bg-surface-0 dark:bg-surface-0 border border-border-default rounded-2xl shadow-lg py-1.5 z-50 divide-y divide-border-subtle c-xs:fixed c-xs:top-16 c-xs:right-3 c-xs:left-3 c-xs:w-auto c-xs:mt-0"
+          class="absolute top-full right-0 mt-1 w-[600px] bg-surface-0 dark:bg-surface-0 border border-border-default rounded-2xl shadow-lg py-1.5 z-50 max-h-[calc(100vh-6rem)] overflow-y-auto overscroll-contain c-xs:fixed c-xs:top-16 c-xs:right-3 c-xs:left-3 c-xs:w-auto c-xs:mt-0"
           @mouseenter="showProductsMenu"
           @mouseleave="hideProductsMenu"
         >
-          <a
-            v-for="p in products"
-            :key="p.key"
-            role="menuitem"
-            :href="productJumpPath(p.key)"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="flex items-center gap-3 px-4 py-2.5 hover:bg-accent-50 dark:hover:bg-surface-3 transition-colors group"
-          >
-            <img :src="p.logo" :alt="p.name + '图标'" class="w-10 h-10 rounded-xl shrink-0" loading="lazy" />
-            <span class="min-w-0">
-              <span class="block text-[15px] leading-5 font-semibold text-ink-800 group-hover:text-accent-700 dark:group-hover:text-accent-300 transition-colors">{{ p.name }}</span>
-              <span class="block text-xs leading-4 text-ink-400 truncate mt-0.5">{{ p.desc }}</span>
-            </span>
-          </a>
+          <div class="grid grid-cols-2 gap-x-1 c-xs:grid-cols-3">
+            <a
+              v-for="p in products"
+              :key="p.key"
+              role="menuitem"
+              :href="productJumpPath(p.key)"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-accent-50 dark:hover:bg-surface-3 transition-colors group c-xs:flex-col c-xs:items-center c-xs:gap-1.5 c-xs:px-1 c-xs:py-3 c-xs:text-center"
+            >
+              <img :src="p.logo" :alt="p.name + '图标'" class="w-10 h-10 rounded-xl shrink-0" loading="lazy" />
+              <span class="min-w-0">
+                <span class="block text-[15px] leading-5 font-semibold text-ink-800 group-hover:text-accent-700 dark:group-hover:text-accent-300 transition-colors">{{ p.name }}</span>
+                <!-- 手机端磁贴放不下描述，只保留名称 -->
+                <span class="block text-xs leading-4 text-ink-400 truncate mt-0.5 c-xs:hidden">{{ p.desc }}</span>
+              </span>
+            </a>
+          </div>
         </div>
       </div>
 

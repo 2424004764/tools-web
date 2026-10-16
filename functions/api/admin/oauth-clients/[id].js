@@ -1,8 +1,8 @@
 // Admin OAuth 客户端单条
-// PUT    /api/admin/oauth-clients/:id  body: { name?, description?, logo_url?, redirect_uris?, is_disabled? }
+// PUT    /api/admin/oauth-clients/:id  body: { name?, description?, logo_url?, app_url?, redirect_uris?, is_disabled? }
 // DELETE /api/admin/oauth-clients/:id  （同时清理授权记录并撤销所有令牌）
 // 鉴权已在 api/admin/_middleware.js 完成
-import { normalizeRedirectUris, sanitizeText } from '../../_lib/oauth-client-utils.js'
+import { normalizeRedirectUris, normalizeAppUrl, sanitizeText } from '../../_lib/oauth-client-utils.js'
 
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'PUT, DELETE, OPTIONS',
@@ -70,6 +70,12 @@ export async function onRequest(context) {
       sets.push('logo_url = ?')
       args.push(sanitizeText(body.logo_url, 500))
     }
+    if (body.app_url !== undefined) {
+      const appUrl = normalizeAppUrl(body.app_url)
+      if (appUrl.error) return jsonError(appUrl.error)
+      sets.push('app_url = ?')
+      args.push(appUrl.value)
+    }
     if (body.r2_bucket !== undefined) {
       // 子站专属 R2 桶名：空 = 未开通子站上传；只能小写字母数字和连字符（R2 桶名规范）
       const bucketName = String(body.r2_bucket || '').trim()
@@ -102,7 +108,7 @@ export async function onRequest(context) {
 
     const row = await db
       .prepare(
-        `SELECT client_id, name, description, logo_url, redirect_uris, is_disabled, r2_bucket, created_at, updated_at
+        `SELECT client_id, name, description, logo_url, app_url, redirect_uris, is_disabled, r2_bucket, created_at, updated_at
          FROM oauth_clients WHERE client_id = ?`,
       )
       .bind(id)

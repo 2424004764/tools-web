@@ -40,9 +40,9 @@ const LAST_RELOAD_TIME_KEY = '__last_reload_ts__'
 let currentFingerprint = ''
 function readCurrentFingerprint(): string {
   if (currentFingerprint) return currentFingerprint
-  const scripts = document.querySelectorAll<HTMLScriptElement>('script[src*="/js/index-"]')
+  const scripts = document.querySelectorAll<HTMLScriptElement>('script[src*="/js/"]')
   for (const s of Array.from(scripts)) {
-    const m = s.src.match(/\/js\/index-([a-f0-9]+)\.js/)
+    const m = s.src.match(/\/js\/([a-z0-9]+)-index-[a-f0-9]+\.js/i)
     if (m) {
       currentFingerprint = m[1]
       return currentFingerprint
@@ -70,7 +70,7 @@ async function probeServerFingerprint(): Promise<string> {
       })
       if (!res.ok) return ''
       const html = await res.text()
-      const m = html.match(/\/js\/index-([a-f0-9]+)\.js/)
+      const m = html.match(/\/js\/([a-z0-9]+)-index-[a-f0-9]+\.js/i)
       return m ? m[1] : ''
     } catch {
       return ''
