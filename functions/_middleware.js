@@ -101,6 +101,25 @@ async function captureApiError(context, response, path, startedAt, overrides = {
   // 业务代码通过 attachUpstreamError() 挂上来的上游细节（中间件自身看不到）
   const detail = (context.data && context.data[UPSTREAM_ERROR_KEY]) || {}
 
+  let extra = detail.extra || null
+  if (path === '/api/ai-proxy') {
+    try {
+      const requestUrl = new URL(request.url)
+      const referrer = request.headers.get('Referer')
+      if (referrer) {
+        const sourceUrl = new URL(referrer)
+        if (sourceUrl.origin === requestUrl.origin) {
+          const existingExtra = extra && typeof extra === 'object' && !Array.isArray(extra)
+            ? extra
+            : extra ? { context: extra } : {}
+          extra = { ...existingExtra, toolPath: sourceUrl.pathname }
+        }
+      }
+    } catch {
+      // Ignore malformed or unavailable referrers.
+    }
+  }
+
   let uid = null
   try {
     uid = await extractUidFromRequest(request, env)
@@ -137,7 +156,7 @@ async function captureApiError(context, response, path, startedAt, overrides = {
     colo,
     userAgent: request.headers.get('User-Agent') || null,
     durationMs: Date.now() - startedAt,
-    extra: detail.extra || null,
+    extra,
   })
 }
 
@@ -299,6 +318,26 @@ export async function onRequest(context) {
   const path = new URL(request.url).pathname
   const startedAt = Date.now()
 
+  // Static assets bypass IP-ban lookups and response wrapping. Missing code assets must never receive HTML.
+  if (/\.(js|css|png|jpg|svg|ico|woff2?|ttf|webp|json|xml|txt)$/.test(path)) {
+    const response = await context.next()
+    const contentType = response.headers.get('Content-Type') || ''
+    const expectedType = path.startsWith('/js/')
+      ? /(?:java|ecma)script/i
+      : path.startsWith('/css/') ? /text\/css/i : null
+    if (expectedType && (response.status !== 200 && response.status !== 304 || (response.status === 200 && !expectedType.test(contentType)))) {
+      return new Response(null, {
+        status: 404,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+          'Content-Type': 'text/plain; charset=utf-8',
+          'X-Content-Type-Options': 'nosniff',
+        },
+      })
+    }
+    return response
+  }
+
   // ---- IP 封禁拦截（ip_bans 表，后台「工具使用记录」页管理）----
   // 管理端点豁免：若管理员 IP 被误封（如与滥用者同一出口 IP），仍能进后台解封；
   // /api/admin/* 本身有 JWT + is_admin 鉴权，豁免不构成暴露面
@@ -316,11 +355,6 @@ export async function onRequest(context) {
         headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
       })
     }
-  }
-
-  // 静态资源直通：不经过任何 middleware 处理，避免 context.next() 包装导致 stream 断裂
-  if (/\.(js|css|png|jpg|svg|ico|woff2?|ttf|webp|json|xml|txt)$/.test(path)) {
-    return context.next()
   }
 
   const origin = request.headers.get('Origin')

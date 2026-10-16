@@ -1,9 +1,9 @@
 // Admin OAuth 客户端列表 / 创建
 // GET  /api/admin/oauth-clients?page=&pageSize=&keyword=
-// POST /api/admin/oauth-clients  body: { name, description?, logo_url?, redirect_uris }
+// POST /api/admin/oauth-clients  body: { name, description?, logo_url?, app_url?, redirect_uris }
 // 鉴权已在 api/admin/_middleware.js 完成
 import { encryptSecret } from '../../../utils/crypto-secret.js'
-import { sanitizeText, normalizeRedirectUris, randomHex } from '../../_lib/oauth-client-utils.js'
+import { sanitizeText, normalizeRedirectUris, normalizeAppUrl, randomHex } from '../../_lib/oauth-client-utils.js'
 
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -53,7 +53,7 @@ export async function onRequest(context) {
 
       const list = await db
         .prepare(
-          `SELECT c.client_id, c.name, c.description, c.logo_url, c.redirect_uris, c.is_disabled, c.r2_bucket,
+          `SELECT c.client_id, c.name, c.description, c.logo_url, c.app_url, c.redirect_uris, c.is_disabled, c.r2_bucket,
                   c.created_at, c.updated_at,
                   (SELECT COUNT(*) FROM oauth_user_consents k WHERE k.client_id = c.client_id) AS granted_users
            FROM oauth_clients c ${whereSql}
@@ -84,14 +84,17 @@ export async function onRequest(context) {
       const uris = normalizeRedirectUris(body.redirect_uris)
       if (uris.error) return jsonError(uris.error)
 
+      const appUrl = normalizeAppUrl(body.app_url)
+      if (appUrl.error) return jsonError(appUrl.error)
+
       const clientId = 'tc_' + randomHex(8)
       const clientSecret = 'tcs_' + randomHex(24)
       const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
 
       await db
         .prepare(
-          `INSERT INTO oauth_clients (client_id, client_secret, name, description, logo_url, redirect_uris, is_disabled, r2_bucket, created_by, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)`,
+          `INSERT INTO oauth_clients (client_id, client_secret, name, description, logo_url, app_url, redirect_uris, is_disabled, r2_bucket, created_by, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)`,
         )
         .bind(
           clientId,
@@ -99,6 +102,7 @@ export async function onRequest(context) {
           name,
           sanitizeText(body.description, 200),
           sanitizeText(body.logo_url, 500),
+          appUrl.value,
           uris.value,
           sanitizeText(body.r2_bucket, 200),
           context.data?.adminUid || null,

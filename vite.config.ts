@@ -2,6 +2,7 @@ import { defineConfig, loadEnv, type Plugin } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { createSvgIconsPlugin } from 'vite-plugin-svg-icons'
 import path from 'path'
+import { randomUUID } from 'node:crypto'
 import { execSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import Components from 'unplugin-vue-components/vite'
@@ -176,9 +177,11 @@ export default defineConfig(({command, mode}) => {
   const now = new Date()
   const buildTimeISO = isProd ? now.toISOString() : ''
   const buildTimeLocal = isProd ? formatLocalTime(now) : ''
+  const releaseId = isProd ? randomUUID().replace(/-/g, '') : 'dev'
 
   return {
     define: {
+      // 每次生产构建生成新发布号，避免复用前一版本的浏览器 HTTP 缓存资源 URL。
       'process.env.NODE_ENV': JSON.stringify(mode),
       // 在 TS 中以 declare const 暴露，详见 src/vite-env.d.ts
       '__BUILD_TIME__': JSON.stringify(buildTimeISO),
@@ -246,18 +249,10 @@ export default defineConfig(({command, mode}) => {
           // 之前用 `**/*.{js,css,html,ico,png,svg,woff2}` 会把 dist 里 900+ 个文件
           // （全部 80+ 工具路由的 chunk、字体、图片，共 14MB）打进 precache，
           // 首访/发版后 Service Worker 在后台整站下载一遍，网络面板里 700+ 请求。
-          globPatterns: [
-            'js/index-*.js',
-            'js/vue-vendor-*.js',
-            'js/element-plus-*.js',
-            'js/codemirror-*.js',
-            'css/index-*.css',
-          ],
+          globPatterns: [],
           runtimeCaching: [
-            // HTML 导航：NetworkFirst（3s 超时/断网回退最近缓存），杜绝 SW 用旧壳
-            // 应答导航的发版竞态。鉴权回调 / API / 短链 / SEO 文件不进 SW
-            // （沿用原 navigateFallbackDenylist 语义：OAuth 回调带一次性 code，
-            // 被缓存或替换都会破坏登录流程）
+            // 在线页面导航始终取部署端 HTML，避免旧壳引用已淘汰的资源。
+            // OAuth 回调 / API / 短链 / SEO 文件不进入此规则。
             {
               urlPattern: ({ request, url }) => {
                 if (request.mode !== 'navigate') return false
@@ -267,22 +262,13 @@ export default defineConfig(({command, mode}) => {
                 if (/^\/(?:sitemap(?:-blog)?\.xml|robots\.txt|googlee80af792a405bec5\.html)$/.test(p)) return false
                 return true
               },
-              handler: 'NetworkFirst',
-              options: {
-                cacheName: 'tools-web-pwa-html',
-                networkTimeoutSeconds: 3,
-                expiration: { maxEntries: 30, maxAgeSeconds: 7 * 24 * 60 * 60 },
-              },
+              handler: 'NetworkOnly',
             },
-            // 其余路由的 JS/CSS：访问过哪个工具就缓存哪个，后续可离线复用
+            // Script and stylesheet requests always go to the deployment origin.
             {
               urlPattern: ({ request }) =>
                 request.destination === 'script' || request.destination === 'style',
-              handler: 'StaleWhileRevalidate',
-              options: {
-                cacheName: 'tools-web-pwa-assets',
-                expiration: { maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 * 30 },
-              },
+              handler: 'NetworkOnly',
             },
             // 字体：内容不变，长期缓存
             {
@@ -361,11 +347,11 @@ export default defineConfig(({command, mode}) => {
             'charts': ['echarts'],
             'codemirror': ['codemirror', '@codemirror/commands', '@codemirror/lang-javascript', '@codemirror/lang-json'],
           },
-          chunkFileNames: 'js/[name]-[hash].js',
-          entryFileNames: 'js/[name]-[hash].js',
+          chunkFileNames: `js/${releaseId}-[name]-[hash].js`,
+          entryFileNames: `js/${releaseId}-[name]-[hash].js`,
           assetFileNames: (assetInfo) => {
-            if (assetInfo.name.endsWith('.css')) return 'css/[name]-[hash][extname]'
-            return 'assets/[name]-[hash][extname]'
+            if (assetInfo.name.endsWith('.css')) return `css/${releaseId}-[name]-[hash][extname]`
+            return `assets/${releaseId}-[name]-[hash][extname]`
           },
         }
       },

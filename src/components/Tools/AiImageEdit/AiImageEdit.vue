@@ -273,7 +273,8 @@ const openHistory = () => {
 // ============ 共享状态（各 composable 的输入） ============
 // 用 reactive 让 slot 内部属性（status/elapsedSeconds 等）变更触发更新
 const results = reactive<ResultSlot[]>([])
-// 批次级 loading：只要还有任意 slot 是 pending 就保持 true
+// 批次级 loading：仅「开始生成」的整批请求期间为 true；
+// 单格重试不走它（重试之间互不阻塞），在途重试由 useGenerate 内的 retryingCount 推导
 const isBatchLoading = ref(false)
 
 // ============ 组合各功能 composable ============
@@ -322,7 +323,8 @@ const {
   savedGroupIds, savedImageCount, successfulResults, autoSaveSlot,
 } = save
 const {
-  btnRef, canGenerate, concurrencyHint, generateImage, retrySlot,
+  btnRef, canGenerate, concurrencyHint, isAnyLoading, retryingCount,
+  generateImage, retrySlot,
 } = gen
 const { formatElapsed, phaseText } = slotVisuals
 
@@ -447,7 +449,7 @@ const openInImgCut = (slot: ResultSlot) => {
 // 生成中拦截页面关闭/刷新：AI 生图要 30s~5 分钟，误关会导致请求终止且积分不返还。
 // preventDefault + returnValue 让浏览器弹原生确认框（文案由浏览器决定，前端无法自定义）。
 const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-  if (isBatchLoading.value) {
+  if (isAnyLoading.value) {
     e.preventDefault()
     e.returnValue = ''
   }
@@ -488,8 +490,13 @@ const notifyBatchDone = () => {
 }
 
 watch(isBatchLoading, (val, oldVal) => {
-  // 批次从「进行中」→「结束」（整批或最后一张重试收尾）时尝试通知
+  // 批次从「进行中」→「结束」（整批收尾）时尝试通知
   if (oldVal && !val) notifyBatchDone()
+})
+
+// 单格重试已不走 isBatchLoading：最后一个在途重试收尾时同样尝试通知
+watch(retryingCount, (val, oldVal) => {
+  if (oldVal > 0 && val === 0) notifyBatchDone()
 })
 
 // 统一生成入口：按钮点击 / Ctrl+Enter 都走这里。
@@ -904,7 +911,7 @@ onUnmounted(() => {
               ref="btnRef"
               @click="handleGenerateTrigger"
               :disabled="!canGenerate"
-              :title="isBatchLoading ? '已有请求在进行中，请等待完成' : (!canGenerate ? '请先填写提示词并确保有可用模型' : (unfilledPromptVars.length > 0 ? '请先填写上方提示词模板变量' : '开始生成'))"
+              :title="isAnyLoading ? '已有请求或重试在进行中，请等待完成' : (!canGenerate ? '请先填写提示词并确保有可用模型' : (unfilledPromptVars.length > 0 ? '请先填写上方提示词模板变量' : '开始生成'))"
               class="relative w-full py-4 rounded-xl font-semibold text-white flex items-center justify-center gap-2 overflow-hidden shadow-lg transition-all duration-300 ease-out group"
               :class="canGenerate && !isBatchLoading
                 ? 'bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 hover:-translate-y-0.5 hover:shadow-2xl hover:brightness-110 hover:saturate-150 active:translate-y-0 active:scale-[0.99]'
@@ -951,9 +958,9 @@ onUnmounted(() => {
             </button>
           </div>
 
-          <!-- 生成中警示：勿关闭浏览器 -->
+          <!-- 生成/重试进行中警示：勿关闭浏览器 -->
           <div
-            v-if="isBatchLoading"
+            v-if="isAnyLoading"
             class="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-300 text-amber-800 text-caption"
           >
             <svg class="w-4 h-4 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -1179,7 +1186,6 @@ onUnmounted(() => {
                 <p class="slot-failed-msg">{{ slot.errorMsg }}</p>
                 <button
                   @click="retrySlot(slot)"
-                  :disabled="isBatchLoading"
                   class="slot-retry-btn"
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

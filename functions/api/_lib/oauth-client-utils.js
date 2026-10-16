@@ -28,6 +28,22 @@ export function normalizeRedirectUris(raw) {
   return { value: lines.join('\n') }
 }
 
+export function normalizeAppUrl(raw) {
+  const value = String(raw ?? '').trim()
+  if (!value) return { value: '' }
+  if (value.length > 2000) return { error: '应用连接地址不能超过 2000 个字符' }
+  try {
+    const url = new URL(value)
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+      return { error: '应用连接地址需为 http(s)' }
+    }
+    if (url.username || url.password) return { error: '应用连接地址不能包含用户名或密码' }
+  } catch {
+    return { error: '应用连接地址格式不合法' }
+  }
+  return { value }
+}
+
 export function randomHex(bytes) {
   const buf = crypto.getRandomValues(new Uint8Array(bytes))
   return Array.from(buf, (b) => b.toString(16).padStart(2, '0')).join('')

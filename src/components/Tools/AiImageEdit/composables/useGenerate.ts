@@ -51,6 +51,11 @@ export function useGenerate(opts: {
     currentModelCost, imageFiles, userStore, slotVisuals, clearSavedFlags, onSlotSuccess,
   } = opts
 
+  // 在途单格重试数。重试之间互不阻塞（A 重试时 B 照样可点），
+  // 所以重试不再占用批次级 isBatchLoading；但重试期间仍要禁止开新批次、拦截页面关闭，
+  // 这些共用态用这个计数推导（见 canGenerate / isAnyLoading）。
+  const retryingCount = ref(0)
+
   // ============ 生成按钮渐变动画 ============
   const btnRef = ref<HTMLButtonElement | null>(null)
   let btnAnimId = 0
@@ -119,15 +124,19 @@ export function useGenerate(opts: {
     return { state: '', text: '' }
   })
 
-  // 是否可以生成：批次不在加载、模型就绪、提示词必填、余额足够 N×cost
+  // 是否可以生成：批次不在加载、没有在途重试、模型就绪、提示词必填、余额足够 N×cost
   const canGenerate = computed(() => {
     if (isBatchLoading.value) return false
+    if (retryingCount.value > 0) return false
     if (!modelLoaded.value || modelList.value.length === 0 || !selectedModel.value) return false
     if (prompt.value.trim().length === 0) return false
     const cost = currentModelCost.value
     if (cost > 0 && userStore.credits.balance < cost * selectedConcurrency.value) return false
     return true
   })
+
+  // 批次或任意单格重试还在进行中（刷新拦截 / 警示条 / 生成按钮态共用）
+  const isAnyLoading = computed(() => isBatchLoading.value || retryingCount.value > 0)
 
   // 重置结果数组为 N 个 pending slot（清空旧的 + 启动新计时器）
   const resetResults = (n: number) => {
@@ -282,9 +291,12 @@ export function useGenerate(opts: {
     isBatchLoading.value = false
   }
 
-  // 失败 slot 单格重试：独立幂等 key / 独立扣费 / 独立计时；批次级 isBatchLoading 仅在重试期间打开
+  // 失败 slot 单格重试：独立幂等 key / 独立扣费 / 独立计时。
+  // 各失败格子的重试互不阻塞：A 在重试时 B 依然可以点「重试」。
+  // 同一格防重复点击：点击后 status 立即变 pending，模板随即切走重试按钮，
+  // 这里再用 status 守卫兜底（异步间隙内的二次点击直接忽略）。
   const retrySlot = async (slot: ResultSlot) => {
-    if (isBatchLoading.value) return
+    if (slot.status !== 'failed') return
     const costPerRequest = currentModelCost.value
     const balanceBefore = userStore.credits.balance
 
@@ -303,32 +315,38 @@ export function useGenerate(opts: {
     slot.errorMsg = ''
     slot.elapsedSeconds = 0
     slotVisuals.startSlotTimer(slot)
-    isBatchLoading.value = true
+    retryingCount.value++
 
     // 乐观扣费
     if (costPerRequest > 0) {
       userStore.setBalance(balanceBefore - costPerRequest)
     }
 
-    const idempotencyKey = crypto.randomUUID()
-    const fd = buildFormData()
-    const result = await fireOneRequest(slot, fd, idempotencyKey)
+    try {
+      const idempotencyKey = crypto.randomUUID()
+      const fd = buildFormData()
+      const result = await fireOneRequest(slot, fd, idempotencyKey)
 
-    if (result.ok) {
-      if (typeof result.balanceAfter === 'number') {
-        userStore.setBalance(result.balanceAfter)
+      if (result.ok) {
+        if (typeof result.balanceAfter === 'number') {
+          userStore.setBalance(result.balanceAfter)
+        } else {
+          userStore.fetchCredits(true)
+        }
+        ElMessage.success('重试成功')
       } else {
+        // 失败：服务端 reverse 已完成，前端把这一单的乐观扣费加回来。
+        // 并发下可能有其他重试/结果在途，不能整体回退到 balanceBefore
+        // （那会覆盖在途请求已产生的扣费），只补回自己这笔，再拉服务端真值对齐。
+        if (costPerRequest > 0) {
+          userStore.setBalance(userStore.credits.balance + costPerRequest)
+        }
         userStore.fetchCredits(true)
+        // slot 已经被 fireOneRequest 标为 failed + 写入 errorMsg
       }
-      ElMessage.success('重试成功')
-    } else {
-      // 失败：服务端 reverse 已完成，前端乐观扣费回退
-      userStore.setBalance(balanceBefore)
-      userStore.fetchCredits(true)
-      // slot 已经被 fireOneRequest 标为 failed + 写入 errorMsg
+    } finally {
+      retryingCount.value--
     }
-    // 重试结束
-    isBatchLoading.value = false
     // 注意：成功路径下 fireOneRequest 已触发 onSlotSuccess → 自动保存这张
   }
 
@@ -336,6 +354,8 @@ export function useGenerate(opts: {
     btnRef,
     canGenerate,
     concurrencyHint,
+    isAnyLoading,
+    retryingCount,
     resetResults,
     generateImage,
     retrySlot,

@@ -2,6 +2,8 @@
   "version": 1,
   "include": [
     "/proxy/*",
+    "/js/*",
+    "/css/*",
     "/google-auth",
     "/api/notes/*",
     "/api/notes/groups",

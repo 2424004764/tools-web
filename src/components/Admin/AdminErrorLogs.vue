@@ -2,6 +2,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { fetchApiErrorLogs, cleanupApiErrorLogs, setApiErrorLogResolved } from '@/api/admin/error-log'
+import { toolsList } from '@/components/Tools/tools'
 import type { AdminPagination, ApiErrorLog } from '@/types/admin'
 import { formatLocation } from '@/utils/geo-name'
 
@@ -252,6 +253,24 @@ const formatExtra = (extra: string | null) => {
   }
 }
 
+const normalizeToolPath = (path: string) => path !== '/' && path.endsWith('/') ? path.slice(0, -1) : path
+const toolNamesByPath = new Map(
+  toolsList()
+    .filter((tool) => typeof tool.url === 'string')
+    .map((tool) => [normalizeToolPath(tool.url), tool.title]),
+)
+
+const sourceToolName = (extra: string | null) => {
+  if (!extra) return null
+  try {
+    const toolPath = JSON.parse(extra)?.toolPath
+    if (typeof toolPath !== 'string') return null
+    return toolNamesByPath.get(normalizeToolPath(toolPath)) || toolPath
+  } catch {
+    return null
+  }
+}
+
 const copyText = async (text: string | null, label: string) => {
   if (!text) return
   try {
@@ -272,7 +291,7 @@ onMounted(load)
       <h2 class="text-xl font-semibold text-ink-900 mr-auto">错误日志</h2>
       <el-input
         v-model="filter.keyword"
-        placeholder="搜索错误信息/上游响应/路径"
+        placeholder="搜索错误信息/上游响应/路径/工具"
         clearable
         class="!w-64"
         @keyup.enter="handleSearch"
@@ -344,6 +363,9 @@ onMounted(load)
             <div class="flex items-center gap-2">
               <el-tag size="small" type="info" effect="plain">{{ row.method }}</el-tag>
               <span class="truncate">{{ row.path }}</span>
+            </div>
+            <div v-if="sourceToolName(row.extra)" class="mt-1 truncate text-xs text-ink-500">
+              工具：{{ sourceToolName(row.extra) }}
             </div>
           </template>
         </el-table-column>
@@ -516,6 +538,10 @@ onMounted(load)
           <div class="col-span-2">
             <div class="text-gray-500 mb-1">路径</div>
             <div class="break-all">{{ selected.path }}</div>
+          </div>
+          <div v-if="sourceToolName(selected.extra)" class="col-span-2">
+            <div class="text-gray-500 mb-1">来源工具</div>
+            <div>{{ sourceToolName(selected.extra) }}</div>
           </div>
           <div>
             <div class="text-gray-500 mb-1">客户端 IP</div>

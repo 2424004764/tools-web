@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import Sortable from 'sortablejs'
 import IconRank from '~icons/ep/rank'
+import IconLink from '~icons/ep/link'
 import { fetchAdminSiteConfig, updateAdminSiteConfig, type AdminSiteConfig } from '@/api/admin/site-config'
 import { clearSiteConfigCache, fetchProductsConfig } from '@/api/site-config'
 import { DEFAULT_PRODUCTS } from '@/components/Layout/Header/products'
@@ -411,15 +412,15 @@ onBeforeUnmount(() => {
 
       <p v-if="productsParseError" class="text-body-sm text-amber-600 mt-0 mb-2">{{ productsParseError }}</p>
 
-      <!-- 紧凑单行列表：只展示名称 / key / 状态，编辑走弹窗，避免长页面滚动 -->
+      <!-- 一行两列卡片网格：展示名称 / key / 简介 / 跳转链接 / 状态，编辑走弹窗 -->
       <div
         ref="productsListEl"
-        class="rounded-xl border border-border-subtle divide-y divide-border-subtle"
+        class="grid grid-cols-1 lg:grid-cols-2 gap-3"
       >
         <div
           v-for="p in productsList"
           :key="p.uid"
-          class="flex items-center gap-3 flex-wrap px-3 py-2.5"
+          class="rounded-xl border border-border-subtle flex items-center gap-3 flex-wrap px-3 py-2.5"
           :class="productsErrors[p.uid] ? 'bg-rose-50/70 dark:bg-rose-500/10' : ''"
         >
           <span
@@ -441,29 +442,42 @@ onBeforeUnmount(() => {
             aria-hidden="true"
           >🧩</div>
 
-          <div class="min-w-0 w-40 sm:w-48">
-            <div class="text-body-sm font-medium text-ink-900 truncate">{{ p.name || '未命名产品' }}</div>
-            <div class="text-caption text-ink-400 truncate">{{ p.key || 'key 未设置' }}</div>
+          <div class="min-w-0 flex-1 flex flex-col gap-0.5">
+            <div class="flex items-baseline gap-2 min-w-0">
+              <div class="text-body-sm font-medium text-ink-900 truncate">{{ p.name || '未命名产品' }}</div>
+              <div class="text-caption text-ink-400 truncate shrink-0">{{ p.key || 'key 未设置' }}</div>
+            </div>
+            <div class="text-caption text-ink-500 truncate">{{ p.desc || '—' }}</div>
+            <a
+              v-if="p.url"
+              :href="p.url"
+              target="_blank"
+              rel="noopener"
+              class="text-caption text-accent-600 hover:text-accent-700 hover:underline truncate inline-flex items-center gap-1 min-w-0"
+              :title="p.url"
+            >
+              <IconLink class="w-3 h-3 shrink-0" aria-hidden="true" />
+              <span class="truncate">{{ p.url }}</span>
+            </a>
+            <div v-else class="text-caption text-ink-400">链接未设置</div>
           </div>
 
-          <div class="hidden md:block flex-1 min-w-8 text-body-sm text-ink-500 truncate">
-            {{ p.desc || '—' }}
+          <div class="flex items-center gap-2 shrink-0">
+            <el-switch
+              v-model="p.enabled"
+              inline-prompt
+              active-text="上线"
+              inactive-text="下线"
+              :disabled="savingProducts"
+              @change="onProductToggle(p)"
+            />
+            <el-button size="small" @click="openProductDialog('edit', p)">编辑</el-button>
+            <el-popconfirm title="确定删除该产品？删除后需保存才生效" width="230" @confirm="removeProduct(p.uid)">
+              <template #reference>
+                <el-button type="danger" text size="small">删除</el-button>
+              </template>
+            </el-popconfirm>
           </div>
-
-          <el-switch
-            v-model="p.enabled"
-            inline-prompt
-            active-text="上线"
-            inactive-text="下线"
-            :disabled="savingProducts"
-            @change="onProductToggle(p)"
-          />
-          <el-button size="small" @click="openProductDialog('edit', p)">编辑</el-button>
-          <el-popconfirm title="确定删除该产品？删除后需保存才生效" width="230" @confirm="removeProduct(p.uid)">
-            <template #reference>
-              <el-button type="danger" text size="small">删除</el-button>
-            </template>
-          </el-popconfirm>
 
           <p v-if="productsErrors[p.uid]" class="w-full text-caption text-rose-600 !mt-1 mb-0">
             {{ productsErrors[p.uid] }}（点「编辑」修正）
