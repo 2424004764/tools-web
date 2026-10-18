@@ -18,7 +18,7 @@ import IconSetUp from '~icons/ep/set-up'
 import IconHistogram from '~icons/ep/histogram'
 import IconTrophy from '~icons/ep/trophy'
 import IconTimer from '~icons/ep/timer'
-import IconBell from '~icons/ep/bell'
+import IconBox from '~icons/ep/box'
 import IconRank from '~icons/ep/rank'
 
 // 每个面板独立拉取：请求成功哪个面板就先渲染对应卡片，失败只影响自己的卡片
@@ -28,6 +28,7 @@ const data = computed(() => panelData.value)
 type PanelStatus = 'loading' | 'done' | 'failed'
 const DASHBOARD_PANELS: AdminDashboardPanel[] = [
   'overview',
+  'storage',
   'usage',
   'userTrend',
   'topTools',
@@ -42,6 +43,7 @@ const panelState = reactive(
 // 卡片 → 面板：统计卡片共用 overview
 const WIDGET_PANEL: Record<WidgetId, AdminDashboardPanel> = {
   users: 'overview',
+  storage: 'storage',
   disabled: 'overview',
   credits: 'overview',
   tools: 'overview',
@@ -78,6 +80,7 @@ const load = () => DASHBOARD_PANELS.forEach((p) => loadPanel(p))
 // 卡片 id 是前后端约定的稳定标识；后端只校验格式，新增/下线卡片仅需维护这里
 type WidgetId =
   | 'users'
+  | 'storage'
   | 'disabled'
   | 'credits'
   | 'tools'
@@ -90,21 +93,22 @@ type WidgetId =
 
 interface WidgetMeta {
   id: WidgetId
-  /** 网格占列数：基础网格 2 列（移动端），md 起 4 列 */
+  /** 网格占列数：基础网格 2 列（移动端），md 起 8 列（小卡占 1，宽卡占 4 = 半行） */
   span: string
 }
 
 const DEFAULT_WIDGETS: WidgetMeta[] = [
   { id: 'users', span: '' },
+  { id: 'storage', span: 'col-span-2 md:col-span-2' },
   { id: 'disabled', span: '' },
   { id: 'credits', span: '' },
   { id: 'tools', span: '' },
-  { id: 'usage', span: 'col-span-2' },
-  { id: 'userTrend', span: 'col-span-2' },
-  { id: 'topTools', span: 'col-span-2' },
-  { id: 'slowlog', span: 'col-span-2' },
-  { id: 'pending', span: 'col-span-2 md:col-span-4' },
-  { id: 'transactions', span: 'col-span-2 md:col-span-4' },
+  { id: 'usage', span: 'col-span-2 md:col-span-2' },
+  { id: 'userTrend', span: 'col-span-2 md:col-span-2' },
+  { id: 'topTools', span: 'col-span-2 md:col-span-2' },
+  { id: 'slowlog', span: 'col-span-2 md:col-span-2' },
+  { id: 'pending', span: 'col-span-2 md:col-span-2' },
+  { id: 'transactions', span: 'col-span-2 md:col-span-8' },
 ]
 
 const widgets = ref<WidgetMeta[]>(DEFAULT_WIDGETS.map((w) => ({ ...w })))
@@ -181,6 +185,72 @@ const formatTime = (s: string) => {
 }
 
 const fmtAmount = (n: number) => (n > 0 ? `+${n}` : `${n}`)
+
+// 存储字节数 → 人类可读（1024 进制，小于 1KB 显示 B）
+const fmtBytes = (bytes: number | undefined | null) => {
+  const n = Math.max(0, Number(bytes) || 0)
+  if (n < 1024) return `${n} B`
+  const units = ['KB', 'MB', 'GB', 'TB', 'PB']
+  let v = n
+  let i = -1
+  do {
+    v /= 1024
+    i++
+  } while (v >= 1024 && i < units.length - 1)
+  return `${v >= 100 ? v.toFixed(0) : v.toFixed(1)} ${units[i]}`
+}
+
+// 存储使用率（0-100，总量为 0 时视为 0）
+const storagePercent = computed(() => {
+  const s = data.value?.storage
+  if (!s || s.quotaBytes <= 0) return 0
+  return Math.min(100, Math.round(((s.usedBytes + s.pendingBytes) / s.quotaBytes) * 100))
+})
+
+// 单项来源占已发放总空间的百分比（整数，用于来源拆解展示）
+const storagePercentOf = (bytes?: number) => {
+  const s = data.value?.storage
+  if (!s || s.quotaBytes <= 0 || !bytes) return 0
+  return Math.round((bytes / s.quotaBytes) * 100)
+}
+
+// 分段用量条：已用按来源拆色 + 预扣单独一段，剩余为底色轨道
+// 百分比按字节精确累加最后一段兜底，避免四舍五入后总宽 ≠ 100%
+interface StorageSegment {
+  key: string
+  label: string
+  bytes: number
+  count?: number
+  barClass: string
+  dotClass: string
+  /** 占总量的百分比宽度（已归一化，末段兜底防溢出） */
+  widthPct?: number
+}
+const STORAGE_SEGMENT_COLORS: Record<string, { barClass: string; dotClass: string }> = {
+  music: { barClass: 'bg-sky-500', dotClass: 'bg-sky-500' },
+  aiCreation: { barClass: 'bg-violet-500', dotClass: 'bg-violet-500' },
+  subsite: { barClass: 'bg-emerald-500', dotClass: 'bg-emerald-500' },
+  other: { barClass: 'bg-gray-400', dotClass: 'bg-gray-400' },
+  pending: { barClass: 'bg-amber-400', dotClass: 'bg-amber-400' },
+}
+const storageSegments = computed<StorageSegment[]>(() => {
+  const s = data.value?.storage
+  if (!s || s.quotaBytes <= 0) return []
+  const defs: StorageSegment[] = [
+    { key: 'music', label: '音乐', ...STORAGE_SEGMENT_COLORS.music, ...s.sources.music },
+    { key: 'aiCreation', label: 'AI 图', ...STORAGE_SEGMENT_COLORS.aiCreation, ...s.sources.aiCreation },
+    { key: 'subsite', label: '子站', ...STORAGE_SEGMENT_COLORS.subsite, ...s.sources.subsite },
+    { key: 'other', label: '其他', ...STORAGE_SEGMENT_COLORS.other, ...s.sources.other },
+    { key: 'pending', label: '预扣中', ...STORAGE_SEGMENT_COLORS.pending, bytes: s.pendingBytes, count: s.pendingCount },
+  ]
+  const out = defs.filter((d) => d.bytes > 0)
+  let acc = 0
+  return out.map((d) => {
+    const pct = Math.min(100 - acc, Math.max(0.5, (d.bytes / s.quotaBytes) * 100))
+    acc += pct
+    return { ...d, widthPct: pct }
+  })
+})
 
 // 流水来源。迁移前的老数据为 null → 展示"未知"
 const sourceLabel = (s: 'system' | 'admin' | 'tool' | null | undefined) => {
@@ -275,12 +345,24 @@ type TrendSeries = Record<TrendRangeKey, { dates: string[]; counts: number[] }>
 type TrendPoints = NonNullable<AdminDashboard['usageTrend']>
 
 // 一块面板一张图：粒度切换 / 主题重绘 / dataZoom 都内聚在此，工具使用与用户注册各建一份
-function createTrendPanel(verb: string, unit: string) {
+// 各粒度初始窗口与上限：拖到最左边缘时窗口翻倍重新拉取（加载更早数据），直到上限
+const TREND_INIT = { daily: 90, weekly: 12, monthly: 12 } as const
+const TREND_LIMITS = { daily: 365, weekly: 52, monthly: 24 } as const
+
+function createTrendPanel(
+  verb: string,
+  unit: string,
+  panel: AdminDashboardPanel,
+  trendKey: 'usageTrend' | 'userTrend',
+) {
   const trendRange = ref<TrendRangeKey>('daily')
   const chartRef = ref<HTMLDivElement | null>(null)
   let chartInstance: ECharts | null = null
   // 后端返回稀疏点，这里缓存按完整日期轴补零后的数据，切换粒度 / 主题重绘时复用
   let series: TrendSeries | null = null
+  // 已加载的窗口大小（随向左扩展增长）
+  let loaded: Record<TrendRangeKey, number> = { ...TREND_INIT }
+  let extending = false
 
   function applyOption() {
     if (!chartInstance || !series) return
@@ -368,12 +450,12 @@ function createTrendPanel(verb: string, unit: string) {
     )
   }
 
-  // 后端返回稀疏点，按完整日期轴补零后缓存
+  // 后端返回稀疏点，按完整日期轴补零后缓存（轴长 = 已加载窗口）
   function build(trend?: TrendPoints) {
     const t = trend || { daily: [], weekly: [], monthly: [] }
-    const dailyDates = buildDailyAxis(90)
-    const weeklyDates = buildWeeklyAxis(12)
-    const monthlyDates = buildMonthlyAxis(12)
+    const dailyDates = buildDailyAxis(loaded.daily)
+    const weeklyDates = buildWeeklyAxis(loaded.weekly)
+    const monthlyDates = buildMonthlyAxis(loaded.monthly)
     series = {
       daily: { dates: dailyDates, counts: fillTrend(t.daily, dailyDates) },
       weekly: { dates: weeklyDates, counts: fillTrend(t.weekly, weeklyDates) },
@@ -383,6 +465,53 @@ function createTrendPanel(verb: string, unit: string) {
   }
 
   watch(trendRange, () => applyOption())
+
+  // 拖到最左边缘：窗口翻倍拉取更早数据，拼接后保持原可视区间不跳动
+  async function extendLeft() {
+    if (extending || !chartInstance || !series) return
+    const key = trendRange.value
+    if (loaded[key] >= TREND_LIMITS[key]) return
+
+    // 读取当前缩放窗口（inside 与 slider 联动，取其一即可）
+    const opt = chartInstance.getOption() as { dataZoom?: Array<{ startValue?: number; endValue?: number }> }
+    const dz = opt.dataZoom?.[0]
+    if (!dz || dz.startValue == null || dz.startValue > 2) return
+
+    extending = true
+    // 记住当前可视区间的首尾日期，重建轴后按日期找回位置
+    const cur = series[key]
+    const startIdx = Math.max(0, Math.floor(dz.startValue))
+    const endIdx = Math.min(cur.dates.length - 1, Math.ceil(dz.endValue ?? startIdx))
+    const startDate = cur.dates[startIdx]
+    const endDate = cur.dates[endIdx]
+
+    try {
+      const next: Record<TrendRangeKey, number> = {
+        daily: Math.min(loaded.daily * 2, TREND_LIMITS.daily),
+        weekly: Math.min(loaded.weekly * 2, TREND_LIMITS.weekly),
+        monthly: Math.min(loaded.monthly * 2, TREND_LIMITS.monthly),
+      }
+      const res = await fetchAdminDashboardPanel(panel, { ...next })
+      panelData.value = { ...panelData.value, ...res }
+      loaded = next
+      build(res[trendKey])
+      if (!chartInstance || !series) return
+      const nd = series[key].dates
+      const ns = Math.max(0, nd.indexOf(startDate))
+      const ne = Math.min(nd.length - 1, Math.max(ns + 7, nd.indexOf(endDate)))
+      // inside 与 slider 同步定位到原区间
+      chartInstance.setOption({
+        dataZoom: [
+          { startValue: ns, endValue: ne },
+          { startValue: ns, endValue: ne },
+        ],
+      })
+    } catch (err) {
+      console.error(`[dashboard] ${panel} 趋势向左加载失败:`, err)
+    } finally {
+      extending = false
+    }
+  }
 
   async function init() {
     await nextTick()
@@ -396,6 +525,10 @@ function createTrendPanel(verb: string, unit: string) {
       chartInstance = null
     }
     if (!chartInstance) chartInstance = echarts.init(el)
+    // 用户拖动缩放时检测是否到达最左边缘，触发向左加载更早数据
+    chartInstance.on('datazoom', () => {
+      void extendLeft()
+    })
     // 数据先于图表容器就绪时（如缓存命中），初始化后补一次渲染
     applyOption()
   }
@@ -414,8 +547,14 @@ function createTrendPanel(verb: string, unit: string) {
   }
 }
 
-const usagePanel = createTrendPanel('使用', '次')
-const userPanel = createTrendPanel('新增', '人')
+const usagePanel = createTrendPanel('使用', '次', 'usage', 'usageTrend')
+const userPanel = createTrendPanel('新增', '人', 'userTrend', 'userTrend')
+
+// TOP 10 工具的时间窗切换（复用趋势图的三粒度 + 累计）
+const TOP_TOOLS_RANGES = [...TREND_RANGES, { key: 'all', label: '累计' }] as const
+type TopToolsRangeKey = (typeof TOP_TOOLS_RANGES)[number]['key']
+const topToolsRange = ref<TopToolsRangeKey>('daily')
+const activeTopTools = computed(() => data.value?.topTools?.[topToolsRange.value] || [])
 // 解构出的 ref 仍是响应式的，模板里直接绑定 ref / v-model
 const { trendRange: usageTrendRange, chartRef: usageChartEl } = usagePanel
 const { trendRange: userTrendRange, chartRef: userChartEl } = userPanel
@@ -469,7 +608,7 @@ onUnmounted(() => {
     </div>
 
     <!-- 全部卡片：顺序可拖拽调整（持久化在 site_config.admin_dashboard_layout） -->
-    <div ref="gridRef" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div ref="gridRef" class="grid grid-cols-2 md:grid-cols-8 gap-4">
       <div
         v-for="w in widgets"
         :key="w.id"
@@ -481,93 +620,129 @@ onUnmounted(() => {
       >
         <!-- 用户总数 -->
         <div v-if="w.id === 'users'" v-loading="panelLoading(w.id)" class="admin-stat-card h-full">
-          <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0">
-              <div class="flex items-center gap-1.5 text-sm text-ink-500">
-                <span class="widget-drag-handle" title="拖动调整位置">
-                  <IconRank class="w-3.5 h-3.5" />
-                </span>
-                用户总数
-              </div>
-              <div class="mt-1.5 text-2xl font-semibold text-ink-900 tabular-nums">
-                {{ data?.totalUsers ?? '-' }}
-              </div>
-              <div class="text-xs text-ink-400 mt-1.5">
-                今日新增 {{ data?.todayNew ?? 0 }}
-              </div>
-            </div>
-            <span class="admin-stat-icon bg-accent-50 text-accent-600" aria-hidden="true">
-              <IconUser class="w-4 h-4" />
+          <div class="flex items-center gap-1.5 text-sm text-ink-500 whitespace-nowrap">
+            <span class="widget-drag-handle" title="拖动调整位置">
+              <IconRank class="w-3.5 h-3.5" />
             </span>
+            <IconUser class="w-3.5 h-3.5 text-accent-600 shrink-0" />
+            用户总数
+          </div>
+          <div class="mt-1.5 text-2xl font-semibold text-ink-900 tabular-nums">
+            {{ data?.totalUsers ?? '-' }}
+          </div>
+          <div class="text-xs text-ink-400 mt-1.5">
+            今日新增 {{ data?.todayNew ?? 0 }}
+          </div>
+        </div>
+
+        <!-- 存储空间：摘要 + 分段条 + 来源图例，紧凑单卡（占两列） -->
+        <div v-else-if="w.id === 'storage'" v-loading="panelLoading(w.id)" class="admin-stat-card h-full">
+          <div class="flex items-center gap-1.5 text-sm text-ink-500 flex-wrap">
+            <span class="widget-drag-handle" title="拖动调整位置">
+              <IconRank class="w-3.5 h-3.5" />
+            </span>
+            <IconBox class="w-3.5 h-3.5" />
+            存储空间
+            <span class="!ml-auto flex items-center flex-wrap gap-x-2 gap-y-0.5 text-[11px] font-normal">
+              <span title="未过期的上传预留；长期不消可到存储明细清理">
+                预扣中
+                <b class="tabular-nums" :class="(data?.storage?.pendingBytes ?? 0) > 0 ? 'text-amber-600' : 'text-ink-700'">
+                  {{ fmtBytes(data?.storage?.pendingBytes) }}
+                </b>
+                <span v-if="(data?.storage?.pendingCount ?? 0) > 0" class="text-amber-600">（{{ data?.storage?.pendingCount }} 笔）</span>
+              </span>
+              <span class="text-ink-400">·</span>
+              <span>可用 <b class="text-accent-700 tabular-nums font-medium">{{ fmtBytes(data?.storage?.availableBytes) }}</b></span>
+              <span class="text-ink-400">·</span>
+              <span>{{ data?.storage?.users ?? 0 }} 个用户</span>
+              <router-link to="/admin/storage" class="text-accent-600 hover:text-accent-700 font-medium">明细 →</router-link>
+            </span>
+          </div>
+
+          <!-- 已使用 / 总量 摘要与分段用量条同行 -->
+          <div class="flex items-center gap-3 mt-2">
+            <div class="shrink-0 text-lg font-semibold text-ink-900 tabular-nums leading-none">
+              {{ fmtBytes(data?.storage?.usedBytes) }}
+              <span class="text-xs font-normal text-ink-400">/ {{ fmtBytes(data?.storage?.quotaBytes) }} · {{ storagePercent }}%</span>
+            </div>
+            <div class="flex-1 min-w-0 flex h-2 overflow-hidden rounded-full bg-ink-100" title="各来源占用占已发放总空间的比例">
+              <div
+                v-for="seg in storageSegments"
+                :key="seg.key"
+                class="h-full first:rounded-l-full last:rounded-r-full"
+                :class="seg.barClass"
+                :style="{ width: `${seg.widthPct}%` }"
+                :title="`${seg.label} ${fmtBytes(seg.bytes)}（${storagePercentOf(seg.bytes)}%）`"
+              ></div>
+            </div>
+          </div>
+
+          <!-- 来源图例：色点 + 字节 + 文件数 + 占比，单行自适应换行 -->
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-[11px]">
+            <span
+              v-for="seg in storageSegments"
+              :key="seg.key"
+              class="inline-flex items-center gap-1 text-ink-500"
+              :title="`${seg.label}：${fmtBytes(seg.bytes)}（${storagePercentOf(seg.bytes)}%）`"
+            >
+              <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="seg.dotClass"></span>
+              {{ seg.label }}
+              <b class="text-ink-900 font-medium tabular-nums">{{ fmtBytes(seg.bytes) }}</b>
+              <span v-if="(seg.count ?? 0) > 0" class="text-ink-400">{{ seg.count }} 个</span>
+              <span class="text-ink-400 tabular-nums">{{ storagePercentOf(seg.bytes) }}%</span>
+            </span>
+            <span v-if="!storageSegments.length" class="text-ink-400">暂无存储数据</span>
           </div>
         </div>
 
         <!-- 禁用用户 -->
         <div v-else-if="w.id === 'disabled'" v-loading="panelLoading(w.id)" class="admin-stat-card h-full">
-          <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0">
-              <div class="flex items-center gap-1.5 text-sm text-ink-500">
-                <span class="widget-drag-handle" title="拖动调整位置">
-                  <IconRank class="w-3.5 h-3.5" />
-                </span>
-                禁用用户
-              </div>
-              <div class="mt-1.5 text-2xl font-semibold text-danger-600 tabular-nums">
-                {{ data?.disabledUsers ?? '-' }}
-              </div>
-              <div class="text-xs text-ink-400 mt-1.5">无法登录账号</div>
-            </div>
-            <span class="admin-stat-icon bg-danger-50 text-danger-600" aria-hidden="true">
-              <IconLock class="w-4 h-4" />
+          <div class="flex items-center gap-1.5 text-sm text-ink-500 whitespace-nowrap">
+            <span class="widget-drag-handle" title="拖动调整位置">
+              <IconRank class="w-3.5 h-3.5" />
             </span>
+            <IconLock class="w-3.5 h-3.5 text-danger-600 shrink-0" />
+            禁用用户
           </div>
+          <div class="mt-1.5 text-2xl font-semibold text-danger-600 tabular-nums">
+            {{ data?.disabledUsers ?? '-' }}
+          </div>
+          <div class="text-xs text-ink-400 mt-1.5">无法登录账号</div>
         </div>
 
         <!-- 积分总余额 -->
         <div v-else-if="w.id === 'credits'" v-loading="panelLoading(w.id)" class="admin-stat-card h-full">
-          <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0">
-              <div class="flex items-center gap-1.5 text-sm text-ink-500">
-                <span class="widget-drag-handle" title="拖动调整位置">
-                  <IconRank class="w-3.5 h-3.5" />
-                </span>
-                积分总余额
-              </div>
-              <div class="mt-1.5 text-2xl font-semibold text-accent-700 tabular-nums">
-                {{ data?.totalBalance ?? '-' }}
-              </div>
-              <div class="text-xs text-ink-400 mt-1.5">
-                累计发放 {{ data?.totalEarned ?? 0 }}
-                <span class="mx-1">·</span>
-                今日消耗 {{ data?.todayCreditSpent ?? 0 }}
-              </div>
-            </div>
-            <span class="admin-stat-icon bg-amber-50 text-amber-600" aria-hidden="true">
-              <IconCoin class="w-4 h-4" />
+          <div class="flex items-center gap-1.5 text-sm text-ink-500 whitespace-nowrap">
+            <span class="widget-drag-handle" title="拖动调整位置">
+              <IconRank class="w-3.5 h-3.5" />
             </span>
+            <IconCoin class="w-3.5 h-3.5 text-amber-600 shrink-0" />
+            积分总余额
+          </div>
+          <div class="mt-1.5 text-2xl font-semibold text-accent-700 tabular-nums">
+            {{ data?.totalBalance ?? '-' }}
+          </div>
+          <div class="text-xs text-ink-400 mt-1.5">
+            累计发放 {{ data?.totalEarned ?? 0 }}
+            <span class="mx-1">·</span>
+            今日消耗 {{ data?.todayCreditSpent ?? 0 }}
           </div>
         </div>
 
         <!-- 工具启用 -->
         <div v-else-if="w.id === 'tools'" v-loading="panelLoading(w.id)" class="admin-stat-card h-full">
-          <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0">
-              <div class="flex items-center gap-1.5 text-sm text-ink-500">
-                <span class="widget-drag-handle" title="拖动调整位置">
-                  <IconRank class="w-3.5 h-3.5" />
-                </span>
-                工具启用
-              </div>
-              <div class="mt-1.5 text-2xl font-semibold text-ink-900 tabular-nums">
-                {{ data?.tools?.enabled ?? '-' }}
-                <span class="text-sm font-normal text-ink-400">/ {{ data?.tools?.total ?? '-' }}</span>
-              </div>
-              <div class="text-xs text-ink-400 mt-1.5">已启用工具数</div>
-            </div>
-            <span class="admin-stat-icon bg-emerald-50 text-emerald-600" aria-hidden="true">
-              <IconSetUp class="w-4 h-4" />
+          <div class="flex items-center gap-1.5 text-sm text-ink-500 whitespace-nowrap">
+            <span class="widget-drag-handle" title="拖动调整位置">
+              <IconRank class="w-3.5 h-3.5" />
             </span>
+            <IconSetUp class="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            工具启用
           </div>
+          <div class="mt-1.5 text-2xl font-semibold text-ink-900 tabular-nums">
+            {{ data?.tools?.enabled ?? '-' }}
+            <span class="text-sm font-normal text-ink-400">/ {{ data?.tools?.total ?? '-' }}</span>
+          </div>
+          <div class="text-xs text-ink-400 mt-1.5">已启用工具数</div>
         </div>
 
         <!-- 工具使用次数（来自 tool_usage_records；老版本迁移前为 0） -->
@@ -690,47 +865,53 @@ onUnmounted(() => {
           <div ref="userChartEl" class="w-full h-[200px] mt-2"></div>
         </div>
 
-        <!-- TOP 5 工具（原用户总数趋势位置，对调后移到下一行） -->
+        <!-- TOP 10 工具：今日 / 每周 / 每月 / 累计 切换 -->
         <div v-else-if="w.id === 'topTools'" v-loading="panelLoading(w.id)" class="admin-stat-card h-full">
-          <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0 flex-1">
-              <div class="flex items-center gap-1.5 text-sm text-ink-500 mb-2">
-                <span class="widget-drag-handle" title="拖动调整位置">
-                  <IconRank class="w-3.5 h-3.5" />
-                </span>
-                TOP 5 工具
-              </div>
-              <div v-if="data?.topTools?.length" class="space-y-1.5">
-                <div
-                  v-for="(t, i) in data.topTools"
-                  :key="t.tool_url"
-                  class="flex items-center gap-2 text-sm"
-                >
-                  <span class="text-ink-400 w-4 text-right tabular-nums">{{ i + 1 }}.</span>
-                  <a
-                    v-if="t.tool_url"
-                    :href="t.tool_url"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="text-ink-900 truncate flex-1 hover:text-accent-600 hover:underline transition-colors"
-                    :title="`跳转到 ${t.tool_title}`"
-                  >
-                    {{ t.tool_title }}
-                  </a>
-                  <span v-else class="text-ink-900 truncate flex-1">{{ t.tool_title }}</span>
-                  <span class="text-accent-700 font-medium tabular-nums">{{ t.count }}</span>
-                </div>
-              </div>
-              <div v-else class="text-xs text-ink-400">暂无数据</div>
-              <div class="text-xs text-ink-400 mt-3">
-                <router-link to="/admin/tool-usage" class="text-accent-600 hover:text-accent-700 font-medium">
-                  查看全部 TOP →
-                </router-link>
-              </div>
-            </div>
-            <span class="admin-stat-icon bg-amber-50 text-amber-600" aria-hidden="true">
-              <IconTrophy class="w-4 h-4" />
+          <div class="text-sm text-ink-500 mb-2 flex items-center gap-1.5 flex-wrap">
+            <span class="widget-drag-handle" title="拖动调整位置">
+              <IconRank class="w-3.5 h-3.5" />
             </span>
+            <span class="flex items-center gap-1.5">
+              <IconTrophy class="w-3.5 h-3.5" />
+              TOP 10 工具
+            </span>
+            <el-radio-group v-model="topToolsRange" size="small" class="!ml-auto">
+              <el-radio-button
+                v-for="r in TOP_TOOLS_RANGES"
+                :key="r.key"
+                :value="r.key"
+              >
+                {{ r.label }}
+              </el-radio-button>
+            </el-radio-group>
+          </div>
+          <!-- 限高滚动：条数多时不再把同排卡片撑高（含头部换行、底部链接后仍低于趋势图卡高度） -->
+          <div v-if="activeTopTools.length" class="space-y-1.5 max-h-[200px] overflow-y-auto pr-0.5">
+            <div
+              v-for="(t, i) in activeTopTools"
+              :key="t.tool_url"
+              class="flex items-center gap-2 text-sm"
+            >
+              <span class="text-ink-400 w-4 text-right tabular-nums">{{ i + 1 }}.</span>
+              <a
+                v-if="t.tool_url"
+                :href="t.tool_url"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="text-ink-900 truncate flex-1 hover:text-accent-600 hover:underline transition-colors"
+                :title="`跳转到 ${t.tool_title}`"
+              >
+                {{ t.tool_title }}
+              </a>
+              <span v-else class="text-ink-900 truncate flex-1">{{ t.tool_title }}</span>
+              <span class="text-accent-700 font-medium tabular-nums">{{ t.count }}</span>
+            </div>
+          </div>
+          <div v-else class="text-xs text-ink-400">该时间窗内暂无使用记录</div>
+          <div class="text-xs text-ink-400 mt-3">
+            <router-link to="/admin/tool-usage" class="text-accent-600 hover:text-accent-700 font-medium">
+              查看全部 TOP →
+            </router-link>
           </div>
         </div>
 
@@ -778,7 +959,6 @@ onUnmounted(() => {
                 <span class="widget-drag-handle" title="拖动调整位置">
                   <IconRank class="w-3.5 h-3.5" />
                 </span>
-                <IconBell class="w-3.5 h-3.5" />
                 待审核
               </div>
               <div class="grid grid-cols-4 divide-x divide-ink-100">
@@ -832,9 +1012,6 @@ onUnmounted(() => {
                 </div>
               </div>
             </div>
-            <span class="admin-stat-icon bg-amber-50 text-amber-600" aria-hidden="true">
-              <IconBell class="w-4 h-4" />
-            </span>
           </div>
         </div>
 

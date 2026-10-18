@@ -8,6 +8,7 @@
 
 import {
   getOverview,
+  getStorage,
   getUserTrend,
   getUsage,
   getTopTools,
@@ -43,6 +44,7 @@ export async function onRequest(context) {
   try {
     const [
       overview,
+      storage,
       userTrend,
       usage,
       topTools,
@@ -51,6 +53,7 @@ export async function onRequest(context) {
       transactions,
     ] = await Promise.all([
       getOverview(db),
+      getStorage(db),
       getUserTrend(db),
       getUsage(db),
       getTopTools(db),
@@ -61,6 +64,7 @@ export async function onRequest(context) {
 
     return json({
       ...overview,
+      ...storage,
       ...userTrend,
       ...usage,
       ...topTools,

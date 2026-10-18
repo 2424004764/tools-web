@@ -44,9 +44,21 @@ export async function onRequest(context) {
     )
   }
 
+  // 趋势窗口参数（usage / userTrend）：不传走默认；上限防滥用
+  const url = new URL(request.url)
+  const numParam = (name, def, max) => {
+    const n = parseInt(url.searchParams.get(name), 10)
+    return Number.isFinite(n) && n > 0 ? Math.min(n, max) : def
+  }
+  const opts = {
+    dailyDays: numParam('dailyDays', 90, 365),
+    weeklyWeeks: numParam('weeklyWeeks', 12, 52),
+    monthlyMonths: numParam('monthlyMonths', 12, 24),
+  }
+
   const db = env.DB
   try {
-    return json(await query(db))
+    return json(await query(db, opts))
   } catch (error) {
     console.error(`dashboard [${panel}] API error:`, error)
     return jsonError(error.message || '服务器错误', 500)

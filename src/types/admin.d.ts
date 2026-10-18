@@ -204,7 +204,13 @@ export interface AdminDashboard {
   weekToolUsage?: number
   monthToolUsage?: number
   totalToolUsage?: number
-  topTools?: TopToolSummary[]
+  /** TOP 10 工具按时间窗拆分（稀疏：窗口内无数据即为空数组） */
+  topTools?: {
+    daily: TopToolSummary[]
+    weekly: TopToolSummary[]
+    monthly: TopToolSummary[]
+    all: TopToolSummary[]
+  }
   /** 工具使用趋势（UTC+8 口径；每日近 30 天 / 每周近 12 周周一 / 每月近 12 月，稀疏点由前端补零） */
   usageTrend?: {
     daily: ToolUsageTrendPoint[]
@@ -220,6 +226,31 @@ export interface AdminDashboard {
   pendingBlogPosts?: number
   /** 待处理意见反馈数；未迁移兜底为 0 */
   pendingFeedback?: number
+  /** 全站存储空间概况（依赖 user_storage_quota / storage_reservations 等表；未迁移兜底全为 0） */
+  storage?: StorageSummary
+}
+
+/** 全站存储空间概况（口径与存储明细页一致：可用 = 总量 - 已用 - 预扣） */
+export interface StorageSummary {
+  /** 已发放总空间（sum of quota_bytes） */
+  quotaBytes: number
+  /** 已使用 */
+  usedBytes: number
+  /** 预扣中（未过期的上传预留） */
+  pendingBytes: number
+  /** 预扣中的预留条数：>0 且长期不消说明结算链路异常，可到存储明细清理 */
+  pendingCount: number
+  /** 可用 = 总量 - 已用 - 预扣 */
+  availableBytes: number
+  /** 已产生存储记录的用户数 */
+  users: number
+  /** 来源占用拆解（音乐 / AI 创作图 / 子站上传；other 为已用减去可归集来源的未归集部分） */
+  sources: {
+    music: { count: number; bytes: number }
+    aiCreation: { count: number; bytes: number }
+    subsite: { count: number; bytes: number }
+    other: { count: number; bytes: number }
+  }
 }
 
 /** 工具使用趋势单个数据点（稀疏，缺失日期由前端补零） */
