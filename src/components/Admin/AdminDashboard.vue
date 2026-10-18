@@ -3,7 +3,10 @@ import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import * as echarts from 'echarts'
 import type { ECharts } from 'echarts'
 import Sortable from 'sortablejs'
-import { fetchAdminDashboard } from '@/api/admin/dashboard'
+import {
+  fetchAdminDashboardPanel,
+  type AdminDashboardPanel,
+} from '@/api/admin/dashboard'
 import type { AdminDashboard, ToolUsageTrendPoint } from '@/types/admin'
 import { fetchAdminSiteConfig, updateAdminSiteConfig } from '@/api/admin/site-config'
 import { ElMessage } from 'element-plus'
@@ -18,8 +21,19 @@ import IconTimer from '~icons/ep/timer'
 import IconBell from '~icons/ep/bell'
 import IconRank from '~icons/ep/rank'
 
-const data = ref<AdminDashboard | null>(null)
+const data = ref<Partial<AdminDashboard>>({})
 const loading = ref(false)
+
+// 各面板独立拉取：单面板慢/失败不影响其他卡片渲染
+const DASHBOARD_PANELS: AdminDashboardPanel[] = [
+  'overview',
+  'usage',
+  'userTrend',
+  'topTools',
+  'slowlog',
+  'pending',
+  'transactions',
+]
 
 // ============ 卡片布局：可拖拽排序，顺序持久化在 site_config.admin_dashboard_layout ============
 // 卡片 id 是前后端约定的稳定标识；后端只校验格式，新增/下线卡片仅需维护这里
@@ -370,9 +384,14 @@ const { trendRange: userTrendRange, chartRef: userChartEl } = userPanel
 const load = async () => {
   loading.value = true
   try {
-    data.value = await fetchAdminDashboard()
-    usagePanel.build(data.value.usageTrend)
-    userPanel.build(data.value.userTrend)
+    const results = await Promise.all(
+      DASHBOARD_PANELS.map((p) => fetchAdminDashboardPanel(p)),
+    )
+    const merged: Partial<AdminDashboard> = {}
+    results.forEach((r) => Object.assign(merged, r))
+    data.value = merged
+    if (merged.usageTrend) usagePanel.build(merged.usageTrend)
+    if (merged.userTrend) userPanel.build(merged.userTrend)
   } catch (err) {
     console.error(err)
     ElMessage.error('仪表盘数据加载失败')
@@ -518,8 +537,8 @@ onUnmounted(() => {
                 工具启用
               </div>
               <div class="mt-1.5 text-2xl font-semibold text-ink-900 tabular-nums">
-                {{ data?.tools.enabled ?? '-' }}
-                <span class="text-sm font-normal text-ink-400">/ {{ data?.tools.total ?? '-' }}</span>
+                {{ data?.tools?.enabled ?? '-' }}
+                <span class="text-sm font-normal text-ink-400">/ {{ data?.tools?.total ?? '-' }}</span>
               </div>
               <div class="text-xs text-ink-400 mt-1.5">已启用工具数</div>
             </div>

@@ -45,6 +45,14 @@ export async function onRequest(context) {
     sets.push('sort_order = ?')
     args.push(n)
   }
+  if (body.category_id !== undefined) {
+    const cid = parseInt(body.category_id, 10)
+    if (!Number.isInteger(cid)) return jsonError('category_id 必须是整数', 400)
+    const cat = await db.prepare('SELECT id FROM tool_categories WHERE id = ?').bind(cid).first()
+    if (!cat) return jsonError('分类不存在', 400)
+    sets.push('category_id = ?')
+    args.push(cid)
+  }
   if (body.description !== undefined) {
     sets.push('description = ?')
     args.push(String(body.description).slice(0, 500))
@@ -81,12 +89,16 @@ export async function onRequest(context) {
     const changes = result.meta?.changes ?? result.changes ?? 0
     if (changes === 0) return jsonError('工具不存在', 404)
 
-    // 返回最新行
+    // 返回最新行（分类名称以 tool_categories 表为准）
     const row = await db
       .prepare(
-        `SELECT id, title, url, category_id, category_name, description, logo,
-                sort_order, is_enabled, credit_cost, created_at, updated_at
-         FROM tool_features WHERE id = ?`,
+        `SELECT t.id, t.title, t.url, t.category_id,
+                COALESCE(c.name, t.category_name, '其他') AS category_name,
+                t.description, t.logo,
+                t.sort_order, t.is_enabled, t.credit_cost, t.created_at, t.updated_at
+         FROM tool_features t
+         LEFT JOIN tool_categories c ON c.id = t.category_id
+         WHERE t.id = ?`,
       )
       .bind(id)
       .first()

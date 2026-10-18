@@ -170,6 +170,10 @@ export interface BatchAdjustCreditResult {
 export interface ToolCategorySummary {
   category_id: number
   category_name: string
+  /** 分类排序（来自 tool_categories 表，越小越靠前） */
+  sort_order?: number
+  /** 分类是否启用（0=停用，停用后前台隐藏整个板块） */
+  is_enabled?: number
   total: number
   enabled: number
 }

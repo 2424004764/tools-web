@@ -12,11 +12,13 @@ const info = reactive({
   title: "图片切割",
 })
 
-// 行数/列数的 localStorage 键名
-const LINE_NUM_KEY = 'imgcut_lineNum'
+const ROW_NUM_KEY = 'imgcut_rowNum'
+const COLUMN_NUM_KEY = 'imgcut_columnNum'
+const LEGACY_LINE_NUM_KEY = 'imgcut_lineNum'
 
 const fileList = ref()
-const lineNum = ref(3)
+const rowNum = ref(3)
+const columnNum = ref(3)
 const image = ref({} as any)
 const cutImg = ref([] as string[])
 const dataFileRef = ref()
@@ -58,22 +60,25 @@ const cut = () => {
   const ctx = canvas.getContext('2d');
   const img = image.value;
 
-  const wpiece = Math.floor(img.naturalWidth / lineNum.value);
-  const hpiece = Math.floor(img.naturalHeight / lineNum.value);
   const results = [] as string[];
 
-  canvas.width = wpiece;
-  canvas.height = hpiece;
-
-  for (let r = 0; r < lineNum.value; r++) {
-      for (let c = 0; c < lineNum.value; c++) {
+  for (let r = 0; r < rowNum.value; r++) {
+      const y = Math.floor(r * img.naturalHeight / rowNum.value);
+      const nextY = Math.floor((r + 1) * img.naturalHeight / rowNum.value);
+      const hpiece = nextY - y;
+      for (let c = 0; c < columnNum.value; c++) {
+          const x = Math.floor(c * img.naturalWidth / columnNum.value);
+          const nextX = Math.floor((c + 1) * img.naturalWidth / columnNum.value);
+          const wpiece = nextX - x;
+          canvas.width = wpiece;
+          canvas.height = hpiece;
           // canvas 在循环里复用，drawImage 是合成不是覆盖：
           // 透明底 PNG 若不清掉上一块，透明区会透出更早画的块，看起来像图片叠加
           ctx?.clearRect(0, 0, wpiece, hpiece);
           ctx?.drawImage(
               img,
-              c * wpiece,
-              r * hpiece,
+              x,
+              y,
               wpiece,
               hpiece,
               0,
@@ -154,7 +159,7 @@ const cutImgStyle = computed(() => {
     // 垂直拆分（左右两半）：1 行 2 列
     return 'grid-template-rows: 1fr; grid-template-columns: repeat(2, 1fr);';
   }
-  return `grid: repeat(${lineNum.value}, 1fr) / repeat(${lineNum.value}, 1fr);`;
+  return `grid-template-rows: repeat(${rowNum.value}, 1fr); grid-template-columns: repeat(${columnNum.value}, 1fr);`;
 })
 
 //下载单个图片
@@ -191,18 +196,26 @@ const downloadAll = async () => {
   URL.revokeObjectURL(link.href);
 }
 
-watch(cutImgStyle, () => {
-  if (fileList.value && splitMode.value === 'grid') cut();
+watch([rowNum, columnNum], () => {
+  if (image.value.src && splitMode.value === 'grid') cut()
 })
 
-// 监听行数列数变化，持久化到 localStorage
-watch(lineNum, (val) => {
+watch(rowNum, (val) => {
   try {
-    localStorage.setItem(LINE_NUM_KEY, String(val))
+    localStorage.setItem(ROW_NUM_KEY, String(val))
   } catch (e) {
     // localStorage 不可用时静默忽略
   }
 })
+
+watch(columnNum, (val) => {
+  try {
+    localStorage.setItem(COLUMN_NUM_KEY, String(val))
+  } catch (e) {
+    // localStorage 不可用时静默忽略
+  }
+})
+
 
 // ============ 从 URL query 自动加载源图（由 AI 图片编辑工具跳转过来） ============
 // 第三方图床通常没有 CORS 头，前端直接 fetch 会失败。
@@ -292,16 +305,16 @@ const loadFromUrl = async () => {
 }
 
 onMounted(() => {
-  // 从 localStorage 恢复行数/列数设置
   try {
-    const saved = localStorage.getItem(LINE_NUM_KEY)
-    if (saved !== null) {
+    const readSavedCount = (key: string) => {
+      const saved = localStorage.getItem(key)
+      if (saved === null) return null
       const parsed = Number(saved)
-      // 校验范围（与 el-input-number 的 min/max 保持一致）
-      if (Number.isFinite(parsed) && parsed >= 1 && parsed <= 10) {
-        lineNum.value = parsed
-      }
+      return Number.isInteger(parsed) && parsed >= 1 && parsed <= 10 ? parsed : null
     }
+    const legacyCount = readSavedCount(LEGACY_LINE_NUM_KEY)
+    rowNum.value = readSavedCount(ROW_NUM_KEY) ?? legacyCount ?? 3
+    columnNum.value = readSavedCount(COLUMN_NUM_KEY) ?? legacyCount ?? 3
   } catch (e) {
     // localStorage 不可用时静默忽略
   }
@@ -338,9 +351,13 @@ onUnmounted(() => {
         </span>
       </el-upload>
       <div class="mt-3 flex flex-wrap items-center gap-3">
-        <div class="flex items-center">
-          <el-text>行数和列数</el-text>
-          <el-input-number v-model="lineNum" :min="1" :max="10" class="ml-3"/>
+        <div class="flex items-center gap-2">
+          <el-text>行数</el-text>
+          <el-input-number v-model="rowNum" :min="1" :max="10" />
+        </div>
+        <div class="flex items-center gap-2">
+          <el-text>列数</el-text>
+          <el-input-number v-model="columnNum" :min="1" :max="10" />
         </div>
         <el-button type="success" :disabled="!image.src" @click="splitHorizontal">
           水平拆分
@@ -358,19 +375,34 @@ onUnmounted(() => {
           <!-- 预览 -->
           <div class="w-full md:w-1/2">
             <div class="flex justify-between items-center mb-2">
-              <el-text>预览: (点击图片可单独下载)</el-text>
+              <el-text>预览: (点击图片查看大图)</el-text>
               <el-button type="primary" size="small" @click="downloadAll" :disabled="cutImg.length === 0">
                 <el-icon class="mr-1"><Download /></el-icon>
                 下载所有
               </el-button>
             </div>
             <div :style="cutImgStyle" class="grid gap-2 w-full items-stretch justify-items-center">
-              <!-- w-full + max-h-[320px] + object-contain：
-                   - 宽按 cell 撑满，高度由 max-h 兜底
-                   - object-contain 在高度被截断时按比例缩放，不变形
-                   - 水平/垂直拆分下 cell 较宽的部分由 object-contain 自动留白居中
-                   - 1x1、3x3 网格时图片大约 320px 高，整体不会溢出视口 -->
-              <img v-for="(src,index) in cutImg" :key="index" :src="src" alt="结果" class="w-full max-h-[320px] h-auto object-contain rounded-md cursor-pointer hover:opacity-80 transition-opacity bg-white" @click="downloadSingle(src, index)"/>
+              <div v-for="(src,index) in cutImg" :key="index" class="relative min-w-0 w-full flex items-center justify-center overflow-hidden rounded-md bg-white">
+                <el-image
+                  :src="src"
+                  :alt="`切片 ${index + 1}`"
+                  :preview-src-list="cutImg"
+                  :initial-index="index"
+                  preview-teleported
+                  fit="contain"
+                  class="w-full max-h-[320px] h-auto cursor-zoom-in hover:opacity-80 transition-opacity"
+                />
+                <el-button
+                  class="!absolute right-2 top-2 z-10"
+                  circle
+                  size="small"
+                  title="下载此切片"
+                  aria-label="下载此切片"
+                  @click.stop="downloadSingle(src, index)"
+                >
+                  <el-icon><Download /></el-icon>
+                </el-button>
+              </div>
             </div>
           </div>
 

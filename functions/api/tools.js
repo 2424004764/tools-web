@@ -33,13 +33,18 @@ export async function onRequest(context) {
   if (!db) return jsonError('数据库未配置', 500)
 
   try {
-    // 仅返回启用项；不在前台展示被禁用的工具
+    // 仅返回启用项；不在前台展示被禁用的工具。
+    // 分类名称与排序以 tool_categories 表为准（LEFT JOIN 兜底未知分类）。
     const result = await db
       .prepare(
-        `SELECT id, title, url, category_id, category_name, description, logo, sort_order
-         FROM tool_features
-         WHERE is_enabled = 1
-         ORDER BY category_id ASC, sort_order ASC, id ASC`,
+        `SELECT t.id, t.title, t.url, t.category_id,
+                COALESCE(c.name, t.category_name, '其他') AS category_name,
+                t.description, t.logo, t.sort_order
+         FROM tool_features t
+         LEFT JOIN tool_categories c ON c.id = t.category_id
+         WHERE t.is_enabled = 1
+           AND COALESCE(c.is_enabled, 1) = 1
+         ORDER BY COALESCE(c.sort_order, 9999) ASC, t.category_id ASC, t.sort_order ASC, t.id ASC`,
       )
       .all()
 

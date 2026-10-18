@@ -4,6 +4,9 @@ import {
   fetchAdminTools,
   updateAdminTool,
   batchToggleTools,
+  createAdminToolCategory,
+  updateAdminToolCategory,
+  batchReorderToolCategories,
 } from '@/api/admin/tool'
 import {
   fetchAdminToolModels,
@@ -109,6 +112,77 @@ const editDialog = reactive({
   credit_cost: 0,
   submitting: false,
 })
+
+// ============ 分类编辑（名称/排序，存于 tool_categories 表） ============
+const categoryDialog = reactive({
+  visible: false,
+  id: 0,
+  name: '',
+  sort_order: 0,
+  submitting: false,
+})
+
+const openCategoryDialog = (cat: ToolCategorySummary) => {
+  categoryDialog.id = cat.category_id
+  categoryDialog.name = cat.category_name
+  categoryDialog.sort_order = cat.sort_order ?? 0
+  categoryDialog.visible = true
+}
+
+// 切换分类启用状态：停用后前台隐藏整个分类板块
+const handleCategoryEnabled = async (
+  cat: ToolCategorySummary,
+  value: number | string | boolean,
+) => {
+  const enabled = value === 1 || value === true ? 1 : 0
+  // 乐观更新
+  const prev = cat.is_enabled
+  cat.is_enabled = enabled
+  try {
+    await updateAdminToolCategory(cat.category_id, { is_enabled: enabled })
+    ElMessage.success(enabled ? '分类已启用' : '分类已停用，前台将隐藏该板块')
+  } catch (err: any) {
+    cat.is_enabled = prev
+    ElMessage.error(err?.response?.data?.error || '操作失败')
+  }
+}
+
+const openNewCategoryDialog = () => {
+  categoryDialog.id = 0
+  categoryDialog.name = ''
+  const maxSort = Math.max(0, ...categories.value.map((c) => c.sort_order ?? 0))
+  categoryDialog.sort_order = maxSort + 10
+  categoryDialog.visible = true
+}
+
+const submitCategoryDialog = async () => {
+  if (!categoryDialog.name.trim()) {
+    ElMessage.warning('分类名称不能为空')
+    return
+  }
+  categoryDialog.submitting = true
+  try {
+    if (categoryDialog.id > 0) {
+      await updateAdminToolCategory(categoryDialog.id, {
+        name: categoryDialog.name.trim(),
+        sort_order: categoryDialog.sort_order,
+      })
+      ElMessage.success('分类已保存')
+    } else {
+      await createAdminToolCategory({
+        name: categoryDialog.name.trim(),
+        sort_order: categoryDialog.sort_order,
+      })
+      ElMessage.success('分类已创建')
+    }
+    categoryDialog.visible = false
+    load()
+  } catch (err: any) {
+    ElMessage.error(err?.response?.data?.error || '操作失败')
+  } finally {
+    categoryDialog.submitting = false
+  }
+}
 
 // ============ 工具 model 列表（编辑弹窗内） ============
 const modelList = ref<ToolModel[]>([])
@@ -319,12 +393,76 @@ const handleModelSortEnd = async (evt: Sortable.SortableEvent) => {
   }
 }
 
+// ============ 拖拽重排分类卡片（tool_categories 表） ============
+const categoryGridRef = ref<any>(null)
+let categorySortable: Sortable | null = null
+let categorySortableInited = false
+
+const destroyCategorySortable = () => {
+  if (categorySortable) {
+    categorySortable.destroy()
+    categorySortable = null
+  }
+  categorySortableInited = false
+}
+
+// 分类聚合数据加载完成后，在卡片网格容器上挂 Sortable
+const initCategorySortable = async () => {
+  if (categorySortableInited) return
+  await nextTick()
+  const gridEl = categoryGridRef.value?.$el ?? categoryGridRef.value
+  if (!gridEl) return
+  categorySortable = Sortable.create(gridEl as HTMLElement, {
+    handle: '.category-drag-handle',
+    animation: 150,
+    ghostClass: 'category-card-ghost',
+    chosenClass: 'category-card-chosen',
+    onEnd: handleCategorySortEnd,
+  })
+  categorySortableInited = true
+}
+
+// 拖拽结束：本地重排 categories + 批量保存 sort_order（下标 * 10，留出插入空隙）
+const handleCategorySortEnd = async (evt: Sortable.SortableEvent) => {
+  const { oldIndex, newIndex } = evt
+  if (oldIndex === newIndex || oldIndex == null || newIndex == null) return
+
+  const moved = categories.value.splice(oldIndex, 1)[0]
+  categories.value.splice(newIndex, 0, moved)
+
+  const items = categories.value.map((c, idx) => ({
+    id: c.category_id,
+    sort_order: (idx + 1) * 10,
+  }))
+  try {
+    await batchReorderToolCategories(items)
+    ElMessage.success('分类排序已保存')
+  } catch (err: any) {
+    ElMessage.error(err?.response?.data?.error || '保存分类排序失败，正在恢复…')
+    load()
+  }
+}
+
+// 分类数据首次到达后初始化拖拽
+watch(
+  () => categories.value.length,
+  (len) => {
+    if (len > 0 && !categorySortableInited) {
+      initCategorySortable()
+    }
+  },
+)
+
 onBeforeUnmount(() => {
   destroySortable()
+  destroyCategorySortable()
 })
 
 // ============ 按分类批量启停 ============
-const handleCategoryToggle = async (cat: ToolCategorySummary, enable: boolean) => {
+const handleCategoryToggle = async (
+  cat: { category_id: number; category_name: string },
+  enable: boolean,
+) => {
   // 找出当前页在该分类下的所有工具 ID
   const ids = list.value
     .filter((t) => t.category_id === cat.category_id && t.is_enabled !== (enable ? 1 : 0))
@@ -412,10 +550,10 @@ onMounted(() => {
       <el-select
         v-model="filter.categoryId"
         placeholder="分类"
-        clearable
         class="!w-40"
         @change="handleSearch"
       >
+        <el-option label="全部" :value="''" />
         <el-option
           v-for="c in categories"
           :key="c.category_id"
@@ -436,45 +574,63 @@ onMounted(() => {
         <el-option label="已禁用" value="0" />
       </el-select>
 
+      <el-button @click="openNewCategoryDialog">新建分类</el-button>
       <el-button @click="load">刷新</el-button>
     </div>
 
-    <!-- 分类聚合卡片 -->
-    <div v-if="categories.length" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-4">
-      <el-card
-        v-for="cat in categories"
-        :key="cat.category_id"
-        shadow="never"
-        class="!rounded-xl cursor-pointer hover:!shadow-md transition-shadow"
-        @click="filter.categoryId = cat.category_id; handleSearch()"
-      >
-        <div class="text-sm text-ink-700 truncate">{{ cat.category_name }}</div>
-        <div class="mt-1 text-lg font-semibold text-ink-900">
-          {{ cat.enabled }}
-          <span class="text-xs text-ink-400">/ {{ cat.total }}</span>
-        </div>
-        <div class="mt-2 flex gap-1">
-          <el-button
-            size="small"
-            type="success"
-            link
-            @click.stop="handleCategoryToggle(cat, true)"
+    <!-- 左右布局：左侧分类列表（可拖拽排序），右侧工具列表；两侧独立滚动 -->
+    <div class="flex items-start gap-4">
+      <aside v-if="categories.length" class="w-60 shrink-0 category-pane">
+        <div
+          ref="categoryGridRef"
+          class="flex flex-col gap-2 pr-1"
+        >
+          <el-card
+            v-for="cat in categories"
+            :key="cat.category_id"
+            shadow="never"
+            class="!rounded-xl cursor-pointer hover:!shadow-md transition-shadow"
+            @click="filter.categoryId = cat.category_id; handleSearch()"
           >
-            全部启用
-          </el-button>
-          <el-button
-            size="small"
-            type="danger"
-            link
-            @click.stop="handleCategoryToggle(cat, false)"
-          >
-            全部禁用
-          </el-button>
+            <div class="flex items-center gap-1">
+              <div class="text-sm text-ink-700 truncate flex-1">{{ cat.category_name }}</div>
+              <span
+                class="category-drag-handle shrink-0 cursor-grab text-ink-300 hover:text-ink-500 active:cursor-grabbing"
+                title="拖拽调整分类顺序"
+                @click.stop
+              >
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+                  <circle cx="7" cy="5" r="1.4" /><circle cx="13" cy="5" r="1.4" />
+                  <circle cx="7" cy="10" r="1.4" /><circle cx="13" cy="10" r="1.4" />
+                  <circle cx="7" cy="15" r="1.4" /><circle cx="13" cy="15" r="1.4" />
+                </svg>
+              </span>
+            </div>
+            <div class="mt-1 text-lg font-semibold text-ink-900">
+              {{ cat.enabled }}
+              <span class="text-xs text-ink-400">/ {{ cat.total }}</span>
+            </div>
+            <div class="mt-2 flex items-center gap-1">
+              <el-button
+                size="small"
+                type="primary"
+                link
+                @click.stop="openCategoryDialog(cat)"
+              >
+                编辑
+              </el-button>
+              <el-switch
+                size="small"
+                :model-value="cat.is_enabled !== 0"
+                @click.stop
+                @change="(v: number | string | boolean) => handleCategoryEnabled(cat, v)"
+              />
+            </div>
+          </el-card>
         </div>
-      </el-card>
-    </div>
+      </aside>
 
-    <!-- 工具列表（按分类折叠） -->
+      <section class="flex-1 min-w-0 tool-pane">
     <el-collapse v-model="activeCategories">
       <el-collapse-item
         v-for="group in groupedList"
@@ -483,11 +639,29 @@ onMounted(() => {
         class="!border !border-border-default !rounded-xl mb-3"
       >
         <template #title>
-          <div class="flex items-center gap-2 px-2">
+          <div class="flex items-center gap-2 px-2 w-full">
             <span class="font-medium text-ink-900">{{ group.name }}</span>
             <el-tag size="small" effect="plain">
               {{ group.tools.filter(t => t.is_enabled === 1).length }} / {{ group.tools.length }}
             </el-tag>
+            <div class="ml-auto flex items-center gap-1" @click.stop>
+              <el-button
+                size="small"
+                type="success"
+                link
+                @click.stop="handleCategoryToggle({ category_id: group.id, category_name: group.name }, true)"
+              >
+                全部启用
+              </el-button>
+              <el-button
+                size="small"
+                type="danger"
+                link
+                @click.stop="handleCategoryToggle({ category_id: group.id, category_name: group.name }, false)"
+              >
+                全部禁用
+              </el-button>
+            </div>
           </div>
         </template>
 
@@ -555,6 +729,8 @@ onMounted(() => {
         </el-table>
       </el-collapse-item>
     </el-collapse>
+      </section>
+    </div>
 
     <div class="flex justify-end mt-4">
       <el-pagination
@@ -730,6 +906,31 @@ onMounted(() => {
         <el-button type="primary" :loading="newModel.submitting" @click="submitNewModel">添加</el-button>
       </template>
     </el-dialog>
+
+    <!-- 分类编辑弹窗（名称/排序，存于 tool_categories 表） -->
+    <el-dialog
+      v-model="categoryDialog.visible"
+      :title="categoryDialog.id > 0 ? '编辑分类' : '新建分类'"
+      width="420px"
+      :close-on-click-modal="false"
+      append-to-body
+    >
+      <el-form label-width="90px" class="!mt-2">
+        <el-form-item label="分类名称" required>
+          <el-input v-model="categoryDialog.name" placeholder="例如 编码与加密" maxlength="20" />
+        </el-form-item>
+        <el-form-item label="排序">
+          <el-input-number v-model="categoryDialog.sort_order" :min="0" :max="9999" controls-position="right" />
+          <span class="ml-2 text-xs text-ink-500">数字越小，首页分类板块越靠前</span>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="categoryDialog.visible = false">取消</el-button>
+        <el-button type="primary" :loading="categoryDialog.submitting" @click="submitCategoryDialog">
+          {{ categoryDialog.id > 0 ? '保存' : '创建' }}
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -745,5 +946,35 @@ onMounted(() => {
 :deep(.model-drag-handle:hover) {
   background: rgb(var(--surface-2));
   border-radius: 4px;
+}
+/* 分类卡片拖拽视觉反馈 */
+:deep(.category-card-ghost) {
+  opacity: 0.45;
+}
+:deep(.category-card-chosen) {
+  box-shadow: 0 0 0 2px rgb(var(--accent-500) / 0.35);
+}
+
+/* 左右布局：分类列表与工具列表各自独立滚动（顶部留出筛选栏高度） */
+.category-pane {
+  max-height: calc(100vh - 230px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.tool-pane {
+  max-height: calc(100vh - 230px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+}
+
+@media (max-width: 900px) {
+  /* 窄屏退化为上下堆叠，滚动交给页面本身 */
+  .category-pane,
+  .tool-pane {
+    max-height: none;
+    overflow-y: visible;
+  }
 }
 </style>

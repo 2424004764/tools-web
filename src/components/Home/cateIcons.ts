@@ -1,6 +1,7 @@
 // 分类标题 → 图标组件映射（侧边栏 / 分类页共用）。
 // unplugin-icons 静态导入，名称均已在 @iconify-json/ep 中确认存在。
 import IconCpu from '~icons/ep/cpu'
+import IconLock from '~icons/ep/lock'
 import IconDocument from '~icons/ep/document'
 import IconReading from '~icons/ep/reading'
 import IconPicture from '~icons/ep/picture'
@@ -27,6 +28,7 @@ interface CateIconRule {
 // 按「分类标题包含关键词」匹配，先命中先用；都不中回退罗盘（泛导航含义）
 const CATE_ICON_RULES: CateIconRule[] = [
   { match: ['开发', '运维', '代码'], icon: IconCpu },
+  { match: ['编码', '加密', '解密'], icon: IconLock },
   { match: ['文本', '文字'], icon: IconDocument },
   { match: ['教育', '学术'], icon: IconReading },
   { match: ['图片', '图像'], icon: IconPicture },
