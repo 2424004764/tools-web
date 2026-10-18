@@ -42,48 +42,52 @@ export async function onRequest(context) {
     if (categoryId) {
       const cid = parseInt(categoryId, 10)
       if (!Number.isNaN(cid)) {
-        where.push('category_id = ?')
+        where.push('t.category_id = ?')
         args.push(cid)
       }
     }
     if (enabled === '0' || enabled === '1') {
-      where.push('is_enabled = ?')
+      where.push('t.is_enabled = ?')
       args.push(parseInt(enabled, 10))
     }
     if (keyword) {
-      where.push('(title LIKE ? OR url LIKE ? OR description LIKE ?)')
+      where.push('(t.title LIKE ? OR t.url LIKE ? OR t.description LIKE ?)')
       const like = `%${keyword}%`
       args.push(like, like, like)
     }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : ''
 
     const totalRow = await db
-      .prepare(`SELECT COUNT(*) AS c FROM tool_features ${whereSql}`)
+      .prepare(`SELECT COUNT(*) AS c FROM tool_features t ${whereSql}`)
       .bind(...args)
       .first()
     const total = totalRow?.c || 0
 
     const list = await db
       .prepare(
-        `SELECT id, title, url, category_id, category_name, description, logo,
-                sort_order, is_enabled, credit_cost, created_at, updated_at
-         FROM tool_features
+        `SELECT t.id, t.title, t.url, t.category_id,
+                COALESCE(c.name, t.category_name, '其他') AS category_name,
+                t.description, t.logo,
+                t.sort_order, t.is_enabled, t.credit_cost, t.created_at, t.updated_at
+         FROM tool_features t
+         LEFT JOIN tool_categories c ON c.id = t.category_id
          ${whereSql}
-         ORDER BY category_id ASC, sort_order ASC, id ASC
+         ORDER BY COALESCE(c.sort_order, 9999) ASC, t.category_id ASC, t.sort_order ASC, t.id ASC
          LIMIT ? OFFSET ?`,
       )
       .bind(...args, pageSize, offset)
       .all()
 
-    // 同时返回分类聚合信息，方便管理界面折叠展示
+    // 分类聚合信息来自 tool_categories 表（支持独立排序/改名），未关联工具的分类也返回
     const categories = await db
       .prepare(
-        `SELECT category_id, category_name,
-                COUNT(*) AS total,
-                SUM(CASE WHEN is_enabled = 1 THEN 1 ELSE 0 END) AS enabled
-         FROM tool_features
-         GROUP BY category_id, category_name
-         ORDER BY category_id ASC`,
+        `SELECT c.id AS category_id, c.name AS category_name, c.sort_order, c.is_enabled,
+                COUNT(t.id) AS total,
+                COALESCE(SUM(t.is_enabled = 1), 0) AS enabled
+         FROM tool_categories c
+         LEFT JOIN tool_features t ON t.category_id = c.id
+         GROUP BY c.id, c.name, c.sort_order, c.is_enabled
+         ORDER BY c.sort_order ASC, c.id ASC`,
       )
       .all()
 

@@ -30,6 +30,7 @@ export default {
   '/signimage': '在线图片编辑 - 裁剪/标注/滤镜/加文字',
   '/randompassword': '随机密码生成器 - 免费在线批量生成强密码',
   '/urlencode': 'URL编码解码 - URL在线编码/解密转换',
+  '/charset': '字符编码解码 - UTF-8/GBK/十六进制在线互转',
   '/ascii': 'ASCII码表 - 完整ASCII对照表在线查询',
   '/uuid': 'UUID生成器 - 在线批量生成UUID/GUID',
   '/barrage': '手持弹幕 - 手机滚动弹幕应援工具',

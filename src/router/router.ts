@@ -184,6 +184,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/charset',
+    component: () => import('@/components/Tools/Charset/Charset.vue'),
+    name: 'charset',
+    meta: {
+      title: "字符编码/解码",
+      keywords: '字符编码,字符解码,十六进制,十进制,UTF-8,GBK,GB18030,Big5',
+      description: '在线字符编码解码，支持 UTF-8、UTF-16、GBK、GB18030、Big5 等字符集，以及十六进制、十进制和自定义分隔符。',
+    }
+  },
+  {
     path: '/ascii',
     component: () => import('@/components/Tools/ASCII/ASCII.vue'),
     name: 'ascii',

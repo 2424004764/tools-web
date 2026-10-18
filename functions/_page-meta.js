@@ -25,6 +25,7 @@ export default {
   '/signimage': { title: '在线图片编辑 - 裁剪/标注/滤镜/加文字 | 一方工具箱', keywords: '在线图片裁剪，图片标注，图片滤镜，图片画笔、图片旋转、图片文字，图片美,图片尺寸调整化', description: '在线图片裁剪，图片标注，图片滤镜，图片画笔、图片旋转、图片文字,图片尺寸调整等操作', ogUrl: 'https://tool.fologde.com/signimage/' },
   '/randompassword': { title: '随机密码生成器 - 免费在线批量生成强密码 | 一方工具箱', keywords: '在线生成随机密码，批量生成随机密码，密码生成', description: '在线随机密码生成', ogUrl: 'https://tool.fologde.com/randompassword/' },
   '/urlencode': { title: 'URL编码解码 - URL在线编码/解密转换 | 一方工具箱', keywords: 'url编码，url解码，url加密，url解密', description: '在线url编码，在线url解码工具', ogUrl: 'https://tool.fologde.com/urlencode/' },
+  '/charset': { title: '字符编码解码 - UTF-8/GBK/十六进制在线互转 | 一方工具箱', keywords: '字符编码,字符解码,十六进制,十进制,UTF-8,GBK,GB18030,Big5', description: '在线字符编码解码，支持 UTF-8、UTF-16、GBK、GB18030、Big5 等字符集，以及十六进制、十进制和自定义分隔符。', ogUrl: 'https://tool.fologde.com/charset/' },
   '/ascii': { title: 'ASCII码表 - 完整ASCII对照表在线查询 | 一方工具箱', keywords: 'ascii，ascii码表,ascii对照表，ascii控制字符，ascii打印字符，ascii扩展码', description: 'ascii全面对照表，包含控制字符，打印字符，扩展码', ogUrl: 'https://tool.fologde.com/ascii/' },
   '/uuid': { title: 'UUID生成器 - 在线批量生成UUID/GUID | 一方工具箱', keywords: 'UUID生成器', description: 'uuid生成器，批量uuid生成', ogUrl: 'https://tool.fologde.com/uuid/' },
   '/barrage': { title: '手持弹幕 - 手机滚动弹幕应援工具 | 一方工具箱', keywords: '手持弹幕，弹幕工具', description: '手持弹幕是一种新型的互动沟通工具，可以方便地为各种户外活动、演出嘉年华等活动增加趣味性和互动性。手持弹幕具有轻便、易携带、易操作等优点，可以让每个参与者都变成活动的一部分。同时，手持弹幕还可以通过预先编写的文本、表情等形式，表达参与者的情感和想法，实现沟通互动。在社交媒体时代，手持弹幕的使用也带来了更广泛的社交效应，增加了活动的互动性和传播度。无论是举办方还是参与者，手持弹幕都是一个非常有价值的互动工具。', ogUrl: 'https://tool.fologde.com/barrage/' },

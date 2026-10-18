@@ -78,15 +78,6 @@ export function getToolsCate() {
           cate: '开发运维',
         },
         {
-          id: 2,
-          title: 'URL编码/解码',
-          logo: '/images/logo/url.png',
-          desc: 'URL在线编码解码工具（UrlEncode编码 和 UrlDecode解码）',
-          url: '/urlencode/',
-          cateId: 2,
-          cate: '开发运维',
-        },
-        {
           id: 3,
           title: 'UUID生成器',
           logo: '/images/logo/uuid.png',
@@ -159,15 +150,6 @@ export function getToolsCate() {
           cate: '开发运维',
         },
                 {
-          id: 11,
-          title: 'Unicode转中文',
-          logo: '/images/logo/union.png',
-          desc: 'Unicode和中文的相互转换',
-          url: '/unicode/',
-          cateId: 2,
-          cate: '开发运维',
-        },
-        {
           id: 12,
           title: 'HTTP状态码',
           logo: '/images/logo/http_code.png',
@@ -285,15 +267,6 @@ export function getToolsCate() {
           cate: '开发运维',
         },
         {
-          id: 22,
-          title: 'Base64编码/解码',
-          logo: '/images/logo/base64.png',
-          desc: '文本的Base64编码与解码，双向实时转换，支持中文',
-          url: '/base64/',
-          cateId: 2,
-          cate: '开发运维',
-        },
-        {
           id: 23,
           title: 'MySQL转Go结构体',
           logo: '/images/logo/mysql_to_go.png',
@@ -374,6 +347,58 @@ export function getToolsCate() {
           cate: '开发运维',
         },
 
+      ]
+    },
+    {
+      id: 14,
+      title: '编码与加密',
+      icon: '',
+      list: [
+        {
+          id: 2,
+          title: 'URL编码/解码',
+          logo: '/images/logo/url.png',
+          desc: 'URL在线编码解码工具（UrlEncode编码 和 UrlDecode解码）',
+          url: '/urlencode/',
+          cateId: 14,
+          cate: '编码与加密',
+        },
+        {
+          id: 11,
+          title: 'Unicode转中文',
+          logo: '/images/logo/union.png',
+          desc: 'Unicode与中文相互转换，支持 \\uXXXX、&#xXXXX;、%uXXXX 三种模式，可忽略 ASCII 字符',
+          url: '/unicode/',
+          cateId: 14,
+          cate: '编码与加密',
+        },
+        {
+          id: 22,
+          title: 'Base64编码/解码',
+          logo: '/images/logo/base64.png',
+          desc: '文本的Base64编码与解码，双向实时转换，支持中文',
+          url: '/base64/',
+          cateId: 14,
+          cate: '编码与加密',
+        },
+        {
+          id: 31,
+          title: '字符编码/解码',
+          logo: '/images/logo/union.png',
+          desc: '字符与字节序列互转，支持 UTF、GBK、GB18030、Big5 及十六进制/十进制格式',
+          url: '/charset/',
+          cateId: 14,
+          cate: '编码与加密',
+        },
+        {
+          id: 37,
+          title: '文本加密/解密',
+          logo: '/images/logo/base64.png',
+          desc: 'AES-GCM 文本加密解密工具，支持密码派生秘钥与 Base64 输出，适合保护敏感文本。',
+          url: '/text-crypto/',
+          cateId: 14,
+          cate: '编码与加密',
+        },
       ]
     },
     {
@@ -481,14 +506,6 @@ export function getToolsCate() {
           cate: '文本处理'
         },
         {
-          id: 37,
-          title: '文本加密/解密',
-          logo: '/images/logo/base64.png',
-          desc: 'AES-GCM 文本加密解密工具，支持密码派生秘钥与 Base64 输出，适合保护敏感文本。',
-          url: '/text-crypto/',
-          cateId: 3,
-          cate: '文本处理'
-        },        {
           id: 148,
           title: '简繁体转换',
           logo: '/images/logo/chinese-convert.svg',

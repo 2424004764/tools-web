@@ -54,6 +54,7 @@
     "highlight.js": "^11.9.0",
     "html2canvas": "^1.4.1",
     "imorse": "^1.0.0",
+    "iconv-lite": "^0.6.3",
     "jspdf": "^3.0.2",
     "jszip": "^3.10.1",
     "jwt-decode": "^4.0.0",

@@ -324,9 +324,13 @@ const {
 } = save
 const {
   btnRef, canGenerate, concurrencyHint, isAnyLoading, retryingCount,
-  generateImage, retrySlot,
+  generateImage, retrySlot, retryAllFailed,
 } = gen
 const { formatElapsed, phaseText } = slotVisuals
+
+const allResultsFailed = computed(() =>
+  results.length > 0 && results.every((slot) => slot.status === 'failed'),
+)
 
 // 结果区网格列数：1 全宽，2+ 两列（不搞三列，避免卡片太挤；手机端一律单列）
 const resultGridClass = computed(() => {
@@ -983,6 +987,19 @@ onUnmounted(() => {
               </span>
             </label>
 
+            <!-- 全部生成均失败时提供批量重试；单格重试仍保留在各失败卡片内 -->
+            <button
+              v-if="allResultsFailed"
+              type="button"
+              class="text-caption text-red-600 hover:text-red-700 font-medium inline-flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+              :disabled="isAnyLoading"
+              @click="retryAllFailed"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              一键重试全部
+            </button>
             <!-- 自动保存到我的创作（无需手动、无开关）：生成完一张自动存一张 -->
             <div class="flex items-center gap-2">
               <span

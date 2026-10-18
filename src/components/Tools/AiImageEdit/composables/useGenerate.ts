@@ -292,20 +292,21 @@ export function useGenerate(opts: {
   }
 
   // 失败 slot 单格重试：独立幂等 key / 独立扣费 / 独立计时。
-  // 各失败格子的重试互不阻塞：A 在重试时 B 依然可以点「重试」。
+  // 各失败格子的重试互不阻塞：A 重试时 B 依然可以点「重试」。
   // 同一格防重复点击：点击后 status 立即变 pending，模板随即切走重试按钮，
   // 这里再用 status 守卫兜底（异步间隙内的二次点击直接忽略）。
-  const retrySlot = async (slot: ResultSlot) => {
-    if (slot.status !== 'failed') return
+  const retrySlot = async (slot: ResultSlot, silent = false): Promise<boolean> => {
+    if (slot.status !== 'failed') return false
     const costPerRequest = currentModelCost.value
     const balanceBefore = userStore.credits.balance
 
-    // 余额预检：单次重试只需 costPerRequest
     if (costPerRequest > 0 && balanceBefore < costPerRequest) {
-      ElMessage.error(
-        `积分余额不足：本次需 ${costPerRequest} 积分，当前 ${balanceBefore}`,
-      )
-      return
+      if (!silent) {
+        ElMessage.error(
+          `积分余额不足：本次需 ${costPerRequest} 积分，当前 ${balanceBefore}`,
+        )
+      }
+      return false
     }
 
     // 把 slot 重置为 pending + 启动独立计时
@@ -319,7 +320,7 @@ export function useGenerate(opts: {
 
     // 乐观扣费
     if (costPerRequest > 0) {
-      userStore.setBalance(balanceBefore - costPerRequest)
+      userStore.setBalance(userStore.credits.balance - costPerRequest)
     }
 
     try {
@@ -330,10 +331,10 @@ export function useGenerate(opts: {
       if (result.ok) {
         if (typeof result.balanceAfter === 'number') {
           userStore.setBalance(result.balanceAfter)
-        } else {
+        } else if (!silent) {
           userStore.fetchCredits(true)
         }
-        ElMessage.success('重试成功')
+        if (!silent) ElMessage.success('重试成功')
       } else {
         // 失败：服务端 reverse 已完成，前端把这一单的乐观扣费加回来。
         // 并发下可能有其他重试/结果在途，不能整体回退到 balanceBefore
@@ -341,14 +342,41 @@ export function useGenerate(opts: {
         if (costPerRequest > 0) {
           userStore.setBalance(userStore.credits.balance + costPerRequest)
         }
-        userStore.fetchCredits(true)
+        if (!silent) userStore.fetchCredits(true)
         // slot 已经被 fireOneRequest 标为 failed + 写入 errorMsg
       }
+      return result.ok
     } finally {
       retryingCount.value--
     }
-    // 注意：成功路径下 fireOneRequest 已触发 onSlotSuccess → 自动保存这张
   }
+
+  const retryAllFailed = async () => {
+    if (isBatchLoading.value || retryingCount.value > 0 || results.length === 0) return
+    const failedSlots = results.filter((slot) => slot.status === 'failed')
+    if (failedSlots.length !== results.length) return
+
+    const costPerRequest = currentModelCost.value
+    const totalCost = costPerRequest * failedSlots.length
+    const balanceBefore = userStore.credits.balance
+    if (totalCost > 0 && balanceBefore < totalCost) {
+      ElMessage.error(`积分余额不足：全部重试需 ${totalCost} 积分，当前 ${balanceBefore}`)
+      return
+    }
+
+    const outcomes = await Promise.allSettled(failedSlots.map((slot) => retrySlot(slot, true)))
+    void userStore.fetchCredits(true)
+    const successCount = outcomes.filter(
+      (outcome) => outcome.status === 'fulfilled' && outcome.value,
+    ).length
+    const failedCount = outcomes.length - successCount
+    if (failedCount === 0) {
+      ElMessage.success(`全部重试成功（${successCount}/${outcomes.length}）`)
+    } else {
+      ElMessage.warning(`批量重试完成：成功 ${successCount} 张，失败 ${failedCount} 张`)
+    }
+  }
+
 
   return {
     btnRef,
@@ -359,6 +387,7 @@ export function useGenerate(opts: {
     resetResults,
     generateImage,
     retrySlot,
+    retryAllFailed,
     stopBtnAnim,
   }
 }

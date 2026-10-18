@@ -40,16 +40,20 @@ export async function onRequest(context) {
   try {
     const result = await db
       .prepare(
-        `SELECT f.id, f.title, f.url, f.category_id, f.category_name, f.description, f.logo, f.sort_order,
+        `SELECT f.id, f.title, f.url, f.category_id,
+                COALESCE(c.name, f.category_name, '其他') AS category_name,
+                f.description, f.logo, f.sort_order,
                 COALESCE(u.cnt, 0) AS use_cnt
          FROM tool_features f
+         LEFT JOIN tool_categories c ON c.id = f.category_id
          LEFT JOIN (
              SELECT tool_url, COUNT(*) AS cnt
              FROM tool_usage_records
              GROUP BY tool_url
          ) u ON u.tool_url = f.url
          WHERE f.is_enabled = 1
-         ORDER BY f.category_id ASC, use_cnt DESC, f.sort_order ASC, f.id ASC`,
+           AND COALESCE(c.is_enabled, 1) = 1
+         ORDER BY COALESCE(c.sort_order, 9999) ASC, f.category_id ASC, use_cnt DESC, f.sort_order ASC, f.id ASC`,
       )
       .all()
 
