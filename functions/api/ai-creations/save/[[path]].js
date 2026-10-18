@@ -127,11 +127,15 @@ async function handleInit(db, uid, body, env) {
     return jsonError(`单次最多保存 ${MAX_IMAGES_PER_BATCH} 张图片`, 400)
   }
   for (const img of images) {
-    if (!img || typeof img !== 'object' || (!img.upstream_url && sourceType !== 'manual_upload') || !img.prompt) {
-      return jsonError('images 每项必须包含 prompt，生成素材还需要 upstream_url', 400)
+    if (!img || typeof img !== 'object' || (!img.upstream_url && sourceType !== 'manual_upload' && !img.existing_key) || !img.prompt) {
+      return jsonError('images 每项必须包含 prompt，生成素材还需要 upstream_url 或 existing_key', 400)
     }
     if (String(img.prompt).length > MAX_PROMPT) {
       return jsonError(`单条 prompt 不能超过 ${MAX_PROMPT} 字符`, 400)
+    }
+    // 复用已持久化对象：只允许复用本人命名空间下的 generated-images（防越权引用他人对象）
+    if (img.existing_key && !String(img.existing_key).startsWith(`generated-images/${uid}/`)) {
+      return jsonError('existing_key 不在当前用户命名空间内', 403)
     }
   }
 
@@ -178,8 +182,10 @@ async function handleInit(db, uid, body, env) {
 
   // 2) 存储额度预留：按前端声明的 file_size 合计预扣（confirm 时按 R2 真实大小结算，多退少补）。
   //    未声明 file_size 的批次不预留（恶意少报会在 confirm 被真实大小修正）。
+  //    复用 existing_key 的图片不预留——那份对象在生成持久化时已扣过一次额度，画廊只引用不再计费。
   let reservationId = ''
   const declaredBytes = images.reduce((sum, img) => {
+    if (img?.existing_key) return sum
     const n = Number(img?.file_size)
     return sum + (Number.isFinite(n) && n > 0 ? Math.floor(n) : 0)
   }, 0)
@@ -202,10 +208,28 @@ async function handleInit(db, uid, body, env) {
   const bucket = env.R2_BUCKET_NAME
   if (!bucket) return jsonError('R2 桶名未配置', 500)
 
-  const plan = []
-  for (let i = 0; i < images.length; i++) {
-    const img = images[i]
-    const ext = extFromContentType(img.content_type || img.mime || '')
+    const plan = []
+    for (let i = 0; i < images.length; i++) {
+      const img = images[i]
+      if (img.existing_key) {
+        // 复用已持久化对象：无需签名上传 URL，confirm 只写 D1 行
+        plan.push({
+          index: i,
+          reuse: true,
+          upload_url: '',
+          r2_key: String(img.existing_key),
+          content_type: '',
+          public_url: buildR2PublicUrl(env, String(img.existing_key)),
+          expires_at: 0,
+          upstream_url: String(img.upstream_url || ''),
+          filename: String(img.filename || 'image.png').slice(0, 255),
+          prompt: String(img.prompt),
+          width: Number.isFinite(img.width) ? Number(img.width) : null,
+          height: Number.isFinite(img.height) ? Number(img.height) : null,
+        })
+        continue
+      }
+      const ext = extFromContentType(img.content_type || img.mime || '')
     const uuid = genUuid()
     const r2Key = `ai-creations/${uid}/${groupId}/${uuid}.${ext}`
     // 使用客户端声明的图片类型签名，避免手动上传被强制改成 PNG。
@@ -255,18 +279,23 @@ async function handleConfirm(db, uid, body, env) {
   if (!group) return jsonError('group 不存在', 404)
   if (group.uid !== uid) return jsonError('无权访问该 group', 403)
 
-  // 校验每张图的 r2_key 命名空间必须以 ai-creations/{uid}/ 开头（防止越权写）
-  const prefix = `ai-creations/${uid}/`
+  // 校验每张图的 r2_key 命名空间：
+  //   - ai-creations/{uid}/      本次新上传的对象
+  //   - generated-images/{uid}/  生成持久化对象复用（生成时已扣过额度，这里不再结算）
+  const uploadsPrefix = `ai-creations/${uid}/`
+  const generatedPrefix = `generated-images/${uid}/`
   for (const img of images) {
     if (!img || typeof img !== 'object' || !img.r2_key || !img.prompt) {
       return jsonError('images 每项必须包含 r2_key 与 prompt', 400)
     }
-    if (!String(img.r2_key).startsWith(prefix)) {
+    const key = String(img.r2_key)
+    if (!key.startsWith(uploadsPrefix) && !key.startsWith(generatedPrefix)) {
       return jsonError('r2_key 不在当前用户命名空间内', 403)
     }
   }
 
-  // 以 R2 真实大小为准结算存储额度（HEAD 失败/对象缺失回退前端声明值），并释放 init 时的预留
+  // 以 R2 真实大小为准结算存储额度（HEAD 失败/对象缺失回退前端声明值），并释放 init 时的预留。
+  // 复用 generated-images 对象的行照常写入 file_size，但不参与结算（那份额度在持久化时已扣）。
   const reservationId = body.reservation_id ? String(body.reservation_id).trim() : ''
   const bucket = env.R2_BUCKET_NAME
   const actualSizes = await Promise.all(images.map(async (img) => {
@@ -280,7 +309,10 @@ async function handleConfirm(db, uid, body, env) {
       return fallback
     }
   }))
-  const totalBytes = actualSizes.reduce((s, x) => s + x, 0)
+  const totalBytes = actualSizes.reduce(
+    (s, x, i) => s + (String(images[i].r2_key).startsWith(generatedPrefix) ? 0 : x),
+    0,
+  )
   if (totalBytes > 0 || reservationId) {
     await settleReservation(db, uid, reservationId, totalBytes)
   }

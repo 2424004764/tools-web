@@ -628,6 +628,9 @@ export async function onRequest(context) {
       data: {
         url: resultUrl,
         recordId, // 前端下载走代理 /api/me/generation-records/:id/image 用
+        // 已持久化的 R2 对象：保存到「我的 AI 创作」画廊时直接复用，避免同一张图存两份
+        r2_key: storedImage.r2Key,
+        bytes: storedImage.size,
         cost,
         txId: txId || null,
         balanceAfter: cost > 0 ? balanceAfter : null,

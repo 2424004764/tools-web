@@ -384,7 +384,7 @@ export function getToolsCate() {
         {
           id: 31,
           title: '字符编码/解码',
-          logo: '/images/logo/union.png',
+          logo: '/images/logo/charset.png',
           desc: '字符与字节序列互转，支持 UTF、GBK、GB18030、Big5 及十六进制/十进制格式',
           url: '/charset/',
           cateId: 14,

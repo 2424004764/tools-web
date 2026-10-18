@@ -7,6 +7,7 @@
  */
 
 import sharp from 'sharp'
+import crypto from 'node:crypto'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -24,18 +25,52 @@ const SVG_DENSITY = 300 // SVG 栅格化 DPI，越大越清晰但越慢
 const PNG_OUT = path.join(ROOT, 'src/assets/sprites/tools.png')
 const COORDS_OUT = path.join(ROOT, 'src/components/Tools/sprite-coords.json')
 const TOOLS_TS = path.join(ROOT, 'src/components/Tools/tools.ts')
+const LOGO_DIR = path.join(ROOT, 'public/images/logo')
+// hash 缓存：内容没变时跳过 sharp 全量重绘（deploy 链每次都会跑 sprite:build）
+const HASH_CACHE = path.join(ROOT, 'node_modules/.cache/tools-sprite.hash')
+
+// 计算 logo 目录的内容指纹（精灵图来源就是目录本身）
+async function computeFingerprint() {
+  const hash = crypto.createHash('sha256')
+  const files = (await fs.readdir(LOGO_DIR)).sort()
+  for (const name of files) {
+    const buf = await fs.readFile(path.join(LOGO_DIR, name))
+    hash.update(name).update(buf)
+  }
+  return hash.digest('hex')
+}
+
+/** 指纹未变且产物齐全时返回 true（跳过重绘） */
+async function shouldSkip(fingerprint) {
+  if (process.env.FORCE_SPRITE === '1') return false
+  try {
+    const [cached, png, coords] = await Promise.all([
+      fs.readFile(HASH_CACHE, 'utf8'),
+      fs.stat(PNG_OUT),
+      fs.stat(COORDS_OUT),
+    ])
+    return cached.trim() === fingerprint && !!png && !!coords
+  } catch {
+    return false
+  }
+}
 
 async function parseTools() {
-  const src = await fs.readFile(TOOLS_TS, 'utf8')
-  const re = /id:\s*(\d+)\s*,[\s\S]{0,200}?logo:\s*['"]([^'"]+)['"]/g
-  const entries = []
-  let m
-  while ((m = re.exec(src)) !== null) {
-    const id = Number(m[1])
-    const logo = m[2]
-    if (logo.startsWith('/images/logo/')) entries.push({ id, logo })
+  // 直接扫描 logo 目录：首页工具卡片用的是数据库 tool_features.logo（ migrations 与
+  // tools.ts 各自维护、常常不一致——大量工具在 tools.ts 里 logo 为空串导致漏进精灵图，
+  // 前端只能逐个回退请求原图）。目录全量入图代价极小（palette PNG 每格可忽略），
+  // 坐标按 '/images/logo/<文件名>' 全量覆盖，数据库指向任何存在的文件都能命中。
+  let files
+  try {
+    files = await fs.readdir(LOGO_DIR)
+  } catch {
+    console.warn(`[sprite] logo 目录不存在: ${LOGO_DIR}`)
+    return []
   }
-  return entries
+  return files
+    .filter((name) => /\.(png|jpe?g|svg|webp)$/i.test(name))
+    .sort()
+    .map((name) => ({ id: name, logo: `/images/logo/${name}` }))
 }
 
 async function loadCell(logoUrl) {
@@ -61,7 +96,13 @@ async function loadCell(logoUrl) {
 }
 
 async function main() {
-  console.log('[sprite] 解析 tools.ts …')
+  const fingerprint = await computeFingerprint()
+  if (await shouldSkip(fingerprint)) {
+    console.log('[sprite] logo 与 tools.ts 未变化，跳过重绘（FORCE_SPRITE=1 可强制）')
+    return
+  }
+
+  console.log('[sprite] 扫描 logo 目录 …')
   const entries = await parseTools()
   console.log(`[sprite] 解析到 ${entries.length} 个工具条目`)
 
@@ -157,6 +198,8 @@ async function main() {
   await fs.writeFile(COORDS_OUT, JSON.stringify(coords, null, 2) + '\n')
 
   const stat = await fs.stat(PNG_OUT)
+  await fs.mkdir(path.dirname(HASH_CACHE), { recursive: true })
+  await fs.writeFile(HASH_CACHE, fingerprint)
   console.log(`[sprite] ✓ ${PNG_OUT} (${(stat.size / 1024).toFixed(1)} KB, ${W}×${H})`)
   console.log(`[sprite] ✓ ${COORDS_OUT} (${Object.keys(coords).length} 个 logo)`)
 

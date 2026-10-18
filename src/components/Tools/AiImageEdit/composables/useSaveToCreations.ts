@@ -73,6 +73,35 @@ export function useSaveToCreations(opts: {
     slot.saveStatus = 'saving'
     savingSlotIds.add(slot.id)
     try {
+      // 后端生成时已把图持久化到 R2（slot.r2Key）：直接复用那份对象，只写画廊行，
+      // 不重传也不二次扣存储额度；旧数据 / 无 r2Key 时回退到下载 blob 重传流程。
+      if (slot.r2Key) {
+        const init = await initAiCreationSave({
+          prompt_id: promptId || undefined,
+          scene: 'ai-image-edit',
+          category: 'AI图片',
+          ...(selectedModel.value ? { model_name: selectedModel.value } : {}),
+          ...(promptTextStr.trim() ? { title: promptTextStr.trim().slice(0, 100) } : {}),
+          images: [{ existing_key: slot.r2Key, prompt: promptTextStr || '(空提示词)' }],
+        })
+
+        const planItem = init.plan[0]
+        const confirm = await confirmAiCreationSave({
+          group_id: init.group_id,
+          reservation_id: init.reservation_id,
+          images: [{
+            r2_key: planItem.r2_key,
+            public_url: planItem.public_url || undefined,
+            prompt: promptTextStr || '(空提示词)',
+          }],
+        })
+
+        slot.saveStatus = 'saved'
+        savedGroupIds.value = init.group_id
+        savedImageCount.value += confirm.inserted
+        return
+      }
+
       // 先取 blob（拿到真实大小，用于存储额度预留），再 init 签上传 URL
       const blob = await fetchSlotBlob(slot)
       const init = await initAiCreationSave({

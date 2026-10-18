@@ -143,6 +143,8 @@ export async function onRequest(context) {
           // 优先尝试从 media_url 解析 key；否则视为已失效（或本来就只是 r2_key 字符串）。
           const key = inferR2Key(env, img.media_url)
           if (!key) return Promise.resolve(0)
+          // generated-images/ 是生成持久化对象（可能被生成记录引用），只解除画廊引用，不删对象不退额度
+          if (key.startsWith('generated-images/')) return Promise.resolve(0)
           // 先 HEAD 拿真实大小（退额度用），再删对象；对象已 404 → 不退（防刷额度）
           return headR2ObjectSize(env, bucket, key)
             .then((size) => deleteR2Object(env, bucket, key).then(() => size || 0))

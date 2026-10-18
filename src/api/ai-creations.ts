@@ -119,7 +119,9 @@ export function parseTagInput(input: string | string[] | null | undefined): stri
 // 单张图上传计划（init 返回的 plan 数组元素）
 export interface SavePlanItem {
   index: number
-  /** 浏览器 fetch PUT 这个 URL 把 blob 上传到 R2 */
+  /** true = 复用已有对象：无需上传，upload_url 为空 */
+  reuse?: boolean
+  /** 浏览器 fetch PUT 这个 URL 把 blob 上传到 R2（复用模式为空字符串） */
   upload_url: string
   /** R2 对象键，用于 confirm 时回填 D1 */
   r2_key: string
@@ -150,6 +152,8 @@ export interface InitSaveRequest {
   tags?: string[]
   images: Array<{
     upstream_url?: string
+    /** 复用已持久化的 R2 对象（generated-images/{uid}/ 下），跳过上传与额度扣减 */
+    existing_key?: string
     prompt: string
     filename?: string
     width?: number

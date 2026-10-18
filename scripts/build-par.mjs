@@ -2,10 +2,13 @@
 /**
  * 类型检查与 vite build 并行执行（原 build 脚本是串行的 `vue-tsc && vite build`）。
  *
- *   node scripts/build-par.mjs [development|production]   # 默认 production
+ *   node scripts/build-par.mjs [development|production] [--skip-tsc]
  *
  * - 两条命令互不依赖：vue-tsc 只读源码做类型检查，vite build 负责产物，
  *   并行后整条 build 链耗时 ≈ max(两者) 而不是 sum(两者)。
+ * - --skip-tsc（或环境变量 SKIP_TYPECHECK=1）跳过类型检查，只跑 vite build：
+ *   部署链上 vue-tsc（~110s）比 vite（~72s）慢、是并行短板，日常部署前
+ *   通常已单独跑过类型检查，跳过可再省这段差价。默认行为不变。
  * - 直接用 node 拉起两个包的 bin 入口（不走 shell / pnpm exec），Windows/Linux 通吃。
  * - 任意一方退出码非 0 即整体非 0 退出，&& 链上的后续步骤（prerender/deploy）不会执行。
  */
@@ -14,7 +17,9 @@ import path from 'node:path'
 import process from 'node:process'
 
 const root = process.cwd()
-const mode = process.argv[2] === 'development' ? 'development' : 'production'
+const args = process.argv.slice(2)
+const mode = args.find((a) => a === 'development' || a === 'production') ?? 'production'
+const skipTsc = args.includes('--skip-tsc') || process.env.SKIP_TYPECHECK === '1'
 
 const tscBin = path.join(root, 'node_modules', 'vue-tsc', 'bin', 'vue-tsc.js')
 const viteBin = path.join(root, 'node_modules', 'vite', 'bin', 'vite.js')
@@ -32,6 +37,12 @@ function run(label, args) {
       resolve(1)
     })
   })
+}
+
+if (skipTsc) {
+  console.log(`[build-par] 跳过类型检查，仅执行 vite build --mode ${mode}`)
+  const viteCode = await run('vite build', [viteBin, 'build', '--mode', mode])
+  process.exit(viteCode)
 }
 
 console.log(`[build-par] 并行执行 vue-tsc --noEmit 与 vite build --mode ${mode}`)

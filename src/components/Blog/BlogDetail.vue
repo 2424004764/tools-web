@@ -158,7 +158,7 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
 </script>
 
 <template>
-  <div class="max-w-6xl mx-auto px-4 pt-6 pb-2 w-full">
+  <div class="max-w-6xl px-4 pt-6 pb-2 w-full">
     <!-- 加载中 -->
     <div v-if="loading" class="mt-16 text-center text-sm text-ink-400">加载中…</div>
 

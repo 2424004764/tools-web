@@ -10,6 +10,8 @@ export interface ResultSlot {
   status: SlotStatus
   url: string
   recordId: string
+  /** 生成时后端已持久化的 R2 对象键：保存到画廊时直接复用，不重传（无则走重传流程） */
+  r2Key: string
   errorMsg: string
   elapsedSeconds: number
   /** 是否勾选「保存到我的创作」（成功格卡片上可单独勾选） */
@@ -28,6 +30,7 @@ const createPendingSlot = (): ResultSlot => ({
   status: 'pending',
   url: '',
   recordId: '',
+  r2Key: '',
   errorMsg: '',
   elapsedSeconds: 0,
   saveChecked: true,
