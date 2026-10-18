@@ -186,6 +186,7 @@ export function useGenerate(opts: {
       slot.status = 'success'
       slot.url = data.data?.url || ''
       slot.recordId = data.data?.recordId || ''
+      slot.r2Key = data.data?.r2_key || ''
       slotVisuals.stopSlotTimer(slot)
       // 生成完这一张就立刻让父组件去自动保存（不等整批收尾）
       onSlotSuccess?.(slot)
@@ -313,6 +314,7 @@ export function useGenerate(opts: {
     slot.status = 'pending'
     slot.url = ''
     slot.recordId = ''
+    slot.r2Key = ''
     slot.errorMsg = ''
     slot.elapsedSeconds = 0
     slotVisuals.startSlotTimer(slot)

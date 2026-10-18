@@ -69,7 +69,8 @@ export async function onRequest(context) {
     const bucket = env.R2_BUCKET_NAME
     if (bucket) {
       const key = inferR2Key(env, row.media_url)
-      if (key) {
+      // generated-images/ 是生成持久化对象（可能被生成记录引用），画廊行删除时不删对象也不退额度
+      if (key && !key.startsWith('generated-images/')) {
         try {
           const size = await headR2ObjectSize(env, bucket, key)
           await deleteR2Object(env, bucket, key)

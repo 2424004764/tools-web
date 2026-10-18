@@ -91,6 +91,8 @@ export async function onRequest(context) {
           images.map((img) => {
             const key = inferR2Key(env, img.media_url)
             if (!key) return Promise.resolve(0)
+            // generated-images/ 是生成持久化对象（可能被生成记录引用），只解除画廊引用，不删对象不退额度
+            if (key.startsWith('generated-images/')) return Promise.resolve(0)
             return headR2ObjectSize(env, bucket, key)
               .then((size) => deleteR2Object(env, bucket, key).then(() => size || 0))
               .catch(() => 0)

@@ -46,13 +46,13 @@ defineProps<{
 </template>
 
 <style scoped>
-/* 骨架块统一样式：surface-2 底色 + 横向 shimmer 动画 */
+/* 骨架块统一样式：令牌底色 + 横向 shimmer 动画（高对比扫光，深浅色主题自适应） */
 .skel-block {
   background: linear-gradient(
     90deg,
-    rgba(229, 222, 211, 0.6) 0%,
-    rgba(244, 240, 232, 0.9) 50%,
-    rgba(229, 222, 211, 0.6) 100%
+    rgb(var(--border-default) / 0.35) 0%,
+    rgb(var(--surface-2)) 50%,
+    rgb(var(--border-default) / 0.35) 100%
   );
   background-size: 200% 100%;
   animation: skel-shimmer 1.4s ease-in-out infinite;

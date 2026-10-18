@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import * as echarts from 'echarts'
 import type { ECharts } from 'echarts'
 import Sortable from 'sortablejs'
@@ -21,10 +21,11 @@ import IconTimer from '~icons/ep/timer'
 import IconBell from '~icons/ep/bell'
 import IconRank from '~icons/ep/rank'
 
-const data = ref<Partial<AdminDashboard>>({})
-const loading = ref(false)
+// 每个面板独立拉取：请求成功哪个面板就先渲染对应卡片，失败只影响自己的卡片
+const panelData = ref<Partial<AdminDashboard>>({})
+const data = computed(() => panelData.value)
 
-// 各面板独立拉取：单面板慢/失败不影响其他卡片渲染
+type PanelStatus = 'loading' | 'done' | 'failed'
 const DASHBOARD_PANELS: AdminDashboardPanel[] = [
   'overview',
   'usage',
@@ -34,6 +35,44 @@ const DASHBOARD_PANELS: AdminDashboardPanel[] = [
   'pending',
   'transactions',
 ]
+const panelState = reactive(
+  Object.fromEntries(DASHBOARD_PANELS.map((p) => [p, 'loading'])) as Record<AdminDashboardPanel, PanelStatus>,
+)
+
+// 卡片 → 面板：统计卡片共用 overview
+const WIDGET_PANEL: Record<WidgetId, AdminDashboardPanel> = {
+  users: 'overview',
+  disabled: 'overview',
+  credits: 'overview',
+  tools: 'overview',
+  usage: 'usage',
+  userTrend: 'userTrend',
+  topTools: 'topTools',
+  slowlog: 'slowlog',
+  pending: 'pending',
+  transactions: 'transactions',
+}
+const panelLoading = (id: WidgetId) => panelState[WIDGET_PANEL[id]] === 'loading'
+const panelFailed = (id: WidgetId) => panelState[WIDGET_PANEL[id]] === 'failed'
+const retryWidget = (id: WidgetId) => loadPanel(WIDGET_PANEL[id])
+
+const loadPanel = async (panel: AdminDashboardPanel) => {
+  panelState[panel] = 'loading'
+  try {
+    const res = await fetchAdminDashboardPanel(panel)
+    panelData.value = { ...panelData.value, ...res }
+    panelState[panel] = 'done'
+    // 趋势图数据到达后立即建图，不等其他面板
+    if (panel === 'usage' && res.usageTrend) usagePanel.build(res.usageTrend)
+    if (panel === 'userTrend' && res.userTrend) userPanel.build(res.userTrend)
+  } catch (err) {
+    panelState[panel] = 'failed'
+    console.error(`[dashboard] ${panel} 面板加载失败:`, err)
+    ElMessage.error(`仪表盘 ${panel} 面板加载失败`)
+  }
+}
+
+const load = () => DASHBOARD_PANELS.forEach((p) => loadPanel(p))
 
 // ============ 卡片布局：可拖拽排序，顺序持久化在 site_config.admin_dashboard_layout ============
 // 卡片 id 是前后端约定的稳定标识；后端只校验格式，新增/下线卡片仅需维护这里
@@ -381,25 +420,6 @@ const userPanel = createTrendPanel('新增', '人')
 const { trendRange: usageTrendRange, chartRef: usageChartEl } = usagePanel
 const { trendRange: userTrendRange, chartRef: userChartEl } = userPanel
 
-const load = async () => {
-  loading.value = true
-  try {
-    const results = await Promise.all(
-      DASHBOARD_PANELS.map((p) => fetchAdminDashboardPanel(p)),
-    )
-    const merged: Partial<AdminDashboard> = {}
-    results.forEach((r) => Object.assign(merged, r))
-    data.value = merged
-    if (merged.usageTrend) usagePanel.build(merged.usageTrend)
-    if (merged.userTrend) userPanel.build(merged.userTrend)
-  } catch (err) {
-    console.error(err)
-    ElMessage.error('仪表盘数据加载失败')
-  } finally {
-    loading.value = false
-  }
-}
-
 // 主题切换时用缓存数据按新主题色重绘（不重新请求接口）
 watch(isDark, () => {
   usagePanel.applyOption()
@@ -439,7 +459,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div v-loading="loading">
+  <div>
     <div class="flex items-center justify-between gap-3 mb-4">
       <h2 class="text-xl font-semibold text-ink-900">仪表盘</h2>
       <div class="flex items-center gap-3">
@@ -455,10 +475,12 @@ onUnmounted(() => {
         :key="w.id"
         :data-widget="w.id"
         class="min-w-0"
-        :class="w.span"
+        :class="[w.span, panelFailed(w.id) ? 'cursor-pointer' : '']"
+        :title="panelFailed(w.id) ? '加载失败，点击重试' : undefined"
+        @click.capture="panelFailed(w.id) && retryWidget(w.id)"
       >
         <!-- 用户总数 -->
-        <div v-if="w.id === 'users'" class="admin-stat-card h-full">
+        <div v-if="w.id === 'users'" v-loading="panelLoading(w.id)" class="admin-stat-card h-full">
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
               <div class="flex items-center gap-1.5 text-sm text-ink-500">
@@ -481,7 +503,7 @@ onUnmounted(() => {
         </div>
 
         <!-- 禁用用户 -->
-        <div v-else-if="w.id === 'disabled'" class="admin-stat-card h-full">
+        <div v-else-if="w.id === 'disabled'" v-loading="panelLoading(w.id)" class="admin-stat-card h-full">
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
               <div class="flex items-center gap-1.5 text-sm text-ink-500">
@@ -502,7 +524,7 @@ onUnmounted(() => {
         </div>
 
         <!-- 积分总余额 -->
-        <div v-else-if="w.id === 'credits'" class="admin-stat-card h-full">
+        <div v-else-if="w.id === 'credits'" v-loading="panelLoading(w.id)" class="admin-stat-card h-full">
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
               <div class="flex items-center gap-1.5 text-sm text-ink-500">
@@ -527,7 +549,7 @@ onUnmounted(() => {
         </div>
 
         <!-- 工具启用 -->
-        <div v-else-if="w.id === 'tools'" class="admin-stat-card h-full">
+        <div v-else-if="w.id === 'tools'" v-loading="panelLoading(w.id)" class="admin-stat-card h-full">
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
               <div class="flex items-center gap-1.5 text-sm text-ink-500">
@@ -549,7 +571,7 @@ onUnmounted(() => {
         </div>
 
         <!-- 工具使用次数（来自 tool_usage_records；老版本迁移前为 0） -->
-        <div v-else-if="w.id === 'usage'" class="admin-stat-card h-full">
+        <div v-else-if="w.id === 'usage'" v-loading="panelLoading(w.id)" class="admin-stat-card h-full">
           <div class="text-sm text-ink-500 mb-2 flex items-center gap-1.5 flex-wrap">
             <span class="widget-drag-handle" title="拖动调整位置">
               <IconRank class="w-3.5 h-3.5" />
@@ -617,7 +639,7 @@ onUnmounted(() => {
         </div>
 
         <!-- 用户总数（注册趋势）：与 TOP 5 工具位置对调，紧挨工具使用次数便于对照 -->
-        <div v-else-if="w.id === 'userTrend'" class="admin-stat-card h-full">
+        <div v-else-if="w.id === 'userTrend'" v-loading="panelLoading(w.id)" class="admin-stat-card h-full">
           <div class="text-sm text-ink-500 mb-2 flex items-center gap-1.5 flex-wrap">
             <span class="widget-drag-handle" title="拖动调整位置">
               <IconRank class="w-3.5 h-3.5" />
@@ -669,7 +691,7 @@ onUnmounted(() => {
         </div>
 
         <!-- TOP 5 工具（原用户总数趋势位置，对调后移到下一行） -->
-        <div v-else-if="w.id === 'topTools'" class="admin-stat-card h-full">
+        <div v-else-if="w.id === 'topTools'" v-loading="panelLoading(w.id)" class="admin-stat-card h-full">
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-1.5 text-sm text-ink-500 mb-2">
@@ -713,7 +735,7 @@ onUnmounted(() => {
         </div>
 
         <!-- 慢日志数（阈值 100ms） -->
-        <div v-else-if="w.id === 'slowlog'" class="admin-stat-card h-full">
+        <div v-else-if="w.id === 'slowlog'" v-loading="panelLoading(w.id)" class="admin-stat-card h-full">
           <div class="text-sm text-ink-500 mb-2 flex items-center gap-1.5">
             <span class="widget-drag-handle" title="拖动调整位置">
               <IconRank class="w-3.5 h-3.5" />
@@ -749,7 +771,7 @@ onUnmounted(() => {
         </div>
 
         <!-- 待审核：评论 / 友链 / 文章 / 反馈（独占一整行） -->
-        <div v-else-if="w.id === 'pending'" class="admin-stat-card h-full">
+        <div v-else-if="w.id === 'pending'" v-loading="panelLoading(w.id)" class="admin-stat-card h-full">
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0 flex-1">
               <div class="text-sm text-ink-500 mb-2 flex items-center gap-1.5">
@@ -817,7 +839,7 @@ onUnmounted(() => {
         </div>
 
         <!-- 最近积分流水 -->
-        <el-card v-else-if="w.id === 'transactions'" shadow="never" class="!rounded-xl h-full">
+        <el-card v-else-if="w.id === 'transactions'" v-loading="panelLoading(w.id)" shadow="never" class="!rounded-xl h-full">
           <template #header>
             <div class="flex items-center justify-between">
               <span class="font-medium text-ink-900 flex items-center gap-1.5">

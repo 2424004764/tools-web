@@ -23,6 +23,7 @@
  */
 
 import { exec } from 'node:child_process'
+import os from 'node:os'
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
@@ -86,7 +87,12 @@ try {
   console.warn(`[prerender] ⚠️ 博客列表拉取失败（${e.message}），本次跳过博客详情预渲染`)
 }
 
-const CONCURRENCY = Math.max(1, Math.min(12, Number(process.env.PRERENDER_CONCURRENCY) || 6))
+// 默认并发按 CPU 核数自适应（渲染是 CPU 密集，核多时 6 个标签页吃不满机器）；
+// 仍可用 PRERENDER_CONCURRENCY 显式覆盖，硬上限 12 防止低配机内存吃紧
+const CONCURRENCY = Math.max(
+  1,
+  Math.min(12, Number(process.env.PRERENDER_CONCURRENCY) || Math.max(6, os.cpus().length - 2)),
+)
 // 渲染就绪后的额外稳定窗口；主门控是下方 waitForFunction 的 DOM 就绪判断
 const SETTLE_MS = Math.max(0, Number(process.env.PRERENDER_DELAY) ?? 300)
 

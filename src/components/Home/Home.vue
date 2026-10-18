@@ -825,19 +825,19 @@ watch(() => toolsStore.cates.length, (newLen, oldLen) => {
           <div
             class="relative rounded-2xl p-5 bg-white dark:bg-surface-0 ring-1 ring-transparent group-hover:ring-accent-300/70 dark:group-hover:ring-accent-500/40 shadow-sm shadow-ink-950/5 group-hover:shadow-[0_12px_32px_-10px_rgb(var(--accent-500)/0.35)] group-hover:bg-gradient-to-br group-hover:from-accent-100 group-hover:via-accent-50 group-hover:to-violet-100 dark:group-hover:from-accent-500/15 dark:group-hover:via-surface-0 dark:group-hover:to-violet-500/15 group-hover:-translate-y-1 transition-all duration-200"
           >
-          <!-- 箭头角标：悬停时以白色圆标形式显示 -->
+          <!-- 箭头角标：悬停时以白色圆标形式显示在右下角（右上角留给收藏星标） -->
           <span
-            class="absolute top-4 right-4 w-6 h-6 rounded-full bg-surface-2 text-ink-400 flex items-center justify-center opacity-0 group-hover:opacity-100 group-hover:bg-white/90 group-hover:text-accent-600 group-hover:shadow-sm transition-all duration-200"
+            class="absolute bottom-4 right-4 w-6 h-6 rounded-full bg-surface-2 text-ink-400 flex items-center justify-center opacity-0 group-hover:opacity-100 group-hover:bg-white/90 group-hover:text-accent-600 group-hover:shadow-sm transition-all duration-200"
             aria-hidden="true"
           >
             <svg class="w-3.5 h-3.5" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
               <path fill="currentColor" d="M340.864 149.312a30.592 30.592 0 0 0 0 42.752L652.736 512 340.864 831.872a30.592 30.592 0 0 0 0 42.752 29.12 29.12 0 0 0 41.728 0L714.24 534.4a32 32 0 0 0 0-44.672L382.592 149.376a29.12 29.12 0 0 0-41.728 0z"></path>
             </svg>
           </span>
-          <!-- 收藏星标 -->
+          <!-- 收藏星标：卡片右上角 -->
           <button
             type="button"
-            class="absolute top-3.5 right-11 z-10 w-7 h-7 rounded-full flex items-center justify-center transition-colors duration-150"
+            class="absolute top-3 right-3 z-10 w-7 h-7 rounded-full flex items-center justify-center transition-colors duration-150"
             :class="
               isFavorited(item.url)
                 ? 'text-accent-500'
@@ -929,14 +929,15 @@ watch(() => toolsStore.cates.length, (newLen, oldLen) => {
   background: rgb(var(--border-default));
   border-radius: 4px;
 }
-/* 工具网格骨架块：与 LayoutSkeleton / HotList 同款 shimmer */
+/* 工具网格骨架块：与 LayoutSkeleton / HotList 同款 shimmer。
+   用主题令牌做高对比扫光（旧版两端颜色几乎一致，动画在跑但肉眼看不出），深浅色主题自适应 */
 .skel-block {
   display: block;
   background: linear-gradient(
     90deg,
-    rgba(229, 222, 211, 0.6) 0%,
-    rgba(244, 240, 232, 0.9) 50%,
-    rgba(229, 222, 211, 0.6) 100%
+    rgb(var(--border-default) / 0.35) 0%,
+    rgb(var(--surface-2)) 50%,
+    rgb(var(--border-default) / 0.35) 100%
   );
   background-size: 200% 100%;
   animation: skel-shimmer 1.4s ease-in-out infinite;
