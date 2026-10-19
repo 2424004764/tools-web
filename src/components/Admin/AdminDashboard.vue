@@ -619,7 +619,8 @@ onUnmounted(() => {
         @click.capture="panelFailed(w.id) && retryWidget(w.id)"
       >
         <!-- 用户总数 -->
-        <div v-if="w.id === 'users'" v-loading="panelLoading(w.id)" class="admin-stat-card h-full">
+        <div v-if="w.id === 'users'" v-loading="panelLoading(w.id)" class="admin-stat-card h-full cursor-pointer hover:border-accent-300 transition-colors"
+          title="查看用户管理" @click="$router.push('/admin/users')">
           <div class="flex items-center gap-1.5 text-sm text-ink-500 whitespace-nowrap">
             <span class="widget-drag-handle" title="拖动调整位置">
               <IconRank class="w-3.5 h-3.5" />
@@ -696,7 +697,8 @@ onUnmounted(() => {
         </div>
 
         <!-- 禁用用户 -->
-        <div v-else-if="w.id === 'disabled'" v-loading="panelLoading(w.id)" class="admin-stat-card h-full">
+        <div v-else-if="w.id === 'disabled'" v-loading="panelLoading(w.id)" class="admin-stat-card h-full cursor-pointer hover:border-accent-300 transition-colors"
+          title="查看禁用用户" @click="$router.push({ path: '/admin/users', query: { disabled: '1' } })">
           <div class="flex items-center gap-1.5 text-sm text-ink-500 whitespace-nowrap">
             <span class="widget-drag-handle" title="拖动调整位置">
               <IconRank class="w-3.5 h-3.5" />
@@ -730,7 +732,8 @@ onUnmounted(() => {
         </div>
 
         <!-- 工具启用 -->
-        <div v-else-if="w.id === 'tools'" v-loading="panelLoading(w.id)" class="admin-stat-card h-full">
+        <div v-else-if="w.id === 'tools'" v-loading="panelLoading(w.id)" class="admin-stat-card h-full cursor-pointer hover:border-accent-300 transition-colors"
+          title="查看工具开关" @click="$router.push('/admin/tools')">
           <div class="flex items-center gap-1.5 text-sm text-ink-500 whitespace-nowrap">
             <span class="widget-drag-handle" title="拖动调整位置">
               <IconRank class="w-3.5 h-3.5" />

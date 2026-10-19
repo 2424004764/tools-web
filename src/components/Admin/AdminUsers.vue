@@ -22,7 +22,7 @@ import type {
   CreditTransaction,
 } from '@/types/admin'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import {
   Refresh,
   View,
@@ -34,6 +34,7 @@ import { formatStorageBytes } from '@/api/storageQuota'
 import defaultAvatar from '@/assets/default_avatar.png'
 
 const router = useRouter()
+const route = useRoute()
 
 // 存储列点击 → 存储明细页并直接打开该用户弹窗
 const goStorageDetail = (uid: string) => {
@@ -734,6 +735,8 @@ const copyText = (text: string, label = '内容') => {
 }
 
 onMounted(() => {
+  // 支持从仪表盘等入口带 query 跳入：?disabled=1 直接筛选禁用用户
+  if (route.query.disabled === '1') filter.disabled = '1'
   load()
   updateIsMobile()
   window.addEventListener('resize', updateIsMobile)
