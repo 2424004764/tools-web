@@ -14,7 +14,8 @@ import {
   renderTemplate,
   extractByPath,
   buildUrl,
-  extractUidFromRequest
+  extractUidFromRequest,
+  isAdmin,
 } from './_lib/model-resolver.js'
 
 const corsHeaders = {
@@ -83,20 +84,26 @@ export async function onRequest(context) {
     renderParams
   )
 
-  // 选 API Key：用户提供的 key 优先；否则使用系统配置的 key（登录用户与游客都可用）
-  let apiKey = user_api_key || resolved.apiKey
+  // ============ 鉴权（防匿名消耗平台内置 Key）============
+  // user_api_key 是可选字段：不带或为空时后端会回落到平台内置 Key。
+  // 若不校验登录态，任何人都能匿名刷平台额度（渗透测试发现 #8），
+  // 因此内置 Key 仅限登录用户；游客必须自带 is_open=1 厂商的 Key。
+  const isAdminUser = await isAdmin(db, uid)
 
-  // 非管理员用 user_api_key 时，要求厂商 is_open=1（管理员不受限）
-  if (user_api_key && uid) {
-    const adminCheck = await db.prepare(`SELECT is_admin FROM user WHERE id = ?`).bind(uid).first()
-    const isAdminUser = !!adminCheck?.is_admin
+  if (user_api_key) {
+    // 任何非管理员（含游客）用 user_api_key 都要求厂商 is_open=1
     if (!isAdminUser && !resolved.provider.is_open) {
       return json({
         ok: false,
         error: '该厂商未开放用户自定义 Key（仅管理员可用）'
       }, 403)
     }
+  } else if (!uid) {
+    return json({ ok: false, error: '请先登录后再使用平台 AI 服务，或在「我的 API Key」中配置自己的厂商 Key' }, 401)
   }
+
+  // 选 API Key：用户提供的 key 优先；否则使用系统配置的 key（仅登录用户可走到这里）
+  let apiKey = user_api_key || resolved.apiKey
 
   if (!apiKey) {
     return json({

@@ -4,6 +4,8 @@
 //
 // 中间件 _middleware.js 已确保调用方为管理员，无需再做权限检查。
 
+import { getSiteVisits } from './dashboard/_data.js'
+
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
@@ -337,6 +339,21 @@ export async function onRequest(context) {
       console.warn('[admin/dashboard] tool_usage / slow_query 聚合失败（可能表未创建）:', e?.message || e)
     }
 
+    // 网站访问（站点级 PV）：复用单面板查询；site_visits 表未迁移时兜底为 0，不阻塞仪表盘
+    let siteVisits = {
+      todaySiteVisits: 0,
+      weekSiteVisits: 0,
+      monthSiteVisits: 0,
+      totalSiteVisits: 0,
+      siteVisitTrend: { daily: [], weekly: [], monthly: [] },
+      topPages: [],
+    }
+    try {
+      siteVisits = { ...siteVisits, ...(await getSiteVisits(db)) }
+    } catch (e) {
+      console.warn('[admin/dashboard] site_visits 聚合失败（可能表未创建）:', e?.message || e)
+    }
+
     return json({
       totalUsers,
       todayNew,
@@ -359,6 +376,7 @@ export async function onRequest(context) {
       totalToolUsage,
       topTools,
       usageTrend,
+      ...siteVisits,
       slowQueries: {
         today: slowQueryToday,
         week: slowQueryWeek,

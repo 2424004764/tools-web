@@ -33,7 +33,9 @@ export async function onRequest(context) {
     }
     const extension = contentType === 'image/jpeg' ? 'jpg' : contentType.slice('image/'.length)
     const r2Key = `shopping-list/${auth.user.id}/${listId}/${itemId}-${crypto.randomUUID()}.${extension}`
-    const signed = await signR2PutUrl(env, env.R2_BUCKET_NAME, r2Key, contentType)
+    // content-length 与 content-type 都锁进签名：实际 PUT 字节数 / 类型与声明不符 → R2 直接 403。
+    // 只预留不锁长度时，"声明 1 字节实际上传 1GB"会绕过配额计费。
+    const signed = await signR2PutUrl(env, env.R2_BUCKET_NAME, r2Key, contentType, { contentLength: size })
     const publicUrl = buildR2PublicUrl(env, r2Key)
     if (!publicUrl) return ApiResponse.error('图片公网地址未配置', origin, 503)
     return ApiResponse.success({ ...signed, publicUrl, r2Key, reservationId }, origin)

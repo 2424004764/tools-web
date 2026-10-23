@@ -16,6 +16,9 @@ import {
 } from '@/api/ai-creations'
 import type { ResultSlot } from './useSlotVisuals'
 
+// 与后端 save/init 的上传白名单保持一致（image/jpeg|jpg|png|webp|gif）
+const IMAGE_TYPES = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'])
+
 export function useSaveToCreations(opts: {
   results: ResultSlot[]
   prompt: Ref<string>
@@ -110,7 +113,14 @@ export function useSaveToCreations(opts: {
         category: 'AI图片',
         ...(selectedModel.value ? { model_name: selectedModel.value } : {}),
         ...(promptTextStr.trim() ? { title: promptTextStr.trim().slice(0, 100) } : {}),
-        images: [{ upstream_url: slot.url, prompt: promptTextStr || '(空提示词)', file_size: blob.size }],
+        images: [{
+          upstream_url: slot.url,
+          prompt: promptTextStr || '(空提示词)',
+          file_size: blob.size,
+          // 声明真实类型让签名与实际字节一致（长度已锁进签名，大小必须就是 blob.size）；
+          // 拿不到白名单类型时省略，后端按 image/png 签名
+          ...(IMAGE_TYPES.has(blob.type) ? { content_type: blob.type } : {}),
+        }],
       })
 
       const planItem = init.plan[0]

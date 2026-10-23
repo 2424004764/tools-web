@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useIsMobile } from '@/composables/useIsMobile'
 // 意见反馈管理：查看用户提交的反馈/建议，标记处理状态、写备注、删除，形成需求池
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -198,6 +199,7 @@ const handleDelete = async (row: FeedbackItem) => {
 onMounted(() => {
   load()
 })
+const { isMobile } = useIsMobile()
 </script>
 
 <template>
@@ -343,7 +345,8 @@ onMounted(() => {
         :page-size="pagination.pageSize"
         :total="pagination.total"
         :page-count="pagination.totalPages"
-        layout="total, prev, pager, next, jumper"
+        :layout="isMobile ? 'prev, pager, next' : 'total, prev, pager, next, jumper'"
+  :pager-count="isMobile ? 5 : 7"
         :background="true"
         @current-change="handlePageChange"
       />

@@ -1,16 +1,15 @@
 <script setup lang="ts">
 /**
- * 产品跳转中间页：/app-jump/:key
+ * 产品跳转：/app-jump/:key
  *
  * 职责：
- *   1. 按 key 在产品白名单（products.ts）中校验，拒绝任意 URL —— 防开放重定向
- *   2. 上报一条使用记录（复用 POST /api/me/tool-usage，落 tool_usage_records 表，
- *      后台「工具使用记录」即可看到时间/用户/IP/来源），与平台工具记录完全同款
- *   3. 品牌化过渡 UI + 倒计时自动出站跳转（location.replace，返回键回到主站）
+ *   1. 按 key 在产品白名单（站点配置中 enabled 的产品）中校验，拒绝任意 URL —— 防开放重定向
+ *   2. 上报一条使用记录（复用 POST /api/me/tool-usage，落 tool_usage_records 表）
+ *   3. 校验通过后直接 location.replace 出站，不设中间页（返回键回到主站）
  *
  * 记录口径：与 recordToolUsage 一致，30 秒 sessionStorage 去重，避免刷新重复计数。
  */
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import type { ProductInfo } from '@/components/Layout/Header/products'
 import { fetchProductsConfig } from '@/api/site-config'
@@ -23,26 +22,8 @@ const route = useRoute()
 const key = computed(() => String(route.params.key || '').trim().toLowerCase())
 // 产品白名单来自站点配置（仅含 enabled 的产品）：后台下线的产品与未知 key 一样按「已下线」处理
 const product = ref<ProductInfo | null>(null)
-const invalid = computed(() => !product.value)
-
-const countdown = ref(2)
-let timer: number | null = null
-let jumped = false
-
-/** 出站跳转：replace 掉中间页，浏览器返回键直接回主站 */
-function go() {
-  if (jumped || !product.value) return
-  jumped = true
-  stopTimer()
-  window.location.replace(product.value.url)
-}
-
-function stopTimer() {
-  if (timer !== null) {
-    window.clearInterval(timer)
-    timer = null
-  }
-}
+const loading = ref(true)
+const invalid = computed(() => !loading.value && !product.value)
 
 /** 上报一次产品跳转；30 秒内同产品去重（与 utils/tool-usage.ts 口径一致） */
 function recordAppJump() {
@@ -72,23 +53,22 @@ onMounted(async () => {
   }
   robots.content = 'noindex, nofollow'
 
-  const list = await fetchProductsConfig()
-  product.value = list.find((p) => p.key === key.value) || null
+  try {
+    const list = await fetchProductsConfig()
+    product.value = list.find((p) => p.key === key.value) || null
+  } finally {
+    loading.value = false
+  }
 
-  document.title = product.value
-    ? `正在前往「${product.value.name}」 | ${APP_TITLE}`
-    : `页面不存在 | ${APP_TITLE}`
+  if (!product.value) {
+    document.title = `页面不存在 | ${APP_TITLE}`
+    return
+  }
 
-  if (invalid.value) return
-
+  document.title = `正在前往「${product.value.name}」 | ${APP_TITLE}`
   recordAppJump()
-  timer = window.setInterval(() => {
-    countdown.value -= 1
-    if (countdown.value <= 0) go()
-  }, 1000)
+  window.location.replace(product.value.url)
 })
-
-onUnmounted(stopTimer)
 </script>
 
 <template>
@@ -105,48 +85,6 @@ onUnmounted(stopTimer)
     </router-link>
   </div>
 
-  <!-- 过渡卡片 -->
-  <div v-else-if="product" class="min-h-[60vh] flex items-center justify-center px-4">
-    <div class="w-full max-w-sm bg-surface-0 dark:bg-surface-0 border border-border-subtle rounded-[20px] shadow-sm shadow-ink-950/5 px-8 py-10 text-center">
-      <img
-        :src="product.logo"
-        :alt="product.name + '图标'"
-        class="w-16 h-16 rounded-2xl mx-auto shadow-sm shadow-ink-950/10"
-      />
-      <h1 class="mt-5 text-h3 font-bold text-ink-800 m-0">正在前往「{{ product.name }}」</h1>
-      <p class="mt-2 text-body-sm text-ink-500">
-        {{ countdown > 0 ? `${countdown} 秒后自动跳转到外部站点` : '正在跳转…' }}
-      </p>
-
-      <!-- 进度条：与倒计时同步的轻量动效 -->
-      <div class="mt-5 h-1 rounded-full bg-surface-2 dark:bg-surface-3 overflow-hidden" aria-hidden="true">
-        <div
-          class="h-full rounded-full bg-brand-gradient transition-[width] duration-1000 ease-linear"
-          :style="{ width: (countdown / 2) * 100 + '%' }"
-        ></div>
-      </div>
-
-      <div class="mt-6 flex items-center justify-center gap-3">
-        <button
-          type="button"
-          class="px-5 py-2 rounded-full bg-brand-gradient text-white text-sm font-medium hover:opacity-90 transition-opacity cursor-pointer border-0"
-          @click="go"
-        >
-          立即前往
-        </button>
-        <router-link
-          to="/"
-          class="px-5 py-2 rounded-full border border-border-subtle text-ink-600 dark:text-ink-300 text-sm hover:border-accent-300 hover:text-accent-600 transition-colors"
-        >
-          取消并返回
-        </router-link>
-      </div>
-
-      <p class="mt-5 text-xs text-ink-400 leading-5">
-        即将访问：<span class="break-all">{{ product.url }}</span>
-        <br />
-        该页面属于一方工具箱产品矩阵，使用问题可在对应站点反馈
-      </p>
-    </div>
-  </div>
+  <!-- 有效 key：校验通过后立即 replace 出站，这里只是跳转瞬间的空态 -->
+  <div v-else class="min-h-[60vh]"></div>
 </template>

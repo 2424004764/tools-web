@@ -13,6 +13,7 @@
 //     Resp: { group_id, favorited?, tags?: string[] }（依赖 073 迁移的 favorited 列）
 
 import { extractUidFromRequest } from '../../_lib/model-resolver.js'
+import { resolveAiCreationKey } from '../../_lib/ai-creation-r2key.js'
 import { serializeTagInput, normalizeTagInput } from '../../_lib/ai-creation-tags.js'
 import { deleteR2Object, headR2ObjectSize } from '../../../services/r2.js'
 import { refundStorageUsage } from '../../../services/storageQuotaService.js'
@@ -124,7 +125,7 @@ export async function onRequest(context) {
 
     const imgsResult = await db
       .prepare(
-        `SELECT id, media_url FROM ai_creation_images WHERE group_id = ?`,
+        `SELECT id, media_url, r2_key FROM ai_creation_images WHERE group_id = ?`,
       )
       .bind(groupId)
       .all()
@@ -132,23 +133,36 @@ export async function onRequest(context) {
     const images = imgsResult.results || []
     const imageCount = images.length
 
-    // 2) 并发删 R2 对象（失败不阻断：避免部分失败导致 D1 残留不一致；r2_failed 由响应返回给前端记日志）
+    // 2) 并发删 R2 对象（失败不阻断：避免部分失败导致 D1 残留不一致；r2_failed 由响应返回给前端记日志）。
+    //    key 只信任 confirm 落库的 r2_key（老数据回退 inferR2Key），且只有位于
+    //    ai-creations/{uid}/ 命名空间内才删对象 / 退额度（防跨租户删除 IDOR）。
     const bucket = env.R2_BUCKET_NAME
     let r2Deleted = 0
     let r2Failed = 0
     if (bucket && imageCount > 0) {
       const results = await Promise.allSettled(
         images.map((img) => {
-          // 推断 r2_key：media_url 可能是 R2 公网 URL（含 R2_PUBLIC_HOST）或已经是 r2_key 字符串。
-          // 优先尝试从 media_url 解析 key；否则视为已失效（或本来就只是 r2_key 字符串）。
-          const key = inferR2Key(env, img.media_url)
-          if (!key) return Promise.resolve(0)
-          // generated-images/ 是生成持久化对象（可能被生成记录引用），只解除画廊引用，不删对象不退额度
-          if (key.startsWith('generated-images/')) return Promise.resolve(0)
+          const resolved = resolveAiCreationKey(env, img, uid)
+          if (!resolved) return Promise.resolve(0)
+          if (resolved.kind === 'foreign') {
+            // generated-images/ 是生成持久化对象（可能被生成记录引用），只解除画廊引用；
+            // 命名空间外的 key 是毒化/异常数据，拒绝对其执行删除并留审计日志。
+            if (!resolved.key.startsWith('generated-images/')) {
+              console.warn(
+                '[ai-creations/groups/:id DELETE] 拒绝删除命名空间外的对象 key:',
+                resolved.key,
+                'group_id:', groupId,
+              )
+            }
+            return Promise.resolve(0)
+          }
+          if (resolved.kind === 'generated') return Promise.resolve(0)
           // 先 HEAD 拿真实大小（退额度用），再删对象；对象已 404 → 不退（防刷额度）
-          return headR2ObjectSize(env, bucket, key)
-            .then((size) => deleteR2Object(env, bucket, key).then(() => size || 0))
-            .catch(() => 0)
+          return headR2ObjectSize(env, bucket, resolved.key)
+            .then((size) => deleteR2Object(env, bucket, resolved.key).then(() => size || 0))
+            .catch(() => {
+              throw new Error('r2 delete failed')
+            })
         }),
       )
       let refundedBytes = 0
@@ -191,33 +205,5 @@ export async function onRequest(context) {
   } catch (e) {
     console.error('[ai-creations/groups/:id DELETE] error:', e?.message || e)
     return jsonError(e?.message || '服务器错误', 500)
-  }
-}
-
-// 从 media_url 推断 r2_key：
-//   - 如果是 http(s) URL 且 host 等于 R2_PUBLIC_HOST → 取 pathname 去前缀斜杠
-//   - 否则认为是 raw key 字符串（极端情况）
-function inferR2Key(env, mediaUrl) {
-  if (!mediaUrl || typeof mediaUrl !== 'string') return null
-  const host = env.R2_PUBLIC_HOST
-  // raw key（无协议 / 形如 'ai-creations/...'）
-  if (!/^https?:\/\//i.test(mediaUrl)) {
-    return mediaUrl.replace(/^\/+/, '')
-  }
-  // 有协议但没有 host 配置：放弃（前端可能尚未配 R2_PUBLIC_HOST，本地数据为 r2_key 字符串）
-  if (!host) return null
-  try {
-    const u = new URL(mediaUrl)
-    if (u.host !== host) return null
-    let p = u.pathname.replace(/^\/+/, '')
-    // 兼容路径已被 encodeURIComponent 编码过的旧数据
-    try {
-      p = decodeURIComponent(p)
-    } catch {
-      /* ignore */
-    }
-    return p
-  } catch {
-    return null
   }
 }

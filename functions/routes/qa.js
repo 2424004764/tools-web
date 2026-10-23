@@ -23,7 +23,7 @@ export class QARouter {
         const id = path.startsWith('/') ? path.substring(1) : path
 
         if (method === 'GET') {
-          return await this.getQAById(id, origin, env)
+          return await this.getQAById(id, request, origin, env)
         } else if (method === 'PUT') {
           return await this.updateQA(id, request, origin, env)
         } else if (method === 'DELETE') {
@@ -113,11 +113,31 @@ export class QARouter {
     }
   }
 
-  // 根据ID获取QA（需要认证）
-  async getQAById(id, origin, env) {
+  // 根据ID获取QA（公开页面允许匿名访问（分享场景），私有页面仅属主可访问）
+  async getQAById(id, request, origin, env) {
     const qa = await this.qaModel.findById(id)
-    
+
     if (!qa) {
+      return ApiResponse.error('QA页面不存在', origin, 404)
+    }
+
+    // 公开页面任何人可读；非属主响应中不返回uid，避免暴露属主身份
+    if (qa.isPublic) {
+      const publicAuth = await AuthMiddleware.extractUserFromRequestOptional(request, env)
+      if (publicAuth.user && publicAuth.user.id === qa.uid) {
+        return ApiResponse.success(qa, origin)
+      }
+      const { uid, ...publicData } = qa
+      return ApiResponse.success(publicData, origin)
+    }
+
+    // 私有页面需要登录；已登录但非属主统一返回404（与不存在同响应），避免枚举UUID
+    const authResult = await AuthMiddleware.extractUserFromRequest(request, env)
+    if (!authResult.success) {
+      return AuthMiddleware.createAuthErrorResponse(authResult.error, origin)
+    }
+
+    if (qa.uid !== authResult.user.id) {
       return ApiResponse.error('QA页面不存在', origin, 404)
     }
 

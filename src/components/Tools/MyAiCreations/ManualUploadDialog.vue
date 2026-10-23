@@ -157,7 +157,7 @@ defineExpose({ open: () => { visible.value = true }, close })
       <input
         ref="fileInput"
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/webp,image/gif"
         multiple
         hidden
         @change="onFileChange"

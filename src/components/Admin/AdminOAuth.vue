@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useIsMobile } from '@/composables/useIsMobile'
 // OAuth2 客户端应用管理：为子站签发 client_id / client_secret
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -222,6 +223,7 @@ const formatTime = (s: string | null) => {
 onMounted(() => {
   load()
 })
+const { isMobile } = useIsMobile()
 </script>
 
 <template>
@@ -359,7 +361,8 @@ onMounted(() => {
         :page-size="pagination.pageSize"
         :total="pagination.total"
         :page-count="pagination.totalPages"
-        layout="total, prev, pager, next, jumper"
+        :layout="isMobile ? 'prev, pager, next' : 'total, prev, pager, next, jumper'"
+  :pager-count="isMobile ? 5 : 7"
         :background="true"
         @current-change="handlePageChange"
       />

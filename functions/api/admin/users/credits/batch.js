@@ -143,14 +143,8 @@ export async function onRequest(context) {
     for (const uid of targetUids) {
       try {
         if (type === 'grant') {
-          // grant: 简化逻辑，直接 UPSERT，流水 amount = +amount
-          // 先尝试读取当前余额，便于流水 balance_after
-          const cur = await db
-            .prepare('SELECT balance FROM user_credits WHERE uid = ?')
-            .bind(uid)
-            .first()
-          const currentBalance = cur?.balance || 0
-          const newBalance = currentBalance + amount
+          // grant: 增量语义 UPSERT（INSERT 值即增量，冲突路径累加），
+          // 消除并发发放互相覆写；流水 balance_after 用同事务子查询取真实余额。
           const txId = crypto.randomUUID()
 
           const stmts = [
@@ -159,18 +153,18 @@ export async function onRequest(context) {
                 `INSERT INTO user_credits (uid, balance, total_earned, total_spent, frozen, created_at, updated_at)
                  VALUES (?, ?, ?, 0, 0, ?, ?)
                  ON CONFLICT(uid) DO UPDATE SET
-                   balance = excluded.balance,
+                   balance = balance + excluded.balance,
                    total_earned = total_earned + excluded.total_earned,
                    updated_at = excluded.updated_at`,
               )
-              .bind(uid, newBalance, amount, now, now),
+              .bind(uid, amount, amount, now, now),
             db
               .prepare(
                 `INSERT INTO credit_transactions
                  (id, uid, type, amount, balance_after, reason, operator_uid, source, created_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                 VALUES (?, ?, ?, ?, (SELECT balance FROM user_credits WHERE uid = ?), ?, ?, ?, ?)`,
               )
-              .bind(txId, uid, 'grant', amount, newBalance, reasonText, operatorUid, 'admin', now),
+              .bind(txId, uid, 'grant', amount, uid, reasonText, operatorUid, 'admin', now),
           ]
           await db.batch(stmts)
           succeeded++

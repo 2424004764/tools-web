@@ -158,8 +158,13 @@ export interface InitSaveRequest {
     filename?: string
     width?: number
     height?: number
+    /** 图片 MIME 类型；后端白名单 image/jpeg|jpg|png|webp|gif（未传默认 image/png，非白名单返回 400） */
     content_type?: string
-    /** 文件大小（字节）：后端据此预留存储额度，confirm 时按 R2 真实大小结算 */
+    /**
+     * 文件大小（字节）。新上传图片必填：正整数且 ≤20MB——后端据此预扣存储额度，
+     * 并把 content-length 锁进签名（PUT 实际字节数不符会被 R2 以 403 拒绝）。
+     * existing_key 复用已有对象时不需要。
+     */
     file_size?: number
   }>
 }

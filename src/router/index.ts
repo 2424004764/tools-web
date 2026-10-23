@@ -6,6 +6,7 @@ import seoTitles from './seo-titles.js'
 import { guardStaleVersion } from '@/utils/version-guard'
 import { useUserStore } from '@/store/modules/user'
 import { matchToolByPath, recordToolUsage } from '@/utils/tool-usage'
+import { recordSiteVisit, shouldTrackSiteVisit } from '@/utils/site-visit'
 
 // 记录用户正在导航到的目标路径，供 onError 硬刷时使用
 const TARGET_PATH_KEY = '__nav_target_path__'
@@ -326,6 +327,14 @@ router.afterEach((to, _from, failure) => {
     }
   } catch (err) {
     console.warn('[router] tool-usage tracking failed:', (err as Error)?.message || err)
+  }
+
+  // 网站访问埋点（站点级 PV）：任意页面每次成功导航都记一条（重复刷新也算一次）。
+  // 排除 /admin、/login 等（见 shouldTrackSiteVisit），避免后台自己刷自己污染数据
+  try {
+    if (shouldTrackSiteVisit(to.path)) recordSiteVisit(to.path)
+  } catch (err) {
+    console.warn('[router] site-visit tracking failed:', (err as Error)?.message || err)
   }
 })
 

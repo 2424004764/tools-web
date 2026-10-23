@@ -153,6 +153,8 @@ export default {
   '/mysql-to-go': 'MySQL转Go结构体 - DDL在线生成Model',
   '/mongo-to-sqlite': 'MongoDB转SQLite - JSON转SQL语句',
   '/base64': 'Base64编码解码 - 在线Base64互转工具',
+  '/chmod': 'Chmod权限计算器 - Linux文件权限在线换算',
+  '/radix': '数字进制转换 - 2-36进制在线互转工具',
   '/resume': '在线简历 - 简历制作与管理',
   '/company-compare': '公司对比 - 薪资福利/加班情况对比',
   '/minimum-wage': '最低工资标准 - 各省最低工资查询',

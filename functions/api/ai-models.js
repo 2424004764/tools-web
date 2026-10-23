@@ -271,7 +271,9 @@ export async function onRequest(context) {
  */
 function stripSensitive(row, { isAdminUser, viewerUid, ownerUid }) {
   if (isAdminUser) return row
-  if (ownerUid === viewerUid) return row // 自己的模型完整可见
+  // 未登录时 viewerUid 与公开模型的 ownerUid 同为 ''，必须要求 viewerUid 非空，
+  // 否则游客会被误判为 owner 而拿到真实的 api_key / base_url
+  if (viewerUid && ownerUid === viewerUid) return row // 自己的模型完整可见
   // 否则是普通用户看管理员的公开模型 → 剥敏感字段
   const stripped = { ...row }
   for (const f of STRIPPED_FIELDS_FOR_NON_OWNER) {

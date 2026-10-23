@@ -1,6 +1,20 @@
 // AI 文生视频 API 服务层（数据驱动版）
 // 全部走 /api/ai-proxy 通用代理，后端根据 model_key 从数据库读配置
 
+import { getLocalToken } from '@/utils/user'
+
+/**
+ * 构造 ai-proxy 请求头：登录用户带 Bearer token（后端平台 Key 仅限登录态使用）
+ */
+function aiProxyHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  const token = getLocalToken()
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+  return headers
+}
+
 export interface ChatParams {
   messages: Array<{ role: string; content: any }>
   temperature?: number
@@ -63,7 +77,7 @@ export async function sendChatMessageWithImageStream(
 ): Promise<string> {
   const response = await fetch('/api/ai-proxy', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: aiProxyHeaders(),
     body: JSON.stringify({
       capability: 'chat_stream',
       model_key: toModelKey(model),
@@ -174,7 +188,7 @@ async function callProxy(
   const user_api_key = getUserApiKey(modelKey)
   const response = await fetch('/api/ai-proxy', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: aiProxyHeaders(),
     body: JSON.stringify({ capability, model_key: modelKey, params, user_api_key }),
     signal,
   })
@@ -208,7 +222,7 @@ export async function chatStream(
   const user_api_key = getUserApiKey(modelKey)
   const response = await fetch('/api/ai-proxy', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: aiProxyHeaders(),
     body: JSON.stringify({
       capability: 'chat_stream',
       model_key: modelKey,

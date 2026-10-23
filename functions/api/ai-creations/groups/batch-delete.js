@@ -2,10 +2,11 @@
 //   POST /api/ai-creations/groups/batch-delete
 //     body: { ids: number[] }（最多 50 个，去重取正整数）
 //     鉴权（必须登录）；逐组校验 group.uid === 当前 uid，越权/不存在的 id 跳过并记入 skipped。
-//     流程（每个 id）：拉组内 image 的 media_url → 并发删 R2（best-effort）→ DELETE group（CASCADE 删 images）
+//     流程（每个 id）：拉组内 image 的 r2_key / media_url → 并发删 R2（best-effort，仅限本人命名空间）→ DELETE group（CASCADE 删 images）
 //     Resp: { groups_deleted, images, r2_deleted, r2_failed, skipped_ids }
 
 import { extractUidFromRequest } from '../../_lib/model-resolver.js'
+import { resolveAiCreationKey } from '../../_lib/ai-creation-r2key.js'
 import { deleteR2Object, headR2ObjectSize } from '../../../services/r2.js'
 import { refundStorageUsage } from '../../../services/storageQuotaService.js'
 
@@ -79,23 +80,36 @@ export async function onRequest(context) {
       }
 
       const imgsResult = await db
-        .prepare('SELECT id, media_url FROM ai_creation_images WHERE group_id = ?')
+        .prepare('SELECT id, media_url, r2_key FROM ai_creation_images WHERE group_id = ?')
         .bind(groupId)
         .all()
       const images = imgsResult.results || []
       imageCount += images.length
 
-      // best-effort 删 R2，失败不阻断 D1 删除；先 HEAD 拿真实大小（退额度用），404 → 不退（防刷额度）
+      // best-effort 删 R2，失败不阻断 D1 删除；先 HEAD 拿真实大小（退额度用），404 → 不退（防刷额度）。
+      // key 只信任 confirm 落库的 r2_key（老数据回退 inferR2Key），且只有位于
+      // ai-creations/{uid}/ 命名空间内才删对象 / 退额度（防跨租户删除 IDOR）。
       if (bucket && images.length > 0) {
         const results = await Promise.allSettled(
           images.map((img) => {
-            const key = inferR2Key(env, img.media_url)
-            if (!key) return Promise.resolve(0)
-            // generated-images/ 是生成持久化对象（可能被生成记录引用），只解除画廊引用，不删对象不退额度
-            if (key.startsWith('generated-images/')) return Promise.resolve(0)
-            return headR2ObjectSize(env, bucket, key)
-              .then((size) => deleteR2Object(env, bucket, key).then(() => size || 0))
-              .catch(() => 0)
+            const resolved = resolveAiCreationKey(env, img, uid)
+            if (!resolved) return Promise.resolve(0)
+            if (resolved.kind === 'foreign') {
+              if (!resolved.key.startsWith('generated-images/')) {
+                console.warn(
+                  '[ai-creations/groups/batch-delete POST] 拒绝删除命名空间外的对象 key:',
+                  resolved.key,
+                  'group_id:', groupId,
+                )
+              }
+              return Promise.resolve(0)
+            }
+            if (resolved.kind === 'generated') return Promise.resolve(0)
+            return headR2ObjectSize(env, bucket, resolved.key)
+              .then((size) => deleteR2Object(env, bucket, resolved.key).then(() => size || 0))
+              .catch(() => {
+                throw new Error('r2 delete failed')
+              })
           }),
         )
         for (const r of results) {
@@ -140,28 +154,5 @@ export async function onRequest(context) {
   } catch (e) {
     console.error('[ai-creations/groups/batch-delete POST] error:', e?.message || e)
     return jsonError(e?.message || '服务器错误', 500)
-  }
-}
-
-// 从 media_url 推断 r2_key（与 groups/[id].js 同逻辑）
-function inferR2Key(env, mediaUrl) {
-  if (!mediaUrl || typeof mediaUrl !== 'string') return null
-  const host = env.R2_PUBLIC_HOST
-  if (!/^https?:\/\//i.test(mediaUrl)) {
-    return mediaUrl.replace(/^\/+/, '')
-  }
-  if (!host) return null
-  try {
-    const u = new URL(mediaUrl)
-    if (u.host !== host) return null
-    let p = u.pathname.replace(/^\/+/, '')
-    try {
-      p = decodeURIComponent(p)
-    } catch {
-      /* ignore */
-    }
-    return p
-  } catch {
-    return null
   }
 }

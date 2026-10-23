@@ -5,13 +5,24 @@ export async function onRequest(context) {
     const url = new URL(request.url)
     const origin = request.headers.get('Origin')
 
-    // 允许代理的目标接口（此处限制只能访问指定目标）
-    const allowedTargets = [
-        'https://image.pollinations.ai',
-        'https://text.pollinations.ai',
-        'https://gen.pollinations.ai',
-        'https://platform.aitools.cfd',
-    ]
+    // 允许代理的目标主机（必须 https、无 userinfo、默认端口、主机名全等匹配）
+    // 注意：不能用 startsWith 前缀匹配，否则
+    //   https://gen.pollinations.ai@evil.com      （@ 前是 userinfo，真实主机是 evil.com）
+    //   https://gen.pollinations.ai.evil.com      （evil.com 的子域）
+    // 都能绕过白名单，把本接口当任意 SSRF 跳板
+    const allowedHosts = new Set([
+        'image.pollinations.ai',
+        'text.pollinations.ai',
+        'gen.pollinations.ai',
+        'platform.aitools.cfd',
+    ])
+
+    const isAllowedTarget = (u) =>
+        u.protocol === 'https:' &&
+        u.username === '' &&
+        u.password === '' &&
+        u.port === '' &&
+        allowedHosts.has(u.hostname.toLowerCase())
 
     // 处理预检请求（OPTIONS）
     if (request.method === 'OPTIONS') {
@@ -24,14 +35,17 @@ export async function onRequest(context) {
         return new Response('Missing "target" parameter', { status: 400 })
     }
 
-    // 检查目标域名是否被允许
-    const matched = allowedTargets.some(domain => targetParam.startsWith(domain))
-    if (!matched) {
-        return new Response('Target not allowed', { status: 403 })
+    // 先结构化解析，再按主机名白名单校验（见上方 isAllowedTarget 说明）
+    let targetUrl
+    try {
+        targetUrl = new URL(targetParam)
+    } catch {
+        return new Response('Invalid "target" parameter', { status: 400 })
     }
 
-    // 拼接最终目标地址
-    const targetUrl = new URL(targetParam)
+    if (!isAllowedTarget(targetUrl)) {
+        return new Response('Target not allowed', { status: 403 })
+    }
 
     // 拼接请求路径（如果 target 参数已经包含完整路径，则不再添加 path）
     const path = url.searchParams.get('path') || '';
@@ -65,34 +79,68 @@ export async function onRequest(context) {
     }
 
     // 创建新的请求配置
-    const newRequestInit = {
-        method: request.method,
-        headers: (() => {
-            const safeHeaders = new Headers();
-            // 只复制安全的headers
-            const allowedHeaders = ['content-type', 'authorization', 'user-agent', 'accept', 'accept-language', 'accept-encoding'];
+    // 只复制安全的headers
+    const safeHeaders = new Headers();
+    const allowedHeaders = ['content-type', 'authorization', 'user-agent', 'accept', 'accept-language', 'accept-encoding'];
 
-            request.headers.forEach((value, key) => {
-                const lowerKey = key.toLowerCase();
-                if (allowedHeaders.includes(lowerKey)) {
-                    try {
-                        safeHeaders.set(key, value);
-                    } catch (e) {
-                        console.warn(`跳过有问题的header: ${key}`, e);
-                    }
-                }
-            });
-            return safeHeaders;
-        })(),
-        body: request.method === 'POST' || request.method === 'PUT' || request.method === 'PATCH'
-            ? await request.arrayBuffer()
-            : undefined,
-        redirect: 'follow'
-    }
+    request.headers.forEach((value, key) => {
+        const lowerKey = key.toLowerCase();
+        if (allowedHeaders.includes(lowerKey)) {
+            try {
+                safeHeaders.set(key, value);
+            } catch (e) {
+                console.warn(`跳过有问题的header: ${key}`, e);
+            }
+        }
+    });
 
-    // 向目标 API 发起请求
+    // POST/PUT/PATCH 才转发请求体；读成 ArrayBuffer 以便重定向后可重放
+    const hasRequestBody = request.method === 'POST' || request.method === 'PUT' || request.method === 'PATCH';
+    const requestBody = hasRequestBody ? await request.arrayBuffer() : undefined;
+
+    // 手动跟随重定向：每一跳都重新过一遍白名单校验，
+    // 防止白名单域上的开放重定向把本代理导向任意外部主机
     console.log(`Proxy request to: ${targetUrl.href}`)
-    const response = await fetch(targetUrl, newRequestInit)
+    let currentUrl = targetUrl
+    let currentMethod = request.method
+    let currentBody = requestBody
+    let response = await fetch(currentUrl, {
+        method: currentMethod,
+        headers: safeHeaders,
+        body: currentBody,
+        redirect: 'manual',
+    })
+
+    for (let hop = 0; response.status >= 300 && response.status < 400 && hop < 5; hop++) {
+        const location = response.headers.get('location')
+        if (!location) break
+
+        let nextUrl
+        try {
+            nextUrl = new URL(location, currentUrl)
+        } catch {
+            break
+        }
+
+        if (!isAllowedTarget(nextUrl)) {
+            return new Response('Redirect target not allowed', { status: 403 })
+        }
+
+        // 与 fetch redirect:'follow' 的标准行为一致：301/302/303 改为 GET 并丢弃请求体
+        if (response.status === 301 || response.status === 302 || response.status === 303) {
+            currentMethod = 'GET'
+            currentBody = undefined
+        }
+
+        currentUrl = nextUrl
+        console.log(`Proxy redirect to: ${currentUrl.href}`)
+        response = await fetch(currentUrl, {
+            method: currentMethod,
+            headers: safeHeaders,
+            body: currentBody,
+            redirect: 'manual',
+        })
+    }
 
     // 复制目标 API 的响应头并设置 CORS
     const newHeaders = new Headers(response.headers)

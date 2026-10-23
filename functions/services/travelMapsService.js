@@ -22,8 +22,8 @@ const POINT_CATEGORIES = new Set([
 const BASE_LAYERS = new Set(['vec', 'img', 'ter'])
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/
 
-// 单条 INSERT 一次塞多少行（每行 10 列，8 行 = 80 个绑定参数，低于 D1 单语句变量上限）
-const INSERT_CHUNK = 8
+// D1 单条语句最多绑定 100 个参数，多行 INSERT 需按列数折算每批行数
+const MAX_BIND_PARAMS = 100
 
 class ValidationError extends Error {}
 
@@ -54,6 +54,17 @@ function chunk(list, size) {
   const out = []
   for (let i = 0; i < list.length; i += size) out.push(list.slice(i, i + size))
   return out
+}
+
+// 多行 INSERT，按「列数 × 行数 ≤ MAX_BIND_PARAMS」自动分批
+function multiRowInserts(db, table, columns, rows) {
+  const size = Math.max(1, Math.floor(MAX_BIND_PARAMS / columns.length))
+  return chunk(rows, size).map((group) => {
+    const placeholders = group.map(() => `(${columns.map(() => '?').join(', ')})`).join(', ')
+    return db
+      .prepare(`INSERT INTO ${table} (${columns.join(', ')}) VALUES ${placeholders}`)
+      .bind(...group.flat())
+  })
 }
 
 // 折线里程（米）。前端也算一份用于实时预览，但落库的以服务端为准：
@@ -396,38 +407,26 @@ export class TravelMapsService {
       this.db.prepare('DELETE FROM travel_map_routes WHERE map_id = ?').bind(id),
     ]
 
-    for (const group of chunk(days, INSERT_CHUNK)) {
-      const placeholders = group.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ')
-      const binds = []
-      for (const d of group) {
-        binds.push(d.id, id, d.dayNumber, d.title, d.date, d.startTime, d.startLocation, d.lodgingPointId, d.lodgingName, d.note, d.sortOrder, ts)
-      }
-      statements.push(this.db.prepare(`INSERT INTO travel_map_days
-        (id, map_id, day_number, title, date, start_time, start_location, lodging_point_id, lodging_name, note, sort_order, created_at)
-        VALUES ${group.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ')}`).bind(...binds))
-    }
-
-    for (const group of chunk(points, INSERT_CHUNK)) {
-      const placeholders = group.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ')
-      const binds = []
-      for (const p of group) {
-        binds.push(p.id, id, p.name, p.category, p.lng, p.lat, p.elevation, p.note, p.dayId, p.stayMinutes, p.visited, p.sortOrder, ts)
-      }
-      statements.push(this.db.prepare(`INSERT INTO travel_map_points
-        (id, map_id, name, category, lng, lat, elevation, note, day_id, stay_minutes, visited, sort_order, created_at)
-        VALUES ${placeholders}`).bind(...binds))
-    }
-
-    for (const group of chunk(routes, INSERT_CHUNK)) {
-      const placeholders = group.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ')
-      const binds = []
-      for (const r of group) {
-        binds.push(r.id, id, r.name, r.color, JSON.stringify(r.path), r.distance, r.note, r.kind, r.dayId, r.alternativeGroup, r.profile, r.durationSeconds, r.sortOrder, ts)
-      }
-      statements.push(this.db.prepare(`INSERT INTO travel_map_routes
-        (id, map_id, name, color, path, distance, note, kind, day_id, alternative_group, profile, duration_seconds, sort_order, created_at)
-        VALUES ${placeholders}`).bind(...binds))
-    }
+    statements.push(
+      ...multiRowInserts(
+        this.db,
+        'travel_map_days',
+        ['id', 'map_id', 'day_number', 'title', 'date', 'start_time', 'start_location', 'lodging_point_id', 'lodging_name', 'note', 'sort_order', 'created_at'],
+        days.map((d) => [d.id, id, d.dayNumber, d.title, d.date, d.startTime, d.startLocation, d.lodgingPointId, d.lodgingName, d.note, d.sortOrder, ts])
+      ),
+      ...multiRowInserts(
+        this.db,
+        'travel_map_points',
+        ['id', 'map_id', 'name', 'category', 'lng', 'lat', 'elevation', 'note', 'day_id', 'stay_minutes', 'visited', 'sort_order', 'created_at'],
+        points.map((p) => [p.id, id, p.name, p.category, p.lng, p.lat, p.elevation, p.note, p.dayId, p.stayMinutes, p.visited, p.sortOrder, ts])
+      ),
+      ...multiRowInserts(
+        this.db,
+        'travel_map_routes',
+        ['id', 'map_id', 'name', 'color', 'path', 'distance', 'note', 'kind', 'day_id', 'alternative_group', 'profile', 'duration_seconds', 'sort_order', 'created_at'],
+        routes.map((r) => [r.id, id, r.name, r.color, JSON.stringify(r.path), r.distance, r.note, r.kind, r.dayId, r.alternativeGroup, r.profile, r.durationSeconds, r.sortOrder, ts])
+      )
+    )
 
     await this.db.batch(statements)
     return this.getMapForOwner(id, uid)

@@ -6,6 +6,7 @@ import {
   toggleAdminUserDisabled,
   updateAdminUser,
   batchAdjustUserCredits,
+  batchDeleteUsers,
   fetchUserCreditLogs,
   createAdminUser,
   deleteAdminUser,
@@ -561,6 +562,64 @@ const handleDeleteUser = async (user: AdminUser) => {
   }
 }
 
+// ============ 批量删除用户 ============
+// 删除不可恢复，必须先勾选（不支持「不勾选=全部用户」），并要求输入「删除」二字确认
+const batchDeleting = ref(false)
+
+const handleBatchDelete = async () => {
+  if (selectedUids.value.length === 0) {
+    ElMessage.warning('请先勾选要删除的用户')
+    return
+  }
+  const count = selectedUids.value.length
+  try {
+    const { value } = await ElMessageBox.prompt(
+      `本次将永久删除已勾选的 ${count} 个用户，并一并清理其积分、流水、收藏、密码库等所有数据。此操作不可恢复！\n\n请输入「删除」二字以继续。`,
+      '⚠️ 批量删除用户',
+      {
+        confirmButtonText: '永久删除',
+        cancelButtonText: '取消',
+        inputPlaceholder: '请输入：删除',
+        inputPattern: /^删除$/,
+        inputValidator: (v: string) =>
+          v === '删除' || (v && v.trim() === '删除') || '请输入「删除」二字',
+        type: 'warning',
+      },
+    )
+    if (value !== '删除') return
+  } catch {
+    return
+  }
+
+  batchDeleting.value = true
+  try {
+    const result = await batchDeleteUsers(selectedUids.value)
+    if (result.failed.length === 0 && result.skipped === 0) {
+      ElMessage.success(`批量删除完成：成功 ${result.succeeded} 个`)
+    } else {
+      const parts = [`成功 ${result.succeeded} 个`]
+      if (result.skipped > 0) parts.push(`跳过 ${result.skipped} 个`)
+      if (result.failed.length > 0) parts.push(`失败 ${result.failed.length} 个`)
+      const detail = [
+        ...result.skipped_detail.map((s) => `${s.email || s.uid}（${s.reason}）`),
+        ...result.failed.map((f) => `${f.email || f.uid}（${f.error}）`),
+      ].join('；')
+      await ElMessageBox.alert(
+        `${parts.join('，')}。明细：${detail}`,
+        '批量删除完成（部分未处理）',
+        { type: 'warning', confirmButtonText: '知道了' },
+      )
+    }
+    clearSelection()
+    load()
+  } catch (err: any) {
+    console.error(err)
+    ElMessage.error(err?.response?.data?.error || '批量删除失败')
+  } finally {
+    batchDeleting.value = false
+  }
+}
+
 // ============ 修改用户名 ============
 const editDialog = reactive({
   visible: false,
@@ -795,17 +854,34 @@ const updateIsMobile = () => {
       </el-button>
       <el-button
         type="primary"
-        :disabled="batchCreditDialog.submitting"
+        :disabled="batchCreditDialog.submitting || batchDeleting"
         @click="openBatchCreditDialog"
       >
         批量调整积分
       </el-button>
+      <el-tooltip
+        content="批量删除不可恢复，需先勾选用户"
+        placement="top"
+        :disabled="selectedUids.length > 0"
+      >
+        <span>
+          <el-button
+            type="danger"
+            plain
+            :disabled="selectedUids.length === 0 || batchCreditDialog.submitting"
+            :loading="batchDeleting"
+            @click="handleBatchDelete"
+          >
+            批量删除
+          </el-button>
+        </span>
+      </el-tooltip>
       <span v-if="selectedUids.length > 0" class="text-sm text-ink-500">
         已选 <span class="font-semibold text-accent-600">{{ selectedUids.length }}</span> 个用户
         <el-button link size="small" type="info" @click="clearSelection">清空</el-button>
       </span>
       <span v-else class="text-xs text-ink-400">
-        不勾选则默认作用于全部非管理员用户
+        批量调整积分不勾选则作用于全部非管理员用户；批量删除需先勾选
       </span>
     </div>
 

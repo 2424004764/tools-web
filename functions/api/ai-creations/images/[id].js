@@ -6,6 +6,7 @@
 //     Resp: { deleted: { image_id, group_id, r2_deleted, r2_failed } }
 
 import { extractUidFromRequest } from '../../_lib/model-resolver.js'
+import { resolveAiCreationKey } from '../../_lib/ai-creation-r2key.js'
 import { deleteR2Object, headR2ObjectSize } from '../../../services/r2.js'
 import { refundStorageUsage } from '../../../services/storageQuotaService.js'
 
@@ -56,24 +57,32 @@ export async function onRequest(context) {
 
   try {
     const row = await db
-      .prepare('SELECT id, uid, group_id, media_url FROM ai_creation_images WHERE id = ?')
+      .prepare('SELECT id, uid, group_id, media_url, r2_key FROM ai_creation_images WHERE id = ?')
       .bind(imageId)
       .first()
     if (!row) return jsonError('image 不存在', 404)
     if (row.uid !== uid) return jsonError('无权访问该 image', 403)
 
-    // best-effort 删 R2；先 HEAD 拿真实大小（退额度用），对象已 404 → 不退（防刷额度）
+    // best-effort 删 R2；先 HEAD 拿真实大小（退额度用），对象已 404 → 不退（防刷额度）。
+    // key 只信任 confirm 落库的 r2_key（老数据回退 inferR2Key），且只有位于
+    // ai-creations/{uid}/ 命名空间内才允许删对象 / 退额度（防跨租户删除 IDOR）。
     let r2Deleted = false
     let r2Failed = false
     let refunded = 0
     const bucket = env.R2_BUCKET_NAME
     if (bucket) {
-      const key = inferR2Key(env, row.media_url)
-      // generated-images/ 是生成持久化对象（可能被生成记录引用），画廊行删除时不删对象也不退额度
-      if (key && !key.startsWith('generated-images/')) {
+      const resolved = resolveAiCreationKey(env, row, uid)
+      if (resolved?.kind === 'foreign') {
+        console.warn(
+          '[ai-creations/images/:id DELETE] 拒绝删除命名空间外的对象 key:',
+          resolved.key,
+          'image_id:', imageId,
+        )
+      }
+      if (resolved?.kind === 'owned') {
         try {
-          const size = await headR2ObjectSize(env, bucket, key)
-          await deleteR2Object(env, bucket, key)
+          const size = await headR2ObjectSize(env, bucket, resolved.key)
+          await deleteR2Object(env, bucket, resolved.key)
           r2Deleted = true
           if (size && size > 0) {
             refunded = size
@@ -108,27 +117,5 @@ export async function onRequest(context) {
   } catch (e) {
     console.error('[ai-creations/images/:id DELETE] error:', e?.message || e)
     return jsonError(e?.message || '服务器错误', 500)
-  }
-}
-
-function inferR2Key(env, mediaUrl) {
-  if (!mediaUrl || typeof mediaUrl !== 'string') return null
-  const host = env.R2_PUBLIC_HOST
-  if (!/^https?:\/\//i.test(mediaUrl)) {
-    return mediaUrl.replace(/^\/+/, '')
-  }
-  if (!host) return null
-  try {
-    const u = new URL(mediaUrl)
-    if (u.host !== host) return null
-    let p = u.pathname.replace(/^\/+/, '')
-    try {
-      p = decodeURIComponent(p)
-    } catch {
-      /* ignore */
-    }
-    return p
-  } catch {
-    return null
   }
 }

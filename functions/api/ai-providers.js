@@ -190,7 +190,9 @@ export async function onRequest(context) {
  */
 function stripSensitive(row, { isAdminUser, viewerUid, ownerUid }) {
   if (isAdminUser) return row
-  if (ownerUid === viewerUid) return row
+  // 未登录时 viewerUid 与公开厂商的 ownerUid 同为 ''，必须要求 viewerUid 非空，
+  // 否则游客会被误判为 owner 而拿到真实的 api_key
+  if (viewerUid && ownerUid === viewerUid) return row
   if (row.api_key !== undefined) row.api_key = ''
   return row
 }

@@ -7,6 +7,7 @@ export type AdminDashboardPanel =
   | 'storage'
   | 'userTrend'
   | 'usage'
+  | 'siteVisit'
   | 'topTools'
   | 'slowlog'
   | 'pending'

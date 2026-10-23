@@ -1,8 +1,12 @@
 // 我的 AI 创作 - 保存到 R2 + D1
 //   POST /api/ai-creations/save/init
-//     鉴权 + 复用/创建 group + 给每个 image 签 R2 PUT URL
+//     鉴权 + 额度预扣 + 复用/创建 group + 给每个 image 签 R2 PUT URL
 //     Body: { prompt_id?, scene, category?, model_name?, title?, tags?,
-//             images: [{ upstream_url, prompt, width?, height? }] }
+//             images: [{ upstream_url, prompt, file_size, content_type?, width?, height? }] }
+//     安全约束（渗透测试 MEDIUM finding：配额绕过 + 任意类型文件上传）：
+//       - 新上传图片必须带正整数 file_size（≤20MB/张）与白名单 content_type；
+//         content-length / content-type 都锁进预签名，PUT 不符 R2 直接 403。
+//       - 预留额度失败（0 配额 / 超额）一律 402，不允许存在跳过预扣的旁路。
 //     Resp: { group_id, plan: [{ index, upload_url, r2_key, public_url, expires_at }] }
 //
 //   POST /api/ai-creations/save/confirm
@@ -53,14 +57,23 @@ const MAX_PROMPT = 4000
 const MAX_CATEGORY = 64
 const MAX_MODEL = 128
 const MAX_IMAGES_PER_BATCH = 8 // 单次最多 8 张（覆盖并发 1-5 + 余量）
+// 单张新上传图片的大小上限（20MB 防呆值；真实占用仍受用户剩余额度约束）
+const MAX_FILE_BYTES = 20 * 1024 * 1024
 
-// 上游常见的图片 Content-Type 推断。绝大多数 LLM 出图为 PNG / JPEG。
-function extFromContentType(ct) {
-  const t = String(ct || '').toLowerCase()
-  if (t.includes('jpeg') || t.includes('jpg')) return 'jpg'
-  if (t.includes('png')) return 'png'
-  if (t.includes('webp')) return 'webp'
-  return 'png' // 默认 png，浏览器图片生成器的主流格式
+// 上传 MIME 白名单：content_type 由客户端声明并锁进签名，必须严格限制为静态图片，
+// 否则可借 text/html / image/svg+xml 等在公开桶托管任意页面（存储型 XSS / 免费文件托管）。
+// SVG 虽是图片但可内嵌 <script>，同样禁止。扩展名由白名单映射生成，不做兜底猜测。
+const ALLOWED_IMAGE_TYPES = new Map([
+  ['image/jpeg', 'jpg'],
+  ['image/jpg', 'jpg'], // 非标准写法，个别环境会出现
+  ['image/png', 'png'],
+  ['image/webp', 'webp'],
+  ['image/gif', 'gif'],
+])
+
+// 客户端声明的图片类型归一化（未声明默认 png，浏览器图片生成器的主流格式）
+function declaredImageType(img) {
+  return String(img.content_type || img.mime || 'image/png').toLowerCase().trim()
 }
 
 export async function onRequest(context) {
@@ -137,9 +150,42 @@ async function handleInit(db, uid, body, env) {
     if (img.existing_key && !String(img.existing_key).startsWith(`generated-images/${uid}/`)) {
       return jsonError('existing_key 不在当前用户命名空间内', 403)
     }
+    // 新上传对象：file_size 必填正整数并设上限，content_type 过白名单。
+    // 两者都会锁进预签名（content-length / content-type），PUT 不符 R2 直接 403。
+    if (!img.existing_key) {
+      const size = Number(img?.file_size)
+      if (!Number.isInteger(size) || size <= 0) {
+        return jsonError('images 每项必须包含正整数 file_size（字节）', 400)
+      }
+      if (size > MAX_FILE_BYTES) {
+        return jsonError(`单张图片不能超过 ${Math.floor(MAX_FILE_BYTES / 1024 / 1024)}MB`, 400)
+      }
+      if (!ALLOWED_IMAGE_TYPES.has(declaredImageType(img))) {
+        return jsonError('不支持的图片类型（仅支持 JPEG / PNG / WebP / GIF）', 400)
+      }
+    }
   }
 
-  // 1) 复用或创建 group：(uid, prompt_id) 作为唯一键；
+  // 1) 存储额度预留：file_size 必填后，declaredBytes 即本次新上传对象的字节合计，
+  //    预留成功才建组 / 签 URL（顺序很重要：0 配额账号在任何 D1 写入前就被 402 挡住，
+  //    否则可无限刷 group 行）。confirm 时按 R2 真实大小结算（长度已锁进签名，两者一致）。
+  //    全部为 existing_key 复用的批次 declaredBytes=0：无新对象写入，无需预留
+  //    （那份对象在生成持久化时已扣过额度，画廊只引用不再计费）。
+  let reservationId = ''
+  const declaredBytes = images.reduce(
+    (sum, img) => (img?.existing_key ? sum : sum + Math.floor(Number(img.file_size))),
+    0,
+  )
+  if (declaredBytes > 0) {
+    const rid = await reserveStorage(db, uid, declaredBytes)
+    if (!rid) {
+      // 不允许跳过预扣的旁路（含 ai-image-edit）：否则 0 配额账号可无限上传（渗透测试 MEDIUM finding）
+      return jsonError('存储空间不足，请先购买存储额度（1 积分 = 100MB）', 402)
+    }
+    reservationId = rid
+  }
+
+  // 2) 复用或创建 group：(uid, prompt_id) 作为唯一键；
   //    没有 prompt_id 的直接新建（即便重复提交也允许多个"未关联"组，便于后续按 group 单独管理）。
   let groupId
   if (promptId) {
@@ -180,61 +226,41 @@ async function handleInit(db, uid, body, env) {
     if (!groupId) return jsonError('创建 group 失败', 500)
   }
 
-  // 2) 存储额度预留：按前端声明的 file_size 合计预扣（confirm 时按 R2 真实大小结算，多退少补）。
-  //    未声明 file_size 的批次不预留（恶意少报会在 confirm 被真实大小修正）。
-  //    复用 existing_key 的图片不预留——那份对象在生成持久化时已扣过一次额度，画廊只引用不再计费。
-  let reservationId = ''
-  const declaredBytes = images.reduce((sum, img) => {
-    if (img?.existing_key) return sum
-    const n = Number(img?.file_size)
-    return sum + (Number.isFinite(n) && n > 0 ? Math.floor(n) : 0)
-  }, 0)
-  if (declaredBytes > 0) {
-    const rid = await reserveStorage(db, uid, declaredBytes)
-    if (!rid) {
-      // AI 图片编辑按张计费（生成时已扣积分），存储额度不足不阻断保存：
-      // 跳过预留走无预留模式，confirm 按 R2 真实大小累加用量（允许透支）。
-      // 其他场景维持原 402 引导购买。
-      if (scene !== 'ai-image-edit') {
-        return jsonError('存储空间不足，请先购买存储额度（1 积分 = 100MB）', 402)
-      }
-      console.warn('[ai-creations/save] 存储额度不足：ai-image-edit 计费工具放行（无预留透支保存）')
-    } else {
-      reservationId = rid
-    }
-  }
-
   // 3) 给每个 image 签 R2 PUT URL
   const bucket = env.R2_BUCKET_NAME
   if (!bucket) return jsonError('R2 桶名未配置', 500)
 
-    const plan = []
-    for (let i = 0; i < images.length; i++) {
-      const img = images[i]
-      if (img.existing_key) {
-        // 复用已持久化对象：无需签名上传 URL，confirm 只写 D1 行
-        plan.push({
-          index: i,
-          reuse: true,
-          upload_url: '',
-          r2_key: String(img.existing_key),
-          content_type: '',
-          public_url: buildR2PublicUrl(env, String(img.existing_key)),
-          expires_at: 0,
-          upstream_url: String(img.upstream_url || ''),
-          filename: String(img.filename || 'image.png').slice(0, 255),
-          prompt: String(img.prompt),
-          width: Number.isFinite(img.width) ? Number(img.width) : null,
-          height: Number.isFinite(img.height) ? Number(img.height) : null,
-        })
-        continue
-      }
-      const ext = extFromContentType(img.content_type || img.mime || '')
+  const plan = []
+  for (let i = 0; i < images.length; i++) {
+    const img = images[i]
+    if (img.existing_key) {
+      // 复用已持久化对象：无需签名上传 URL，confirm 只写 D1 行
+      plan.push({
+        index: i,
+        reuse: true,
+        upload_url: '',
+        r2_key: String(img.existing_key),
+        content_type: '',
+        public_url: buildR2PublicUrl(env, String(img.existing_key)),
+        expires_at: 0,
+        upstream_url: String(img.upstream_url || ''),
+        filename: String(img.filename || 'image.png').slice(0, 255),
+        prompt: String(img.prompt),
+        width: Number.isFinite(img.width) ? Number(img.width) : null,
+        height: Number.isFinite(img.height) ? Number(img.height) : null,
+      })
+      continue
+    }
+    const rawType = declaredImageType(img)
+    const ext = ALLOWED_IMAGE_TYPES.get(rawType) // 前置校验已保证命中白名单
     const uuid = genUuid()
     const r2Key = `ai-creations/${uid}/${groupId}/${uuid}.${ext}`
-    // 使用客户端声明的图片类型签名，避免手动上传被强制改成 PNG。
-    const contentType = String(img.content_type || img.mime || 'image/png').toLowerCase()
-    const { uploadUrl, expiresAt } = await signR2PutUrl(env, bucket, r2Key, contentType)
+    const contentType = rawType
+    // content-length 与 content-type 一并锁进签名：PUT 的实际字节数 / 类型与声明不符 → R2 直接 403。
+    // 只锁类型不锁长度时，"声明 1 字节实际上传 1GB"无法在 R2 端被阻止（配额绕过的根源）。
+    const { uploadUrl, expiresAt } = await signR2PutUrl(env, bucket, r2Key, contentType, {
+      contentLength: Number(img.file_size),
+    })
     const publicUrl = buildR2PublicUrl(env, r2Key)
     plan.push({
       index: i,
@@ -282,6 +308,7 @@ async function handleConfirm(db, uid, body, env) {
   // 校验每张图的 r2_key 命名空间：
   //   - ai-creations/{uid}/      本次新上传的对象
   //   - generated-images/{uid}/  生成持久化对象复用（生成时已扣过额度，这里不再结算）
+  // key 同时做格式校验（长度 + 字符集），防止毒化数据借道落库。
   const uploadsPrefix = `ai-creations/${uid}/`
   const generatedPrefix = `generated-images/${uid}/`
   for (const img of images) {
@@ -289,6 +316,9 @@ async function handleConfirm(db, uid, body, env) {
       return jsonError('images 每项必须包含 r2_key 与 prompt', 400)
     }
     const key = String(img.r2_key)
+    if (key.length > 512 || !/^[A-Za-z0-9][A-Za-z0-9/._-]*$/.test(key)) {
+      return jsonError('r2_key 格式不合法', 400)
+    }
     if (!key.startsWith(uploadsPrefix) && !key.startsWith(generatedPrefix)) {
       return jsonError('r2_key 不在当前用户命名空间内', 403)
     }
@@ -322,7 +352,11 @@ async function handleConfirm(db, uid, body, env) {
   const ids = []
   for (let i = 0; i < images.length; i++) {
     const img = images[i]
-    const mediaUrl = String(img.public_url || img.r2_key) // 没配 R2_PUBLIC_HOST 时回退到 r2_key
+    const r2Key = String(img.r2_key)
+    // media_url 一律服务端从 r2_key 计算，客户端传的 public_url 不再信任：
+    // 曾经客户端可传任意 public_url 落库，DELETE 端再从 media_url 反推 key
+    // 用服务端凭据删对象，造成跨租户任意对象删除（IDOR）。
+    const mediaUrl = buildR2PublicUrl(env, r2Key) || r2Key // 没配 R2_PUBLIC_HOST 时回退到 r2_key
     const fileSize = actualSizes[i] || null
     const width = Number.isFinite(img.width) ? Number(img.width) : null
     const height = Number.isFinite(img.height) ? Number(img.height) : null
@@ -330,14 +364,15 @@ async function handleConfirm(db, uid, body, env) {
       const ins = await db
         .prepare(
           `INSERT INTO ai_creation_images
-             (group_id, uid, media_type, media_url, thumbnail_url, filename, prompt,
+             (group_id, uid, media_type, media_url, r2_key, thumbnail_url, filename, prompt,
               width, height, file_size, created_at, updated_at)
-           VALUES (?, ?, 'image', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           VALUES (?, ?, 'image', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .bind(
           groupId,
           uid,
           mediaUrl,
+          r2Key,
           null, // thumbnail_url 暂存空，未来可由图像处理函数回填
           String(img.filename || 'image.png').slice(0, 255),
           String(img.prompt).slice(0, MAX_PROMPT),
