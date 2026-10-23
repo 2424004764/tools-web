@@ -1,4 +1,6 @@
 // 谷歌登录回调
+import { verifyGoogleIdToken } from './utils/google-idtoken.js';
+
 export async function onRequest(context) {
   const { request, env } = context;
 
@@ -13,50 +15,24 @@ export async function onRequest(context) {
       return new Response('Missing credential', { status: 400 });
     }
 
-    // 安全地解析JWT token
+    // 完整校验 Google ID Token：JWKS 验签（仅 RS256）+ iss / aud / exp /
+    // email_verified。此前只 Base64 解码就信任 payload，伪造 token 填任意
+    // 邮箱即可登录任意账号，属认证绕过漏洞；现在校验不过一律 401。
+    const expectedClientId = env.GOOGLE_CLIENT_ID;
+    if (!expectedClientId) {
+      throw new Error('缺少 GOOGLE_CLIENT_ID 环境变量配置');
+    }
+
     let payload;
     try {
-      const parts = credential.split('.');
-      if (parts.length !== 3) {
-        throw new Error('Invalid JWT format');
-      }
-      const payloadBase64 = parts[1];
-      let base64 = payloadBase64.replace(/-/g, '+').replace(/_/g, '/');
-      while (base64.length % 4) {
-        base64 += '=';
-      }
-      const binaryString = atob(base64);
-      const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-      const decodedString = new TextDecoder('utf-8').decode(bytes);
-      payload = JSON.parse(decodedString);
-    } catch (parseError) {
+      payload = await verifyGoogleIdToken(credential, expectedClientId);
+    } catch (verifyError) {
+      console.error('[google-auth] ID token 校验失败:', verifyError.message);
       return new Response(JSON.stringify({
         success: false,
-        error: '无效的认证凭据',
-        message: 'JWT解析失败: ' + parseError.message
-      }), { status: 400 });
-    }
-
-    // 验证token的有效性
-    const currentTime = Math.floor(Date.now() / 1000);
-    if (payload.exp && payload.exp < currentTime) {
-      return new Response(JSON.stringify({
-        success: false,
-        error: '认证凭据已过期',
-        message: '请重新登录'
+        error: '认证凭据无效',
+        message: '登录凭据校验未通过，请重新登录'
       }), { status: 401 });
-    }
-
-    // 验证必要的字段
-    if (!payload.email) {
-      return new Response(JSON.stringify({
-        success: false,
-        error: '认证凭据不完整',
-        message: '缺少必要的用户信息'
-      }), { status: 400 });
     }
 
     const email = payload.email;

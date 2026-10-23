@@ -376,12 +376,84 @@ export async function getStorage(db) {
   }
 }
 
+/** 网站访问（站点级 PV，site_visits 表）：今日/本周/本月/累计 + 趋势稀疏点 + 页面 TOP，口径与 getUsage 一致 */
+export async function getSiteVisits(db, opts = {}) {
+  const dailyDays = opts.dailyDays || 90
+  const weeklyWeeks = opts.weeklyWeeks || 12
+  const monthlyMonths = opts.monthlyMonths || 12
+  let todaySiteVisits = 0
+  let weekSiteVisits = 0
+  let monthSiteVisits = 0
+  let totalSiteVisits = 0
+  let siteVisitTrend = { daily: [], weekly: [], monthly: [] }
+  let topPages = []
+  try {
+    const { todayStart, weekStart, monthStart } = usageBoundaries()
+    todaySiteVisits =
+      (await db.prepare('SELECT COUNT(*) AS c FROM site_visits WHERE visited_at >= ?').bind(todayStart).first())?.c || 0
+    weekSiteVisits =
+      (await db.prepare('SELECT COUNT(*) AS c FROM site_visits WHERE visited_at >= ?').bind(weekStart).first())?.c || 0
+    monthSiteVisits =
+      (await db.prepare('SELECT COUNT(*) AS c FROM site_visits WHERE visited_at >= ?').bind(monthStart).first())?.c || 0
+    totalSiteVisits = (await db.prepare('SELECT COUNT(*) AS c FROM site_visits').first())?.c || 0
+
+    const dayNStartUTC8 = todayStart - (dailyDays - 1) * 86400
+    const dailyTrendRes = await db
+      .prepare(
+        `SELECT date(visited_at, 'unixepoch', '+8 hours') AS d, COUNT(*) AS c
+         FROM site_visits WHERE visited_at >= ? GROUP BY d`,
+      )
+      .bind(dayNStartUTC8)
+      .all()
+    siteVisitTrend.daily = (dailyTrendRes.results || []).map((r) => ({ date: r.d, count: Number(r.c || 0) }))
+
+    const weekNStartUTC8 = weekStart - (weeklyWeeks - 1) * 7 * 86400
+    const weeklyTrendRes = await db
+      .prepare(
+        `SELECT date(visited_at, 'unixepoch', '+8 hours', '-6 days', 'weekday 1') AS d, COUNT(*) AS c
+         FROM site_visits WHERE visited_at >= ? GROUP BY d`,
+      )
+      .bind(weekNStartUTC8)
+      .all()
+    siteVisitTrend.weekly = (weeklyTrendRes.results || []).map((r) => ({ date: r.d, count: Number(r.c || 0) }))
+
+    const utc8 = utc8Now()
+    const monthNStartUTC8 = (() => {
+      const start = new Date(Date.UTC(utc8.getUTCFullYear(), utc8.getUTCMonth() - (monthlyMonths - 1), 1, 0, 0, 0))
+      return Math.floor((start.getTime() - 8 * 3600 * 1000) / 1000)
+    })()
+    const monthlyTrendRes = await db
+      .prepare(
+        `SELECT strftime('%Y-%m', visited_at, 'unixepoch', '+8 hours') AS m, COUNT(*) AS c
+         FROM site_visits WHERE visited_at >= ? GROUP BY m`,
+      )
+      .bind(monthNStartUTC8)
+      .all()
+    siteVisitTrend.monthly = (monthlyTrendRes.results || []).map((r) => ({ date: r.m, count: Number(r.c || 0) }))
+
+    const topPagesRes = await db
+      .prepare(
+        `SELECT path, COUNT(*) AS count
+         FROM site_visits
+         GROUP BY path
+         ORDER BY count DESC
+         LIMIT 10`,
+      )
+      .all()
+    topPages = (topPagesRes.results || []).map((r) => ({ path: r.path, count: r.count }))
+  } catch (e) {
+    console.warn('[admin/dashboard] site_visits 聚合失败（可能表未创建）:', e?.message || e)
+  }
+  return { todaySiteVisits, weekSiteVisits, monthSiteVisits, totalSiteVisits, siteVisitTrend, topPages }
+}
+
 /** 面板名 → 查询函数 */
 export const PANEL_QUERIES = {
   overview: getOverview,
   storage: getStorage,
   userTrend: getUserTrend,
   usage: getUsage,
+  siteVisit: getSiteVisits,
   topTools: getTopTools,
   slowlog: getSlowQueries,
   pending: getPending,

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useIsMobile } from '@/composables/useIsMobile'
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { fetchApiErrorLogs, cleanupApiErrorLogs, setApiErrorLogResolved } from '@/api/admin/error-log'
@@ -282,6 +283,7 @@ const copyText = async (text: string | null, label: string) => {
 }
 
 onMounted(load)
+const { isMobile } = useIsMobile()
 </script>
 
 <template>
@@ -457,7 +459,8 @@ onMounted(load)
           :page-size="pagination.pageSize"
           :total="pagination.total"
           :page-count="pagination.totalPages"
-          layout="total, prev, pager, next, jumper"
+          :layout="isMobile ? 'prev, pager, next' : 'total, prev, pager, next, jumper'"
+  :pager-count="isMobile ? 5 : 7"
           :background="true"
           @current-change="handlePageChange"
         />

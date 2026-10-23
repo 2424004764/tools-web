@@ -346,6 +346,24 @@ export function getToolsCate() {
           cateId: 2,
           cate: '开发运维',
         },
+        {
+          id: 161,
+          title: 'Chmod权限计算器',
+          logo: '/images/logo/keywords.png',
+          desc: 'Linux 文件权限计算器，勾选读/写/执行实时生成八进制与符号表示，支持特殊权限位与常用预设',
+          url: '/chmod/',
+          cateId: 2,
+          cate: '开发运维',
+        },
+        {
+          id: 162,
+          title: '数字进制转换',
+          logo: '/images/logo/Time.png',
+          desc: '2-36 进制互转，实时转换二进制、八进制、十进制、十六进制，支持小数、负数与任意精度大数',
+          url: '/radix/',
+          cateId: 2,
+          cate: '开发运维',
+        },
 
       ]
     },

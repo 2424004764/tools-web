@@ -6,6 +6,7 @@ import type {
   AdminUserDetail,
   BatchAdjustCreditPayload,
   BatchAdjustCreditResult,
+  BatchDeleteUsersResult,
   CreateUserPayload,
   CreateUserResult,
   CreditTransaction,
@@ -192,5 +193,15 @@ export async function batchAdjustUserCredits(
     '/api/admin/users/credits/batch',
     payload,
   )
+  return res.data.data
+}
+
+/**
+ * 批量永久删除用户（不可恢复，会级联清理全部子表）
+ * - 必须显式传 uids，不支持全量模式
+ * - 服务端自动跳过管理员账号与发起人自己（计入 skipped）
+ */
+export async function batchDeleteUsers(uids: string[]): Promise<BatchDeleteUsersResult> {
+  const res = await functionsRequest.post('/api/admin/users/batch-delete', { uids })
   return res.data.data
 }

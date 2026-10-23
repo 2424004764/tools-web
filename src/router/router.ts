@@ -1516,6 +1516,26 @@ export const constantRoute = [
     }
   },
   {
+    path: '/chmod',
+    component: () => import('@/components/Tools/Chmod/Chmod.vue'),
+    name: 'chmod',
+    meta: {
+      title: "Chmod权限计算器",
+      keywords: 'chmod,linux权限,文件权限,755,644,权限计算器,八进制权限',
+      description: '在线Chmod权限计算器，勾选读/写/执行实时生成八进制与符号表示，支持setuid/setgid/粘滞位与常用权限预设',
+    }
+  },
+  {
+    path: '/radix',
+    component: () => import('@/components/Tools/Radix/Radix.vue'),
+    name: 'radix',
+    meta: {
+      title: "数字进制转换",
+      keywords: '进制转换,二进制,八进制,十进制,十六进制,进制计算器,在线进制转换',
+      description: '在线进制转换工具，支持2-36进制互转，实时转换二进制、八进制、十进制、十六进制，支持小数、负数与大数',
+    }
+  },
+  {
     path: '/resume',
     component: () => import('@/components/Tools/Resume/Resume.vue'),
     name: 'resume',

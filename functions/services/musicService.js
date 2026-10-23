@@ -249,7 +249,11 @@ export class MusicService {
     const bucket = this.env.R2_BUCKET_NAME
     if (!bucket) throw new ValidationError('R2 桶名未配置（缺少 env.R2_BUCKET_NAME）')
 
-    const { uploadUrl, expiresAt } = await _signR2PutUrl(this.env, bucket, r2Key, mimeType)
+    // content-length 与 content-type 都锁进签名：实际 PUT 字节数 / 类型与声明不符 → R2 直接 403，
+    // 否则"声明 1 字节实际上传整个文件"会绕过按声明大小的额度预扣。
+    const { uploadUrl, expiresAt } = await _signR2PutUrl(this.env, bucket, r2Key, mimeType, {
+      contentLength: Math.floor(fileSize),
+    })
 
     return {
       exists: false,

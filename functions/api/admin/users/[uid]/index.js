@@ -5,6 +5,8 @@
 //
 // 鉴权已在 _middleware.js 完成。
 
+import { fetchExistingTables, buildUserCascadeStatements } from '../_delete-cascade.js'
+
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
@@ -150,56 +152,10 @@ async function handleDelete(context, db, uid) {
   }
 
   // 4) 级联 SQL：先删叶子子表，最后 DELETE user；credit_redeem_codes.used_by 保留但置空
-  // 关键：生产 D1 上部分子表（resumes/notes/companies/qa_pages 等）可能尚未建表，
-  // 直接批量 DELETE 会因 SQLITE_ERROR 整体失败。执行前先查 sqlite_master 过滤存在表。
-  // 表名取自下方白名单常量，不接受外部输入 → 无 SQL 注入风险。
-  const CASCADE_TABLES = [
-    'credit_transactions',
-    'user_credits',
-    'generation_records',
-    'credit_redeem_attempts',
-    'todos',
-    'notes',
-    'resumes',
-    'companies',
-    'qa_pages',
-    'password_entries',
-    'password_groups',
-    'weight_records',
-    'weight_members',
-    'oss_credentials',
-    'mock_schemas',
-    'life_trajectories',
-    'user_season_scenery',
-    'user_favorite_apps',
-    'ai_providers',
-    'bookmarks',
-    'links',
-    'letters',
-  ]
-
-  const tablesResult = await db
-    .prepare("SELECT name FROM sqlite_master WHERE type='table'")
-    .all()
-  const existingTables = new Set((tablesResult.results || []).map((r) => r.name))
-
-  const stmts = []
-  const skippedTables = []
-  for (const tbl of CASCADE_TABLES) {
-    if (!existingTables.has(tbl)) {
-      skippedTables.push(tbl)
-      continue
-    }
-    stmts.push(db.prepare(`DELETE FROM ${tbl} WHERE uid = ?`).bind(uid))
-  }
-  // credit_redeem_codes：保留记录，置空 used_by（独立处理，不走通用分支）
-  if (existingTables.has('credit_redeem_codes')) {
-    stmts.push(
-      db.prepare('UPDATE credit_redeem_codes SET used_by = NULL WHERE used_by = ?').bind(uid),
-    )
-  } else {
-    skippedTables.push('credit_redeem_codes')
-  }
+  // 关键：生产 D1 上部分子表可能尚未建表，直接 DELETE 会因 SQLITE_ERROR 整体失败。
+  // 执行前先查 sqlite_master 过滤存在表（白名单见 _delete-cascade.js）。
+  const existingTables = await fetchExistingTables(db)
+  const { stmts, skippedTables } = buildUserCascadeStatements(db, uid, existingTables)
   // user 行强制删除（始终存在）
   stmts.push(db.prepare('DELETE FROM user WHERE id = ?').bind(uid))
 

@@ -79,24 +79,27 @@ export async function onRequest(context) {
     // 准备 batch 语句
     let stmts
     if (type === 'grant') {
+      // grant 用增量语义而非预读覆写：INSERT 值即增量，冲突路径 balance = balance + 增量，
+      // 消除并发发放互相覆盖丢失更新的竞态（deduct 路径本就是原子的）。
+      // balance_after 用同事务子查询取写入后的真实余额，保证流水与表一致。
       stmts = [
         db
           .prepare(
             `INSERT INTO user_credits (uid, balance, total_earned, total_spent, frozen, created_at, updated_at)
              VALUES (?, ?, ?, 0, 0, ?, ?)
              ON CONFLICT(uid) DO UPDATE SET
-               balance = excluded.balance,
+               balance = balance + excluded.balance,
                total_earned = total_earned + excluded.total_earned,
                updated_at = excluded.updated_at`,
           )
-          .bind(uid, newBalance, amount, now, now),
+          .bind(uid, amount, amount, now, now),
         db
           .prepare(
             `INSERT INTO credit_transactions
              (id, uid, type, amount, balance_after, reason, operator_uid, source, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             VALUES (?, ?, ?, ?, (SELECT balance FROM user_credits WHERE uid = ?), ?, ?, ?, ?)`,
           )
-          .bind(txId, uid, 'grant', signedAmount, newBalance, reasonText, operatorUid, 'admin', now),
+          .bind(txId, uid, 'grant', signedAmount, uid, reasonText, operatorUid, 'admin', now),
       ]
     } else {
       // deduct: 用 UPDATE 带 WHERE balance >= amount 条件保证原子性
@@ -131,13 +134,19 @@ export async function onRequest(context) {
       }
     }
 
+    // 并发场景下预读的 newBalance 可能已过期，回读真实余额
+    const after = await db
+      .prepare('SELECT balance FROM user_credits WHERE uid = ?')
+      .bind(uid)
+      .first()
+
     return json({
       txId,
       uid,
       type,
       amount,
       balanceBefore: currentBalance,
-      balanceAfter: newBalance,
+      balanceAfter: after?.balance ?? newBalance,
       created_at: now,
     })
   } catch (error) {

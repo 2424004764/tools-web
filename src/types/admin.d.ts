@@ -166,6 +166,26 @@ export interface BatchAdjustCreditResult {
   balance_change_total: number
 }
 
+/** 批量删除用户返回的单条跳过/失败明细 */
+export interface BatchDeleteUserItem {
+  uid: string
+  email: string | null
+  username: string | null
+  reason?: string
+  error?: string
+}
+
+/** 批量删除用户返回 */
+export interface BatchDeleteUsersResult {
+  /** 提交的 uid 数（去重后） */
+  requested: number
+  succeeded: number
+  /** 受保护（管理员/自己）或不存在而跳过的数量 */
+  skipped: number
+  skipped_detail: BatchDeleteUserItem[]
+  failed: BatchDeleteUserItem[]
+}
+
 /** 分类聚合 */
 export interface ToolCategorySummary {
   category_id: number
@@ -217,6 +237,19 @@ export interface AdminDashboard {
     weekly: ToolUsageTrendPoint[]
     monthly: ToolUsageTrendPoint[]
   }
+  /** 网站访问（站点级 PV，依赖 site_visits 表；老版本迁移前为 0） */
+  todaySiteVisits?: number
+  weekSiteVisits?: number
+  monthSiteVisits?: number
+  totalSiteVisits?: number
+  /** 网站访问趋势（UTC+8 口径，稀疏点由前端补零） */
+  siteVisitTrend?: {
+    daily: ToolUsageTrendPoint[]
+    weekly: ToolUsageTrendPoint[]
+    monthly: ToolUsageTrendPoint[]
+  }
+  /** 页面访问 TOP 10（按 path 聚合，累计口径） */
+  topPages?: TopPageSummary[]
   /** 慢日志统计（依赖 slow_query_logs 表；未迁移兜底全为 0） */
   slowQueries?: SlowQuerySummary
   /** 待审核数（依赖 comments / friend_links 表；未迁移兜底为 0） */
@@ -253,8 +286,13 @@ export interface StorageSummary {
   }
 }
 
-/** 工具使用趋势单个数据点（稀疏，缺失日期由前端补零） */
-export interface ToolUsageTrendPoint {
+/** 页面访问 TOP 榜单项（按 path 聚合，累计口径） */
+export interface TopPageSummary {
+  path: string
+  count: number
+}
+
+/** 工具使用趋势单个数据点（稀疏，缺失日期由前端补零） */export interface ToolUsageTrendPoint {
   /** 每日/每周为 'YYYY-MM-DD'（每周为周一日期），每月为 'YYYY-MM' */
   date: string
   count: number

@@ -131,6 +131,7 @@
     "/api/me/generation-records/*",
     "/api/me/tool-usage",
     "/api/me/tool-usage/recent",
+    "/api/me/site-visit",
     "/api/admin/tool-usage",
     "/api/admin/tool-usage/stats",
     "/api/travel-maps",
@@ -521,7 +522,11 @@
     "/lucky-wheel",
     "/lucky-wheel/*",
     "/roll-call",
-    "/roll-call/*"
+    "/roll-call/*",
+    "/chmod",
+    "/chmod/*",
+    "/radix",
+    "/radix/*"
   ],
   "exclude": []
 }

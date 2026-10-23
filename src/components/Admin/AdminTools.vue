@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useIsMobile } from '@/composables/useIsMobile'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import {
   fetchAdminTools,
@@ -527,6 +528,7 @@ onMounted(() => {
   // 这里不再强制清空（之前清空会让用户每次进页都看到一片空折叠面板）
   load()
 })
+const { isMobile } = useIsMobile()
 </script>
 
 <template>
@@ -738,7 +740,8 @@ onMounted(() => {
         :page-size="pagination.pageSize"
         :total="pagination.total"
         :page-count="pagination.totalPages"
-        layout="total, prev, pager, next, jumper"
+        :layout="isMobile ? 'prev, pager, next' : 'total, prev, pager, next, jumper'"
+  :pager-count="isMobile ? 5 : 7"
         :background="true"
         @current-change="handlePageChange"
       />

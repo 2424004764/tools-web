@@ -1,4 +1,17 @@
 import { ChatMessage, ChatOptions, ChatResponse } from '../../common/interfaces'
+import { getLocalToken } from '@/utils/user'
+
+/**
+ * 构造 ai-proxy 请求头：登录用户带 Bearer token（后端平台 Key 仅限登录态使用）
+ */
+function aiProxyHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  const token = getLocalToken()
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+  return headers
+}
 
 /**
  * Agnes 免费对话（走 /api/ai-proxy 通用代理）
@@ -19,7 +32,7 @@ export async function chat(
       // ----- 流式 -----
       const response = await fetch('/api/ai-proxy', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: aiProxyHeaders(),
         body: JSON.stringify({
           capability: 'chat_stream',
           model_key: modelKey,
@@ -111,7 +124,7 @@ async function callAgnesProxy(
 ): Promise<any> {
   const response = await fetch('/api/ai-proxy', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: aiProxyHeaders(),
     body: JSON.stringify({ capability, model_key: modelKey, params }),
     signal,
   })

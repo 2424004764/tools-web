@@ -30,6 +30,7 @@ const DASHBOARD_PANELS: AdminDashboardPanel[] = [
   'overview',
   'storage',
   'usage',
+  'siteVisit',
   'userTrend',
   'topTools',
   'slowlog',
@@ -48,6 +49,7 @@ const WIDGET_PANEL: Record<WidgetId, AdminDashboardPanel> = {
   credits: 'overview',
   tools: 'overview',
   usage: 'usage',
+  siteVisit: 'siteVisit',
   userTrend: 'userTrend',
   topTools: 'topTools',
   slowlog: 'slowlog',
@@ -66,6 +68,7 @@ const loadPanel = async (panel: AdminDashboardPanel) => {
     panelState[panel] = 'done'
     // 趋势图数据到达后立即建图，不等其他面板
     if (panel === 'usage' && res.usageTrend) usagePanel.build(res.usageTrend)
+    if (panel === 'siteVisit' && res.siteVisitTrend) siteVisitPanel.build(res.siteVisitTrend)
     if (panel === 'userTrend' && res.userTrend) userPanel.build(res.userTrend)
   } catch (err) {
     panelState[panel] = 'failed'
@@ -85,6 +88,7 @@ type WidgetId =
   | 'credits'
   | 'tools'
   | 'usage'
+  | 'siteVisit'
   | 'userTrend'
   | 'topTools'
   | 'slowlog'
@@ -104,6 +108,7 @@ const DEFAULT_WIDGETS: WidgetMeta[] = [
   { id: 'credits', span: '' },
   { id: 'tools', span: '' },
   { id: 'usage', span: 'col-span-2 md:col-span-2' },
+  { id: 'siteVisit', span: 'col-span-2 md:col-span-2' },
   { id: 'userTrend', span: 'col-span-2 md:col-span-2' },
   { id: 'topTools', span: 'col-span-2 md:col-span-2' },
   { id: 'slowlog', span: 'col-span-2 md:col-span-2' },
@@ -160,6 +165,7 @@ const handleDragEnd = (evt: Sortable.SortableEvent) => {
   // 重排会重建图表容器节点，等待 Vue 渲染后按新节点重建两块趋势图
   nextTick(() => {
     usagePanel.init()
+    siteVisitPanel.init()
     userPanel.init()
   })
 }
@@ -353,7 +359,7 @@ function createTrendPanel(
   verb: string,
   unit: string,
   panel: AdminDashboardPanel,
-  trendKey: 'usageTrend' | 'userTrend',
+  trendKey: 'usageTrend' | 'userTrend' | 'siteVisitTrend',
 ) {
   const trendRange = ref<TrendRangeKey>('daily')
   const chartRef = ref<HTMLDivElement | null>(null)
@@ -548,7 +554,20 @@ function createTrendPanel(
 }
 
 const usagePanel = createTrendPanel('使用', '次', 'usage', 'usageTrend')
+const siteVisitPanel = createTrendPanel('访问', '次', 'siteVisit', 'siteVisitTrend')
 const userPanel = createTrendPanel('新增', '人', 'userTrend', 'userTrend')
+
+// 页面访问 TOP 榜：卡片脚注展示前 3 个（悬停 title 展示完整 TOP 10）
+const topPagesTitle = computed(() => {
+  const pages = data.value?.topPages || []
+  if (!pages.length) return '暂无数据'
+  return pages.map((p) => `${p.path} ${p.count}`).join('，')
+})
+const topPagesShort = computed(() => {
+  const pages = (data.value?.topPages || []).slice(0, 3)
+  if (!pages.length) return '暂无数据'
+  return pages.map((p) => `${p.path} ${p.count}`).join('，')
+})
 
 // TOP 10 工具的时间窗切换（复用趋势图的三粒度 + 累计）
 const TOP_TOOLS_RANGES = [...TREND_RANGES, { key: 'all', label: '累计' }] as const
@@ -557,23 +576,26 @@ const topToolsRange = ref<TopToolsRangeKey>('daily')
 const activeTopTools = computed(() => data.value?.topTools?.[topToolsRange.value] || [])
 // 解构出的 ref 仍是响应式的，模板里直接绑定 ref / v-model
 const { trendRange: usageTrendRange, chartRef: usageChartEl } = usagePanel
+const { trendRange: siteVisitTrendRange, chartRef: siteVisitChartEl } = siteVisitPanel
 const { trendRange: userTrendRange, chartRef: userChartEl } = userPanel
 
 // 主题切换时用缓存数据按新主题色重绘（不重新请求接口）
 watch(isDark, () => {
   usagePanel.applyOption()
+  siteVisitPanel.applyOption()
   userPanel.applyOption()
 })
 
 const handleResize = () => {
   usagePanel.resize()
+  siteVisitPanel.resize()
   userPanel.resize()
 }
 
 onMounted(async () => {
   load()
   loadLayout()
-  await Promise.all([usagePanel.init(), userPanel.init()])
+  await Promise.all([usagePanel.init(), siteVisitPanel.init(), userPanel.init()])
   if (gridRef.value && !sortable) {
     sortable = Sortable.create(gridRef.value, {
       handle: '.widget-drag-handle', // 仅从把手发起拖拽，不影响图表缩放 / 链接等交互
@@ -593,6 +615,7 @@ onUnmounted(() => {
   sortable?.destroy()
   sortable = null
   usagePanel.dispose()
+  siteVisitPanel.dispose()
   userPanel.dispose()
 })
 </script>
@@ -726,7 +749,7 @@ onUnmounted(() => {
           </div>
           <div class="text-xs text-ink-400 mt-1.5">
             累计发放 {{ data?.totalEarned ?? 0 }}
-            <span class="mx-1">·</span>
+            <br />
             今日消耗 {{ data?.todayCreditSpent ?? 0 }}
           </div>
         </div>
@@ -816,6 +839,58 @@ onUnmounted(() => {
           <div ref="usageChartEl" class="w-full h-[200px] mt-2"></div>
         </div>
 
+        <!-- 网站访问次数（站点级 PV，来自 site_visits；老版本迁移前为 0） -->
+        <div v-else-if="w.id === 'siteVisit'" v-loading="panelLoading(w.id)" class="admin-stat-card h-full">
+          <div class="text-sm text-ink-500 mb-2 flex items-center gap-1.5 flex-wrap">
+            <span class="widget-drag-handle" title="拖动调整位置">
+              <IconRank class="w-3.5 h-3.5" />
+            </span>
+            <span class="flex items-center gap-1.5">
+              <IconHistogram class="w-3.5 h-3.5" />
+              网站访问次数
+            </span>
+            <el-radio-group v-model="siteVisitTrendRange" size="small" class="!ml-auto">
+              <el-radio-button
+                v-for="r in TREND_RANGES"
+                :key="r.key"
+                :value="r.key"
+              >
+                {{ r.label }}
+              </el-radio-button>
+            </el-radio-group>
+          </div>
+          <div class="grid grid-cols-4 divide-x divide-ink-100">
+            <div class="pr-2 first:pl-0">
+              <div class="text-[11px] text-ink-400">今日</div>
+              <div class="mt-0.5 text-lg font-semibold text-accent-700 tabular-nums leading-tight">
+                {{ data?.todaySiteVisits ?? 0 }}
+              </div>
+            </div>
+            <div class="px-2">
+              <div class="text-[11px] text-ink-400">本周</div>
+              <div class="mt-0.5 text-lg font-semibold text-ink-900 tabular-nums leading-tight">
+                {{ data?.weekSiteVisits ?? 0 }}
+              </div>
+            </div>
+            <div class="px-2">
+              <div class="text-[11px] text-ink-400">本月</div>
+              <div class="mt-0.5 text-lg font-semibold text-ink-900 tabular-nums leading-tight">
+                {{ data?.monthSiteVisits ?? 0 }}
+              </div>
+            </div>
+            <div class="pl-2 last:pr-0">
+              <div class="text-[11px] text-ink-400">累计</div>
+              <div class="mt-0.5 text-lg font-semibold text-ink-900 tabular-nums leading-tight">
+                {{ data?.totalSiteVisits ?? 0 }}
+              </div>
+            </div>
+          </div>
+          <div class="text-[11px] text-ink-400 mt-2 truncate" :title="topPagesTitle">
+            最热页面：{{ topPagesShort }}
+          </div>
+          <div ref="siteVisitChartEl" class="w-full h-[200px] mt-2"></div>
+        </div>
+
         <!-- 用户总数（注册趋势）：与 TOP 5 工具位置对调，紧挨工具使用次数便于对照 -->
         <div v-else-if="w.id === 'userTrend'" v-loading="panelLoading(w.id)" class="admin-stat-card h-full">
           <div class="text-sm text-ink-500 mb-2 flex items-center gap-1.5 flex-wrap">
@@ -869,7 +944,7 @@ onUnmounted(() => {
         </div>
 
         <!-- TOP 10 工具：今日 / 每周 / 每月 / 累计 切换 -->
-        <div v-else-if="w.id === 'topTools'" v-loading="panelLoading(w.id)" class="admin-stat-card h-full">
+        <div v-else-if="w.id === 'topTools'" v-loading="panelLoading(w.id)" class="admin-stat-card h-full flex flex-col">
           <div class="text-sm text-ink-500 mb-2 flex items-center gap-1.5 flex-wrap">
             <span class="widget-drag-handle" title="拖动调整位置">
               <IconRank class="w-3.5 h-3.5" />
@@ -888,8 +963,8 @@ onUnmounted(() => {
               </el-radio-button>
             </el-radio-group>
           </div>
-          <!-- 限高滚动：条数多时不再把同排卡片撑高（含头部换行、底部链接后仍低于趋势图卡高度） -->
-          <div v-if="activeTopTools.length" class="space-y-1.5 max-h-[200px] overflow-y-auto pr-0.5">
+          <!-- 弹性填满卡片剩余高度；min-h 保证不足 10 条时高度不变（10 行 × 20px + 9 个间距 × 6px） -->
+          <div v-if="activeTopTools.length" class="space-y-1.5 flex-1 min-h-[254px] overflow-y-auto pr-0.5">
             <div
               v-for="(t, i) in activeTopTools"
               :key="t.tool_url"

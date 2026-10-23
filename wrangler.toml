@@ -60,6 +60,9 @@ QQ_CLIENT_ID = "102809984"
 # Gitee登录配置（回调地址由代码按请求 origin 计算为 /api/gitee-auth）
 GITEE_CLIENT_ID = "a3693640087f15e76ec90f73e2adc840b0e34f4fe29911aeb157ac0b186c4fba"
 # Github登录配置
+# 谷歌登录配置：与前端 VITE_GOOGLE_CLIENT_ID 同值，后端用它校验 ID Token 的 aud
+# （functions/utils/google-idtoken.js 验签时比对，公开 client_id 不敏感）
+GOOGLE_CLIENT_ID = "825228691844-jflrvsfqa82gs1s225qbcaa4raujmp1f.apps.googleusercontent.com"
 
 # 慢查询日志（functions/utils/slow-query-log.js）
 # 超过该毫秒数的 D1 调用会被记到 slow_query_logs 表。设 "0" 完全关闭。

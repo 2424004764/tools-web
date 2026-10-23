@@ -226,6 +226,9 @@ const showUserMenu = () => {
 
 // 隐藏用户菜单（延迟）
 const hideUserMenu = () => {
+  // 与 showUserMenu 对称：非 hover 设备上 mouseenter 的取消路径已被禁用，
+  // 这里若仍启动倒计时，点击打开的菜单会在鼠标移出按钮 150ms 后自行关闭
+  if (!canHover) return
   // 设置延迟隐藏，给用户时间移动到菜单
   hideTimeout.value = window.setTimeout(() => {
     userMenuVisible.value = false
@@ -259,6 +262,9 @@ const showProductsMenu = () => {
 
 // 隐藏产品下拉（延迟，给用户时间移动到菜单）
 const hideProductsMenu = () => {
+  // 与 showProductsMenu 对称：非 hover 设备上 mouseenter 的取消路径已被禁用，
+  // 这里若仍启动倒计时，点击打开的菜单会在鼠标移出按钮 150ms 后自行关闭
+  if (!canHover) return
   productsHideTimeout.value = window.setTimeout(() => {
     productsMenuVisible.value = false
     productsHideTimeout.value = null

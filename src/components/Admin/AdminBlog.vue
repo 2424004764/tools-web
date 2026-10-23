@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useIsMobile } from '@/composables/useIsMobile'
 // 博客管理：文章列表 + 审核投稿 + 编辑/删除
 // 编辑与新建跳 /admin/blog/write（复用前台 BlogEditor 组件）
 import { onMounted, reactive, ref } from 'vue'
@@ -171,6 +172,7 @@ const handleDelete = async (row: AdminBlogPost) => {
 onMounted(() => {
   load()
 })
+const { isMobile } = useIsMobile()
 </script>
 
 <template>
@@ -329,7 +331,8 @@ onMounted(() => {
         :page-size="pagination.pageSize"
         :total="pagination.total"
         :page-count="pagination.totalPages"
-        layout="total, prev, pager, next, jumper"
+        :layout="isMobile ? 'prev, pager, next' : 'total, prev, pager, next, jumper'"
+  :pager-count="isMobile ? 5 : 7"
         :background="true"
         @current-change="handlePageChange"
       />

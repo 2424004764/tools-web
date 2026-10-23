@@ -2,9 +2,11 @@
 import { onMounted, onUnmounted, reactive, ref, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { fetchGenerationRecords, cleanupStuckGenerationRecords } from '@/api/admin/generation-record'
+import { useIsMobile } from '@/composables/useIsMobile'
 import type { GenerationRecord, AdminPagination } from '@/types/admin'
 
 const loading = ref(false)
+const { isMobile } = useIsMobile()
 const list = ref<GenerationRecord[]>([])
 const pagination = ref<AdminPagination>({
   total: 0,
@@ -353,13 +355,14 @@ onUnmounted(() => {
         </el-table-column>
       </el-table>
 
-      <div class="flex justify-end mt-4">
+      <div class="flex flex-wrap justify-end mt-4 pagination-wrap">
         <el-pagination
           :current-page="pagination.page"
           :page-size="pagination.pageSize"
           :total="pagination.total"
           :page-count="pagination.totalPages"
-          layout="total, prev, pager, next, jumper"
+          :pager-count="isMobile ? 5 : 7"
+          :layout="isMobile ? 'prev, pager, next' : 'total, prev, pager, next, jumper'"
           :background="true"
           @current-change="handlePageChange"
         />

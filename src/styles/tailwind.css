@@ -715,3 +715,23 @@ html.dark .w-e-modal .w-e-modal-btn {
 :where(html.dark) .border-accent-200 { border-color: rgb(var(--accent-500) / 0.35); }
 :where(html.dark) .border-accent-300 { border-color: rgb(var(--accent-500) / 0.45); }
 :where(html.dark) .border-danger-200 { border-color: rgb(var(--danger-500) / 0.35); }
+
+/* 小屏：Element Plus 分页收起「总数 / 前往 X 页」，按钮缩小并保持单行，避免横向溢出/换行 */
+@media (max-width: 640px) {
+  .el-pagination {
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+  }
+  .el-pagination .el-pagination__total,
+  .el-pagination .el-pagination__jump {
+    display: none;
+  }
+  .el-pagination.is-background .btn-prev,
+  .el-pagination.is-background .btn-next,
+  .el-pagination.is-background .el-pager li {
+    min-width: 36px !important;
+    height: 36px !important;
+    line-height: 36px !important;
+    margin: 0 2px !important;
+  }
+}
