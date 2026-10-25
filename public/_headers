@@ -5,17 +5,35 @@
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: geolocation=(), camera=(), microphone=(), payment=(), usb=(), magnetometer=(), gyroscope=()
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+  # COOP 用 same-origin-allow-popups 而非 same-origin：OAuth 登录弹窗
+  # （github/google/gitee/qq/linuxdo）会先导航到跨域授权页再回到本站回调页，
+  # 回调页靠 window.opener.postMessage 回传 token，same-origin 会掐断该链路。
+  # allow-popups 仅隔离"本站被别人当弹窗打开"的场景，不影响自己开弹窗。
+  Cross-Origin-Opener-Policy: same-origin-allow-popups
+  # 阻止其他站点以 no-cors 方式内嵌本站资源（防热点盗链/Spectre 类侧信道）；
+  # 爬虫与 CORS fetch 不受影响。
+  Cross-Origin-Resource-Policy: same-origin
 
   # ─── 内容安全策略 ──────────────────────────────────────
-  #  - script-src 允许 'unsafe-inline'：因为 Vite 注入的 inline <script>（hash 路由 fallback）+ version-guard 内联脚本 + Element Plus 动态样式。
-  #    生产环境若进一步加固，可改用 nonce / hash 注入。
+  #  - script-src 已移除 'unsafe-inline'（2026-10 安全加固）：唯一的内联脚本
+  #    （index.html 版本守卫）改用 sha256 hash 放行。hash 由构建链末尾的
+  #    scripts/gen-script-hashes.mjs 扫描 dist 产物自动计算并回写 dist/_headers，
+  #    ⚠️ 所以手改 index.html 内联脚本后必须完整重新构建部署，否则脚本会被
+  #    CSP 静默拦截（下方 hash 值为最近一次构建的产物，仅作 source 记录）。
+  #    内联事件属性（onclick= 等）也被一并禁用；CSS preload 激活由版本守卫
+  #    脚本里的捕获阶段 load 委托完成，不走 link 的 onload=""。
+  #  - script-src 保留 'unsafe-eval'：Make24（new Function）与
+  #    MathEquation3D（eval）两个工具依赖表达式动态求值；待它们改写成
+  #    独立表达式解析器后方可移除。
+  #  - style-src 保留 'unsafe-inline'：Element Plus 动态 style 属性 +
+  #    index.html 内联首屏 CSS；脚本通道已锁死，样式注入风险可接受。
   #  - img-src 加 image.pollinations.ai：文生图工具直连 Pollinations。
   #  - img-src 加 data: blob:：Canvas 截图、Base64 图片、PDF.js worker 渲染。
   #  - connect-src *：AI 代理/外部 API 多为 * 调用（Agnes、Pollinations、Supabase 等）。
   #  - script-src / frame-src / style-src 加 https://giscus.app：评论区使用 giscus（加载 client.js、default.css 并内嵌 giscus iframe）。
 #  - frame-src 加 4 个 jx.* 域名：视频解析工具（/video-parser/）内嵌的第三方解析线路 iframe。
 #    与 VideoParser.vue 里 PARSE_LINES 的 url 保持同步；解析服务商换域名时此处需同步更新。
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com https://accounts.google.com https://giscus.app https://api.tianditu.gov.cn; style-src 'self' 'unsafe-inline' https://giscus.app; img-src 'self' data: blob: https:; media-src 'self' https: blob:; font-src 'self' data:; connect-src 'self' https: wss:; frame-src https://giscus.app https://jx.xmflv.com https://jx.m3u8.tv https://jx.playerjy.com https://jx.hls.one; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://accounts.google.com
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-eval' 'sha256-L8j/PFB8npmY0W8fE9/oRzIRKCqyVb2jn8TFRUtB7fI=' https://static.cloudflareinsights.com https://accounts.google.com https://giscus.app https://api.tianditu.gov.cn; style-src 'self' 'unsafe-inline' https://giscus.app; img-src 'self' data: blob: https:; media-src 'self' https: blob:; font-src 'self' data:; connect-src 'self' https: wss:; frame-src https://giscus.app https://jx.xmflv.com https://jx.m3u8.tv https://jx.playerjy.com https://jx.hls.one; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://accounts.google.com
 
 /js/*
   Cache-Control: public, max-age=31536000, immutable

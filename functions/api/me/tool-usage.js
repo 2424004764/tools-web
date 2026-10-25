@@ -11,10 +11,10 @@
 //
 // 路由说明：本文件精确匹配 /api/me/tool-usage（POST）。
 // 子路径 /api/me/tool-usage/recent 单独走 functions/api/me/tool-usage/recent.js，
-// 这是 Cloudflare Pages Functions 的惯例（与 credits/transactions.js 一致），
-// 也是 wrangler 校验 _routes.json 通配路径的硬性要求。
+// 这是 Cloudflare Pages Functions 的惯例（与 credits/transactions.js 一致）。
 
 import { AuthMiddleware } from '../../middlewares/auth.js'
+import { getClientIp as getRateLimitIp, hitLimit } from '../../utils/rate-limit.js'
 
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -70,6 +70,14 @@ function getGeo(request) {
 
 export async function onRequestPost(context) {
   const { request, env } = context
+
+  // 匿名可写接口：按 IP 限流（60 次/分钟），防脚本刷 tool_usage_records
+  // 污染统计、推高 D1 写入成本。超限直接 noop（与整体 best-effort 语义一致）
+  const rlIp = getRateLimitIp(request)
+  if (rlIp) {
+    const r = await hitLimit(env.VERIFICATION_CODES, `rl:track:tool:${rlIp}`, 60, 60)
+    if (!r.allowed) return jsonNoop()
+  }
 
   let body
   try {

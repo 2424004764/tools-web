@@ -231,6 +231,23 @@ export interface AdminDashboard {
     monthly: TopToolSummary[]
     all: TopToolSummary[]
   }
+  /** 活跃用户：各时间窗使用过工具的去重用户数 */
+  activeUserCounts?: { daily: number; weekly: number; monthly: number; all: number }
+  /** 活跃用户：各时间窗使用工具次数 TOP 10 用户排名 */
+  activeUsers?: {
+    daily: ActiveUserSummary[]
+    weekly: ActiveUserSummary[]
+    monthly: ActiveUserSummary[]
+    all: ActiveUserSummary[]
+  }
+  /** 单用户模式（activeUsers 面板带 uid 查询）：该用户各时间窗使用次数 */
+  activeUserUsage?: { daily: number; weekly: number; monthly: number; all: number }
+  /** 单用户使用趋势（UTC+8 口径，稀疏点由前端补零） */
+  activeUserTrend?: {
+    daily: ToolUsageTrendPoint[]
+    weekly: ToolUsageTrendPoint[]
+    monthly: ToolUsageTrendPoint[]
+  }
   /** 工具使用趋势（UTC+8 口径；每日近 30 天 / 每周近 12 周周一 / 每月近 12 月，稀疏点由前端补零） */
   usageTrend?: {
     daily: ToolUsageTrendPoint[]
@@ -261,6 +278,12 @@ export interface AdminDashboard {
   pendingFeedback?: number
   /** 全站存储空间概况（依赖 user_storage_quota / storage_reservations 等表；未迁移兜底全为 0） */
   storage?: StorageSummary
+  /** 存储新增占用趋势（UTC+8 口径，count 为该周期音乐/AI 图/子站新增占用字节数；稀疏点由前端补零） */
+  storageTrend?: {
+    daily: ToolUsageTrendPoint[]
+    weekly: ToolUsageTrendPoint[]
+    monthly: ToolUsageTrendPoint[]
+  }
 }
 
 /** 全站存储空间概况（口径与存储明细页一致：可用 = 总量 - 已用 - 预扣） */
@@ -313,6 +336,14 @@ export interface TopToolSummary {
   count?: number
   use_count?: number
   last_used_at?: number
+}
+
+/** 活跃用户排名项（使用工具次数按 uid 聚合；用户可能已删除，名字缺失时回退 uid） */
+export interface ActiveUserSummary {
+  uid: string
+  user_name: string
+  user_email: string
+  count: number
 }
 
 /** TOP 用户条目（后台统计） */

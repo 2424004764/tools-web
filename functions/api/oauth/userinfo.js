@@ -41,6 +41,7 @@ export async function onRequest(context) {
     })
   } catch (error) {
     console.error('[oauth/userinfo] error:', error)
-    return oauthError('server_error', error.message || '服务器错误', 500)
+    // 不回显 error.message（可能携带内部细节），统一对外文案
+    return oauthError('server_error', '服务器错误', 500)
   }
 }

@@ -13,6 +13,7 @@
 // 鉴权：/api/admin/_middleware.js 已校验管理员，这里无需重复检查。
 
 import { STORAGE_RESERVATION_TTL_SECONDS } from '../../../config/storage.js'
+import { likeContains } from '../../../utils/like.js'
 
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
@@ -106,7 +107,7 @@ export async function onRequest(context) {
 
     // ============ 用户用量列表（分页 / 搜索，按已用降序） ============
     const whereSql = keyword ? 'WHERE (u.email LIKE ? OR u.username LIKE ? OR q.uid LIKE ?)' : ''
-    const like = `%${keyword}%`
+    const like = likeContains(keyword)
 
     const countRow = keyword
       ? await db

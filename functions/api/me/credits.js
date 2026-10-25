@@ -8,7 +8,7 @@
 //   - 无积分行 → 全部返回 0（不返回 404），前端按 0 处理
 //
 // 部署：
-//   wrangler pages deploy（含 dist 同步）；本文件已在 functions/_routes.json 注册
+//   wrangler pages deploy（含 dist 同步）；wrangler 按 functions 文件树自动生成路由
 
 import { extractUidFromRequest } from '../_lib/model-resolver.js'
 

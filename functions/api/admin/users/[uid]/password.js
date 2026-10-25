@@ -5,8 +5,10 @@
 // 用户没有密码字段，后端直接拒绝（前端也按 has_password 隐藏入口）。
 // password 留空时由后端生成 10 位 [a-z0-9] 随机密码，仅在返回体 generated_password
 // 中返回一次（与创建用户接口的约定一致）。
-// 哈希方式与 email-register.js / reset-password.js 保持一致：SHA-256(password + salt) → 小写十六进制。
+// 哈希方式与 email-register.js / reset-password.js 保持一致：PBKDF2-SHA256（utils/password.js）。
 // 鉴权已在 _middleware.js 完成。
+
+import { hashPassword } from '../../../../utils/password.js'
 
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'PUT, OPTIONS',
@@ -25,15 +27,6 @@ function jsonError(message, status = 400) {
     status,
     headers: { 'Content-Type': 'application/json', ...corsHeaders },
   })
-}
-
-async function hashPassword(password, salt) {
-  const encoder = new TextEncoder()
-  const data = encoder.encode(password + salt)
-  const hashBuf = await crypto.subtle.digest('SHA-256', data)
-  return Array.from(new Uint8Array(hashBuf))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('')
 }
 
 // 生成 10 位 [a-z0-9] 随机密码（与 admin/users/index.js 创建用户保持一致）
@@ -83,10 +76,10 @@ export async function onRequest(context) {
       generated = password
     }
 
-    const salt = crypto.randomUUID()
-    const hashed = await hashPassword(password, salt)
+    // PBKDF2 哈希 + token_version 递增：管理员改密后该用户所有旧登录态立即失效
+    const { salt, hash: hashed } = await hashPassword(password)
     await db
-      .prepare('UPDATE user SET password = ?, salt = ? WHERE id = ?')
+      .prepare('UPDATE user SET password = ?, salt = ?, token_version = token_version + 1 WHERE id = ?')
       .bind(hashed, salt, uid)
       .run()
 

@@ -8,6 +8,7 @@ export type AdminDashboardPanel =
   | 'userTrend'
   | 'usage'
   | 'siteVisit'
+  | 'activeUsers'
   | 'topTools'
   | 'slowlog'
   | 'pending'
@@ -19,10 +20,10 @@ export async function fetchAdminDashboard(): Promise<AdminDashboard> {
   return res.data.data
 }
 
-/** 单面板拉取：某个面板慢/失败不影响其他面板渲染；params 附加查询参数（趋势窗口大小等） */
+/** 单面板拉取：某个面板慢/失败不影响其他面板渲染；params 附加查询参数（趋势窗口大小、activeUsers 的 uid 等） */
 export async function fetchAdminDashboardPanel(
   panel: AdminDashboardPanel,
-  params?: Record<string, number>,
+  params?: Record<string, number | string>,
 ): Promise<Partial<AdminDashboard>> {
   const res = await functionsRequest.get(`/api/admin/dashboard/${panel}`, { params })
   return res.data.data

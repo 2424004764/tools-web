@@ -4,6 +4,7 @@
 // 鉴权已在 api/admin/_middleware.js 完成
 import { encryptSecret } from '../../../utils/crypto-secret.js'
 import { sanitizeText, normalizeRedirectUris, normalizeAppUrl, randomHex } from '../../_lib/oauth-client-utils.js'
+import { likeContains } from '../../../utils/like.js'
 
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -43,7 +44,7 @@ export async function onRequest(context) {
       const args = []
       if (keyword) {
         where.push('(name LIKE ? OR client_id LIKE ?)')
-        const like = `%${keyword}%`
+        const like = likeContains(keyword)
         args.push(like, like)
       }
       const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : ''
@@ -98,7 +99,7 @@ export async function onRequest(context) {
         )
         .bind(
           clientId,
-          await encryptSecret(clientSecret, env.JWT_SECRET),
+          await encryptSecret(clientSecret, env.ENCRYPTION_SECRET || env.JWT_SECRET),
           name,
           sanitizeText(body.description, 200),
           sanitizeText(body.logo_url, 500),

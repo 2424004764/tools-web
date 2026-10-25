@@ -54,6 +54,40 @@ function shouldLogError(path, status) {
   return !ERROR_LOG_EXCLUDED.some((p) => path === p || path.startsWith(`${p}/`))
 }
 
+// 剥离错误响应体里的 detail 字段：业务方通过 ApiResponse.error(..., detail)
+// 传的 error.stack 仅供 captureApiError 落库排障，不允许出站给客户端
+//（否则 500 响应体携带完整堆栈，泄露文件路径与内部结构）。
+async function stripErrorDetail(response) {
+  try {
+    const contentType = response.headers.get('Content-Type') || ''
+    if (!contentType.includes('application/json')) return response
+    // body 流是一次性的：读出后无论是否命中 detail 都必须用读出的文本重建响应
+    const text = await response.text()
+    const rebuild = (body) => {
+      const headers = new Headers(response.headers)
+      headers.delete('Content-Length') // body 已变，交给运行时按实际长度生成
+      return new Response(body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+      })
+    }
+    let parsed
+    try {
+      parsed = JSON.parse(text)
+    } catch {
+      return rebuild(text)
+    }
+    if (!parsed || typeof parsed !== 'object' || parsed.detail === undefined) {
+      return rebuild(text)
+    }
+    delete parsed.detail
+    return rebuild(JSON.stringify(parsed))
+  } catch {
+    return response
+  }
+}
+
 /**
  * 从失败响应中提取错误信息并落库。
  *
@@ -286,7 +320,7 @@ async function maybeRewritePageMeta(request, path, response, env) {
 
     // ---- 页面 HTML 一律 no-store（2026-10 深链白屏二次事故）----
     // _headers 只能按请求路径匹配：/ 与 /index.html 有 no-store 规则，
-    // 但工具页深链（/skill-poster/ 等 _routes.json 收录的 281 条路由）经本
+    // 但工具页深链（/skill-poster/ 等全部页面路由）经本
     // 中间件返回，只拿到 Pages 默认的 max-age=0 —— 实测该形式会被 zone 的
     // Browser Cache TTL 改写成 max-age=14400，浏览器 4 小时内不再回源。
     // 发版后旧 HTML 引用的旧 hash chunk 已删 → 白屏；index.html 的 inline
@@ -441,6 +475,12 @@ export async function onRequest(context) {
   // 失败请求统一落库（异步，不阻塞响应；内部已吞掉所有异常）
   if (shouldLogError(path, response.status)) {
     scheduleErrorLog(captureApiError(context, response, path, startedAt))
+  }
+
+  // detail 字段（error.stack）只落库不出站：落库任务已在上面拿到完整 body 克隆，
+  // 这里重建的响应剔除 detail 后才返回客户端
+  if (response.status >= 400) {
+    response = await stripErrorDetail(response)
   }
 
   return finalize(response)

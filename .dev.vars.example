@@ -8,6 +8,16 @@
 # JWT 签名密钥（生产环境必须与 Dashboard 同步轮换）
 JWT_SECRET=local-dev-jwt-secret-change-in-production
 
+# AES-GCM 加密密钥（functions/utils/crypto-secret.js，用于 OAuth client_secret 等的加密存储）
+# 可选：不配置时回退 JWT_SECRET 并做域分离派生；配置独立值则与签名密钥完全隔离。
+# 注意：配置后新写入的密文与旧密钥不兼容（旧密文仍可解密，重写后才用新密钥）
+ENCRYPTION_SECRET=
+
+# ---------- 定时任务 ----------
+# /cron/* 端点调用密钥（functions/utils/cron-auth.js，fail-closed：不配置则全部 401）
+# 生产环境需在 Cloudflare Pages 与 GitHub 仓库 Secrets 各配一份相同的值
+CRON_SECRET=local-dev-cron-secret
+
 # ---------- 邮件 ----------
 # Resend 邮件 API Key（https://resend.com/api-keys）
 RESEND_API_KEY=re_local_dev_only
@@ -34,3 +44,10 @@ SUPABASE_SERVICE_KEY=sb_publishable_LOCAL_DEV_ONLY
 # ---------- Pollinations ----------
 # 文生图 / 文生文 API Key（前端通过 vite.config.ts 代理使用 VITE_POLLINATIONS_API_KEY）
 # 后端如有直连需求可在此声明 POLLINATIONS_API_KEY
+
+# ---------- AI 上游服务 ----------
+# 八方平台 API Key（functions/api/ai-image-edit.js、functions/api/ai-outfit.js 的 gemini 分支）
+BAFANG_API_KEY=
+
+# AI 媒体作品回调签名密钥（functions/api/ai-media-works/[[path]].js 校验 X-AIMW-Signature）
+AIMW_KEY=

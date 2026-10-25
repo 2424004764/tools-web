@@ -7,9 +7,10 @@
 //   - 强制 WHERE r.uid = ? 隔离，只能看自己
 // 字段比 admin 版少（不含 tx_id / idempotency_key / IP / user_agent），前台不暴露。
 //
-// 部署：已在 functions/_routes.json 注册。
+// 部署：wrangler 按 functions 文件树自动生成路由。
 
 import { extractUidFromRequest } from '../_lib/model-resolver.js'
+import { likeContains } from '../../utils/like.js'
 
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
@@ -79,7 +80,7 @@ export async function onRequest(context) {
       where.push(
         '(r.model LIKE ? OR r.error_message LIKE ? OR json_extract(r.raw_data, \'$.prompt\') LIKE ?)',
       )
-      const like = `%${keyword}%`
+      const like = likeContains(keyword)
       args.push(like, like, like)
     }
     const whereSql = `WHERE ${where.join(' AND ')}`

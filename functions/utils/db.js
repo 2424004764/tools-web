@@ -310,14 +310,23 @@ export class Model {
   // 更新记录
   async update(id, data) {
     const mappedData = this.mapToDb(data)
-    
+
     const fields = Object.keys(mappedData)
-    const setClause = fields.map(field => `${field} = ?`).join(', ')
-    const values = [...Object.values(mappedData), id]
-    
-    // 添加更新时间
-    const updateTimeField = this.config.fields.updateTime?.dbField || 'update_time'
-    const sql = `UPDATE ${this.config.tableName} SET ${setClause}, ${updateTimeField} = CURRENT_TIMESTAMP WHERE id = ?`
+    const setParts = fields.map(field => `${field} = ?`)
+    const values = [...Object.values(mappedData)]
+
+    // 只有模型注册了 updateTime 字段才追加更新时间：
+    // 未注册的表（如 life_trajectories）没有该列，无条件追加会直接 SQL 报错
+    const updateTime = this.config.fields.updateTime
+    if (updateTime) {
+      setParts.push(`${updateTime.dbField || 'update_time'} = CURRENT_TIMESTAMP`)
+    }
+    if (setParts.length === 0) {
+      throw new Error(`Model.update: ${this.config.tableName} 没有可更新的字段`)
+    }
+
+    const sql = `UPDATE ${this.config.tableName} SET ${setParts.join(', ')} WHERE id = ?`
+    values.push(id)
 
     const result = await this.executeQuery('UPDATE', sql, values, (stmt) => stmt.run())
     return (result.meta?.changes ?? result.changes ?? 0) > 0
@@ -329,11 +338,19 @@ export class Model {
     const whereClause = queryBuilder.buildWhere(this)
 
     const fields = Object.keys(mappedData)
-    const setClause = fields.map(field => `${field} = ?`).join(', ')
-    const values = [...Object.values(mappedData), ...whereClause.params]
+    const setParts = fields.map(field => `${field} = ?`)
+    const values = [...Object.values(mappedData)]
 
-    const updateTimeField = this.config.fields.updateTime?.dbField || 'update_time'
-    const sql = `UPDATE ${this.config.tableName} SET ${setClause}, ${updateTimeField} = CURRENT_TIMESTAMP${whereClause.sql}`
+    const updateTime = this.config.fields.updateTime
+    if (updateTime) {
+      setParts.push(`${updateTime.dbField || 'update_time'} = CURRENT_TIMESTAMP`)
+    }
+    if (setParts.length === 0) {
+      throw new Error(`Model.updateWithQuery: ${this.config.tableName} 没有可更新的字段`)
+    }
+
+    const sql = `UPDATE ${this.config.tableName} SET ${setParts.join(', ')}${whereClause.sql}`
+    values.push(...whereClause.params)
 
     const result = await this.executeQuery('UPDATE', sql, values, (stmt) => stmt.run())
     return (result.meta?.changes ?? result.changes ?? 0) > 0
@@ -525,17 +542,19 @@ export class ApiResponse {
     })
   }
 
-  static error(message, origin, status = 500, detail = null) {
+  static error(message, origin, status = 500, detail = null, extraHeaders = null) {
     // 业务 catch 抛真异常时，把 error.message + error.stack 通过 detail 传进来，
-    // 中间件 (_middleware.js) 会读到 detail 字段并写入 api_error_logs.error_stack。
-    // 前端 axios 默认会忽略 detail（按 error 字段弹 ElMessage 即可）。
+    // 中间件 (_middleware.js) 会读到 detail 字段写入 api_error_logs.error_stack，
+    // 并在返回客户端前剥离 detail（堆栈不出站）。
+    // extraHeaders：附加响应头（如限流 429 时带 Retry-After）。
     const body = { error: message }
     if (detail) body.detail = detail
     return new Response(JSON.stringify(body), {
       status,
       headers: {
         'Content-Type': 'application/json',
-        ...getCORSHeaders(origin)
+        ...getCORSHeaders(origin),
+        ...(extraHeaders || {})
       }
     })
   }
@@ -855,11 +874,7 @@ export class QAModel extends Model {
 
   // 生成UUID
   generateId() {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-      const r = Math.random() * 16 | 0
-      const v = c === 'x' ? r : (r & 0x3 | 0x8)
-      return v.toString(16)
-    })
+    return crypto.randomUUID()
   }
 
   // 重写create方法以处理JSON数据
@@ -991,62 +1006,11 @@ export class QAModel extends Model {
     }
   }
 
-  // 重写find方法以处理JSON数据反序列化
+  // find 等价于 findAll（带 qa_items 反序列化）。
+  // 历史版本存在多处实现错误（WHERE 拼接两次、对字符串解构 .sql/.params、
+  // 对 {results} 对象直接 .map），全仓无调用方；现委托给重写后的 findAll。
   async find(queryBuilder) {
-    try {
-      const { sql: whereSql, params: whereParams } = queryBuilder.buildWhere(this)
-      const { sql: orderSql } = queryBuilder.buildOrderBy()
-      const { sql: limitSql, params: limitParams } = queryBuilder.buildLimit()
-      
-      let sql = `SELECT * FROM ${this.config.tableName}`
-      let params = []
-      
-      if (whereSql) {
-        sql += ` WHERE ${whereSql}`
-        params = [...whereParams]
-      }
-      
-      if (orderSql) {
-        sql += ` ${orderSql}`
-      }
-      
-      if (limitSql) {
-        sql += ` ${limitSql}`
-        params = [...params, ...limitParams]
-      }
-      
-      const results = await this.executeQuery('SELECT', sql, params, (stmt) => stmt.all())
-
-      return results.map(result => {
-        // 反序列化JSON数据，添加错误处理
-        let qaItems = []
-        try {
-          if (result.qa_items && typeof result.qa_items === 'string') {
-            qaItems = JSON.parse(result.qa_items)
-          } else if (Array.isArray(result.qa_items)) {
-            qaItems = result.qa_items
-          }
-        } catch (error) {
-          console.error('Error parsing qa_items:', error, 'Raw data:', result.qa_items)
-          qaItems = []
-        }
-
-        return {
-          id: result.id,
-          uid: result.uid,
-          title: result.title,
-          qaItems: qaItems,
-          headerContent: result.header_content || '',
-          footerContent: result.footer_content || '',
-          isPublic: Boolean(result.is_public),
-          createTime: result.create_time,
-          updateTime: result.update_time
-        }
-      })
-    } catch (error) {
-      console.error('QAModel find error:', error)
-      return []
-    }
+    return this.findAll(queryBuilder)
   }
 
   // 重写findAll方法以处理JSON数据反序列化

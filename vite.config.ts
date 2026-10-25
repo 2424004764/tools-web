@@ -81,44 +81,6 @@ function injectSiteMeta(): Plugin {
 }
 
 /**
- * 把 Vite 自动注入的同步 <link rel="stylesheet"> 改成非阻塞的 preload 模式，
- * 让主 CSS 与首屏 HTML 并行下载，不阻塞渲染。
- * noscript 用户仍走原始 stylesheet。
- *
- * 工作机制：
- *   1. Vite 生成 index.html，自动注入 <link rel="stylesheet" href="/css/index-*.css">
- *   2. 我们把这条 link 直接换成 <link rel="preload" as="style" onload="...">,
- *      onload 内把 rel 改为 stylesheet 让 CSS 生效
- *   3. 附一条 noscript fallback 给无 JS 用户
- */
-function cssPreloadInject(): Plugin {
-  return {
-    name: 'tools-css-preload',
-    apply: 'build',
-    transformIndexHtml: {
-      order: 'post',
-      handler(html, ctx) {
-        if (!ctx.bundle) return html
-        const cssAsset = Object.values(ctx.bundle).find(
-          (a: any) => a.type === 'asset' && a.fileName.startsWith('css/index-') && a.fileName.endsWith('.css')
-        ) as any
-        if (!cssAsset) return html
-        const cssPath = '/' + cssAsset.fileName.replace(/^public\//, '')
-        // 找到 Vite 注入的同步 stylesheet，替换为非阻塞 preload
-        const syncLinkRe = new RegExp(
-          `<link\\s+rel="stylesheet"\\s+href="${cssPath.replace(/[/]/g, '\\/')}">`
-        )
-        const replacement = `<link rel="preload" href="${cssPath}" as="style" onload="this.onload=null;this.rel='stylesheet'"><noscript><link rel="stylesheet" href="${cssPath}"></noscript>`
-        if (syncLinkRe.test(html)) {
-          return html.replace(syncLinkRe, replacement)
-        }
-        return html
-      },
-    },
-  }
-}
-
-/**
  * dev 模式下监听 logo 文件和 tools.ts，变化时自动重跑精灵图构建脚本，
  * 并触发浏览器 full-reload 让首页重新拉取 sprite 和坐标 JSON。
  */
@@ -170,6 +132,8 @@ function formatLocalTime(d: Date): string {
 export default defineConfig(({command, mode}) => {
   let env = loadEnv(mode, process.cwd())
   const isProd = mode === 'production'
+  // PWA manifest 站名：injectSiteMeta 只改写 index.html，manifest 需单独注入
+  const siteName = env.VITE_APP_TITLE || '一方工具箱'
 
   // build 时注入当前时间，About.vue 展示。
   // 两次 JSON.stringify 是 Vite define 的标准做法（外层把字符串包成字符串字面量，内层转义）。
@@ -219,9 +183,9 @@ export default defineConfig(({command, mode}) => {
         injectRegister: null,
         includeAssets: ['favicon.ico', 'logo192.png', 'logo512.png'],
         manifest: {
-          name: '开发者工具箱',
+          name: siteName,
           short_name: '工具箱',
-          description: '开发者工具箱离线工具集合',
+          description: `${siteName}离线工具集合`,
           start_url: '/',
           scope: '/',
           display: 'standalone',
@@ -369,40 +333,9 @@ export default defineConfig(({command, mode}) => {
         interval: 300,
       },
       proxy: {
-        '/api/agnes-chat': {
-          target: 'http://127.0.0.1:8788',
-          changeOrigin: true,
-        },
-        '/api/agnes-video': {
-          target: 'http://127.0.0.1:8788',
-          changeOrigin: true,
-        },
-        '/api/agnes-video-status': {
-          target: 'http://127.0.0.1:8788',
-          changeOrigin: true,
-        },
-        '/api/agnes-image-generations': {
-          target: 'http://127.0.0.1:8788',
-          changeOrigin: true,
-        },
-        '/api/agnes/chat': {
-          target: 'https://agnes-ai.com/api/v1',
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api\/agnes\/chat/, '/chat'),
-          secure: false
-        },
-        '/api/agnes/videos': {
-          target: 'https://agnes-ai.com/api/v1',
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api\/agnes\/videos/, '/videos'),
-          secure: false
-        },
-        '/api/agnes': {
-          target: 'https://agnes-ai.com',
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api\/agnes/, '/api/v1'),
-          secure: false
-        },
+        // 注：agnes 系列代理已删除——前端 SPI 无任何 /api/agnes* 调用
+        // （Agnes 直连 agnes-ai.com，本地调试走 functions/api/agnes-proxy.js），
+        // 且 agnes-chat / agnes-video / agnes-video-status 三个 Functions 已下线。
         '/api/pollinations': {
           target: 'https://image.pollinations.ai',
           changeOrigin: true,
@@ -411,10 +344,6 @@ export default defineConfig(({command, mode}) => {
             // Token 从 .env.* 读取，禁止硬编码进源码
             Authorization: `Bearer ${env.VITE_POLLINATIONS_API_KEY || ''}`
           }
-        },
-        [env.VITE_APP_BASE_API] : {
-          target: env.VITE_SERVE,
-          changeOrigin: true,
         },
         '/api/links': {
           target: 'http://127.0.0.1:8788',

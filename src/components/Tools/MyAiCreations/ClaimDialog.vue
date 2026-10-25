@@ -145,14 +145,25 @@ const submit = async () => {
     for (const p of toRemove) tasks.push(unclaimImage(props.imageId, p))
     const results = await Promise.allSettled(tasks)
 
+    // 按实际生效结果计算回写集：失败的"新增"不得算入、失败的"取消"仍保留，
+    // 否则部分失败时父组件会把与数据库不一致的勾选集写进本地缓存，直到刷新才恢复
+    // （tasks 顺序 = toAdd 在前、toRemove 在后）
+    const effective = new Set(original)
+    results.forEach((r, i) => {
+      if (i < toAdd.length) {
+        if (r.status === 'fulfilled') effective.add(toAdd[i])
+      } else if (r.status === 'fulfilled') {
+        effective.delete(toRemove[i - toAdd.length])
+      }
+    })
+
     const failed = results.filter((r) => r.status === 'rejected').length
     if (failed > 0) {
       ElMessage.warning(`有 ${failed} 项操作失败，请重试`)
     } else if (toAdd.length + toRemove.length > 0) {
       ElMessage.success('保存成功')
     }
-    // 不管成功失败都 emit，让父组件用最新勾选集刷新本地缓存
-    emit('saved', { imageId: props.imageId, claims: Array.from(next) })
+    emit('saved', { imageId: props.imageId, claims: Array.from(effective) })
     if (failed === 0) close()
   } catch (e: any) {
     ElMessage.error('保存失败：' + (e?.message || '未知错误'))

@@ -24,6 +24,17 @@ export async function onRequest(context) {
         u.port === '' &&
         allowedHosts.has(u.hostname.toLowerCase())
 
+    // 允许透传给客户端的上游响应头（小写）。Set-Cookie / cf-* / Report-To 等
+    // 一律不透传，原因见下方响应组装处的说明。
+    const RESPONSE_HEADER_ALLOWLIST = [
+        'content-type',
+        'cache-control',
+        'retry-after',
+        'expires',
+        'etag',
+        'last-modified',
+    ]
+
     // 处理预检请求（OPTIONS）
     if (request.method === 'OPTIONS') {
         return handleCORSPreflight(origin)
@@ -142,8 +153,19 @@ export async function onRequest(context) {
         })
     }
 
-    // 复制目标 API 的响应头并设置 CORS
-    const newHeaders = new Headers(response.headers)
+    // 响应头白名单转发：只把少数无副作用的头带回给客户端（2026-10 安全加固）。
+    // 之前是 new Headers(response.headers) 整包复制，实测会把上游的
+    //   - Set-Cookie：落在 tool.fologde.com 域上（若带 Domain=fologde.com 还会
+    //     通配全部子域），构成 Cookie 注入面；
+    //   - Cf-Worker / Report-To / Nel / X-Powered-By：暴露内部部署信息；
+    //   - 上游自己的 Access-Control-Allow-Origin / Expose-Headers：与本代理的
+    //     白名单 CORS 逻辑互相打架。
+    // 一并解决。同源 fetch 读响应头不受 Expose-Headers 限制，站内前端无影响。
+    const newHeaders = new Headers()
+    for (const name of RESPONSE_HEADER_ALLOWLIST) {
+        const value = response.headers.get(name)
+        if (value != null) newHeaders.set(name, value)
+    }
     if (isOriginAllowed(origin)) {
         const corsHeaders = getCORSHeaders(origin)
         Object.entries(corsHeaders).forEach(([key, value]) => {

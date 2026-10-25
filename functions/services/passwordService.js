@@ -1,4 +1,5 @@
 import { PasswordEntryModel, PasswordGroupModel, QueryBuilder } from '../utils/db.js'
+import { likeContains } from '../utils/like.js'
 
 export class PasswordService {
   constructor(db, env = null, waitUntil = null) {
@@ -169,7 +170,7 @@ export class PasswordService {
       let searchCondition = ''
       let searchParams = []
       if (search && search.trim()) {
-        const keyword = `%${search.trim()}%`
+        const keyword = likeContains(search)
         // 在多个字段中搜索：title, username, url, notes
         searchCondition = ` AND (
           title LIKE ? OR

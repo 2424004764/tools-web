@@ -3,6 +3,8 @@
 // PUT /api/admin/comments  body: { ids: string[], status: 'approved' | 'rejected' | 'pending' }  批量改状态
 // 鉴权已在 _middleware.js 完成。
 
+import { likeContains } from '../../../utils/like.js'
+
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, PUT, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
@@ -82,7 +84,7 @@ export async function onRequest(context) {
     }
     if (keyword) {
       where.push('(content LIKE ? OR nickname LIKE ? OR email LIKE ? OR page_path LIKE ? OR page_title LIKE ?)')
-      const like = `%${keyword}%`
+      const like = likeContains(keyword)
       args.push(like, like, like, like, like)
     }
     // 站长回复（is_admin = 1）保留在列表里（可查看/删除），但不计入分页总数，避免回复后「共 N 条」虚高

@@ -9,6 +9,8 @@ import docSource from '../../../docs/oauth-provider.md?raw'
 
 const { html, toc } = renderMarkdownWithToc(docSource)
 
+const APP_TITLE = (import.meta.env.VITE_APP_TITLE as string) || '一方工具箱'
+
 // ---------- 目录交互 ----------
 const activeId = ref('')
 const drawerOpen = ref(false)
@@ -57,7 +59,7 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
     <header class="sticky top-0 z-40 bg-surface-0 border-b border-border-subtle">
       <div class="max-w-[1180px] mx-auto px-4 h-14 flex items-center gap-2">
         <a href="/" class="flex items-center gap-1.5 text-body-sm font-semibold text-ink-800 hover:text-accent-600 transition-colors">
-          一方工具箱
+          {{ APP_TITLE }}
         </a>
         <span class="text-ink-300 select-none">/</span>
         <span class="text-body-sm text-ink-500 truncate">OAuth2 接入文档</span>

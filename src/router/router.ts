@@ -40,7 +40,7 @@ export const constantRoute = [
     meta: {
       title: "正在前往产品",
       keywords: '',
-      description: '一方工具箱产品矩阵跳转页',
+      description: '{SITE}产品矩阵跳转页',
     }
   },
   {
@@ -773,16 +773,6 @@ export const constantRoute = [
       description: '进入学习模式复习到期卡片，支持空格翻转、1-4 评级快捷键。',
     }
   },
-  // {
-  //   path: '/ai-text-to-speech',
-  //   component: () => import('@/components/Tools/AiTextToSpeech/AiTextToSpeech.vue'),
-  //   name: 'AiTextToSpeech',
-  //   meta: {
-  //     title: "在线文本转语音",
-  //     keywords: '在线文本转语音,文本转语音,语音合成,AI语音',
-  //     description: '提供在线免费无限次数的文本转语音服务',
-  //   }
-  // },
   // 关于
   {
     path: '/about',
@@ -866,12 +856,6 @@ export const constantRoute = [
       keywords: '工具分类,在线工具,工具箱',
       description: '按分类浏览在线工具箱中的全部工具',
     }
-  },
-  {
-    //重定向
-    path: '/:pathMatch(.*)*',
-    redirect: '/404',
-    name: 'Any',
   },
   {
     path: '/snake',
@@ -1970,9 +1954,9 @@ export const constantRoute = [
     component: () => import('@/components/Tools/LifeTrajectory/LifeTrajectory.vue'),
     name: 'lifeTrajectory',
     meta: {
-      title: '人生轨迹 - 轻量生活记录工具',
+      title: '人生轨迹 - 轻量私密生活记录工具',
       keywords: '人生轨迹,生活记录,心情记录,日记,随笔,mood,生活轨迹',
-      description: '在线人生轨迹记录工具，登录后用一句文字 + 一个 emoji 记录当下的心情与想法，所有用户的轨迹按时间倒序展示，数据存储于 Cloudflare D1。'
+      description: '在线人生轨迹记录工具，登录后用一句文字 + 一个 emoji 记录当下的心情与想法，轨迹仅自己可见，按时间倒序展示，数据存储于 Cloudflare D1。'
     }
   },
   {
@@ -2295,5 +2279,12 @@ export const constantRoute = [
         },
       },
     ],
+  },
+  // 重定向：404 通配必须放在路由数组末尾（虽然 vue-router 4 按特异性评分匹配、
+  // 放在中间也能工作，但依赖该实现细节，改写/升级路由时易出隐蔽 404）
+  {
+    path: '/:pathMatch(.*)*',
+    redirect: '/404',
+    name: 'Any',
   },
 ]

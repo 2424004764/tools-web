@@ -21,6 +21,7 @@
 | `GET https://tool.fologde.com/api/oauth/userinfo` | 获取用户资料（需 access_token，scope: profile） |
 | `GET https://tool.fologde.com/api/oauth/storage-quota` | 获取用户存储额度（需 access_token，scope: storage） |
 | `POST https://tool.fologde.com/api/oauth/storage-upload-credential` | 下发子站直传上传凭证（需 access_token，scope: storage） |
+| `POST https://tool.fologde.com/api/oauth/storage-refund` | 删除文件后退还存储额度（需 access_token，scope: storage） |
 | `POST https://tool.fologde.com/api/oauth/revoke` | 撤销令牌（可选） |
 
 ## 接入步骤（标准授权码流程）
@@ -221,7 +222,37 @@ const res = await fetch(credential.upload_url, {
 
 上传跨域由主站桶的 CORS 配置统一放行，子站无需额外配置。
 
-### 3. 错误码
+### 3. 删除文件、退还额度
+
+子站删除自己桶里的对象后，调退额接口把占用的额度还给用户。**退多少由主站记账决定**（实扣时记录的字节数），子站只报「删了哪个文件」，不接受自报大小：
+
+```http
+POST https://tool.fologde.com/api/oauth/storage-refund
+Authorization: Bearer oat_xxxx
+Content-Type: application/json
+
+{
+  "object_key": "subsite/<uid>/<upload_id>/photo.png"
+}
+```
+
+- `object_key` 就是申请凭证时返回的那个 key——子站删 R2 对象本来就要用它，**无需为退额额外存储任何东西**；传凭证响应里的 `upload_id` 效果相同。
+- 每个文件只能退一次；重复删除同一文件再次调用会返回 200 + `already: true`，同样视为成功。
+
+响应：
+
+```json
+{ "ok": true, "refunded_bytes": 204800 }
+```
+
+| HTTP | error | 子站处理 |
+| --- | --- | --- |
+| 200 | — | 成功（含 `already: true` 的幂等响应） |
+| 409 | `not_settled_yet` | 用户刚上传就删、主站队列还没记账；等 30 秒重试，最多 3 次左右 |
+| 404 | `invalid_request` | 记录不存在或未计入额度（如已废弃的自报结算时代对象）；放弃即可，不要重试 |
+| 400 | `invalid_request` | 缺 `object_key` / `upload_id`，检查调用代码 |
+
+### 4. 错误码
 
 | error | HTTP | 说明 |
 | --- | --- | --- |

@@ -5,6 +5,8 @@
 // 鉴权：上游 functions/api/admin/_middleware.js 已校验 Bearer JWT + is_admin=1
 
 import { STORAGE_RESERVATION_TTL_SECONDS } from '../../../config/storage.js'
+import { hashPassword } from '../../../utils/password.js'
+import { likeContains } from '../../../utils/like.js'
 
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -35,15 +37,7 @@ function startOfTodayUTC8() {
   return Math.floor((startUTC8.getTime() - 8 * 3600 * 1000) / 1000)
 }
 
-// 与 email-register.js / reset-password.js 保持一致的密码哈希：SHA-256(password + salt) → 小写十六进制
-async function hashPassword(password, salt) {
-  const encoder = new TextEncoder()
-  const data = encoder.encode(password + salt)
-  const hashBuf = await crypto.subtle.digest('SHA-256', data)
-  return Array.from(new Uint8Array(hashBuf))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('')
-}
+// 密码哈希与 email-register.js 等保持一致：PBKDF2-SHA256（utils/password.js）
 
 // 生成 10 位 [a-z0-9] 随机密码（前端生成器字符集/长度必须与此处严格一致）
 function generatePassword(length = 10) {
@@ -81,7 +75,7 @@ async function onRequestGet(context) {
     const params = []
     if (keyword) {
       where.push('(email LIKE ? OR username LIKE ? OR id LIKE ?)')
-      const like = `%${keyword}%`
+      const like = likeContains(keyword)
       params.push(like, like, like)
     }
     if (disabled === '0' || disabled === '1') {
@@ -285,13 +279,12 @@ async function onRequestPost(context) {
       passwordGenerated = true
     }
 
-    // 4) 哈希（与 email-register.js 等保持一致）
-    const salt = crypto.randomUUID()
-    const hashedPassword = await hashPassword(finalPassword, salt)
+    // 4) 哈希（PBKDF2，hashPassword 内部生成随机盐）
+    const { salt, hash: hashedPassword } = await hashPassword(finalPassword)
 
     // 5) INSERT 全字段
     const id = crypto.randomUUID()
-    const now = new Date().toISOString()
+    const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
     await db
       .prepare(
         `INSERT INTO user (

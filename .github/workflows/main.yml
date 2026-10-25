@@ -1,14 +1,17 @@
-name: 定时执行tool-web的生成图片任务
+name: 定时检查 cron 端点可用性
 
 on:
   schedule:
+    # 每天 UTC 时间 0:00 执行 (北京时间 8:00)
     - cron: '0 0 * * *'
   workflow_dispatch:
 
 jobs:
-  call-api:
+  cron-test:
     runs-on: ubuntu-latest
     steps:
-      - name: 请求 Cloudflare Pages Function
+      - name: 调用 /cron/test 验证鉴权与端点健康
+        # -f：非 2xx（如 401 密钥不匹配）时让 workflow 显式失败，避免静默失效
         run: |
-          curl -X GET "https://tool.fologde.com/cron/test"
+          curl -fsS -X GET "https://tool.fologde.com/cron/test" \
+            -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}"

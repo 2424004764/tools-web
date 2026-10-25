@@ -13,6 +13,7 @@
 
 import { extractUidFromRequest } from '../_lib/model-resolver.js'
 import { normalizeTagInput, exactTagLike } from '../_lib/ai-creation-tags.js'
+import { likeContains } from '../../utils/like.js'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
@@ -134,7 +135,7 @@ export async function onRequest(context) {
       args.push(source)
     }
     if (q) {
-      const like = `%${q}%`
+      const like = likeContains(q)
       where.push(
         `(g.title LIKE ? OR g.model_name LIKE ? OR g.category LIKE ? OR g.tags LIKE ?
           OR EXISTS (SELECT 1 FROM ai_creation_images qi WHERE qi.group_id = g.id AND qi.prompt LIKE ?)

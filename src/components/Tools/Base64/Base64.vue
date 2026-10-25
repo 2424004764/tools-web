@@ -8,6 +8,8 @@ import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { copy } from '@/utils/string'
 
+const APP_TITLE = (import.meta.env.VITE_APP_TITLE as string) || '一方工具箱'
+
 const input = ref('')
 const output = ref('')
 const encoding = ref('UTF-8')
@@ -86,7 +88,7 @@ const copyOutput = async () => {
 
 const fillExample = () => {
   skipAutoEncode.value = false
-  input.value = 'Hello, 一方工具箱!'
+  input.value = `Hello, ${APP_TITLE}!`
   error.value = ''
 }
 </script>

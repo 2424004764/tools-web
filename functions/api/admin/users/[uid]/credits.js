@@ -7,8 +7,10 @@
 //
 // 鉴权已在 _middleware.js 完成。
 //
-// 关键：D1 不支持显式事务，用 db.batch() 顺序执行 UPSERT + INSERT，
-// 若 deduct 的 UPDATE 影响行数=0（余额不足），立刻抛错让 batch 回滚。
+// 关键：D1 batch 只在语句 SQL 报错时回滚，"UPDATE 命中 0 行"不报错，
+// 不能把条件 UPDATE 放进 batch 指望它失败时回滚。
+// 因此 deduct 的条件 UPDATE 单独执行并检查 changes=0（返回 400，不留任何写入），
+// 成功后再写流水（balance_after 用同事务子查询取真实余额）。
 
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -80,7 +82,7 @@ export async function onRequest(context) {
     let stmts
     if (type === 'grant') {
       // grant 用增量语义而非预读覆写：INSERT 值即增量，冲突路径 balance = balance + 增量，
-      // 消除并发发放互相覆盖丢失更新的竞态（deduct 路径本就是原子的）。
+      // 消除并发发放互相覆盖丢失更新的竞态。
       // balance_after 用同事务子查询取写入后的真实余额，保证流水与表一致。
       stmts = [
         db
@@ -102,37 +104,34 @@ export async function onRequest(context) {
           .bind(txId, uid, 'grant', signedAmount, uid, reasonText, operatorUid, 'admin', now),
       ]
     } else {
-      // deduct: 用 UPDATE 带 WHERE balance >= amount 条件保证原子性
+      // deduct: 条件 UPDATE 单独执行并检查 changes。放进 batch 的话，0 行更新不报错、
+      // batch 照常提交，会留下"钱没扣、流水却记了扣减"的幻影流水。
+      const deduct = await db
+        .prepare(
+          `UPDATE user_credits
+           SET balance = balance - ?,
+               total_spent = total_spent + ?,
+               updated_at = ?
+           WHERE uid = ? AND balance >= ?`,
+        )
+        .bind(amount, amount, now, uid, amount)
+        .run()
+      if ((deduct?.meta?.changes ?? deduct?.changes ?? 0) === 0) {
+        return jsonError(`扣减失败：余额不足（当前 ${currentBalance}，需扣减 ${amount}）`, 400)
+      }
+      // 流水单独写：balance_after 用子查询取扣减后的真实余额（不依赖预读快照）
       stmts = [
-        db
-          .prepare(
-            `UPDATE user_credits
-             SET balance = balance - ?,
-                 total_spent = total_spent + ?,
-                 updated_at = ?
-             WHERE uid = ? AND balance >= ?`,
-          )
-          .bind(amount, amount, now, uid, amount),
         db
           .prepare(
             `INSERT INTO credit_transactions
              (id, uid, type, amount, balance_after, reason, operator_uid, source, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             VALUES (?, ?, 'deduct', ?, (SELECT balance FROM user_credits WHERE uid = ?), ?, ?, 'admin', ?)`,
           )
-          .bind(txId, uid, 'deduct', signedAmount, newBalance, reasonText, operatorUid, 'admin', now),
+          .bind(txId, uid, signedAmount, uid, reasonText, operatorUid, now),
       ]
     }
 
-    const results = await db.batch(stmts)
-
-    // 校验 deduct 的 UPDATE 是否实际改了行
-    if (type === 'deduct') {
-      const deductResult = results[0]
-      const changes = deductResult?.meta?.changes ?? deductResult?.changes ?? 0
-      if (changes === 0) {
-        return jsonError('扣减失败：余额不足或积分记录不存在', 400)
-      }
-    }
+    await db.batch(stmts)
 
     // 并发场景下预读的 newBalance 可能已过期，回读真实余额
     const after = await db

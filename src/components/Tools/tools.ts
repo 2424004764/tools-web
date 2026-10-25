@@ -425,7 +425,7 @@ export function getToolsCate() {
       icon: '',
       list: [
         {
-          id: 27,
+          id: 163,
           title: '文本对比',
           logo: '/images/logo/diff.png',
           desc: '文本差异比对支持中文、英文、代码比对',
@@ -461,7 +461,7 @@ export function getToolsCate() {
           cate: '文本处理',
         },
         {
-          id: 31,
+          id: 164,
           title: '字符串去空格',
           logo: '/images/logo/stringclean.png',
           desc: '支持去除所有空格、去除首尾空格、去除多余空格、去除空行等多种模式',
@@ -1293,13 +1293,13 @@ export function getToolsCate() {
           id: 132,
           title: '人生轨迹',
           logo: '/images/logo/life-trajectory.png',
-          desc: '轻量生活记录工具：登录后用一句文字 + 一个 emoji 记录此刻，公开可见最新优先',
+          desc: '轻量私密生活记录工具：登录后用一句文字 + 一个 emoji 记录此刻，仅自己可见',
           url: '/life-trajectory/',
           cateId: 11,
           cate: '趣味互动',
         },
         {
-          id: 130,
+          id: 165,
           title: '退休倒计时',
           logo: '/images/logo/retirement-countdown.png',
           desc: '根据出生年月、工作开始时间、性别与目标退休年龄，实时倒计时距离退休还有多少天，含工龄格子图',
@@ -1308,7 +1308,7 @@ export function getToolsCate() {
           cate: '趣味互动',
         },
         {
-          id: 131,
+          id: 166,
           title: '辈分称谓计算',
           logo: '/images/logo/generation-calculator.png',
           desc: '以「我」为根的交互式家谱树，点击节点长出父母/兄弟/子女等分支，自动推导亲戚称谓、辈分高低与反向称呼，支持堂表、父系母系与姻亲',
@@ -1326,7 +1326,7 @@ export function getToolsCate() {
           cate: '趣味互动',
         },
         {
-          id: 135,
+          id: 167,
           title: '24 点（算 24）',
           logo: '/images/logo/make24.png',
           desc: '经典 24 点数学游戏，随机发 4 张牌，用 +、-、×、÷ 和括号算出 24，多档难度、连击与提示',
@@ -1667,16 +1667,7 @@ export function getToolsCate() {
           url: '/ai-outfit/',
           cateId: 10,
           cate: 'AI工具'
-        },
-        // {
-        //   id: 2,
-        //   title: '在线文本转语音',
-        //   logo: '/images/logo/ai_text_to_speech.png',
-        //   desc: '提供在线免费无限次数的文本转语音服务',
-        //   url: '/ai-text-to-speech/',
-        //   cateId: 10,
-        //   cate: 'AI工具'
-        // }
+        }
       ]
     },
     {
@@ -1852,19 +1843,6 @@ export function toolsList() {
   return list
 }
 
-/**
- * url为键名的工具list map
- * @returns 
- */
-export function urlKeyMap() {
-  // let toolsMapByUrlKey = new Map()
-  // let list = toolsList()
-  // for (let item in list) {
-  //   toolsMapByUrlKey.set(list[item].url, list[item])
-  // }
-  // return toolsMapByUrlKey
-}
-
 //获取工具
 export function getTools(data: ToolsReqData) {
   //接收参数
@@ -1872,8 +1850,8 @@ export function getTools(data: ToolsReqData) {
   //获取工具list
   let list = toolsList()
 
-  //标题筛选 - 包含好物网站搜索
-  if (title != '') {
+  //标题筛选 - 包含好物网站搜索（title 可能 undefined，判空用真值判断）
+  if (title) {
     const searchTitle = title.toLowerCase()
 
     // 1. 搜索普通工具（title / desc / url 都参与匹配）

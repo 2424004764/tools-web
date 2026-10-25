@@ -102,11 +102,12 @@ async function handlePut(context, db, uid) {
   const sets = []
   const args = []
   if (username !== undefined) {
-    if (typeof username !== 'string' || username.length > 64) {
-      return jsonError('username 必须是字符串且不超过 64 字符', 400)
+    // trim 后不允许为空：用户名被清空会导致列表/流水展示退化为 '-'
+    if (typeof username !== 'string' || username.length > 64 || !username.trim()) {
+      return jsonError('username 必须是非空字符串且不超过 64 字符', 400)
     }
     sets.push('username = ?')
-    args.push(username)
+    args.push(username.trim())
   }
   if (avatar !== undefined) {
     sets.push('avatar = ?')

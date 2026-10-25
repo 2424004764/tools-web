@@ -17,6 +17,7 @@ export interface AiFindResult {
 
 const MAX_MATCHES = 5
 const MAX_DESC_CHARS = 60
+const APP_TITLE = (import.meta.env.VITE_APP_TITLE as string) || '一方工具箱'
 
 // 从模型输出里抠出第一个完整 JSON 对象（容忍 ```json 围栏与前后废话）
 function extractJson(text: string): { summary?: string; tools?: Array<{ url?: string; reason?: string }> } | null {
@@ -63,7 +64,7 @@ export function useAiToolFinder() {
       {
         role: 'system',
         content: [
-          '你是「开发者工具箱」网站的找工具助手，根据用户需求从候选工具中挑出最合适的。',
+          `你是「${APP_TITLE}」网站的找工具助手，根据用户需求从候选工具中挑出最合适的。`,
           '候选工具每行格式：名称｜分类｜描述｜路径。',
           '要求：',
           `1. 只能从候选列表中选择，最多推荐 ${MAX_MATCHES} 个，按匹配程度从高到低排序。`,

@@ -59,6 +59,9 @@ export async function onRequest(context) {
       if (result.reason === 'insufficient') {
         return jsonError(`积分余额不足：当前 ${balance} 积分，本次需 ${units} 积分`, 400)
       }
+      if (result.reason === 'grant-failed') {
+        return jsonError('额度发放失败，积分已退回，请稍后重试', 500)
+      }
       return jsonError('购买数量不合法', 400)
     }
 

@@ -15,11 +15,14 @@
  *
  * 环境变量：
  *   PRERENDER=0            跳过预渲染（页面 meta 仍由线上中间件兜底）
+ *   PRERENDER_OPTIONAL=1   恢复"跳过不阻塞构建"的旧行为；默认情况下
+ *                          preview/Chrome 起不来或 0 页产出会让构建失败（exit 1），
+ *                          避免 SEO 预渲染静默失效、线上全是空壳而构建全绿
  *   PRERENDER_CONCURRENCY  并发标签页数，默认 6
  *   PRERENDER_DELAY        每页渲染后等待毫秒数（等 SPA 挂载），默认 800
  *
  * 单页失败只记警告不影响整体（该页退回 SPA 壳 + 中间件 meta 兜底）；
- * 浏览器起不来同样跳过且不阻塞构建。
+ * 浏览器起不来或 0 页产出默认使构建失败（除非 PRERENDER_OPTIONAL=1）。
  */
 
 import { exec } from 'node:child_process'
@@ -39,10 +42,23 @@ if (process.env.PRERENDER === '0') {
   process.exit(0)
 }
 
+// 预渲染链路整体失效时退出：默认 fail-fast 让构建红掉（曾发生 preview/Chrome
+// 起不来导致连续多次部署 0 页产出、线上全是 SPA 空壳而构建全绿的事故）；
+// PRERENDER_OPTIONAL=1 恢复旧的"跳过不阻塞"行为
+const PRERENDER_OPTIONAL = process.env.PRERENDER_OPTIONAL === '1'
+const bail = (msg) => {
+  if (PRERENDER_OPTIONAL) {
+    console.warn(`[prerender] ⚠️ ${msg}（PRERENDER_OPTIONAL=1，跳过预渲染，不阻塞构建）`)
+    process.exit(0)
+  }
+  console.error(`[prerender] ✗ ${msg}。预渲染未产出任何页面；如确要跳过，请显式设置 PRERENDER_OPTIONAL=1。`)
+  process.exit(1)
+}
+
 const routes = Object.keys(pageMeta)
 if (routes.length === 0) {
-  console.log('[prerender] 路由表为空，跳过')
-  process.exit(0)
+  // 路由表由构建前 generate-page-meta.mjs 生成；为空说明上游已异常，同样属于 0 页产出
+  bail('路由表为空（functions/_page-meta.js 无路由，请检查 generate-page-meta.mjs 是否执行）')
 }
 
 // ---- 博客详情：从线上 API 拉已发布文章，一并纳入预渲染 ----
@@ -202,8 +218,7 @@ async function main() {
   try {
     preview = await startPreview()
   } catch (e) {
-    console.error(`[prerender] ⚠️ vite preview 启动失败，跳过预渲染（${e.message}）。页面 meta 由线上中间件兜底。`)
-    process.exit(0)
+    bail(`vite preview 启动失败（${e.message}）`)
   }
   const { child, local } = preview
 
@@ -211,9 +226,8 @@ async function main() {
   try {
     browser = await puppeteer.launch()
   } catch (e) {
-    console.error(`[prerender] ⚠️ Chrome 启动失败，跳过预渲染（${e.message}）。可检查 puppeteer 浏览器缓存，或 PRERENDER=0 显式跳过。`)
     child.kill()
-    process.exit(0)
+    bail(`Chrome 启动失败（${e.message}）。可检查 puppeteer 浏览器缓存，或 PRERENDER=0 显式跳过。`)
   }
 
   // 每个标签页都挂请求拦截：渲染博客详情时，用预取的线上数据应答
@@ -280,6 +294,10 @@ async function main() {
   console.log(`[prerender] 完成：${okRoutes.length}/${routes.length} 页，耗时 ${secs}s，并发 ${CONCURRENCY}`)
   if (failedRoutes.length) {
     console.error(`[prerender] ⚠️ ${failedRoutes.length} 页渲染失败（已退回 SPA 壳 + 中间件 meta 兜底）: ${failedRoutes.join(', ')}`)
+  }
+  // 全军覆没 = 预渲染完全失效，绝不能静默绿灯上线
+  if (okRoutes.length === 0 && routes.length > 0) {
+    bail(`0/${routes.length} 页渲染成功`)
   }
   process.exit(0)
 }

@@ -51,7 +51,8 @@ export async function onRequest(context) {
     return oauthError('unsupported_grant_type', '不支持的 grant_type，仅支持 authorization_code / refresh_token')
   } catch (error) {
     console.error('[oauth/token] error:', error)
-    return oauthError('server_error', error.message || '服务器错误', 500)
+    // 不回显 error.message（可能携带内部 SQL/上游细节），统一对外文案
+    return oauthError('server_error', '服务器错误', 500)
   }
 }
 

@@ -29,6 +29,9 @@
       "@/*": ["src/*"]
     },
     "allowJs": true,
+    // noImplicitAny 保持关闭：存量代码有约百处隐式 any（markdown-it/uuid 等
+    // 无类型声明包的导入、图表回调参数），开启需一次性类型标注 campaign。
+    // 新代码请自觉写显式类型。
     "noImplicitAny": false,
   },
   "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.ts*", "src/**/*.vue"],

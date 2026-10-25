@@ -228,6 +228,105 @@ export async function getTopTools(db) {
   return { topTools }
 }
 
+/** 活跃用户（来自 tool_usage_records）
+ *  - 排名模式（不传 uid）：各窗口活跃人数（去重 uid）+ 各窗口使用次数 TOP 10 用户
+ *  - 单用户模式（opts.uid）：该用户各窗口使用次数 + 使用趋势稀疏点（口径与 getUsage 一致） */
+export async function getActiveUsers(db, opts = {}) {
+  const dailyDays = opts.dailyDays || 90
+  const weeklyWeeks = opts.weeklyWeeks || 12
+  const monthlyMonths = opts.monthlyMonths || 12
+  try {
+    const { todayStart, weekStart, monthStart } = usageBoundaries()
+    const utc8 = utc8Now()
+    const monthNStartUTC8 = (() => {
+      const start = new Date(Date.UTC(utc8.getUTCFullYear(), utc8.getUTCMonth() - (monthlyMonths - 1), 1, 0, 0, 0))
+      return Math.floor((start.getTime() - 8 * 3600 * 1000) / 1000)
+    })()
+
+    if (opts.uid) {
+      // 单用户模式：窗口计数 + 三粒度趋势，一次 batch 出结果
+      const countSql = 'SELECT COUNT(*) AS c FROM tool_usage_records WHERE uid = ?'
+      const stmts = [
+        db.prepare(`${countSql} AND used_at >= ?`).bind(opts.uid, todayStart),
+        db.prepare(`${countSql} AND used_at >= ?`).bind(opts.uid, weekStart),
+        db.prepare(`${countSql} AND used_at >= ?`).bind(opts.uid, monthStart),
+        db.prepare(countSql).bind(opts.uid),
+        db
+          .prepare(
+            `SELECT date(used_at, 'unixepoch', '+8 hours') AS d, COUNT(*) AS c
+             FROM tool_usage_records WHERE uid = ? AND used_at >= ? GROUP BY d`,
+          )
+          .bind(opts.uid, todayStart - (dailyDays - 1) * 86400),
+        db
+          .prepare(
+            `SELECT date(used_at, 'unixepoch', '+8 hours', '-6 days', 'weekday 1') AS d, COUNT(*) AS c
+             FROM tool_usage_records WHERE uid = ? AND used_at >= ? GROUP BY d`,
+          )
+          .bind(opts.uid, weekStart - (weeklyWeeks - 1) * 7 * 86400),
+        db
+          .prepare(
+            `SELECT strftime('%Y-%m', used_at, 'unixepoch', '+8 hours') AS m, COUNT(*) AS c
+             FROM tool_usage_records WHERE uid = ? AND used_at >= ? GROUP BY m`,
+          )
+          .bind(opts.uid, monthNStartUTC8),
+      ]
+      const rows = await db.batch(stmts)
+      const num = (i) => Number(rows[i]?.results?.[0]?.c) || 0
+      const toPoints = (i) =>
+        (rows[i]?.results || []).map((r) => ({ date: r.d || r.m, count: Number(r.c || 0) }))
+      return {
+        activeUserUsage: { daily: num(0), weekly: num(1), monthly: num(2), all: num(3) },
+        activeUserTrend: { daily: toPoints(4), weekly: toPoints(5), monthly: toPoints(6) },
+      }
+    }
+
+    // 排名模式：各窗口去重人数 + TOP 10 用户（LEFT JOIN 取用户名/邮箱，删除用户仍可展示 uid）
+    const distinctSql = 'SELECT COUNT(DISTINCT uid) AS c FROM tool_usage_records'
+    const rankQuery = (since) =>
+      db
+        .prepare(
+          `SELECT r.uid, u.username AS user_name, u.email AS user_email, COUNT(*) AS count
+           FROM tool_usage_records r
+           LEFT JOIN user u ON u.id = r.uid
+           ${since == null ? '' : 'WHERE r.used_at >= ?'}
+           GROUP BY r.uid
+           ORDER BY count DESC
+           LIMIT 10`,
+        )
+        .bind(...(since == null ? [] : [since]))
+    const windows = [
+      ['daily', todayStart],
+      ['weekly', weekStart],
+      ['monthly', monthStart],
+      ['all', null],
+    ]
+    const rows = await db.batch(
+      windows.flatMap(([key, since]) => [
+        db.prepare(`${distinctSql} ${since == null ? '' : 'WHERE used_at >= ?'}`).bind(...(since == null ? [] : [since])),
+        rankQuery(since),
+      ]),
+    )
+    const activeUserCounts = {}
+    const activeUsers = {}
+    windows.forEach(([key], i) => {
+      activeUserCounts[key] = Number(rows[i * 2]?.results?.[0]?.c) || 0
+      activeUsers[key] = (rows[i * 2 + 1]?.results || []).map((r) => ({
+        uid: r.uid,
+        user_name: r.user_name || '',
+        user_email: r.user_email || '',
+        count: Number(r.count || 0),
+      }))
+    })
+    return { activeUserCounts, activeUsers }
+  } catch (e) {
+    console.warn('[admin/dashboard] activeUsers 聚合失败（可能表未创建）:', e?.message || e)
+    return {
+      activeUserCounts: { daily: 0, weekly: 0, monthly: 0, all: 0 },
+      activeUsers: { daily: [], weekly: [], monthly: [], all: [] },
+    }
+  }
+}
+
 /** 慢日志：今日 / 本周 / 本月 */
 export async function getSlowQueries(db) {
   let slowQueryToday = 0
@@ -312,25 +411,70 @@ export async function getTransactions(db) {
   return { recentTransactions: recentTx.results || [] }
 }
 
-/** 存储空间：已发放总空间 / 已使用 / 预扣（有效上传预留）/ 可用 + 来源拆解（口径与 admin/storage 一致） */
-export async function getStorage(db) {
+/** 存储空间：已发放总空间 / 已使用 / 预扣（有效上传预留）/ 可用 + 来源拆解（口径与 admin/storage 一致）
+ *  + 新增占用趋势（每日/每周/每月，三张来源表按 created_at 归组的字节增量，窗口大小由 opts 控制） */
+export async function getStorage(db, opts = {}) {
+  const dailyDays = opts.dailyDays || 90
+  const weeklyWeeks = opts.weeklyWeeks || 12
+  const monthlyMonths = opts.monthlyMonths || 12
+  const emptyStorage = {
+    quotaBytes: 0,
+    usedBytes: 0,
+    pendingBytes: 0,
+    pendingCount: 0,
+    availableBytes: 0,
+    users: 0,
+    sources: {
+      music: { count: 0, bytes: 0 },
+      aiCreation: { count: 0, bytes: 0 },
+      subsite: { count: 0, bytes: 0 },
+      other: { count: 0, bytes: 0 },
+    },
+  }
   try {
-    const [quotaRow, pendingRow, musicRow, aiRow, subsiteRow] = await db.batch([
-      db.prepare(
-        `SELECT COALESCE(SUM(quota_bytes), 0) AS quota, COALESCE(SUM(used_bytes), 0) AS used, COUNT(*) AS users
-         FROM user_storage_quota`,
-      ),
-      db.prepare(
-        `SELECT COUNT(*) AS c, COALESCE(SUM(bytes), 0) AS pending FROM storage_reservations
-         WHERE created_at >= datetime('now', '-${STORAGE_RESERVATION_TTL_SECONDS} seconds')`,
-      ),
-      db.prepare(`SELECT COUNT(*) AS c, COALESCE(SUM(file_size), 0) AS s FROM music_songs`),
-      db.prepare(`SELECT COUNT(*) AS c, COALESCE(SUM(file_size), 0) AS s FROM ai_creation_images`),
-      db.prepare(
-        `SELECT COUNT(*) AS c, COALESCE(SUM(COALESCE(actual_bytes, declared_bytes)), 0) AS s
-         FROM subsite_uploads WHERE status = 'settled'`,
-      ),
-    ])
+    // 趋势窗口边界（UTC+8 口径，与 getUserTrend 一致）
+    const utc8 = utc8Now()
+    const monday = new Date(utc8.getTime())
+    monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7))
+    const dailyStart = fmtDate(new Date(utc8.getTime() - (dailyDays - 1) * 86400 * 1000))
+    const weeklyStart = fmtDate(new Date(monday.getTime() - (weeklyWeeks - 1) * 7 * 86400 * 1000))
+    const monthlyStart = fmtDate(new Date(Date.UTC(utc8.getUTCFullYear(), utc8.getUTCMonth() - (monthlyMonths - 1), 1)))
+
+    // 新增占用趋势：音乐 / AI 图 / 子站三表 UNION 后按周期归组求和（子站仅取 settled，与来源拆解口径一致）
+    // WHERE 统一用日级表达式比较（月度口径若拿 'YYYY-MM' 分组值与 'YYYY-MM-01' 比较，会错把起始月整月排除）
+    const trendQuery = (groupExpr) => {
+      const sub = (table, sizeExpr, extraWhere = '') =>
+        `SELECT ${groupExpr} AS d, ${sizeExpr} AS s FROM ${table} WHERE ${extraWhere ? extraWhere + ' AND ' : ''}date(created_at, '+8 hours') >= ?`
+      return `SELECT d, SUM(s) AS c FROM (
+        ${sub('music_songs', 'file_size')}
+        UNION ALL ${sub('ai_creation_images', 'file_size')}
+        UNION ALL ${sub('subsite_uploads', 'COALESCE(actual_bytes, declared_bytes)', "status = 'settled'")}
+      ) GROUP BY d`
+    }
+    const dailyExpr = "date(created_at, '+8 hours')"
+    const weeklyExpr = "date(created_at, '+8 hours', '-6 days', 'weekday 1')"
+    const monthlyExpr = "strftime('%Y-%m', created_at, '+8 hours')"
+
+    const [quotaRow, pendingRow, musicRow, aiRow, subsiteRow, dailyTrendRes, weeklyTrendRes, monthlyTrendRes] =
+      await db.batch([
+        db.prepare(
+          `SELECT COALESCE(SUM(quota_bytes), 0) AS quota, COALESCE(SUM(used_bytes), 0) AS used, COUNT(*) AS users
+           FROM user_storage_quota`,
+        ),
+        db.prepare(
+          `SELECT COUNT(*) AS c, COALESCE(SUM(bytes), 0) AS pending FROM storage_reservations
+           WHERE created_at >= datetime('now', '-${STORAGE_RESERVATION_TTL_SECONDS} seconds')`,
+        ),
+        db.prepare(`SELECT COUNT(*) AS c, COALESCE(SUM(file_size), 0) AS s FROM music_songs`),
+        db.prepare(`SELECT COUNT(*) AS c, COALESCE(SUM(file_size), 0) AS s FROM ai_creation_images`),
+        db.prepare(
+          `SELECT COUNT(*) AS c, COALESCE(SUM(COALESCE(actual_bytes, declared_bytes)), 0) AS s
+           FROM subsite_uploads WHERE status = 'settled'`,
+        ),
+        db.prepare(trendQuery(dailyExpr)).bind(dailyStart, dailyStart, dailyStart),
+        db.prepare(trendQuery(weeklyExpr)).bind(weeklyStart, weeklyStart, weeklyStart),
+        db.prepare(trendQuery(monthlyExpr)).bind(monthlyStart, monthlyStart, monthlyStart),
+      ])
     const quotaBytes = Number(quotaRow?.results?.[0]?.quota) || 0
     const usedBytes = Number(quotaRow?.results?.[0]?.used) || 0
     const pendingBytes = Number(pendingRow?.results?.[0]?.pending) || 0
@@ -340,6 +484,7 @@ export async function getStorage(db) {
       subsite: { count: Number(subsiteRow?.results?.[0]?.c) || 0, bytes: Number(subsiteRow?.results?.[0]?.s) || 0 },
     }
     const identified = sources.music.bytes + sources.aiCreation.bytes + sources.subsite.bytes
+    const toPoints = (res) => (res?.results || []).map((r) => ({ date: r.d, count: Number(r.c || 0) }))
     return {
       storage: {
         quotaBytes,
@@ -354,25 +499,15 @@ export async function getStorage(db) {
           other: { count: 0, bytes: Math.max(0, usedBytes - identified) },
         },
       },
+      storageTrend: {
+        daily: toPoints(dailyTrendRes),
+        weekly: toPoints(weeklyTrendRes),
+        monthly: toPoints(monthlyTrendRes),
+      },
     }
   } catch (e) {
     console.warn('[admin/dashboard] 存储聚合失败（可能表未创建）:', e?.message || e)
-    return {
-      storage: {
-        quotaBytes: 0,
-        usedBytes: 0,
-        pendingBytes: 0,
-        pendingCount: 0,
-        availableBytes: 0,
-        users: 0,
-        sources: {
-          music: { count: 0, bytes: 0 },
-          aiCreation: { count: 0, bytes: 0 },
-          subsite: { count: 0, bytes: 0 },
-          other: { count: 0, bytes: 0 },
-        },
-      },
-    }
+    return { storage: emptyStorage, storageTrend: { ...EMPTY_TREND, daily: [], weekly: [], monthly: [] } }
   }
 }
 
@@ -454,6 +589,7 @@ export const PANEL_QUERIES = {
   userTrend: getUserTrend,
   usage: getUsage,
   siteVisit: getSiteVisits,
+  activeUsers: getActiveUsers,
   topTools: getTopTools,
   slowlog: getSlowQueries,
   pending: getPending,

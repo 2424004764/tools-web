@@ -1,6 +1,6 @@
 // Admin 仪表盘单面板 API
 // GET /api/admin/dashboard/:panel
-// panel ∈ overview | userTrend | usage | topTools | slowlog | pending | transactions
+// panel ∈ overview | storage | userTrend | usage | siteVisit | activeUsers | topTools | slowlog | pending | transactions
 //
 // 供前端各卡片独立拉取数据：单个面板慢/失败不影响其他面板渲染。
 // 聚合接口 GET /api/admin/dashboard 仍保留，兼容旧调用。
@@ -44,7 +44,7 @@ export async function onRequest(context) {
     )
   }
 
-  // 趋势窗口参数（usage / userTrend）：不传走默认；上限防滥用
+  // 趋势窗口参数（usage / userTrend / siteVisit / storage）：不传走默认；上限防滥用
   const url = new URL(request.url)
   const numParam = (name, def, max) => {
     const n = parseInt(url.searchParams.get(name), 10)
@@ -55,6 +55,9 @@ export async function onRequest(context) {
     weeklyWeeks: numParam('weeklyWeeks', 12, 52),
     monthlyMonths: numParam('monthlyMonths', 12, 24),
   }
+  // 活跃用户面板：传入 uid 则返回该用户的使用次数与趋势，否则返回排名
+  const uid = String(url.searchParams.get('uid') || '').trim().slice(0, 64)
+  if (uid) opts.uid = uid
 
   const db = env.DB
   try {

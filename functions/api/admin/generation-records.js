@@ -3,6 +3,8 @@
 //
 // 鉴权已在 _middleware.js 完成。
 
+import { likeContains } from '../../utils/like.js'
+
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
@@ -62,7 +64,7 @@ export async function onRequest(context) {
       where.push(
         '(r.model LIKE ? OR r.error_message LIKE ? OR json_extract(r.raw_data, \'$.prompt\') LIKE ?)',
       )
-      const like = `%${keyword}%`
+      const like = likeContains(keyword)
       args.push(like, like, like)
     }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : ''

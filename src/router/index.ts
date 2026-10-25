@@ -293,10 +293,12 @@ router.afterEach((to, _from, failure) => {
     sessionStorage.removeItem(CHUNK_ERROR_KEY)
   }
   // 标题优先取 SEO 优化标题（与预渲染/中间件写入初始 HTML 的标题同源，
-  // 见 seo-titles.js），保证爬虫看到的和用户标签页里的一致
+  // 见 seo-titles.js），保证爬虫看到的和用户标签页里的一致；
+  // {SITE} 是站名占位 token（该文件 Node/浏览器共用，不能引 import.meta.env）
   const titlePath = to.path !== '/' && to.path.endsWith('/') ? to.path.slice(0, -1) : to.path
-  const titleBase =
+  const titleBase = (
     seoTitles[titlePath] ?? (to.meta.title ? `${to.meta.title as string} | ${APP_TITLE}` : `${APP_TITLE}-${APP_DESC}`)
+  ).replace(/\{SITE\}/g, APP_TITLE)
   document.title = titleBase
 
   // 工具页（非首页）进入时强制回到顶部，不做任何滚动恢复：

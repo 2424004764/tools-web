@@ -1,5 +1,7 @@
 /**
- * 每条路由的 SEO 优化标题（不含站名后缀，展示时会拼上 " | 一方工具箱"）。
+ * 每条路由的 SEO 优化标题（不含站名后缀，展示时会拼上 " | 站名"（VITE_APP_TITLE））。
+ * 本文件被 Node 脚本与浏览器共用，不能引用 import.meta.env；
+ * 需要嵌站名的地方写 {SITE} 占位，由两端各自替换（generate-page-meta.mjs / router/index.ts）。
  *
  * 使用方：
  *  - src/router/index.ts afterEach：SPA 内导航时 document.title（用户标签页标题与爬虫一致）
@@ -87,8 +89,7 @@ export default {
   '/ai-outfit': 'AI穿搭 - 虚拟试衣智能搭配建议',
   '/ai-outfit/history': 'AI穿搭历史 - 我的搭配生成记录',
   '/flashcards': '闪卡记忆 - 间隔重复复习工具',
-  '/ai-text-to-speech': '文本转语音 - AI语音合成在线朗读',
-  '/about': '关于本站 - 一方工具箱介绍',
+  '/about': '关于本站 - {SITE}介绍',
   '/flip-clock': '翻页时钟 - 全屏翻页动画桌面时钟',
   '/led-display': 'LED弹屏 - LED滚动字幕走马灯工具',
   '/snake': '贪吃蛇小游戏 - 经典贪吃蛇在线玩',

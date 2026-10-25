@@ -4,6 +4,8 @@
 //
 // 返回分页的批次列表，每行聚合：total / used / note / credits / expires_at / created_at / created_by
 
+import { likeContains, likePrefix } from '../../../utils/like.js'
+
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
@@ -42,7 +44,7 @@ export async function onRequest(context) {
     const args = []
     if (keyword) {
       where.push('(note LIKE ? OR batch_id LIKE ?)')
-      args.push(`%${keyword}%`, `${keyword}%`)
+      args.push(likeContains(keyword), likePrefix(keyword))
     }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : ''
 

@@ -3,11 +3,12 @@
 //
 // 鉴权：复用 extractUidFromRequest（model-resolver.js）
 //
-// 原子性：D1 无显式事务，用 db.batch 顺序执行：
-//   1) UPDATE credit_redeem_codes SET used_by=?, used_at=? WHERE id=? AND used_by IS NULL
-//   2) 若上一步 changes=0 → 抛错让 batch 回滚（先 SELECT 排查失败原因：已用 / 过期 / 不存在）
-//   3) INSERT credit_transactions
-//   4) UPDATE user_credits (UPSERT)
+// 原子性（注意：D1 batch 只在语句 SQL 报错时回滚，"UPDATE 命中 0 行"不报错，
+//         不能把条件 UPDATE 放进 batch 指望它失败时回滚）：
+//   1) 单独执行 UPDATE credit_redeem_codes ... WHERE used_by IS NULL 抢占，检查 changes=0 则终止
+//   2) 抢占成功后 batch 入账：user_credits 增量 UPSERT（禁止绝对值覆写）+ 流水
+//      （balance_after 用子查询取同事务内入账后的真实余额）
+//   3) 入账 batch 失败则补偿释放抢占，避免"码作废了钱没到账"
 //
 // 防暴力枚举：
 //   - credit_redeem_attempts 表按 (uid, 北京时日期) 累计错误次数
@@ -152,61 +153,67 @@ export async function onRequest(context) {
   const now = nowSql()
   const txId = crypto.randomUUID()
 
-  // ============ 6. 查当前余额（用于派生 balance_after）============
+  // ============ 6. 查当前余额（响应里 balance_before 的参考值） ============
   const cur = await db
     .prepare('SELECT balance FROM user_credits WHERE uid = ?')
     .bind(uid)
     .first()
-  const currentBalance = cur?.balance ?? 0
-  const newBalance = currentBalance + credits
+  const balanceBefore = Number(cur?.balance) || 0
 
-  // ============ 7. 原子 batch：先标记 code，再 grant 积分 ============
+  // ============ 7. 原子抢占兑换码（必须单独执行并检查 changes） ============
+  let claim
   try {
-    const stmts = [
-      // (a) 原子抢占：只有未使用的码才能 UPDATE 成功
-      db
-        .prepare(
-          `UPDATE credit_redeem_codes
-           SET used_by = ?, used_at = ?
-           WHERE id = ? AND used_by IS NULL`,
-        )
-        .bind(uid, now, row.id),
-      // (b) 写积分流水
-      db
-        .prepare(
-          `INSERT INTO credit_transactions
-           (id, uid, type, amount, balance_after, reason, operator_uid, source, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        )
-        .bind(
-          txId,
-          uid,
-          'grant',
-          credits,
-          newBalance,
-          `兑换码 ${code}`,
-          'SYSTEM',
-          'recharge',
-          now,
-        ),
-      // (c) UPSERT user_credits
+    claim = await db
+      .prepare(
+        `UPDATE credit_redeem_codes
+         SET used_by = ?, used_at = ?
+         WHERE id = ? AND used_by IS NULL`,
+      )
+      .bind(uid, now, row.id)
+      .run()
+  } catch (err) {
+    console.error('[me/redeem] claim error:', err)
+    return jsonError('兑换失败，请稍后重试', 500)
+  }
+  if ((claim?.meta?.changes ?? claim?.changes ?? 0) === 0) {
+    // 并发抢占失败：码刚被其他请求（或自己的双击）用掉
+    return await failWrong('该兑换码已被使用', 400)
+  }
+
+  // ============ 8. 抢占成功：入账 + 流水 ============
+  try {
+    const results = await db.batch([
+      // (a) 增量入账：新用户行初始余额 = credits；老用户行在现有余额上加增量。
+      //     excluded.balance 不能直接覆盖（绝对值），并发下会丢更新。
       db
         .prepare(
           `INSERT INTO user_credits (uid, balance, total_earned, total_spent, frozen, created_at, updated_at)
            VALUES (?, ?, ?, 0, 0, ?, ?)
            ON CONFLICT(uid) DO UPDATE SET
-             balance = excluded.balance,
+             balance = balance + excluded.balance,
              total_earned = total_earned + excluded.total_earned,
              updated_at = excluded.updated_at`,
         )
-        .bind(uid, newBalance, credits, now, now),
-    ]
-    const results = await db.batch(stmts)
+        .bind(uid, credits, credits, now, now),
+      // (b) 流水放在入账之后，balance_after 用子查询取同事务内的真实余额
+      db
+        .prepare(
+          `INSERT INTO credit_transactions
+           (id, uid, type, amount, balance_after, reason, operator_uid, source, created_at)
+           VALUES (?, ?, 'grant', ?, (SELECT balance FROM user_credits WHERE uid = ?), ?, 'SYSTEM', 'recharge', ?)
+           RETURNING balance_after`,
+        )
+        .bind(txId, uid, credits, uid, `兑换码 ${code}`, now),
+    ])
 
-    // (a) 抢占失败（并发场景）→ 视为已兑换，计入错误次数
-    const changes = results[0]?.meta?.changes ?? results[0]?.changes ?? 0
-    if (changes === 0) {
-      return await failWrong('该兑换码已被使用', 400)
+    let balanceAfter = results?.[1]?.results?.[0]?.balance_after
+    if (typeof balanceAfter !== 'number') {
+      // RETURNING 未返回时兜底再读一次（仅影响响应展示，不影响流水记录）
+      const r = await db
+        .prepare('SELECT balance FROM user_credits WHERE uid = ?')
+        .bind(uid)
+        .first()
+      balanceAfter = Number(r?.balance) || 0
     }
 
     return json({
@@ -214,13 +221,26 @@ export async function onRequest(context) {
       data: {
         code,
         credits_granted: credits,
-        balance_before: currentBalance,
-        balance_after: newBalance,
+        balance_before: balanceBefore,
+        balance_after: balanceAfter,
         tx_id: txId,
       },
     })
   } catch (err) {
-    console.error('[me/redeem] error:', err)
-    return jsonError(err.message || '服务器错误', 500)
+    // ============ 9. 补偿：入账失败则释放抢占（只释放自己抢到的），用户可重试 ============
+    console.error('[me/redeem] grant error:', err)
+    try {
+      await db
+        .prepare(
+          `UPDATE credit_redeem_codes
+           SET used_by = NULL, used_at = NULL
+           WHERE id = ? AND used_by = ?`,
+        )
+        .bind(row.id, uid)
+        .run()
+    } catch (e2) {
+      console.error('[me/redeem] claim release error:', e2)
+    }
+    return jsonError('兑换失败，请稍后重试', 500)
   }
 }

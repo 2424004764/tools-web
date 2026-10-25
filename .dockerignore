@@ -2,3 +2,16 @@ node_modules
 dist
 .env.development
 .env.production
+# 本地密钥（真实 JWT/OAuth Secret 等），严禁进镜像构建上下文
+.dev.vars
+# 版本库与本地工具状态，构建无关
+.git
+.wrangler
+.turbo
+.zcode
+# 手工数据备份（含用户 PII，严禁进镜像构建上下文）
+backup-*.json
+# 一次性验证/临时脚本
+temp
+tmp-prod-verify.mjs
+_worker.bundle

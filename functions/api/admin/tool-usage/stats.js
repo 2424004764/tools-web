@@ -3,7 +3,7 @@
 //     鉴权：目录中间件 _middleware.js 已保证 admin
 //     返回：今日/本周次数、活跃用户数、TOP 10 工具、TOP 10 用户
 //
-// 路由说明：精确匹配 /api/admin/tool-usage/stats，由 functions/_routes.json 注册。
+// 路由说明：精确匹配 /api/admin/tool-usage/stats（wrangler 按 functions 文件树自动生成路由）。
 
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, OPTIONS',

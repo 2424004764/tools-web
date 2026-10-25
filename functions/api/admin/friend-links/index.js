@@ -2,6 +2,8 @@
 // GET /api/admin/friend-links?page=1&pageSize=20&status=pending|approved|rejected&keyword=
 // 鉴权已在 _middleware.js 完成。
 
+import { likeContains } from '../../../utils/like.js'
+
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
@@ -47,7 +49,7 @@ export async function onRequest(context) {
     }
     if (keyword) {
       where.push('(name LIKE ? OR url LIKE ? OR description LIKE ? OR contact LIKE ?)')
-      const like = `%${keyword}%`
+      const like = likeContains(keyword)
       args.push(like, like, like, like)
     }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : ''

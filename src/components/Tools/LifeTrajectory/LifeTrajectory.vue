@@ -6,7 +6,6 @@ import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import Refresh from '~icons/ep/refresh'
-import Promotion from '~icons/ep/promotion'
 import EditPen from '~icons/ep/editPen'
 import Delete from '~icons/ep/delete'
 import User from '~icons/ep/user'
@@ -67,12 +66,17 @@ const goToLogin = () => {
   router.push(`/login?redirect=${encodeURIComponent('/life-trajectory/')}`)
 }
 
+// 请求代际：分页器连点时仅最新一次响应可写回，防止旧页数据覆盖新页
+let fetchSeq = 0
+
 const fetchList = async (page = 1) => {
+  const seq = ++fetchSeq
   loading.value = true
   try {
     const res = await functionsRequest.get('/api/life-trajectories', {
       params: { page, pageSize: pagination.value.pageSize },
     })
+    if (seq !== fetchSeq) return
     if (res.status === 200) {
       const data = res.data || {}
       items.value = data.data || []
@@ -81,7 +85,7 @@ const fetchList = async (page = 1) => {
   } catch (err) {
     // 401 在响应拦截器里已经处理，这里只静默
   } finally {
-    loading.value = false
+    if (seq === fetchSeq) loading.value = false
   }
 }
 
@@ -174,6 +178,8 @@ const confirmDelete = async (item: Trajectory) => {
 const formatTime = (iso: string) => {
   if (!iso) return ''
   const d = new Date(iso)
+  // 非法日期字符串兜底：直接原样返回，避免界面出现 "Invalid Date"
+  if (Number.isNaN(d.getTime())) return iso
   const now = new Date()
   const diff = now.getTime() - d.getTime()
   // 1 分钟内：刚刚
@@ -203,7 +209,8 @@ const charCount = computed(() => form.content.length)
 
 onMounted(() => {
   userStore.initUserState()
-  fetchList(1)
+  // 轨迹是私密数据：未登录不请求列表（避免触发 401 跳转），直接展示登录引导
+  if (isLoggedIn.value) fetchList(1)
 })
 </script>
 
@@ -219,8 +226,8 @@ onMounted(() => {
             <el-icon><ChatLineRound /></el-icon>
           </div>
           <div>
-            <h3 class="lx-title">最近的人生轨迹</h3>
-            <p class="lx-subtitle">共 {{ pagination.total }} 条记录</p>
+            <h3 class="lx-title">我的人生轨迹</h3>
+            <p class="lx-subtitle">仅自己可见 · 共 {{ pagination.total }} 条记录</p>
           </div>
         </div>
         <div class="lx-header-actions">
@@ -244,8 +251,8 @@ onMounted(() => {
       <div v-loading="loading" class="lx-feed">
         <div v-if="items.length === 0 && !loading" class="lx-empty">
           <el-icon class="lx-empty-icon"><ChatLineRound /></el-icon>
-          <h3 class="lx-empty-title">还没有任何轨迹</h3>
-          <p class="lx-empty-desc">登录后写下人生的第一笔吧</p>
+          <h3 class="lx-empty-title">{{ isLoggedIn ? '还没有任何轨迹' : '轨迹仅自己可见' }}</h3>
+          <p class="lx-empty-desc">{{ isLoggedIn ? '写下人生的第一笔吧' : '登录后才能查看和记录自己的轨迹' }}</p>
           <el-button v-if="!isLoggedIn" type="primary" @click="goToLogin">
             立即登录
           </el-button>
@@ -307,12 +314,6 @@ onMounted(() => {
         />
       </div>
 
-      <!-- 未登录提示条 -->
-      <div v-if="!isLoggedIn && items.length > 0" class="lx-tip">
-        <el-icon><Promotion /></el-icon>
-        <span>登录后即可发布自己的轨迹 ✨</span>
-        <el-button size="small" type="primary" link @click="goToLogin">去登录</el-button>
-      </div>
     </div>
 
     <!-- 发布弹窗 -->
@@ -369,34 +370,20 @@ onMounted(() => {
     <!-- SEO 描述 -->
     <ToolDetail title="关于人生轨迹">
       <el-text>
-        人生轨迹是一个轻量的「生活记录」工具：登录后写下这一瞬间的文字 + 一个表情，所有用户都能看到彼此的最新轨迹。
+        人生轨迹是一个轻量的「私密生活记录」工具：登录后用一句文字 + 一个表情记录当下，轨迹仅自己可见，是一本只属于你的随身记事本。
         <br /><br />
-        <strong>特色：</strong>
-        <br />• <strong>极简输入</strong>：只能发文字 + 单个表情 emoji，没有富文本、没有图片、没有链接，专注于「这一刻」
-        <br />• <strong>最新优先</strong>：列表按发布时间倒序，新发布的轨迹永远在最上面
-        <br />• <strong>公开可见</strong>：所有人可浏览所有轨迹，无需登录也能围观
-        <br />• <strong>权限隔离</strong>：必须登录才能发布；只能编辑或删除自己的轨迹（其他用户的轨迹看不到操作按钮）
-        <br />• <strong>云端存储</strong>：数据持久化在 Cloudflare D1 数据库，跨设备同步
+        <strong>有什么用：</strong>
+        <br />1. <strong>记录生活</strong>：心情、感悟、小确幸，一句话 + 一个 emoji 就是一条足迹
+        <br />2. <strong>私密树洞</strong>：不想发朋友圈的心里话，写在这里只有自己能看到
+        <br />3. <strong>时间线回顾</strong>：所有轨迹按时间倒序连成一条线，随时翻看走过的日子
+        <br />4. <strong>跨设备同步</strong>：手机、电脑登录同一账号，记录随身携带不丢失
         <br /><br />
-        <strong>使用场景：</strong>
-        <br />1. 早上醒来，记录今天的目标与心情 ☀️
-        <br />2. 夜里复盘，写下今天的小确幸或感悟 🌙
-        <br />3. 旅途中打卡一个 emoji + 一句话，留下足迹 🌱
-        <br />4. 情绪上头又不想发朋友圈？来这里匿名（虽然已登录）地写下你的心 ⭐
-        <br /><br />
-        <strong>使用步骤：</strong>
-        <br />1. 点击右上角「记一笔」（未登录会跳转到登录页）
-        <br />2. 选择一个心情 emoji（12 选 1）
-        <br />3. 在文本框写下这一刻的想法（最多 500 字）
-        <br />4. 点击发布，新轨迹就会出现在列表最上方
-        <br />5. 想修改或删除自己发布的轨迹？点击卡片右下角的编辑或删除按钮
-        <br /><br />
-        <strong>技术实现：</strong>
-        <br />• <strong>后端</strong>：Cloudflare Pages Functions + D1 数据库
-        <br />• <strong>表结构</strong>：life_trajectories（id / uid / content / mood / create_time）
-        <br />• <strong>鉴权</strong>：复用项目自身的 JWT（Bearer Token）机制，与其他用户态工具保持一致
-        <br />• <strong>权限</strong>：编辑和删除时双重校验 id + uid，确保只能操作自己的记录
-        <br />• <strong>建表 SQL</strong>：见项目根目录 <code class="bg-gray-200 px-1 rounded">migrations/create_life_trajectories_table.sql</code>
+        <strong>怎么用：</strong>
+        <br />1. 登录后点击右上角「记一笔」（未登录会先跳转登录页）
+        <br />2. 选一个代表当下心情的表情（12 选 1）
+        <br />3. 写下这一刻的想法（最多 500 字），点击发布
+        <br />4. 新轨迹会出现在时间线最上方；卡片右下角可以编辑或删除（电脑上鼠标悬停卡片时显示按钮）
+        <br />5. 想翻看以前的记录？用列表底部分页往前翻即可
       </el-text>
     </ToolDetail>
   </div>

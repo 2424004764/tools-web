@@ -42,7 +42,7 @@ export async function onRequest(context) {
     await db.batch([
       db
         .prepare(`UPDATE oauth_clients SET client_secret = ?, updated_at = datetime('now') WHERE client_id = ?`)
-        .bind(await encryptSecret(clientSecret, env.JWT_SECRET), id),
+        .bind(await encryptSecret(clientSecret, env.ENCRYPTION_SECRET || env.JWT_SECRET), id),
       db.prepare(`UPDATE oauth_access_tokens SET revoked = 1 WHERE client_id = ?`).bind(id),
       db.prepare(`UPDATE oauth_refresh_tokens SET revoked = 1 WHERE client_id = ?`).bind(id),
     ])

@@ -11,5 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 清理一个月前的聊天消息
+        # -f：非 2xx（如 401 密钥不匹配）时让 workflow 显式失败，避免静默失效
         run: |
-          curl -X GET "https://tool.fologde.com/cron/clean-chat"
+          curl -fsS -X GET "https://tool.fologde.com/cron/clean-chat" \
+            -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}"

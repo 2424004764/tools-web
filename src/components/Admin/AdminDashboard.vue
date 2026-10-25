@@ -7,7 +7,7 @@ import {
   fetchAdminDashboardPanel,
   type AdminDashboardPanel,
 } from '@/api/admin/dashboard'
-import type { AdminDashboard, ToolUsageTrendPoint } from '@/types/admin'
+import type { AdminDashboard, ActiveUserSummary, ToolUsageTrendPoint } from '@/types/admin'
 import { fetchAdminSiteConfig, updateAdminSiteConfig } from '@/api/admin/site-config'
 import { ElMessage } from 'element-plus'
 import { useTheme } from '@/composables/useTheme'
@@ -20,6 +20,8 @@ import IconTrophy from '~icons/ep/trophy'
 import IconTimer from '~icons/ep/timer'
 import IconBox from '~icons/ep/box'
 import IconRank from '~icons/ep/rank'
+import IconTrendCharts from '~icons/ep/trend-charts'
+import IconBack from '~icons/ep/back'
 
 // 每个面板独立拉取：请求成功哪个面板就先渲染对应卡片，失败只影响自己的卡片
 const panelData = ref<Partial<AdminDashboard>>({})
@@ -32,6 +34,7 @@ const DASHBOARD_PANELS: AdminDashboardPanel[] = [
   'usage',
   'siteVisit',
   'userTrend',
+  'activeUsers',
   'topTools',
   'slowlog',
   'pending',
@@ -51,6 +54,7 @@ const WIDGET_PANEL: Record<WidgetId, AdminDashboardPanel> = {
   usage: 'usage',
   siteVisit: 'siteVisit',
   userTrend: 'userTrend',
+  activeUsers: 'activeUsers',
   topTools: 'topTools',
   slowlog: 'slowlog',
   pending: 'pending',
@@ -60,7 +64,7 @@ const panelLoading = (id: WidgetId) => panelState[WIDGET_PANEL[id]] === 'loading
 const panelFailed = (id: WidgetId) => panelState[WIDGET_PANEL[id]] === 'failed'
 const retryWidget = (id: WidgetId) => loadPanel(WIDGET_PANEL[id])
 
-const loadPanel = async (panel: AdminDashboardPanel) => {
+const loadPanel = async (panel: AdminDashboardPanel, silent = false) => {
   panelState[panel] = 'loading'
   try {
     const res = await fetchAdminDashboardPanel(panel)
@@ -70,14 +74,26 @@ const loadPanel = async (panel: AdminDashboardPanel) => {
     if (panel === 'usage' && res.usageTrend) usagePanel.build(res.usageTrend)
     if (panel === 'siteVisit' && res.siteVisitTrend) siteVisitPanel.build(res.siteVisitTrend)
     if (panel === 'userTrend' && res.userTrend) userPanel.build(res.userTrend)
+    if (panel === 'storage' && res.storageTrend) storagePanel.build(res.storageTrend)
   } catch (err) {
     panelState[panel] = 'failed'
     console.error(`[dashboard] ${panel} 面板加载失败:`, err)
-    ElMessage.error(`仪表盘 ${panel} 面板加载失败`)
+    // silent 模式供整批加载使用：全挂时只弹一条汇总提示，不连弹 N 条
+    if (!silent) ElMessage.error(`仪表盘 ${panel} 面板加载失败`)
   }
 }
 
-const load = () => DASHBOARD_PANELS.forEach((p) => loadPanel(p))
+const load = async () => {
+  await Promise.all(DASHBOARD_PANELS.map((p) => loadPanel(p, true)))
+  const failed = DASHBOARD_PANELS.filter((p) => panelState[p] === 'failed')
+  if (failed.length > 0) {
+    ElMessage.error(
+      failed.length === DASHBOARD_PANELS.length
+        ? '仪表盘数据加载失败，请检查网络后重试'
+        : `仪表盘 ${failed.join('、')} 面板加载失败`,
+    )
+  }
+}
 
 // ============ 卡片布局：可拖拽排序，顺序持久化在 site_config.admin_dashboard_layout ============
 // 卡片 id 是前后端约定的稳定标识；后端只校验格式，新增/下线卡片仅需维护这里
@@ -90,6 +106,7 @@ type WidgetId =
   | 'usage'
   | 'siteVisit'
   | 'userTrend'
+  | 'activeUsers'
   | 'topTools'
   | 'slowlog'
   | 'pending'
@@ -110,6 +127,7 @@ const DEFAULT_WIDGETS: WidgetMeta[] = [
   { id: 'usage', span: 'col-span-2 md:col-span-2' },
   { id: 'siteVisit', span: 'col-span-2 md:col-span-2' },
   { id: 'userTrend', span: 'col-span-2 md:col-span-2' },
+  { id: 'activeUsers', span: 'col-span-2 md:col-span-2' },
   { id: 'topTools', span: 'col-span-2 md:col-span-2' },
   { id: 'slowlog', span: 'col-span-2 md:col-span-2' },
   { id: 'pending', span: 'col-span-2 md:col-span-2' },
@@ -167,6 +185,8 @@ const handleDragEnd = (evt: Sortable.SortableEvent) => {
     usagePanel.init()
     siteVisitPanel.init()
     userPanel.init()
+    storagePanel.init()
+    userUsagePanel.init()
   })
 }
 
@@ -348,7 +368,9 @@ function fillTrend(points: ToolUsageTrendPoint[] | undefined, dates: string[]): 
 
 /** 一条趋势线的完整日期轴 + 补零后的计数 */
 type TrendSeries = Record<TrendRangeKey, { dates: string[]; counts: number[] }>
-type TrendPoints = NonNullable<AdminDashboard['usageTrend']>
+type TrendPoints = NonNullable<
+  AdminDashboard['usageTrend'] | AdminDashboard['userTrend'] | AdminDashboard['activeUserTrend'] | AdminDashboard['storageTrend']
+>
 
 // 一块面板一张图：粒度切换 / 主题重绘 / dataZoom 都内聚在此，工具使用与用户注册各建一份
 // 各粒度初始窗口与上限：拖到最左边缘时窗口翻倍重新拉取（加载更早数据），直到上限
@@ -359,7 +381,12 @@ function createTrendPanel(
   verb: string,
   unit: string,
   panel: AdminDashboardPanel,
-  trendKey: 'usageTrend' | 'userTrend' | 'siteVisitTrend',
+  trendKey: 'usageTrend' | 'userTrend' | 'siteVisitTrend' | 'storageTrend' | 'activeUserTrend',
+  opts?: {
+    formatValue?: (n: number) => string
+    /** 向左扩展重新拉取时附加的查询参数（如活跃用户面板的 uid） */
+    extraParams?: () => Record<string, number | string>
+  },
 ) {
   const trendRange = ref<TrendRangeKey>('daily')
   const chartRef = ref<HTMLDivElement | null>(null)
@@ -369,6 +396,9 @@ function createTrendPanel(
   // 已加载的窗口大小（随向左扩展增长）
   let loaded: Record<TrendRangeKey, number> = { ...TREND_INIT }
   let extending = false
+  // 数值展示格式（存储趋势传 fmtBytes，其余默认千分位计数）
+  const valueFmt = opts?.formatValue
+  const fmtVal = (n: number) => (valueFmt ? valueFmt(n) : n.toLocaleString('zh-CN'))
 
   function applyOption() {
     if (!chartInstance || !series) return
@@ -414,7 +444,7 @@ function createTrendPanel(
           textStyle: { color: themeVar('--ink-700') },
           formatter: (params: unknown) => {
             const p = (Array.isArray(params) ? params[0] : params) as { name: string; marker: string; value: number }
-            return `${p.name}<br/>${p.marker} ${verb} <b>${(p.value || 0).toLocaleString('zh-CN')}</b> ${unit}`
+            return `${p.name}<br/>${p.marker} ${verb} <b>${fmtVal(p.value || 0)}</b>${unit ? ` ${unit}` : ''}`
           },
         },
         xAxis: {
@@ -431,7 +461,11 @@ function createTrendPanel(
         yAxis: {
           type: 'value',
           minInterval: 1,
-          axisLabel: { color: themeVar('--ink-500') },
+          axisLabel: {
+            color: themeVar('--ink-500'),
+            // 存储趋势的纵轴是字节数，需按人类可读单位缩写；计数趋势用 ECharts 默认数字
+            ...(valueFmt ? { formatter: valueFmt } : {}),
+          },
           splitLine: { lineStyle: { color: themeVar('--border-subtle') } },
         },
         series: [
@@ -497,7 +531,13 @@ function createTrendPanel(
         weekly: Math.min(loaded.weekly * 2, TREND_LIMITS.weekly),
         monthly: Math.min(loaded.monthly * 2, TREND_LIMITS.monthly),
       }
-      const res = await fetchAdminDashboardPanel(panel, { ...next })
+      // 参数键与后端 [panel].js 读取的 dailyDays / weeklyWeeks / monthlyMonths 对齐
+      const res = await fetchAdminDashboardPanel(panel, {
+        dailyDays: next.daily,
+        weeklyWeeks: next.weekly,
+        monthlyMonths: next.monthly,
+        ...opts?.extraParams?.(),
+      })
       panelData.value = { ...panelData.value, ...res }
       loaded = next
       build(res[trendKey])
@@ -531,7 +571,10 @@ function createTrendPanel(
       chartInstance = null
     }
     if (!chartInstance) chartInstance = echarts.init(el)
-    // 用户拖动缩放时检测是否到达最左边缘，触发向左加载更早数据
+    // 用户拖动缩放时检测是否到达最左边缘，触发向左加载更早数据。
+    // 先 off 再 on：init 可能在同一实例上重复执行（拖拽排序未重建 DOM 时），
+    // 直接 on 会叠监听器，拖一次触发 N 次 extendLeft
+    chartInstance.off('datazoom')
     chartInstance.on('datazoom', () => {
       void extendLeft()
     })
@@ -545,6 +588,12 @@ function createTrendPanel(
     build,
     applyOption,
     init,
+    // 换数据源（如切换查看的用户）时清空已加载窗口与缓存，回到默认粒度
+    reset: () => {
+      loaded = { ...TREND_INIT }
+      series = null
+      trendRange.value = 'daily'
+    },
     resize: () => chartInstance?.resize(),
     dispose: () => {
       chartInstance?.dispose()
@@ -556,6 +605,50 @@ function createTrendPanel(
 const usagePanel = createTrendPanel('使用', '次', 'usage', 'usageTrend')
 const siteVisitPanel = createTrendPanel('访问', '次', 'siteVisit', 'siteVisitTrend')
 const userPanel = createTrendPanel('新增', '人', 'userTrend', 'userTrend')
+const storagePanel = createTrendPanel('新增占用', '', 'storage', 'storageTrend', { formatValue: fmtBytes })
+
+// ============ 活跃用户卡片：默认展示使用次数排名，点击用户切到单人趋势折线图 ============
+// 排名窗口与 TOP 10 工具一致：每日 / 每周 / 每月 / 累计
+const ACTIVE_USERS_RANGES = [...TREND_RANGES, { key: 'all', label: '累计' }] as const
+type ActiveUsersRangeKey = (typeof ACTIVE_USERS_RANGES)[number]['key']
+const activeUsersRange = ref<ActiveUsersRangeKey>('daily')
+const activeRanking = computed(() => data.value?.activeUsers?.[activeUsersRange.value] || [])
+const activeUserDisplayName = (u: ActiveUserSummary) => u.user_name || u.user_email || u.uid
+
+// 点击查看的用户；为 null 时卡片显示排名视图
+const selectedUser = ref<{ uid: string; name: string } | null>(null)
+const userUsageLoading = ref(false)
+// 单人趋势图：向左扩展加载更早数据时需带上当前查看用户的 uid
+const userUsagePanel = createTrendPanel('使用', '次', 'activeUsers', 'activeUserTrend', {
+  extraParams: (): Record<string, number | string> =>
+    selectedUser.value ? { uid: selectedUser.value.uid } : {},
+})
+
+const openUserTrend = async (u: ActiveUserSummary) => {
+  const uid = String(u.uid || '')
+  if (!uid || userUsageLoading.value) return
+  selectedUser.value = { uid, name: activeUserDisplayName(u) }
+  userUsageLoading.value = true
+  // 换用户后已加载窗口与粒度不沿用，回到默认
+  userUsagePanel.reset()
+  try {
+    const res = await fetchAdminDashboardPanel('activeUsers', { uid })
+    panelData.value = { ...panelData.value, ...res }
+    await userUsagePanel.init()
+    userUsagePanel.build(res.activeUserTrend)
+  } catch (err) {
+    console.error('[dashboard] 用户使用趋势加载失败:', err)
+    ElMessage.error('该用户的使用趋势加载失败')
+    selectedUser.value = null
+  } finally {
+    userUsageLoading.value = false
+  }
+}
+
+const backToActiveRanking = () => {
+  selectedUser.value = null
+  userUsagePanel.dispose()
+}
 
 // 页面访问 TOP 榜：卡片脚注展示前 3 个（悬停 title 展示完整 TOP 10）
 const topPagesTitle = computed(() => {
@@ -574,28 +667,39 @@ const TOP_TOOLS_RANGES = [...TREND_RANGES, { key: 'all', label: '累计' }] as c
 type TopToolsRangeKey = (typeof TOP_TOOLS_RANGES)[number]['key']
 const topToolsRange = ref<TopToolsRangeKey>('daily')
 const activeTopTools = computed(() => data.value?.topTools?.[topToolsRange.value] || [])
+
+// tool_url 来自可编辑的工具表：只信任 http(s) 与站内相对路径，
+// 防止被填入 javascript: 等协议后点击即执行
+const isSafeToolUrl = (u?: string | null) =>
+  !!u && (/^https?:\/\//i.test(u) || u.startsWith('/'))
 // 解构出的 ref 仍是响应式的，模板里直接绑定 ref / v-model
 const { trendRange: usageTrendRange, chartRef: usageChartEl } = usagePanel
 const { trendRange: siteVisitTrendRange, chartRef: siteVisitChartEl } = siteVisitPanel
 const { trendRange: userTrendRange, chartRef: userChartEl } = userPanel
+const { trendRange: storageTrendRange, chartRef: storageChartEl } = storagePanel
+const { trendRange: userUsageTrendRange, chartRef: userUsageChartEl } = userUsagePanel
 
 // 主题切换时用缓存数据按新主题色重绘（不重新请求接口）
 watch(isDark, () => {
   usagePanel.applyOption()
   siteVisitPanel.applyOption()
   userPanel.applyOption()
+  storagePanel.applyOption()
+  userUsagePanel.applyOption()
 })
 
 const handleResize = () => {
   usagePanel.resize()
   siteVisitPanel.resize()
   userPanel.resize()
+  storagePanel.resize()
+  userUsagePanel.resize()
 }
 
 onMounted(async () => {
   load()
   loadLayout()
-  await Promise.all([usagePanel.init(), siteVisitPanel.init(), userPanel.init()])
+  await Promise.all([usagePanel.init(), siteVisitPanel.init(), userPanel.init(), storagePanel.init(), userUsagePanel.init()])
   if (gridRef.value && !sortable) {
     sortable = Sortable.create(gridRef.value, {
       handle: '.widget-drag-handle', // 仅从把手发起拖拽，不影响图表缩放 / 链接等交互
@@ -617,6 +721,8 @@ onUnmounted(() => {
   usagePanel.dispose()
   siteVisitPanel.dispose()
   userPanel.dispose()
+  storagePanel.dispose()
+  userUsagePanel.dispose()
 })
 </script>
 
@@ -659,28 +765,41 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <!-- 存储空间：摘要 + 分段条 + 来源图例，紧凑单卡（占两列） -->
+        <!-- 存储空间：摘要 + 分段条 + 来源图例 + 新增占用趋势折线（占两列） -->
         <div v-else-if="w.id === 'storage'" v-loading="panelLoading(w.id)" class="admin-stat-card h-full">
-          <div class="flex items-center gap-1.5 text-sm text-ink-500 flex-wrap">
+          <div class="text-sm text-ink-500 mb-2 flex items-center gap-1.5 flex-wrap">
             <span class="widget-drag-handle" title="拖动调整位置">
               <IconRank class="w-3.5 h-3.5" />
             </span>
-            <IconBox class="w-3.5 h-3.5" />
-            存储空间
-            <span class="!ml-auto flex items-center flex-wrap gap-x-2 gap-y-0.5 text-[11px] font-normal">
-              <span title="未过期的上传预留；长期不消可到存储明细清理">
-                预扣中
-                <b class="tabular-nums" :class="(data?.storage?.pendingBytes ?? 0) > 0 ? 'text-amber-600' : 'text-ink-700'">
-                  {{ fmtBytes(data?.storage?.pendingBytes) }}
-                </b>
-                <span v-if="(data?.storage?.pendingCount ?? 0) > 0" class="text-amber-600">（{{ data?.storage?.pendingCount }} 笔）</span>
-              </span>
-              <span class="text-ink-400">·</span>
-              <span>可用 <b class="text-accent-700 tabular-nums font-medium">{{ fmtBytes(data?.storage?.availableBytes) }}</b></span>
-              <span class="text-ink-400">·</span>
-              <span>{{ data?.storage?.users ?? 0 }} 个用户</span>
-              <router-link to="/admin/storage" class="text-accent-600 hover:text-accent-700 font-medium">明细 →</router-link>
+            <span class="flex items-center gap-1.5">
+              <IconBox class="w-3.5 h-3.5" />
+              存储空间
             </span>
+            <el-radio-group v-model="storageTrendRange" size="small" class="!ml-auto">
+              <el-radio-button
+                v-for="r in TREND_RANGES"
+                :key="r.key"
+                :value="r.key"
+              >
+                {{ r.label }}
+              </el-radio-button>
+            </el-radio-group>
+          </div>
+
+          <!-- 预扣 / 可用 / 用户数 / 明细入口 -->
+          <div class="flex items-center flex-wrap gap-x-2 gap-y-0.5 text-[11px] text-ink-500">
+            <span title="未过期的上传预留；长期不消可到存储明细清理">
+              预扣中
+              <b class="tabular-nums" :class="(data?.storage?.pendingBytes ?? 0) > 0 ? 'text-amber-600' : 'text-ink-700'">
+                {{ fmtBytes(data?.storage?.pendingBytes) }}
+              </b>
+              <span v-if="(data?.storage?.pendingCount ?? 0) > 0" class="text-amber-600">（{{ data?.storage?.pendingCount }} 笔）</span>
+            </span>
+            <span class="text-ink-400">·</span>
+            <span>可用 <b class="text-accent-700 tabular-nums font-medium">{{ fmtBytes(data?.storage?.availableBytes) }}</b></span>
+            <span class="text-ink-400">·</span>
+            <span>{{ data?.storage?.users ?? 0 }} 个用户</span>
+            <router-link to="/admin/storage" class="text-accent-600 hover:text-accent-700 font-medium">明细 →</router-link>
           </div>
 
           <!-- 已使用 / 总量 摘要与分段用量条同行 -->
@@ -717,6 +836,11 @@ onUnmounted(() => {
             </span>
             <span v-if="!storageSegments.length" class="text-ink-400">暂无存储数据</span>
           </div>
+
+          <div class="text-[11px] text-ink-400 mt-2">
+            折线为该周期新增占用（音乐 / AI 图 / 子站，UTC+8 口径）
+          </div>
+          <div ref="storageChartEl" class="w-full h-[200px] mt-2"></div>
         </div>
 
         <!-- 禁用用户 -->
@@ -972,7 +1096,7 @@ onUnmounted(() => {
             >
               <span class="text-ink-400 w-4 text-right tabular-nums">{{ i + 1 }}.</span>
               <a
-                v-if="t.tool_url"
+                v-if="isSafeToolUrl(t.tool_url)"
                 :href="t.tool_url"
                 target="_blank"
                 rel="noopener noreferrer"
@@ -991,6 +1115,133 @@ onUnmounted(() => {
               查看全部 TOP →
             </router-link>
           </div>
+        </div>
+
+        <!-- 活跃用户：使用次数排名，点击用户切到单人使用趋势折线图 -->
+        <div
+          v-else-if="w.id === 'activeUsers'"
+          v-loading="panelLoading(w.id) || userUsageLoading"
+          class="admin-stat-card h-full flex flex-col"
+        >
+          <!-- 排名视图（默认） -->
+          <template v-if="!selectedUser">
+            <div class="text-sm text-ink-500 mb-2 flex items-center gap-1.5 flex-wrap">
+              <span class="widget-drag-handle" title="拖动调整位置">
+                <IconRank class="w-3.5 h-3.5" />
+              </span>
+              <span class="flex items-center gap-1.5">
+                <IconTrendCharts class="w-3.5 h-3.5" />
+                活跃用户
+              </span>
+              <el-radio-group v-model="activeUsersRange" size="small" class="!ml-auto">
+                <el-radio-button
+                  v-for="r in ACTIVE_USERS_RANGES"
+                  :key="r.key"
+                  :value="r.key"
+                >
+                  {{ r.label }}
+                </el-radio-button>
+              </el-radio-group>
+            </div>
+            <div class="grid grid-cols-4 divide-x divide-ink-100">
+              <div class="pr-2 first:pl-0">
+                <div class="text-[11px] text-ink-400">今日</div>
+                <div class="mt-0.5 text-lg font-semibold text-accent-700 tabular-nums leading-tight">
+                  {{ data?.activeUserCounts?.daily ?? 0 }}
+                </div>
+              </div>
+              <div class="px-2">
+                <div class="text-[11px] text-ink-400">本周</div>
+                <div class="mt-0.5 text-lg font-semibold text-ink-900 tabular-nums leading-tight">
+                  {{ data?.activeUserCounts?.weekly ?? 0 }}
+                </div>
+              </div>
+              <div class="px-2">
+                <div class="text-[11px] text-ink-400">本月</div>
+                <div class="mt-0.5 text-lg font-semibold text-ink-900 tabular-nums leading-tight">
+                  {{ data?.activeUserCounts?.monthly ?? 0 }}
+                </div>
+              </div>
+              <div class="pl-2 last:pr-0">
+                <div class="text-[11px] text-ink-400">累计</div>
+                <div class="mt-0.5 text-lg font-semibold text-ink-900 tabular-nums leading-tight">
+                  {{ data?.activeUserCounts?.all ?? 0 }}
+                </div>
+              </div>
+            </div>
+            <div v-if="activeRanking.length" class="space-y-1.5 flex-1 min-h-[224px] overflow-y-auto pr-0.5 mt-2">
+              <button
+                v-for="(u, i) in activeRanking"
+                :key="u.uid"
+                type="button"
+                class="flex items-center gap-2 text-sm w-full text-left rounded-md px-1.5 -mx-1.5 hover:bg-ink-50 transition-colors"
+                :title="`查看 ${activeUserDisplayName(u)} 的使用趋势`"
+                @click="openUserTrend(u)"
+              >
+                <span class="text-ink-400 w-4 text-right tabular-nums shrink-0">{{ i + 1 }}.</span>
+                <span class="text-ink-900 truncate flex-1">{{ activeUserDisplayName(u) }}</span>
+                <span class="text-accent-700 font-medium tabular-nums">{{ u.count }}</span>
+              </button>
+            </div>
+            <div v-else class="text-xs text-ink-400 flex-1 grid place-items-center min-h-[224px]">该时间窗内暂无使用记录</div>
+            <div class="text-[11px] text-ink-400 mt-2">点击用户查看其每日 / 每周 / 每月使用趋势</div>
+          </template>
+
+          <!-- 单人趋势视图：左上角返回排名 -->
+          <template v-else>
+            <div class="text-sm text-ink-500 mb-2 flex items-center gap-1.5 flex-wrap">
+              <span class="widget-drag-handle" title="拖动调整位置">
+                <IconRank class="w-3.5 h-3.5" />
+              </span>
+              <button
+                type="button"
+                class="flex items-center gap-0.5 text-accent-600 hover:text-accent-700 transition-colors whitespace-nowrap"
+                title="回到用户使用工具次数排名"
+                @click="backToActiveRanking"
+              >
+                <IconBack class="w-3.5 h-3.5" />
+                返回排名
+              </button>
+              <span class="text-ink-900 font-medium truncate" :title="selectedUser.name">{{ selectedUser.name }}</span>
+              <el-radio-group v-model="userUsageTrendRange" size="small" class="!ml-auto">
+                <el-radio-button
+                  v-for="r in TREND_RANGES"
+                  :key="r.key"
+                  :value="r.key"
+                >
+                  {{ r.label }}
+                </el-radio-button>
+              </el-radio-group>
+            </div>
+            <div class="grid grid-cols-4 divide-x divide-ink-100">
+              <div class="pr-2 first:pl-0">
+                <div class="text-[11px] text-ink-400">今日</div>
+                <div class="mt-0.5 text-lg font-semibold text-accent-700 tabular-nums leading-tight">
+                  {{ data?.activeUserUsage?.daily ?? 0 }}
+                </div>
+              </div>
+              <div class="px-2">
+                <div class="text-[11px] text-ink-400">本周</div>
+                <div class="mt-0.5 text-lg font-semibold text-ink-900 tabular-nums leading-tight">
+                  {{ data?.activeUserUsage?.weekly ?? 0 }}
+                </div>
+              </div>
+              <div class="px-2">
+                <div class="text-[11px] text-ink-400">本月</div>
+                <div class="mt-0.5 text-lg font-semibold text-ink-900 tabular-nums leading-tight">
+                  {{ data?.activeUserUsage?.monthly ?? 0 }}
+                </div>
+              </div>
+              <div class="pl-2 last:pr-0">
+                <div class="text-[11px] text-ink-400">累计</div>
+                <div class="mt-0.5 text-lg font-semibold text-ink-900 tabular-nums leading-tight">
+                  {{ data?.activeUserUsage?.all ?? 0 }}
+                </div>
+              </div>
+            </div>
+            <div class="text-[11px] text-ink-400 mt-2">折线为该用户进入工具页次数（UTC+8 口径）</div>
+            <div ref="userUsageChartEl" class="w-full h-[200px] mt-2"></div>
+          </template>
         </div>
 
         <!-- 慢日志数（阈值 100ms） -->

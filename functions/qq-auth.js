@@ -1,5 +1,5 @@
 // QQ 登录认证
-import { handleCORSPreflight, createCORSResponse, createCORSErrorResponse } from './utils/cors.js'
+import { handleCORSPreflight, createCORSResponse, createCORSErrorResponse, isOriginAllowed } from './utils/cors.js'
 import { buildStateCookie, clearStateCookie, readStateCookie } from './utils/oauth-state.js'
 
 export async function onRequest(context) {
@@ -60,8 +60,12 @@ async function getAuthUrl(request, env, origin) {
             success: true,
             auth_url: authUrl
         }, origin);
-        // state 同步种到 HttpOnly cookie，供回调时比对（弹窗顶级导航会携带 SameSite=Lax cookie）
-        response.headers.append('Set-Cookie', buildStateCookie('qq', state, request.url));
+        // state 种入 HttpOnly cookie，供回调时比对（弹窗顶级导航会携带 SameSite=Lax cookie）；
+        // 同时绑定发起页 origin，回调时作为 postMessage 的 targetOrigin。
+        // 发起页 origin 只接受 CORS 白名单内的值，跨站伪造发起一律回退本站 origin
+        response.headers.append('Set-Cookie', buildStateCookie('qq', state, request.url, {
+            origin: isOriginAllowed(origin) ? origin : new URL(request.url).origin
+        }));
         return response;
 
     } catch (error) {
@@ -83,31 +87,36 @@ async function doHandleAuthCallback(request, env) {
         const code = url.searchParams.get('code');
         const error = url.searchParams.get('error');
         const state = url.searchParams.get('state');
+        const ownOrigin = url.origin;
 
         if (error) {
             // 登录失败，关闭弹窗并发送错误信息
             return createCallbackResponse('error', {
                 success: false,
                 message: '用户取消登录或授权失败'
-            });
+            }, ownOrigin);
         }
 
         if (!code) {
             return createCallbackResponse('error', {
                 success: false,
                 message: '缺少授权码'
-            });
+            }, ownOrigin);
         }
 
         // CSRF 校验：回跳的 state 必须与发起授权时种下的 cookie 一致。
         // 部署前发起的旧授权没有 state，会得到明确提示重新登录。
         const cookieState = readStateCookie('qq', request);
-        if (!state || !cookieState || state !== cookieState) {
+        if (!state || !cookieState || state !== cookieState.state) {
             return createCallbackResponse('error', {
                 success: false,
                 message: '登录状态校验失败，请重新发起登录'
-            });
+            }, ownOrigin);
         }
+
+        // 登录结果 postMessage 回发起页：目标 origin 用发起时绑定进 cookie 的值，
+        // 未绑定时回退本站 origin，绝不使用 '*'（防止 token 落入恶意 opener）
+        const targetOrigin = cookieState.origin || ownOrigin;
 
         // redirect_uri 必须与授权链接里的一致才能换 token；
         // 从回调请求自身重建（origin + path），/api/qq-auth 与旧版 /qq-auth 链接都能对上
@@ -120,7 +129,7 @@ async function doHandleAuthCallback(request, env) {
             return createCallbackResponse('error', {
                 success: false,
                 message: '令牌交换失败'
-            });
+            }, targetOrigin);
         }
 
         // 获取OpenID
@@ -129,7 +138,7 @@ async function doHandleAuthCallback(request, env) {
             return createCallbackResponse('error', {
                 success: false,
                 message: '获取OpenID失败'
-            });
+            }, targetOrigin);
         }
 
         // 获取用户信息
@@ -138,7 +147,7 @@ async function doHandleAuthCallback(request, env) {
             return createCallbackResponse('error', {
                 success: false,
                 message: '获取用户信息失败'
-            });
+            }, targetOrigin);
         }
 
         // 处理用户登录
@@ -146,8 +155,8 @@ async function doHandleAuthCallback(request, env) {
         if (!loginResult.success) {
             return createCallbackResponse('error', {
                 success: false,
-                message: '登录失败'
-            });
+                message: loginResult.error || '登录失败'
+            }, targetOrigin);
         }
 
         // 登录成功，关闭弹窗并发送用户信息
@@ -158,26 +167,41 @@ async function doHandleAuthCallback(request, env) {
                 token: loginResult.token
             },
             message: loginResult.message
-        });
+        }, targetOrigin);
 
     } catch (error) {
         console.error('QQ callback error:', error);
+        // 不回显 error.message：内部异常信息可能携带上游响应细节，统一对外文案
         return createCallbackResponse('error', {
             success: false,
-            message: error.message
-        });
+            message: '登录处理异常，请稍后重试'
+        }, new URL(request.url).origin);
     }
 }
 
 // 创建回调响应的工具函数
-function createCallbackResponse(type, data) {
+function createCallbackResponse(type, data, targetOrigin) {
+    // JSON 嵌入 <script> 前必须转义 <（写成等价的 \u003c）：HTML 解析器不认识
+    // JS 字符串边界，内容中出现字面量 </script> 会提前闭合标签注入脚本。
+    // U+2028/U+2029 是 JS 行终止符，一并转义。nonce + CSP 为纵深防御。
+    const json = JSON.stringify({ type, ...data })
+        .replace(/</g, '\\u003c')
+        .replace(/\u2028/g, '\\u2028')
+        .replace(/\u2029/g, '\\u2029');
+    // targetOrigin 由调用方传入（发起时绑定的发起页 origin 或本站 origin）；
+    // 绝不使用 '*'，否则含 JWT 的消息可能被恶意 opener 收走
+    const origin = targetOrigin;
+    const nonce = crypto.randomUUID().replace(/-/g, '');
     const script = `
-    window.opener && window.opener.postMessage(${JSON.stringify({ type, ...data })}, '*');
+    window.opener && window.opener.postMessage(${json}, ${JSON.stringify(origin)});
     window.close();
   `;
 
-    return new Response(`<script>${script}</script>`, {
-        headers: { 'Content-Type': 'text/html; charset=utf-8' }
+    return new Response(`<script nonce="${nonce}">${script}</script>`, {
+        headers: {
+            'Content-Type': 'text/html; charset=utf-8',
+            'Content-Security-Policy': `default-src 'none'; script-src 'nonce-${nonce}'`
+        }
     });
 }
 
@@ -354,17 +378,22 @@ async function processUserLogin(userData, openId, env) {
         WHERE id = ?
       `).bind(avatar, nowStr, username, userId).run();
         } else {
-            // 创建新用户
+            // 创建新用户（user_level 默认 0，与 github/google 一致）
             userId = crypto.randomUUID();
             await db.prepare(`
         INSERT INTO user (id, email, avatar, created_at, last_login, third_party_uid, username, user_level, third_party_type)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).bind(userId, email, avatar, nowStr, nowStr, thirdPartyUid, username, 1, 'qq').run();
+      `).bind(userId, email, avatar, nowStr, nowStr, thirdPartyUid, username, 0, 'qq').run();
         }
 
-        // 查询 is_admin（确保 JWT 反映最新管理员状态）
-        const adminRow = await db.prepare('SELECT is_admin FROM user WHERE id = ?').bind(userId).first();
-        const isAdmin = adminRow?.is_admin ? 1 : 0;
+        // 管理员状态 / 封禁 / token 版本一次查齐（JWT 反映最新权限，封禁即时拦截）
+        const stateRow = await db.prepare(
+            'SELECT is_admin, is_disabled, token_version FROM user WHERE id = ?'
+        ).bind(userId).first();
+        if (stateRow && stateRow.is_disabled) {
+            return { success: false, error: '该账号已被禁用，如有疑问请联系站长' };
+        }
+        const isAdmin = stateRow?.is_admin ? 1 : 0;
 
         // 生成JWT
         if (!env.JWT_SECRET) {
@@ -383,6 +412,8 @@ async function processUserLogin(userData, openId, env) {
                 gender,
                 province,
                 city,
+                // ver 与库中 token_version 对齐：改密/重置/封禁后旧登录态立即失效
+                ver: stateRow?.token_version || 0,
                 iat: Math.floor(Date.now() / 1000),
                 exp: Math.floor(Date.now() / 1000) + 24 * 60 * 60 * 7
             },
@@ -407,9 +438,10 @@ async function processUserLogin(userData, openId, env) {
 
     } catch (error) {
         console.error('User login processing error:', error);
+        // 对外固定文案，内部错误细节只进日志（会经回调页回显给用户）
         return {
             success: false,
-            error: error.message
+            error: '登录处理失败，请稍后重试'
         };
     }
 }
@@ -426,17 +458,9 @@ export async function onRequestOptions() {
     });
 }
 
-// 工具函数
+// 工具函数：统一写 UTC 的 "YYYY-MM-DD HH:mm:ss"，与 github-auth 等保持一致
 function formatNow() {
-    const d = new Date();
-    const p = (n) => String(n).padStart(2, '0');
-    const y = d.getFullYear();
-    const m = p(d.getMonth() + 1);
-    const day = p(d.getDate());
-    const hh = p(d.getHours());
-    const mm = p(d.getMinutes());
-    const ss = p(d.getSeconds());
-    return `${y}-${m}-${day} ${hh}:${mm}:${ss}`;
+    return new Date().toISOString().slice(0, 19).replace('T', ' ');
 }
 
 async function signJWT(payload, secret) {

@@ -62,8 +62,18 @@ export async function onRequest(context) {
         ORDER BY is_public DESC, sort_order ASC, id ASC
       `).bind(...vis.args).all()
 
-      // 普通用户看公开厂商：api_key 已经在 SELECT 里没选
-      return json({ success: true, data: result.results || [] })
+      // 普通用户看公开厂商：api_key 已经在 SELECT 里没选；
+      // base_url 一并隐藏（2026-10 安全加固：内部上游地址不向非 owner 泄露，
+      // 前端 ModelConfigTab 对只读厂商本就展示"base_url 已隐藏"占位）。
+      // 注意 uid && 守卫：未登录 uid 为 ''、公开厂商 uid 也为 ''，
+      // 不加守卫会把游客误判成 owner（stripSensitive 同款坑）
+      const rows = result.results || []
+      if (!isAdminUser) {
+        for (const row of rows) {
+          if (!(uid && row.uid === uid)) row.base_url = ''
+        }
+      }
+      return json({ success: true, data: rows })
     }
 
     // POST 创建（必须登录）
@@ -186,7 +196,8 @@ export async function onRequest(context) {
 }
 
 /**
- * 普通用户看公开厂商的详情时，剥掉 api_key
+ * 普通用户看公开厂商的详情时，剥掉 api_key 与 base_url
+ * （与 ai-models.js 的 STRIPPED_FIELDS_FOR_NON_OWNER 同一套策略）
  */
 function stripSensitive(row, { isAdminUser, viewerUid, ownerUid }) {
   if (isAdminUser) return row
@@ -194,6 +205,7 @@ function stripSensitive(row, { isAdminUser, viewerUid, ownerUid }) {
   // 否则游客会被误判为 owner 而拿到真实的 api_key
   if (viewerUid && ownerUid === viewerUid) return row
   if (row.api_key !== undefined) row.api_key = ''
+  if (row.base_url !== undefined) row.base_url = ''
   return row
 }
 

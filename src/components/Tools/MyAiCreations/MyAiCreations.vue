@@ -217,9 +217,8 @@ const handleBatchDelete = async () => {
     selectedGroupIds.clear()
     const skippedNote = res.skipped_ids.length ? `，跳过 ${res.skipped_ids.length} 个（不存在或无权限）` : ''
     ElMessage.success(`已删除 ${res.groups_deleted} 个合集（R2 ${res.r2_deleted}/${res.images}）${skippedNote}`)
-    if (groups.value.length === 0 && pagination.value.hasNext) {
-      loadGroups()
-    }
+    // 重新拉取当前页，补上因删除空出的位置，保证整页是满的
+    await refreshPageAfterDelete()
   } catch (e: any) {
     console.error('[my-ai-creations] batch delete error:', e)
     ElMessage.error(e?.response?.data?.error || e?.message || '批量删除失败')
@@ -374,19 +373,27 @@ const downloadNameOf = (img: AiCreationImage): string => {
 
 // ============ 收藏 / 星标 ============
 // 乐观更新：先改本地，PATCH 失败再回滚。
+// in-flight 防抖：快速双击会并发两个 PATCH，第二个失败回滚时会把星标
+// 翻回与服务器相反的状态，因此同一组进行中时忽略后续点击
+const favoritingGroups = new Set<number>()
 const toggleFavorite = async (g: AiCreationGroup) => {
+  if (favoritingGroups.has(g.id)) return
+  favoritingGroups.add(g.id)
   const target = !g.favorited
   g.favorited = target
   try {
     await toggleAiCreationGroupFavorite(g.id, target)
-    // 「只看收藏」模式下取消收藏后该组会从筛选里消失，直接本地移除
+    // 「只看收藏」模式下取消收藏后该组会从筛选里消失，重新拉取当前页补满
     if (!target && favOnly.value) {
       groups.value = groups.value.filter((x) => x.id !== g.id)
       pagination.value.total = Math.max(0, pagination.value.total - 1)
+      void refreshPageAfterDelete()
     }
   } catch (e: any) {
     g.favorited = !target
     ElMessage.error(e?.response?.data?.error || '收藏操作失败')
+  } finally {
+    favoritingGroups.delete(g.id)
   }
 }
 
@@ -458,6 +465,9 @@ type DisplayItem =
 const displayItems = computed<DisplayItem[]>(() => {
   const out: DisplayItem[] = []
   for (const g of groups.value) {
+    // 空图组（后端删图不清理空组，另一设备删光一组后本端会拿到 images: []）：
+    // 展开态下直接跳过，避免 g.images[0] 为 undefined 使整个列表渲染崩溃
+    if (g.images.length === 0) continue
     if (showAllImages.value) {
       if (g.images.length > 1) {
         out.push({ kind: 'group-expanded', group: g })
@@ -478,8 +488,9 @@ const itemKey = (item: DisplayItem): number | string => {
   return `i-${item.image.id}`
 }
 
-/** 把当前列表里所有 image 的 id 拍平，调一次批量接口 */
-const loadClaimsForCurrentList = async () => {
+/** 把当前列表里所有 image 的 id 拍平，调一次批量接口。
+ *  expectedSeq：调用方（loadGroups）的请求代际，过期响应直接丢弃，防止覆盖新列表的认领缓存 */
+const loadClaimsForCurrentList = async (expectedSeq?: number) => {
   if (!userStore.getLoginStatus) return
   const allIds: number[] = []
   for (const g of groups.value) {
@@ -489,6 +500,7 @@ const loadClaimsForCurrentList = async () => {
   claimsLoading.value = true
   try {
     const claims = await fetchImageClaims(allIds)
+    if (expectedSeq !== undefined && expectedSeq !== groupsSeq) return
     // 清掉本次不在 allIds 里的旧 key（其它列表/旧页面残留）
     const allowed = new Set(allIds)
     for (const k of Array.from(claimsByImageId.keys())) {
@@ -502,7 +514,9 @@ const loadClaimsForCurrentList = async () => {
   } catch (err) {
     console.warn('[my-ai-creations] load claims failed', err)
   } finally {
-    claimsLoading.value = false
+    if (expectedSeq === undefined || expectedSeq === groupsSeq) {
+      claimsLoading.value = false
+    }
   }
 }
 
@@ -712,10 +726,8 @@ const handleDeleteGroup = async (g: AiCreationGroup) => {
     if (selectedGroup.value && selectedGroup.value.id === g.id) {
       closeGroupDetail()
     }
-    // 列表为空时再拉一次刷新
-    if (groups.value.length === 0 && pagination.value.hasNext) {
-      loadGroups()
-    }
+    // 重新拉取当前页，补上因删除空出的位置，保证整页是满的
+    await refreshPageAfterDelete()
   } catch (e: any) {
     console.error('[my-ai-creations] delete group error:', e)
     ElMessage.error(e?.response?.data?.error || e?.message || '删除失败')
@@ -787,6 +799,8 @@ const handleDeleteImage = async (img: AiCreationImage, parentGroup?: AiCreationG
         const idx = groups.value.findIndex((x) => groupKeyOf(x) === groupKeyOf(parentGroup))
         if (idx >= 0) groups.value.splice(idx, 1)
         pagination.value.total = Math.max(0, pagination.value.total - 1)
+        // 该组从列表里消失后重新拉取当前页，保证整页是满的
+        await refreshPageAfterDelete()
       }
     }
   } catch (e: any) {
@@ -821,7 +835,11 @@ const loadCategories = async () => {
   }
 }
 
+// 请求代际：翻页/切筛选连点时仅最新一次响应可写回，防止旧响应覆盖新列表
+let groupsSeq = 0
+
 const loadGroups = async () => {
+  const seq = ++groupsSeq
   loading.value = true
   try {
     const result = await fetchAiCreations({
@@ -833,22 +851,33 @@ const loadGroups = async () => {
       favOnly: favOnly.value || undefined,
       source: sourceFilter.value === 'all' ? undefined : sourceFilter.value,
     })
+    if (seq !== groupsSeq) return
     loadedCoverIds.clear()
     failedIds.clear()
     groups.value = result.groups
     pagination.value = result.pagination
     // 列表更新后批量拉当前页所有图的认领记录（认领数据量小，单次请求覆盖整页）
-    await loadClaimsForCurrentList()
+    await loadClaimsForCurrentList(seq)
     // 标签聚合只在进页面 / 标签变动后需要刷新；跟在列表后面拉一次，保证筛选 chips 计数准确
     loadTags()
   } catch (e: any) {
+    if (seq !== groupsSeq) return
     console.error('load ai-creations fail', e)
     if (e?.response?.status === 401) {
       ElMessage.warning('请先登录')
     }
   } finally {
-    loading.value = false
+    if (seq === groupsSeq) loading.value = false
   }
+}
+
+/** 删除/取消收藏后刷新当前页：重新拉满一整页数据，避免只做本地移除导致一页越删越少。
+ *  若删掉的是末页仅剩的数据（当前页已越过新的末页），先回退到新的末页再拉取。 */
+const refreshPageAfterDelete = async () => {
+  const maxPage = Math.max(1, Math.ceil(pagination.value.total / pagination.value.pageSize))
+  if (pagination.value.page > maxPage) pagination.value.page = maxPage
+  syncUrl()
+  await loadGroups()
 }
 
 const handleCategoryChange = (name: string) => {

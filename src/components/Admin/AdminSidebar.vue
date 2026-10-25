@@ -28,6 +28,8 @@ const route = useRoute()
 const router = useRouter()
 const adminStore = useAdminStore()
 
+const APP_TITLE = (import.meta.env.VITE_APP_TITLE as string) || '一方工具箱'
+
 interface MenuItem {
   index: string
   title: string
@@ -123,7 +125,7 @@ const go = (path: string) => {
       </span>
       <span class="min-w-0">
         <span class="block text-sm font-semibold text-ink-900 leading-tight truncate">
-          开发者工具箱
+          {{ APP_TITLE }}
         </span>
         <span class="block text-[11px] text-ink-400 leading-tight mt-0.5">管理后台</span>
       </span>

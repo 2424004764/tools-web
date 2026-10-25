@@ -12,7 +12,7 @@ import { useToolsStore } from '@/store/modules/tools'
 import { useComponentStore } from '@/store/modules/component'
 import { getCateIcon } from '@/components/Home/cateIcons'
 
-const appName = import.meta.env.VITE_APP_TITLE || '工具坊'
+const appName = import.meta.env.VITE_APP_TITLE || '一方工具箱'
 const appNet = import.meta.env.VITE_APP_DESC || ''
 
 // 左下角波浪装饰的渐变 id：组件会在侧栏和抽屉中各渲染一份，需保证 id 唯一

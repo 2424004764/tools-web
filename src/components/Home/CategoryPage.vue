@@ -101,7 +101,7 @@ onMounted(async () => {
       // store 内部已有本地兜底
     }
   }
-  if (cate.value) document.title = `${cate.value.title}-${import.meta.env.VITE_APP_TITLE || '工具坊'}`
+  if (cate.value) document.title = `${cate.value.title}-${import.meta.env.VITE_APP_TITLE || '一方工具箱'}`
   ensureFavoritesLoaded()
 })
 

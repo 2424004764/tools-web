@@ -37,6 +37,11 @@ import defaultAvatar from '@/assets/default_avatar.png'
 const router = useRouter()
 const route = useRoute()
 
+// tool_url 来自可编辑的工具表：只信任 http(s) 与站内相对路径，
+// 防止被填入 javascript: 等协议后点击即执行
+const isSafeToolUrl = (u?: string | null) =>
+  !!u && (/^https?:\/\//i.test(u) || u.startsWith('/'))
+
 // 存储列点击 → 存储明细页并直接打开该用户弹窗
 const goStorageDetail = (uid: string) => {
   router.push({ path: '/admin/storage', query: { uid } })
@@ -58,9 +63,19 @@ const filter = reactive({
   disabled: '' as '' | '0' | '1',
 })
 
+// 库里的时间格式不统一：既有 "2026-10-23 05:13:00"（UTC），也有完整
+// ISO 串 "2026-10-23T05:13:00.663Z"。带时区的直接解析，不带的按 UTC 处理。
 const formatTime = (s: string | null) => {
   if (!s) return '-'
-  const d = new Date(s.replace(' ', 'T') + 'Z')
+  const str = s.trim()
+  let d: Date
+  if (/[zZ]$|[+-]\d{2}:?\d{2}$/.test(str)) {
+    d = new Date(str)
+  } else if (str.includes(':')) {
+    d = new Date(str.replace(' ', 'T') + 'Z')
+  } else {
+    d = new Date(`${str}T00:00:00Z`)
+  }
   if (Number.isNaN(d.getTime())) return s
   return d.toLocaleString('zh-CN', { hour12: false })
 }
@@ -76,7 +91,11 @@ const onAvatarError = (e: Event) => {
   img.src = defaultAvatar
 }
 
+// 请求代际：快速翻页/切筛选时仅最新一次 load 的响应可写回，防止旧响应覆盖新数据
+let loadSeq = 0
+
 const load = async () => {
+  const seq = ++loadSeq
   loading.value = true
   try {
     const result = await fetchAdminUsers({
@@ -85,12 +104,13 @@ const load = async () => {
       keyword: filter.keyword || undefined,
       disabled: filter.disabled || undefined,
     })
+    if (seq !== loadSeq) return
     list.value = result.list
     pagination.value = result.pagination
   } catch (err) {
-    console.error(err)
+    if (seq === loadSeq) console.error(err)
   } finally {
-    loading.value = false
+    if (seq === loadSeq) loading.value = false
   }
 }
 
@@ -227,6 +247,33 @@ const openCreditDialog = (user: AdminUser) => {
   creditDialog.reason = ''
   creditDialog.visible = true
 }
+
+// 取消按钮与右上角 X / 遮罩 / ESC 走同一套脏检查关闭流程：
+// el-dialog 的 before-close 只拦截用户触发的关闭，不拦截程序化置 v-model=false
+const requestCloseCreditDialog = () =>
+  beforeCloseCreditDialog(() => {
+    creditDialog.visible = false
+  })
+const requestCloseStorageDialog = () =>
+  beforeCloseStorageDialog(() => {
+    storageDialog.visible = false
+  })
+const requestCloseEditDialog = () =>
+  beforeCloseEditDialog(() => {
+    editDialog.visible = false
+  })
+const requestCloseBatchCreditDialog = () =>
+  beforeCloseBatchCreditDialog(() => {
+    batchCreditDialog.visible = false
+  })
+const requestCloseResetPwdDialog = () =>
+  beforeCloseResetPwdDialog(() => {
+    resetPwdDialog.visible = false
+  })
+const requestCloseCreateDialog = () =>
+  beforeCloseCreateDialog(() => {
+    createDialog.visible = false
+  })
 
 const submitCredit = async () => {
   if (!creditDialog.uid) return
@@ -391,12 +438,13 @@ const submitBatchCredit = async () => {
   const scopeAll = selectedUids.value.length === 0
 
   // 全用户模式额外二次确认
+  // 注意不展示具体人数：pagination.total 是当前筛选下的总数（含管理员），
+  // 而全用户模式实际作用于全部非管理员用户，两者口径不同
   if (scopeAll) {
-    const total = pagination.value.total
     const op = batchCreditDialog.type === 'grant' ? '赠送' : '扣减'
     try {
       const { value } = await ElMessageBox.prompt(
-        `本次将对【全部 ${total} 个非管理员用户】${op} ${batchCreditDialog.amount} 积分。\n\n请输入「确认」二字以继续。`,
+        `本次将对【全部非管理员用户（管理员和您自己已被自动排除）】${op} ${batchCreditDialog.amount} 积分。\n\n请输入「确认」二字以继续。`,
         '⚠️ 全用户范围确认',
         {
           confirmButtonText: '确认执行',
@@ -460,8 +508,12 @@ const openLogsDialog = async (user: AdminUser) => {
   await loadLogs()
 }
 
+// 流水请求代际：快速连点两个用户时，仅最新弹窗对应 uid 的响应可写回
+let logsSeq = 0
+
 const loadLogs = async () => {
   if (!logsDialog.uid) return
+  const seq = ++logsSeq
   logsDialog.loading = true
   try {
     const result = await fetchUserCreditLogs(logsDialog.uid, {
@@ -469,13 +521,16 @@ const loadLogs = async () => {
       pageSize: logsDialog.pageSize,
       type: logsDialog.type,
     })
+    if (seq !== logsSeq) return
     logsDialog.list = result.list
     logsDialog.total = result.pagination.total
   } catch (err: any) {
-    console.error(err)
-    ElMessage.error(err?.response?.data?.error || '加载流水失败')
+    if (seq === logsSeq) {
+      console.error(err)
+      ElMessage.error(err?.response?.data?.error || '加载流水失败')
+    }
   } finally {
-    logsDialog.loading = false
+    if (seq === logsSeq) logsDialog.loading = false
   }
 }
 
@@ -538,6 +593,14 @@ const handleToggleDisabled = async (user: AdminUser) => {
 }
 
 // ============ 删除用户 ============
+// 删除后当前页可能越界（如末页唯一一条被删），回退到最后一个有效页再加载，
+// 否则后端按越界页码返回空列表，表格显示为空白
+const clampPageAfterDelete = (deletedCount: number) => {
+  const remaining = Math.max(0, pagination.value.total - deletedCount)
+  const maxPage = Math.max(1, Math.ceil(remaining / pagination.value.pageSize))
+  if (pagination.value.page > maxPage) pagination.value.page = maxPage
+}
+
 const handleDeleteUser = async (user: AdminUser) => {
   const label = user.username || user.email || user.id
   try {
@@ -556,6 +619,7 @@ const handleDeleteUser = async (user: AdminUser) => {
   try {
     await deleteAdminUser(user.id)
     ElMessage.success('已删除')
+    clampPageAfterDelete(1)
     load()
   } catch (err: any) {
     ElMessage.error(err?.response?.data?.error || '删除失败')
@@ -611,6 +675,7 @@ const handleBatchDelete = async () => {
       )
     }
     clearSelection()
+    clampPageAfterDelete(result.succeeded)
     load()
   } catch (err: any) {
     console.error(err)
@@ -636,9 +701,14 @@ const openEditDialog = (user: AdminUser) => {
 
 const submitEdit = async () => {
   if (!editDialog.uid) return
+  const username = (editDialog.username || '').trim()
+  if (!username) {
+    ElMessage.warning('用户名不能为空')
+    return
+  }
   editDialog.submitting = true
   try {
-    await updateAdminUser(editDialog.uid, { username: editDialog.username })
+    await updateAdminUser(editDialog.uid, { username })
     ElMessage.success('已更新')
     editDialog.visible = false
     load()
@@ -1002,6 +1072,7 @@ const updateIsMobile = () => {
                       class="flex items-center justify-between gap-2 text-xs hover:bg-accent-50 -mx-1 px-1 py-0.5 rounded"
                     >
                       <a
+                        v-if="isSafeToolUrl(t.tool_url)"
                         :href="t.tool_url"
                         target="_blank"
                         rel="noopener noreferrer"
@@ -1010,6 +1081,7 @@ const updateIsMobile = () => {
                       >
                         {{ t.tool_title }}
                       </a>
+                      <span v-else class="text-ink-800 truncate">{{ t.tool_title }}</span>
                       <el-tag size="small" effect="plain" type="info" class="!shrink-0">
                         {{ t.use_count }} 次
                       </el-tag>
@@ -1147,7 +1219,7 @@ const updateIsMobile = () => {
         <!-- 移动端按钮纵向堆叠 + 占满宽度，桌面端保持横向 -->
         <div :class="isMobile ? 'flex flex-col gap-2 w-full' : 'flex justify-end gap-2'">
           <el-button
-            @click="creditDialog.visible = false"
+            @click="requestCloseCreditDialog"
             :class="isMobile ? '!w-full !order-2' : '!order-1'"
           >取消</el-button>
           <el-button
@@ -1236,7 +1308,7 @@ const updateIsMobile = () => {
         <!-- 移动端按钮纵向堆叠 + 占满宽度，桌面端保持横向 -->
         <div :class="isMobile ? 'flex flex-col gap-2 w-full' : 'flex justify-end gap-2'">
           <el-button
-            @click="storageDialog.visible = false"
+            @click="requestCloseStorageDialog"
             :class="isMobile ? '!w-full !order-2' : '!order-1'"
           >取消</el-button>
           <el-button
@@ -1268,7 +1340,7 @@ const updateIsMobile = () => {
       <template #footer>
         <div :class="isMobile ? 'flex flex-col gap-2 w-full' : 'flex justify-end gap-2'">
           <el-button
-            @click="editDialog.visible = false"
+            @click="requestCloseEditDialog"
             :class="isMobile ? '!w-full !order-2' : '!order-1'"
           >取消</el-button>
           <el-button
@@ -1332,8 +1404,8 @@ const updateIsMobile = () => {
               </template>
               <template v-else>
                 ⚠️ 未勾选任何用户，将作用于
-                <strong>全部 {{ pagination.total }}</strong>
-                个非管理员用户（管理员和您自己已被自动排除）
+                <strong>全部非管理员用户</strong>
+                （管理员和您自己已被自动排除）
               </template>
             </div>
             <div class="text-xs text-ink-500 mt-1">
@@ -1377,7 +1449,7 @@ const updateIsMobile = () => {
         <div :class="isMobile ? 'flex flex-col gap-2 w-full' : 'flex justify-end gap-2'">
           <template v-if="!batchCreditDialog.lastResult">
             <el-button
-              @click="closeBatchCreditDialog"
+              @click="requestCloseBatchCreditDialog"
               :class="isMobile ? '!w-full !order-2' : '!order-1'"
             >取消</el-button>
             <el-button
@@ -1600,7 +1672,7 @@ const updateIsMobile = () => {
 
       <template #footer>
         <template v-if="!resetPwdDialog.result">
-          <el-button @click="resetPwdDialog.visible = false">取消</el-button>
+          <el-button @click="requestCloseResetPwdDialog">取消</el-button>
           <el-button
             type="primary"
             :loading="resetPwdDialog.submitting"
@@ -1767,7 +1839,7 @@ const updateIsMobile = () => {
 
       <template #footer>
         <template v-if="!createDialog.result">
-          <el-button @click="createDialog.visible = false">取消</el-button>
+          <el-button @click="requestCloseCreateDialog">取消</el-button>
           <el-button
             type="primary"
             :loading="createDialog.submitting"

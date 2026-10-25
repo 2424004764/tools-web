@@ -5,7 +5,7 @@
     <link rel="icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="renderer" content="webkit">
-    <meta name="referrer" content="no-referrer-when-downgrade">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
 
     <!-- 强制禁用所有缓存层：HTML/响应头失败时仍有兜底
          这套 meta 是给那些不严格遵守 Cache-Control 的中间代理/老浏览器看的
@@ -75,6 +75,18 @@
       window.addEventListener('pageshow', function(e) {
         if (e.persisted) checkAndReload();
       });
+
+      // 4) CSS preload 激活（捕获阶段全局委托）：任何 <link rel=preload as=style>
+      //    加载完成即转为 stylesheet。不能在 link 上写 onload="" 内联事件属性——
+      //    CSP 已移除 script-src 'unsafe-inline'，内联事件属性会被浏览器拦截，
+      //    CSS 将永远不生效。当前主 CSS 由 Vite 原生注入（无 preload 化），
+      //    此监听为将来启用非阻塞 CSS 时预留的通用兜底。
+      document.addEventListener('load', function(e) {
+        var t = e.target;
+        if (t && t.tagName === 'LINK' && t.getAttribute('rel') === 'preload' && t.getAttribute('as') === 'style') {
+          t.setAttribute('rel', 'stylesheet');
+        }
+      }, true);
     })();
     </script>
 
@@ -125,12 +137,7 @@
       "name": "开发者工具箱",
       "alternateName": "Fologde Tools",
       "url": "https://tool.fologde.com",
-      "description": "开发者工具箱是一个完全开源免费的在线工具站，提供80+种实用工具，涵盖开发运维、文本处理、教育学术、图片处理、数据图表、AI工具、趣味游戏等多个分类，包括MD5加密、JSON格式化、二维码生成识别、AI绘画、正则测试、时间戳转换、Base64编解码等，完全免费，无需注册",
-      "potentialAction": {
-        "@type": "SearchAction",
-        "target": "https://tool.fologde.com/search?q={search_term_string}",
-        "query-input": "required name=search_term_string"
-      }
+      "description": "开发者工具箱是一个完全开源免费的在线工具站，提供80+种实用工具，涵盖开发运维、文本处理、教育学术、图片处理、数据图表、AI工具、趣味游戏等多个分类，包括MD5加密、JSON格式化、二维码生成识别、AI绘画、正则测试、时间戳转换、Base64编解码等，完全免费，无需注册"
     }
     </script>
 

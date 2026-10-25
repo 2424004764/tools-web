@@ -11,9 +11,10 @@
 //     静态资源与接口请求不会经过 SPA 路由，天然不会上报
 //
 // 路由说明：本文件精确匹配 /api/me/site-visit（POST），
-// 需在 functions/_routes.json 的 include 中注册。
+// wrangler 按 functions 文件树自动生成路由。
 
 import { AuthMiddleware } from '../../middlewares/auth.js'
+import { getClientIp as getRateLimitIp, hitLimit } from '../../utils/rate-limit.js'
 
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -52,6 +53,15 @@ function getGeo(request) {
 
 export async function onRequestPost(context) {
   const { request, env } = context
+
+  // 匿名可写接口：按 IP 限流（60 次/分钟），防脚本刷 site_visits 污染统计、
+  // 推高 D1 写入成本。超限直接 noop —— best-effort 埋点不向调用方报错。
+  // 只信 CF-Connecting-IP（平台注入不可伪造），本地 dev 无该头时跳过
+  const rlIp = getRateLimitIp(request)
+  if (rlIp) {
+    const r = await hitLimit(env.VERIFICATION_CODES, `rl:track:visit:${rlIp}`, 60, 60)
+    if (!r.allowed) return jsonNoop()
+  }
 
   let body
   try {

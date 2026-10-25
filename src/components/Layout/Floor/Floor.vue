@@ -5,6 +5,7 @@ import { fetchApprovedFriendLinks, submitFriendLink, type PublicFriendLink } fro
 import { useComponentStore } from '@/store/modules/component'
 
 const componentStore = useComponentStore()
+const appTitle = import.meta.env.VITE_APP_TITLE || '一方工具箱'
 const appDesc = ref(import.meta.env.VITE_APP_DESC || '')
 const gitUrl = ref(import.meta.env.VITE_GIT_URL || '')
 const siteOrigin = ref(typeof window !== 'undefined' ? window.location.origin : '')
@@ -162,7 +163,7 @@ const elapsedText = computed(() => {
             </p>
             <el-form label-width="88px">
                 <el-form-item label="网站名称" required>
-                    <el-input v-model="applyForm.name" maxlength="40" show-word-limit placeholder="例如：一方工具箱" />
+                    <el-input v-model="applyForm.name" maxlength="40" show-word-limit :placeholder="`例如：${appTitle}`" />
                 </el-form-item>
                 <el-form-item label="网站地址" required>
                     <el-input v-model="applyForm.url" maxlength="500" placeholder="https://example.com" />

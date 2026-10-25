@@ -47,6 +47,9 @@ dev-dist/
 # 搜索引擎推送快照（运行 scripts/submit-search.mjs 生成）
 .search-submissions.json
 
+# 手工数据备份（含用户 PII，严禁入库）
+backup-*.json
+
 nul
 .zcode/
 $null

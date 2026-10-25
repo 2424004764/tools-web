@@ -7,7 +7,7 @@
 //   - 只能看自己（无越权风险）
 // 不含 operator 邮箱等敏感信息（前台不暴露）。
 //
-// 部署：同其它 me/* 路径，已在 _routes.json 注册。
+// 部署：同其它 me/* 路径，wrangler 按 functions 文件树自动生成路由。
 
 import { extractUidFromRequest } from '../../_lib/model-resolver.js'
 

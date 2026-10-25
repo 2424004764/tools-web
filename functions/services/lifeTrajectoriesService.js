@@ -23,12 +23,12 @@ export class LifeTrajectoriesService {
     this.model = new LifeTrajectoryModel(db, env, waitUntil)
   }
 
-  // 获取最新的人生轨迹列表（所有人可见，按时间倒序）
-  async list(pager) {
+  // 获取某用户自己的轨迹列表（私密，按时间倒序）
+  async list(pager, uid) {
     try {
-      const queryBuilder = new QueryBuilder().orderBy('createTime', 'DESC')
+      const queryBuilder = new QueryBuilder().where('uid', '=', uid).orderBy('createTime', 'DESC')
       pager.applyTo(queryBuilder)
-      const total = await this.model.count()
+      const total = await this.model.count(queryBuilder)
       const data = await this.model.findAll(queryBuilder)
       return { success: true, data: pager.createResult(data, total) }
     } catch (error) {

@@ -56,13 +56,15 @@ export async function onRequest(context) {
     }
 
     const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
+    // 禁用时递增 token_version：被禁用户已持有的 JWT 立即失效，不等 exp 自然过期
     await db
       .prepare(
         `UPDATE user
-         SET is_disabled = ?, disabled_reason = ?, disabled_at = ?
+         SET is_disabled = ?, disabled_reason = ?, disabled_at = ?,
+             token_version = CASE WHEN ? = 1 THEN token_version + 1 ELSE token_version END
          WHERE id = ?`,
       )
-      .bind(isDisabled, isDisabled ? reason || null : null, isDisabled ? now : null, uid)
+      .bind(isDisabled, isDisabled ? reason || null : null, isDisabled ? now : null, isDisabled, uid)
       .run()
 
     return json({ is_disabled: isDisabled })

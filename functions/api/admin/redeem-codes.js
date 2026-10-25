@@ -7,6 +7,8 @@
 // code 字母表：去掉 I/L/O/0/1 容易混淆的字符，保留 32 字符（A-Z + 2-9，剔除 I/L/O）
 // 长度 12 位 → 32^12 ≈ 1.2e18 组合空间，远超日常需求量。
 
+import { likeContains, likePrefix } from '../../utils/like.js'
+
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
@@ -69,8 +71,9 @@ async function handleList(request, env) {
   const db = env.DB
 
   try {
-    // ---- 1. 拉所有满足「基础筛选」条件的 code，附 user 兑换人信息 ----
-    // status 是派生字段，无法直接用 SQL 过滤；先按基础条件拉，再 JS 端筛 status
+    // ---- 1. 基础筛选（batch / keyword / status）全部落进 SQL，分页与计数同口径 ----
+    // status 是派生字段，但可等价翻译成 used_at / expires_at 与 datetime('now') 的比较
+    // （expires_at 库内为 UTC 'YYYY-MM-DD HH:MM:SS' 文本，与 datetime('now') 字典序可比）
     const where = []
     const args = []
     if (batch) {
@@ -80,8 +83,15 @@ async function handleList(request, env) {
     if (keyword) {
       // 支持 code 前缀 / 兑换人 email / uid 前缀
       where.push('(c.code LIKE ? OR u.email LIKE ? OR u.username LIKE ? OR c.used_by LIKE ?)')
-      const kw = `${keyword}%`
-      args.push(kw, `%${keyword}%`, `%${keyword}%`, kw)
+      const kw = likePrefix(keyword)
+      args.push(kw, likeContains(keyword), likeContains(keyword), kw)
+    }
+    if (status === 'used') {
+      where.push('c.used_at IS NOT NULL')
+    } else if (status === 'expired') {
+      where.push("c.used_at IS NULL AND c.expires_at IS NOT NULL AND c.expires_at < datetime('now')")
+    } else if (status === 'unused') {
+      where.push("c.used_at IS NULL AND (c.expires_at IS NULL OR c.expires_at >= datetime('now'))")
     }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : ''
 
@@ -99,41 +109,17 @@ async function handleList(request, env) {
       .bind(...args, pageSize, offset)
       .all()
 
-    const allRows = (rowsResult.results || []).map((r) => ({
+    const filtered = (rowsResult.results || []).map((r) => ({
       ...r,
       status: deriveStatus(r),
     }))
 
-    // status 在 JS 端过滤（必要时再 LIMIT/OFFSET）
-    const filtered = status
-      ? allRows.filter((r) => r.status === status)
-      : allRows
-
-    // ---- 2. 计数：total = 满足基础条件的总数（不含 status 过滤）----
-    // 因 D1 不支持 COUNT 子查询套 LIMIT，直接用单独查询
+    // ---- 2. 计数：与列表完全同条件，精确 total ----
     const countSql = `SELECT COUNT(*) AS total FROM credit_redeem_codes c
                       LEFT JOIN user u ON u.id = c.used_by
                       ${whereSql}`
     const totalRow = await db.prepare(countSql).bind(...args).first()
-    let total = totalRow?.total || 0
-
-    // 如果指定了 status，total 也按 status 过滤修正
-    if (status) {
-      // 仅在 keyword/batch 不复杂时可直接重算；为简单起见，这里按当前页结果近似
-      // 当 status 过滤生效但基础筛选无 keyword 时，重新拉一次全集做 derive 后计数
-      if (!keyword && !batch) {
-        const all = await db
-          .prepare(
-            `SELECT used_at, expires_at FROM credit_redeem_codes`,
-          )
-          .all()
-        const matched = (all.results || []).filter((r) => deriveStatus(r) === status).length
-        total = matched
-      } else {
-        // 退化方案：按当前页 * pageSize 粗估，前端分页可能略不准
-        total = filtered.length + offset
-      }
-    }
+    const total = totalRow?.total || 0
 
     // ---- 3. 批次下拉：取最近的 50 个批次 ----
     const batchesResult = await db

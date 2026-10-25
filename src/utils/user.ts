@@ -70,7 +70,9 @@ export function getUserFromToken(): UserInfo | null {
 export function isTokenExpired(token?: string): boolean {
     const t = token ?? getLocalToken() ?? '';
     const payload = parseJwt<{ exp?: number }>(t);
-    if (!payload || !payload.exp) return false;
+    // 解析失败或无 exp 的坏 token 按过期处理：
+    // 否则它会被当作"永久有效"一直随请求携带，直到后端 401
+    if (!payload || typeof payload.exp !== 'number') return true;
     return payload.exp * 1000 <= Date.now();
 }
 

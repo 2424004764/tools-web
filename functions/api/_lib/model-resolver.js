@@ -1,7 +1,7 @@
 // AI 模型配置共享库
 // 提供：resolveModel / renderTemplate / extractByPath / parseCapabilities
 
-import { AuthMiddleware } from '../../middlewares/auth.js'
+import { AuthMiddleware, checkUserTokenState } from '../../middlewares/auth.js'
 
 /**
  * 从 D1 查询指定 model_key 的完整模型配置
@@ -257,6 +257,9 @@ export async function extractUidFromRequest(request, env) {
   if (!env || !env.JWT_SECRET) return ''
   const verifyResult = await AuthMiddleware.verifyToken(token, env.JWT_SECRET)
   if (!verifyResult.success) return ''
+  // 与常规鉴权链一致的服务端实时校验：改密/重置/封禁后的旧 token 一律失效
+  const liveCheck = await checkUserTokenState(env, verifyResult.payload)
+  if (!liveCheck.ok) return ''
   return verifyResult.payload?.uid || ''
 }
 

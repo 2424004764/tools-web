@@ -53,6 +53,11 @@ const activeEmojiCategory = ref('笑脸');
 let messageChannel: any = null;
 let presenceChannel: any = null;
 
+// 订阅代际 token：cleanup 或新一轮 initChat 会递增它，
+// 挂起中的旧 initChat 在 await 恢复后若发现代际已变，直接放弃，
+// 防止卸载/切房后继续创建 channel（泄漏 + 旧房间消息串台）
+let chatGeneration = 0;
+
 // 当前用户的唯一ID
 const currentUserId = ref(`user-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`);
 
@@ -64,16 +69,19 @@ const isMyMessage = (msgNickname: string) => {
 // 初始化聊天
 const initChat = async () => {
   if (!props.roomId) return;
+  const gen = ++chatGeneration;
 
   try {
     const normalizedRoomId = props.roomId.toUpperCase();
 
     // 加载历史消息
     const historyData = await chatDb.getMessages(normalizedRoomId, 50);
+    if (gen !== chatGeneration) return; // 等待期间已被 cleanup 或新房间取代
     messages.value = (historyData || [])
       .map((msg: any) => {
+        // content 可能为 null（撤销消息/历史脏数据），判空防止整个面板渲染失败
         const amIMentioned = props.myNicknames.some(myName =>
-          msg.content.includes(`@${myName}`) || msg.content.includes(`@${myName} `)
+          (msg.content || '').includes(`@${myName}`) || (msg.content || '').includes(`@${myName} `)
         );
         return {
           id: msg.id,
@@ -96,7 +104,7 @@ const initChat = async () => {
 
       const isMyMsg = isMyMessage(newMsg.nickname);
       const amIMentioned = props.myNicknames.some(myName =>
-        newMsg.content.includes(`@${myName}`) || newMsg.content.includes(`@${myName} `)
+        (newMsg.content || '').includes(`@${myName}`) || (newMsg.content || '').includes(`@${myName} `)
       );
 
       messages.value.push({
@@ -223,6 +231,8 @@ const selectEmoji = (emoji: string) => {
 // 时间格式化
 const formatTime = (timestamp: number) => {
   const date = new Date(timestamp);
+  // 非法时间戳兜底：直接返回 '-'，避免界面出现 "Invalid Date"
+  if (Number.isNaN(date.getTime())) return '-';
   const now = new Date();
   const diff = now.getTime() - timestamp;
 
@@ -302,6 +312,8 @@ const handleKeydown = (e: Event | KeyboardEvent) => {
 
 // 清理资源
 const cleanup = () => {
+  chatGeneration++; // 使挂起中的 initChat 失效，恢复后不再创建 channel
+
   if (messageChannel) {
     supabase.removeChannel(messageChannel);
     messageChannel = null;

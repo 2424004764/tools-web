@@ -4,6 +4,8 @@
 // 鉴权已在 _middleware.js 完成。
 // 注意：本文件直接走原始 db.prepare，不经 wrapDb（避免被自己的慢查询日志循环记录）。
 
+import { likeContains } from '../../../utils/like.js'
+
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
@@ -62,7 +64,7 @@ export async function onRequest(context) {
     }
     if (pathFilter) {
       where.push('path LIKE ?')
-      args.push(`%${pathFilter}%`)
+      args.push(likeContains(pathFilter))
     }
     if (uidFilter) {
       where.push('uid = ?')
@@ -70,7 +72,7 @@ export async function onRequest(context) {
     }
     if (keyword) {
       where.push('(sql_text LIKE ? OR error LIKE ? OR path LIKE ?)')
-      const like = `%${keyword}%`
+      const like = likeContains(keyword)
       args.push(like, like, like)
     }
     if (minDuration !== null) {

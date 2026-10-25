@@ -32,6 +32,7 @@ import {
   deleteR2Object as _deleteR2Object,
   headR2ObjectSize as _headR2ObjectSize,
 } from './r2.js'
+import { likeContains } from '../utils/like.js'
 
 // 内部无前缀调用：直接用顶部 _ 别名（line 523 / 747 / 750 等位置直接写 _signR2PutUrl(...) / _deleteR2Object(...)）
 
@@ -368,7 +369,7 @@ export class MusicService {
     const params = [uid]
     if (keyword) {
       whereSql += ' AND (title LIKE ? OR artist LIKE ? OR album LIKE ?)'
-      const kw = `%${keyword}%`
+      const kw = likeContains(keyword)
       params.push(kw, kw, kw)
     }
     const countRow = await this.db

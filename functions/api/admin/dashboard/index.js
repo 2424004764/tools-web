@@ -15,6 +15,8 @@ import {
   getSlowQueries,
   getPending,
   getTransactions,
+  getSiteVisits,
+  getActiveUsers,
 } from './_data.js'
 
 const corsHeaders = {
@@ -51,6 +53,8 @@ export async function onRequest(context) {
       slowQueries,
       pending,
       transactions,
+      siteVisits,
+      activeUsers,
     ] = await Promise.all([
       getOverview(db),
       getStorage(db),
@@ -60,6 +64,8 @@ export async function onRequest(context) {
       getSlowQueries(db),
       getPending(db),
       getTransactions(db),
+      getSiteVisits(db),
+      getActiveUsers(db),
     ])
 
     return json({
@@ -71,6 +77,8 @@ export async function onRequest(context) {
       ...slowQueries,
       ...pending,
       recentTransactions: transactions.recentTransactions,
+      ...siteVisits,
+      ...activeUsers,
     })
   } catch (error) {
     console.error('dashboard API error:', error)

@@ -71,9 +71,16 @@ export async function reserveStorage(db, uid, bytes) {
   if (size <= 0) return null
   const now = nowSql()
 
-  // 顺带清扫全局超期预留（86400s 后必已失效，行也不再有任何用途）
+  // 顺带清扫全局超期预留（86400s 后必已失效，行也不再有任何用途）。
+  // 用子查询 + LIMIT 分批删：避免高频上传时每次全表扫描/删除扫长事务
   await db
-    .prepare(`DELETE FROM storage_reservations WHERE created_at < datetime('now', ?)`)
+    .prepare(
+      `DELETE FROM storage_reservations WHERE id IN (
+         SELECT id FROM storage_reservations
+         WHERE created_at < datetime('now', ?)
+         LIMIT 500
+       )`,
+    )
     .bind(`-${STORAGE_RESERVATION_SWEEP_SECONDS} seconds`)
     .run()
   await ensureQuotaRow(db, uid)
@@ -184,11 +191,14 @@ export async function purchaseStorage(db, uid, units) {
       .bind(cost, cost, now, uid, cost),
     db
       .prepare(
-        `UPDATE user_storage_quota
-         SET quota_bytes = quota_bytes + ?, updated_at = ?
-         WHERE uid = ?`,
+        // 新用户的额度行可能尚不存在（懒创建于 reserve/settle），UPSERT 保证无行时也能发放
+        `INSERT INTO user_storage_quota (uid, quota_bytes, used_bytes, updated_at)
+         VALUES (?, ?, 0, ?)
+         ON CONFLICT(uid) DO UPDATE SET
+           quota_bytes = quota_bytes + excluded.quota_bytes,
+           updated_at = excluded.updated_at`,
       )
-      .bind(grantBytes, now, uid),
+      .bind(uid, grantBytes, now),
     db
       .prepare(
         `INSERT INTO credit_transactions
@@ -208,6 +218,22 @@ export async function purchaseStorage(db, uid, units) {
       db.prepare('DELETE FROM credit_transactions WHERE id = ? AND uid = ?').bind(txId, uid),
     ])
     return { ok: false, reason: 'insufficient', balance }
+  }
+
+  const granted = results?.[1]?.meta?.changes ?? 0
+  if (granted === 0) {
+    // UPSERT 必命中一行，0 属异常：补偿退回积分并删流水，避免白扣
+    await db.batch([
+      db
+        .prepare(
+          `UPDATE user_credits
+           SET balance = balance + ?, total_spent = MAX(0, total_spent - ?), updated_at = ?
+           WHERE uid = ?`,
+        )
+        .bind(cost, cost, now, uid),
+      db.prepare('DELETE FROM credit_transactions WHERE id = ? AND uid = ?').bind(txId, uid),
+    ])
+    return { ok: false, reason: 'grant-failed', balance }
   }
 
   const quota = await getStorageQuota(db, uid)

@@ -8,10 +8,10 @@ export class LifeTrajectoriesController {
     this.service = new LifeTrajectoriesService(db, env, waitUntil)
   }
 
-  // 公开列表（无需登录，按时间倒序）
-  async index(request, origin) {
+  // 私密列表（必须登录，仅返回自己的轨迹，按时间倒序）
+  async index(request, user, origin) {
     const pager = Pager.fromRequest(request, 20)
-    const result = await this.service.list(pager)
+    const result = await this.service.list(pager, user.id)
     if (!result.success) {
       return ApiResponse.error(result.error, origin, 500)
     }

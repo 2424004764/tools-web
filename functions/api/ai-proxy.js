@@ -116,9 +116,13 @@ export async function onRequest(context) {
   const isStream = capability === 'chat_stream'
 
   try {
-    // 调试日志：打印原始 params 和模板
-    console.log('[ai-proxy] INCOMING params:', JSON.stringify(params))
-    console.log('[ai-proxy] template for', capability, ':', JSON.stringify(template))
+    // 调试日志：默认关闭（生产日志会打出全量 params/请求体，既噪又有泄露面）。
+    // 置环境变量 AI_PROXY_DEBUG=1 开启；Key 只保留前 4 后 4，其余全掩码。
+    const debugLog = env && String(env.AI_PROXY_DEBUG) === '1'
+    const logDebug = (...args) => { if (debugLog) console.log('[ai-proxy]', ...args) }
+    const maskedKey = apiKey ? `${apiKey.slice(0, 4)}****${apiKey.slice(-4)}` : '(空)'
+    logDebug('INCOMING params:', JSON.stringify(params))
+    logDebug('template for', capability, ':', JSON.stringify(template))
 
     // image_edit / image_generation：直接把前端传入的 prompt 覆盖到顶层（绕过模板 $ref 引用）
     if ((capability === 'image_edit' || capability === 'image_generation') && typeof params.prompt === 'string') {
@@ -137,21 +141,20 @@ export async function onRequest(context) {
       requestBody.stream = false
     }
 
-    // 日志：打印真正发出去的上游请求头（含 Authorization 完整掩码 + 全部 headers），便于排查
-    const maskedKey = apiKey ? `${apiKey.slice(0, 6)}...${apiKey.slice(-4)}` : '(空)'
-    console.log('[ai-proxy] >>> FULL UPSTREAM REQUEST')
-    console.log('[ai-proxy]   capability:', capability)
-    console.log('[ai-proxy]   model_key :', model_key)
-    console.log('[ai-proxy]   provider  :', resolved.provider.slug, '| base_url:', resolved.provider.base_url)
-    console.log('[ai-proxy]   url       :', url)
-    console.log('[ai-proxy]   method    :', endpoint.method || 'POST')
-    console.log('[ai-proxy]   apiKey    :', maskedKey)
-    console.log('[ai-proxy]   ---------- REQUEST HEADERS ----------')
-    console.log('[ai-proxy]   Content-Type:', 'application/json')
-    console.log('[ai-proxy]   Authorization:', `Bearer ${maskedKey}`)
-    console.log('[ai-proxy]   Accept:', isStream ? 'text/event-stream' : '(未设置)')
-    console.log('[ai-proxy]   ---------- REQUEST BODY ----------')
-    console.log('[ai-proxy]   body      :', JSON.stringify(isStream ? { ...requestBody, stream: true } : requestBody, null, 2))
+    // 日志：仅默认级别输出一行概要（不含请求体/完整 params）；
+    // 完整上游请求头与 body 的 dump 只在 AI_PROXY_DEBUG=1 时输出。
+    logDebug('>>> FULL UPSTREAM REQUEST')
+    logDebug('  capability:', capability)
+    logDebug('  model_key :', model_key)
+    logDebug('  provider  :', resolved.provider.slug, '| base_url:', resolved.provider.base_url)
+    logDebug('  url       :', url)
+    logDebug('  method    :', endpoint.method || 'POST')
+    logDebug('  apiKey    :', maskedKey)
+    logDebug('  Accept    :', isStream ? 'text/event-stream' : '(未设置)')
+    logDebug('  body      :', JSON.stringify(isStream ? { ...requestBody, stream: true } : requestBody, null, 2))
+    if (!debugLog) {
+      console.log(`[ai-proxy] ${capability} model=${model_key} provider=${resolved.provider.slug} key=${maskedKey}`)
+    }
 
     const upstreamHeaders = {
       'Content-Type': 'application/json',

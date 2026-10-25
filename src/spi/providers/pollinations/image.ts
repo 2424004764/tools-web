@@ -33,19 +33,25 @@ export async function generateImage(
   const queryString = new URLSearchParams(filteredParams).toString()
   
   const response = await axios.get(
-    `${this.proxyUrl}?path=image/${encodeURIComponent(prompt)}&target=${this.imageUrl}&params=${queryString}`,
+    `${this.proxyUrl}?path=image/${encodeURIComponent(prompt)}&target=${encodeURIComponent(this.imageUrl)}&params=${queryString}`,
     {
       headers: {
         Authorization: 'Bearer ' + this.apiKey,
       },
       responseType: 'blob',
+      // axios 默认 timeout=0（永不超时），图片生成请求会无限挂起、loading 永不结束
+      timeout: 60_000,
     }
   )
 
+  const contentType = response.headers['content-type']
   const blob = new Blob([response.data], {
-    type: response.headers['content-type'] || 'image/jpeg',
+    type: (typeof contentType === 'string' && contentType) || 'image/jpeg',
   })
   const url = URL.createObjectURL(blob)
+  // blob URL 不主动 revoke 会常驻内存；延迟 10 分钟回收（展示/下载窗口），
+  // 防止连续生成时内存无限累积
+  setTimeout(() => URL.revokeObjectURL(url), 10 * 60 * 1000)
 
   return {
     url,

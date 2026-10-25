@@ -1,6 +1,7 @@
 // OAuth2 授权服务器共享工具
 // 被 authorize / token / userinfo / revoke 端点共用
 import { decryptSecret } from '../../utils/crypto-secret.js'
+import { secureCompare } from '../../utils/secure-compare.js'
 
 // ---------- CORS ----------
 // 协议端点（token/userinfo/revoke）可能被任意子站的前端直接调用，
@@ -77,8 +78,9 @@ export async function loadActiveClient(db, clientId) {
 
 export async function verifyClientSecret(db, env, client, secret) {
   try {
-    const plain = await decryptSecret(client.client_secret, env.JWT_SECRET)
-    return plain && plain === secret
+    const plain = await decryptSecret(client.client_secret, env.ENCRYPTION_SECRET || env.JWT_SECRET)
+    // 恒时比较：token 端点对 secret 错误的响应时长不应泄露前缀匹配程度
+    return !!plain && !!secret && secureCompare(plain, secret)
   } catch {
     return false
   }

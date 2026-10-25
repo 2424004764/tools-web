@@ -2,6 +2,8 @@
 // GET /api/admin/feedback?page=1&pageSize=20&status=pending|resolved|closed&type=suggestion|bug|other&keyword=
 // 鉴权已在 _middleware.js 完成。
 
+import { likeContains } from '../../../utils/like.js'
+
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
@@ -53,7 +55,7 @@ export async function onRequest(context) {
     }
     if (keyword) {
       where.push('(content LIKE ? OR contact LIKE ? OR email LIKE ? OR username LIKE ? OR page_url LIKE ?)')
-      const like = `%${keyword}%`
+      const like = likeContains(keyword)
       args.push(like, like, like, like, like)
     }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : ''

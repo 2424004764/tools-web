@@ -5,6 +5,8 @@
 //
 // 鉴权已在 _middleware.js 完成。
 
+import { likeContains } from '../../../utils/like.js'
+
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, PATCH, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
@@ -73,7 +75,7 @@ export async function onRequest(context) {
 
     if (pathFilter) {
       where.push('path LIKE ?')
-      args.push(`%${pathFilter}%`)
+      args.push(likeContains(pathFilter))
     }
     if (statusFilter) {
       const s = parseInt(statusFilter, 10)
@@ -92,7 +94,7 @@ export async function onRequest(context) {
     }
     if (keyword) {
       where.push('(error_message LIKE ? OR error_stack LIKE ? OR upstream_body LIKE ? OR path LIKE ? OR extra LIKE ?)')
-      const like = `%${keyword}%`
+      const like = likeContains(keyword)
       args.push(like, like, like, like, like)
     }
     if (resolvedFilter === '0' || resolvedFilter === '1') {
@@ -152,7 +154,10 @@ async function cleanup(context, db) {
   const { request } = context
   const url = new URL(request.url)
   const days = Math.max(1, Math.min(365, parseInt(url.searchParams.get('days')) || 30))
-  const cutoff = new Date(Date.now() - days * 86400 * 1000).toISOString()
+  // 库内 created_at 为 'YYYY-MM-DD HH:MM:SS'（UTC）文本，cutoff 须同格式，
+  // 否则字典序比较会把 cutoff 当天（' ' < 'T'）的记录一并误删
+  const cutoff = new Date(Date.now() - days * 86400 * 1000)
+    .toISOString().slice(0, 19).replace('T', ' ')
   try {
     const result = await db
       .prepare(`DELETE FROM api_error_logs WHERE created_at < ?`)

@@ -1,4 +1,5 @@
 import { TodoModel, QueryBuilder } from '../utils/db.js'
+import { likeContains } from '../utils/like.js'
 
 export class TodosService {
   constructor(db, env = null, waitUntil = null) {
@@ -20,7 +21,7 @@ export class TodosService {
 
       const applyFilters = (queryBuilder) => {
         if (filters.title) {
-          queryBuilder.where('title', 'LIKE', `%${filters.title}%`)
+          queryBuilder.where('title', 'LIKE', likeContains(filters.title))
         }
         if (filters.priority) {
           queryBuilder.where('priority', '=', filters.priority)

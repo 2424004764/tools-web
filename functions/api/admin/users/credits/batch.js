@@ -10,8 +10,10 @@
 //   - grant: UPSERT user_credits + INSERT credit_transactions
 //   - deduct: SELECT 当前余额，actual = min(amount, balance)；
 //     若余额为 0 → 跳过；若 deduct 后余额=0 → 正常写流水（amount 记实际值的相反数）
-//   - UPDATE ... WHERE balance >= actual 保证原子性（防透支）
-//   - 每 uid 的两条语句包在一个 db.batch() 里，D1 不支持跨 uid 事务，但单 uid 内原子
+//   - UPDATE ... WHERE balance >= actual 防透支；该 UPDATE 单独执行并检查 changes
+//     （D1 batch 只在语句 SQL 报错时回滚，"UPDATE 命中 0 行"不报错也不回滚，
+//      放进 batch 会在并发失败时留下"钱没扣、流水却记了扣减"的幻影流水）
+//   - grant 的 UPSERT + 流水包在一个 db.batch() 里；deduct 的 UPDATE 与流水分开执行，先扣成功再记账
 //   - 流水 reason 自动追加「（申请 N，实际 M）」便于审计 deduct 的部分成功
 //
 // 单 uid 失败不影响其他 uid，最终返回 succeeded / skipped / failed 明细。
@@ -184,7 +186,6 @@ export async function onRequest(context) {
           }
 
           const actual = Math.min(amount, currentBalance)
-          const newBalance = currentBalance - actual
           const txId = crypto.randomUUID()
           // 审计：若实际扣减 < 申请，在 reason 末尾追加备注
           const finalReason =
@@ -192,33 +193,32 @@ export async function onRequest(context) {
               ? (reasonText ? `${reasonText}（申请 ${amount}，实际 ${actual}）` : `批量扣减（申请 ${amount}，实际 ${actual}）`)
               : reasonText
 
-          const stmts = [
-            db
-              .prepare(
-                `UPDATE user_credits
-                 SET balance = balance - ?,
-                     total_spent = total_spent + ?,
-                     updated_at = ?
-                 WHERE uid = ? AND balance >= ?`,
-              )
-              .bind(actual, actual, now, uid, actual),
-            db
-              .prepare(
-                `INSERT INTO credit_transactions
-                 (id, uid, type, amount, balance_after, reason, operator_uid, source, created_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-              )
-              .bind(txId, uid, 'deduct', -actual, newBalance, finalReason, operatorUid, 'admin', now),
-          ]
-          const results = await db.batch(stmts)
-
-          // 校验 deduct 的 UPDATE 是否实际改了行（防并发场景）
-          const deductResult = results[0]
-          const changes = deductResult?.meta?.changes ?? deductResult?.changes ?? 0
+          // 扣费单独执行并检查 changes；命中 0 行直接记 failed，不留任何写入
+          const deduct = await db
+            .prepare(
+              `UPDATE user_credits
+               SET balance = balance - ?,
+                   total_spent = total_spent + ?,
+                   updated_at = ?
+               WHERE uid = ? AND balance >= ?`,
+            )
+            .bind(actual, actual, now, uid, actual)
+            .run()
+          const changes = deduct?.meta?.changes ?? deduct?.changes ?? 0
           if (changes === 0) {
             failed.push({ uid, error: '余额不足或积分记录不存在（并发更新）' })
             continue
           }
+
+          // 流水单独写：balance_after 用子查询取扣减后的真实余额（不依赖预读快照）
+          await db
+            .prepare(
+              `INSERT INTO credit_transactions
+               (id, uid, type, amount, balance_after, reason, operator_uid, source, created_at)
+               VALUES (?, ?, 'deduct', ?, (SELECT balance FROM user_credits WHERE uid = ?), ?, ?, 'admin', ?)`,
+            )
+            .bind(txId, uid, -actual, uid, finalReason, operatorUid, now)
+            .run()
 
           succeeded++
           totalDelta -= actual

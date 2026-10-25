@@ -266,6 +266,11 @@ export async function onRequest(context) {
 
   const prompt = (formData.get('prompt')?.toString() || '').trim().slice(0, 5000)
   const modelKey = (formData.get('model')?.toString() || '').trim() || 'gpt-image-2-1k'
+  // model 会拼进上游 URL 路径（gemini 分支 /v1beta/models/{model}:generateContent）并落库，
+  // 只放行常规模型名格式（字母数字开头，可含 . _ -，≤64 字符），杜绝 ../、?、# 等注入
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(modelKey)) {
+    return json({ ok: false, error: '不支持的模型名' }, 400)
+  }
   const size = formData.get('size')?.toString() || '1024x1024'
   // 多图：同一字段名重复提交，formData.getAll 取数组。
   // 兼容旧版单图字段 'image'，无 'images' 时降级到 'image'（保证向后兼容）
@@ -326,7 +331,8 @@ export async function onRequest(context) {
   //   - 命中 reverse → 返上次同样错误（不重调上游、不重扣）
   //   - 命中 deduct 但没 reverse → 复用 cost/txId，跳过扣费，重调上游拿图
   //   - 都没命中 → 正常扣费
-  // 数据库 UNIQUE(uid, idempotency_key) 自动防同 key 重复 deduct
+  // 数据库 UNIQUE(uid, idempotency_key) 防同 key 重复 deduct：
+  //   并发同 key 撞 UNIQUE 时回退本次扣费并复用已入库的那条流水（不再裸抛 500）
   const idempotencyKey = (request.headers.get('Idempotency-Key') || '').trim() || crypto.randomUUID()
 
   let txId = ''
@@ -373,21 +379,14 @@ export async function onRequest(context) {
       reusedDeduct = true
       console.log(`[ai-image-edit] idempotent-reuse uid=${uid.slice(0, 8)} cost=${cost} txId=${txId.slice(0, 8)}`)
     } else {
-      // 新请求：正常扣费
-      const cur = await db
-        .prepare('SELECT balance FROM user_credits WHERE uid = ?')
-        .bind(uid)
-        .first()
-      const currentBalance = cur?.balance || 0
-      if (currentBalance < cost) {
-        return json({ ok: false, error: `积分余额不足：当前 ${currentBalance}，本次需 ${cost}`, balance: currentBalance }, 400)
-      }
-
+      // 新请求：正常扣费。
+      // D1 batch 只在语句 SQL 报错时回滚，"UPDATE 命中 0 行"不报错——
+      // 扣费必须单独执行并检查 changes，否则并发下扣到 0 行时会出现
+      // "余额没扣、流水却记了 -cost"的幻影流水。
       txId = crypto.randomUUID()
       const now = nowSql()
-      balanceAfter = currentBalance - cost
-      const deductResults = await db.batch([
-        db
+      try {
+        const deduct = await db
           .prepare(
             `UPDATE user_credits
              SET balance = balance - ?,
@@ -395,21 +394,67 @@ export async function onRequest(context) {
                  updated_at = ?
              WHERE uid = ? AND balance >= ?`,
           )
-          .bind(cost, cost, now, uid, cost),
-        db
+          .bind(cost, cost, now, uid, cost)
+          .run()
+        if ((deduct?.meta?.changes ?? deduct?.changes ?? 0) === 0) {
+          const bal = await queryBalance(db, uid)
+          return json({ ok: false, error: `积分余额不足：当前 ${bal}，本次需 ${cost}`, balance: bal }, 400)
+        }
+
+        // 流水的 balance_after 用子查询取扣费后的真实余额（不依赖预读快照）
+        const logResult = await db
           .prepare(
             `INSERT INTO credit_transactions
              (id, uid, type, amount, balance_after, reason, operator_uid, source, idempotency_key, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             VALUES (?, ?, 'deduct', ?, (SELECT balance FROM user_credits WHERE uid = ?), ?, ?, 'tool', ?, ?)
+             RETURNING balance_after`,
           )
-          .bind(txId, uid, 'deduct', -cost, balanceAfter, `ai-image-edit:${modelKey}`, uid, 'tool', idempotencyKey, now),
-      ])
-
-      const changes = deductResults[0]?.meta?.changes ?? deductResults[0]?.changes ?? 0
-      if (changes === 0) {
-        return await errorJson(db, uid, '积分余额不足', 400)
+          .bind(txId, uid, -cost, uid, `ai-image-edit:${modelKey}`, uid, idempotencyKey, now)
+          .run()
+        const returned = logResult?.results?.[0]?.balance_after
+        balanceAfter =
+          typeof returned === 'number' ? returned : await queryBalance(db, uid)
+        console.log(`[ai-image-edit] deduct OK uid=${uid.slice(0, 8)} model=${modelKey} cost=${cost} txId=${txId.slice(0, 8)} key=${idempotencyKey.slice(0, 8)}`)
+      } catch (err) {
+        if (!String(err?.message || '').includes('UNIQUE constraint failed')) {
+          console.error('[ai-image-edit] deduct error:', err)
+          return await errorJson(db, uid, '积分扣费失败，请稍后重试', 500)
+        }
+        // 同 Idempotency-Key 并发重试：另一请求已抢先完成扣费入库。
+        // 回退本次已扣的费，复用已入库的那条 deduct 流水。
+        try {
+          await db
+            .prepare(
+              `UPDATE user_credits
+               SET balance = balance + ?,
+                   total_spent = MAX(0, total_spent - ?),
+                   updated_at = ?
+               WHERE uid = ?`,
+            )
+            .bind(cost, cost, now, uid)
+            .run()
+          const winner = await db
+            .prepare(
+              `SELECT id, balance_after FROM credit_transactions
+               WHERE uid = ? AND idempotency_key = ? AND type = 'deduct'
+               ORDER BY created_at DESC LIMIT 1`,
+            )
+            .bind(uid, idempotencyKey)
+            .first()
+          if (!winner) {
+            console.error('[ai-image-edit] idempotent race but no prior deduct found:', err)
+            return await errorJson(db, uid, '积分扣费失败，请稍后重试', 500)
+          }
+          txId = winner.id
+          balanceAfter = winner.balance_after
+          reusedDeduct = true
+          console.log(`[ai-image-edit] idempotent-race-reuse uid=${uid.slice(0, 8)} key=${idempotencyKey.slice(0, 8)}`)
+        } catch (e2) {
+          // 回退失败属异常路径：记日志供人工对账（可能双扣），保证返回 JSON
+          console.error('[ai-image-edit] idempotent-race refund error:', e2)
+          return await errorJson(db, uid, '积分扣费异常，请联系管理员核对流水', 500)
+        }
       }
-      console.log(`[ai-image-edit] deduct OK uid=${uid.slice(0, 8)} model=${modelKey} cost=${cost} txId=${txId.slice(0, 8)} key=${idempotencyKey.slice(0, 8)}`)
     }
   }
 

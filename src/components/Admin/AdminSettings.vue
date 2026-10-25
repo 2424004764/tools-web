@@ -4,6 +4,8 @@ import { ElMessage } from 'element-plus'
 import Sortable from 'sortablejs'
 import IconRank from '~icons/ep/rank'
 import IconLink from '~icons/ep/link'
+import IconEdit from '~icons/ep/edit'
+import IconDelete from '~icons/ep/delete'
 import { fetchAdminSiteConfig, updateAdminSiteConfig, type AdminSiteConfig } from '@/api/admin/site-config'
 import { clearSiteConfigCache, fetchProductsConfig } from '@/api/site-config'
 import { DEFAULT_PRODUCTS } from '@/components/Layout/Header/products'
@@ -420,11 +422,11 @@ onBeforeUnmount(() => {
         <div
           v-for="p in productsList"
           :key="p.uid"
-          class="rounded-xl border border-border-subtle flex items-center gap-3 flex-wrap px-3 py-2.5"
+          class="rounded-xl border border-border-subtle flex items-center flex-wrap gap-x-3 gap-y-2 px-3 py-2.5"
           :class="productsErrors[p.uid] ? 'bg-rose-50/70 dark:bg-rose-500/10' : ''"
         >
           <span
-            class="product-drag-handle w-7 h-7 rounded-lg bg-surface-2 dark:bg-surface-3 text-ink-400 hover:text-accent-600 flex items-center justify-center cursor-move shrink-0"
+            class="product-drag-handle order-2 lg:order-none w-7 h-7 rounded-lg bg-surface-2 dark:bg-surface-3 text-ink-400 hover:text-accent-600 flex items-center justify-center cursor-move shrink-0"
             title="拖拽排序"
           >
             <IconRank class="w-4 h-4" aria-hidden="true" />
@@ -433,16 +435,16 @@ onBeforeUnmount(() => {
             v-if="p.logo && !brokenLogos[p.uid]"
             :src="p.logo"
             :alt="p.name + '图标'"
-            class="w-8 h-8 rounded-lg object-cover shrink-0 bg-surface-1"
+            class="order-3 lg:order-none w-8 h-8 rounded-lg object-cover shrink-0 bg-surface-1"
             @error="brokenLogos[p.uid] = true"
           />
           <div
             v-else
-            class="w-8 h-8 rounded-lg bg-surface-2 dark:bg-surface-3 flex items-center justify-center text-base shrink-0"
+            class="order-3 lg:order-none w-8 h-8 rounded-lg bg-surface-2 dark:bg-surface-3 flex items-center justify-center text-base shrink-0"
             aria-hidden="true"
           >🧩</div>
 
-          <div class="min-w-0 flex-1 flex flex-col gap-0.5">
+          <div class="order-1 w-full flex-none min-w-0 lg:order-none lg:w-auto lg:flex-1 flex flex-col gap-0.5">
             <div class="flex items-baseline gap-2 min-w-0">
               <div class="text-body-sm font-medium text-ink-900 truncate">{{ p.name || '未命名产品' }}</div>
               <div class="text-caption text-ink-400 truncate shrink-0">{{ p.key || 'key 未设置' }}</div>
@@ -462,7 +464,7 @@ onBeforeUnmount(() => {
             <div v-else class="text-caption text-ink-400">链接未设置</div>
           </div>
 
-          <div class="flex items-center gap-2 shrink-0">
+          <div class="order-4 lg:order-none flex items-center gap-2.5 shrink-0 ml-auto lg:ml-0">
             <el-switch
               v-model="p.enabled"
               inline-prompt
@@ -471,15 +473,30 @@ onBeforeUnmount(() => {
               :disabled="savingProducts"
               @change="onProductToggle(p)"
             />
-            <el-button size="small" @click="openProductDialog('edit', p)">编辑</el-button>
-            <el-popconfirm title="确定删除该产品？删除后需保存才生效" width="230" @confirm="removeProduct(p.uid)">
-              <template #reference>
-                <el-button type="danger" text size="small">删除</el-button>
-              </template>
-            </el-popconfirm>
+            <div class="flex items-center gap-1.5">
+              <button
+                type="button"
+                class="w-7 h-7 rounded-lg bg-surface-2 dark:bg-surface-3 text-ink-400 hover:text-accent-600 hover:bg-surface-3 flex items-center justify-center shrink-0 transition-colors"
+                title="编辑"
+                @click="openProductDialog('edit', p)"
+              >
+                <IconEdit class="w-3.5 h-3.5" aria-hidden="true" />
+              </button>
+              <el-popconfirm title="确定删除该产品？删除后需保存才生效" width="230" @confirm="removeProduct(p.uid)">
+                <template #reference>
+                  <button
+                    type="button"
+                    class="w-7 h-7 rounded-lg bg-surface-2 dark:bg-surface-3 text-ink-400 hover:text-rose-500 hover:bg-surface-3 flex items-center justify-center shrink-0 transition-colors"
+                    title="删除"
+                  >
+                    <IconDelete class="w-3.5 h-3.5" aria-hidden="true" />
+                  </button>
+                </template>
+              </el-popconfirm>
+            </div>
           </div>
 
-          <p v-if="productsErrors[p.uid]" class="w-full text-caption text-rose-600 !mt-1 mb-0">
+          <p v-if="productsErrors[p.uid]" class="order-5 lg:order-none w-full text-caption text-rose-600 !mt-1 mb-0">
             {{ productsErrors[p.uid] }}（点「编辑」修正）
           </p>
         </div>

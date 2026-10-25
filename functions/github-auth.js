@@ -1,6 +1,10 @@
 // GitHub 登录认证
-import { handleCORSPreflight, createCORSResponse, createCORSErrorResponse } from './utils/cors.js'
+import { handleCORSPreflight, createCORSResponse, createCORSErrorResponse, isOriginAllowed } from './utils/cors.js'
 import { buildStateCookie, clearStateCookie, readStateCookie } from './utils/oauth-state.js'
+
+const base64url = (buf) =>
+    btoa(String.fromCharCode(...new Uint8Array(buf)))
+        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
 export async function onRequest(context) {
     const { request, env } = context;
@@ -37,6 +41,11 @@ async function getAuthUrl(request, env, origin) {
         // 生成state参数防止CSRF攻击
         const state = crypto.randomUUID();
 
+        // PKCE（S256，GitHub 支持）：verifier 存入 state cookie，回调换 token 时携带，
+        // 授权码即使被拦截也无法单独使用
+        const codeVerifier = base64url(crypto.getRandomValues(new Uint8Array(32)));
+        const codeChallenge = base64url(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(codeVerifier)));
+
         // 回调地址固定用 /api/github-auth 而非环境变量里的 /github-auth：
         // 站点是 PWA，Service Worker 的 navigateFallback 会拦截非 /api/ 路径的
         // 页面导航并返回缓存的 SPA 壳（旧版 SW 的 denylist 只有 /^\/api\//），
@@ -49,7 +58,9 @@ async function getAuthUrl(request, env, origin) {
             client_id: CLIENT_ID,
             redirect_uri: redirectUri,
             scope: 'user:email',
-            state: state
+            state: state,
+            code_challenge: codeChallenge,
+            code_challenge_method: 'S256'
         });
 
         const authUrl = AUTH_URL + '?' + params.toString();
@@ -58,13 +69,19 @@ async function getAuthUrl(request, env, origin) {
             success: true,
             auth_url: authUrl
         }, origin);
-        // state 同步种到 HttpOnly cookie，供回调时比对（弹窗顶级导航会携带 SameSite=Lax cookie）
-        response.headers.append('Set-Cookie', buildStateCookie('github', state, request.url));
+        // state 种入 HttpOnly cookie，供回调时比对（弹窗顶级导航会携带 SameSite=Lax cookie）；
+        // 同时绑定发起页 origin（回调时作为 postMessage targetOrigin）与 PKCE verifier。
+        // 发起页 origin 只接受 CORS 白名单内的值，跨站伪造发起一律回退本站 origin
+        response.headers.append('Set-Cookie', buildStateCookie('github', state, request.url, {
+            origin: isOriginAllowed(origin) ? origin : new URL(request.url).origin,
+            verifier: codeVerifier
+        }));
         return response;
 
     } catch (error) {
         console.error('[github-auth] getAuthUrl error:', error.message);
-        return createCORSErrorResponse('获取授权链接失败: ' + error.message, origin);
+        // 不回显 error.message（可能含环境变量细节），细节只进服务端日志
+        return createCORSErrorResponse('获取授权链接失败', origin);
     }
 }
 
@@ -82,13 +99,16 @@ async function doHandleAuthCallback(request, env) {
         const error = url.searchParams.get('error');
         const error_description = url.searchParams.get('error_description');
         const state = url.searchParams.get('state');
+        const ownOrigin = url.origin;
 
         if (error) {
             console.error('[github-auth] 授权错误:', { error, error_description });
+            // 文案固定：error_description 是攻击者可控的 URL 参数，且此分支
+            // 先于 state 校验执行，回显会成为反射型 XSS 注入点
             return createCallbackResponse('error', {
                 success: false,
-                message: `GitHub授权失败: ${error_description || error}`
-            });
+                message: 'GitHub授权失败，请重新发起登录'
+            }, ownOrigin);
         }
 
         if (!code) {
@@ -96,30 +116,34 @@ async function doHandleAuthCallback(request, env) {
             return createCallbackResponse('error', {
                 success: false,
                 message: '缺少授权码'
-            });
+            }, ownOrigin);
         }
 
         // CSRF 校验：回跳的 state 必须与发起授权时种下的 cookie 一致。
         // 部署前发起的旧授权没有 state，会得到明确提示重新登录。
         const cookieState = readStateCookie('github', request);
-        if (!state || !cookieState || state !== cookieState) {
+        if (!state || !cookieState || state !== cookieState.state) {
             return createCallbackResponse('error', {
                 success: false,
                 message: '登录状态校验失败，请重新发起登录'
-            });
+            }, ownOrigin);
         }
+
+        // 登录结果 postMessage 回发起页：目标 origin 用发起时绑定进 cookie 的值，
+        // 未绑定时回退本站 origin，绝不使用 '*'（防止 token 落入恶意 opener）
+        const targetOrigin = cookieState.origin || ownOrigin;
 
         // redirect_uri 必须与授权链接里的一致才能换 token；
         // 从回调请求自身重建（origin + path），/api/github-auth 与旧版 /github-auth 链接都能对上
         const callbackUrl = new URL(request.url);
         const redirectUri = callbackUrl.origin + callbackUrl.pathname;
 
-        const tokenResponse = await exchangeCodeForToken(code, env, redirectUri);
+        const tokenResponse = await exchangeCodeForToken(code, env, redirectUri, cookieState.verifier);
         if (!tokenResponse.success) {
             return createCallbackResponse('error', {
                 success: false,
                 message: tokenResponse.error || '令牌交换失败'
-            });
+            }, targetOrigin);
         }
 
         const userInfo = await fetchUserInfo(tokenResponse.access_token);
@@ -127,7 +151,7 @@ async function doHandleAuthCallback(request, env) {
             return createCallbackResponse('error', {
                 success: false,
                 message: userInfo.error || '获取用户信息失败'
-            });
+            }, targetOrigin);
         }
 
         const loginResult = await processUserLogin(userInfo.data, env);
@@ -135,7 +159,7 @@ async function doHandleAuthCallback(request, env) {
             return createCallbackResponse('error', {
                 success: false,
                 message: loginResult.error || '登录失败'
-            });
+            }, targetOrigin);
         }
 
         // 登录成功，关闭弹窗并发送用户信息
@@ -146,31 +170,46 @@ async function doHandleAuthCallback(request, env) {
                 token: loginResult.token
             },
             message: loginResult.message
-        });
+        }, targetOrigin);
 
     } catch (error) {
         console.error('[github-auth] callback error:', error.message);
+        // 不回显 error.message：内部异常信息可能携带上游响应细节，统一对外文案
         return createCallbackResponse('error', {
             success: false,
-            message: error.message
-        });
+            message: '登录处理异常，请稍后重试'
+        }, new URL(request.url).origin);
     }
 }
 
 // 创建回调响应的工具函数
-function createCallbackResponse(type, data) {
+function createCallbackResponse(type, data, targetOrigin) {
+    // JSON 嵌入 <script> 前必须转义 <（写成等价的 \u003c）：HTML 解析器不认识
+    // JS 字符串边界，内容中出现字面量 </script> 会提前闭合标签注入脚本。
+    // U+2028/U+2029 是 JS 行终止符，一并转义。nonce + CSP 为纵深防御。
+    const json = JSON.stringify({ type, ...data })
+        .replace(/</g, '\\u003c')
+        .replace(/\u2028/g, '\\u2028')
+        .replace(/\u2029/g, '\\u2029');
+    // targetOrigin 由调用方传入（发起时绑定进 state cookie 的发起页 origin，
+    // 或回调页自身 origin）；绝不使用 '*'，否则含 JWT 的消息可能被恶意 opener 收走
+    const origin = targetOrigin;
+    const nonce = crypto.randomUUID().replace(/-/g, '');
     const script = `
-    window.opener && window.opener.postMessage(${JSON.stringify({ type, ...data })}, '*');
+    window.opener && window.opener.postMessage(${json}, ${JSON.stringify(origin)});
     window.close();
   `;
 
-    return new Response(`<script>${script}</script>`, {
-        headers: { 'Content-Type': 'text/html; charset=utf-8' }
+    return new Response(`<script nonce="${nonce}">${script}</script>`, {
+        headers: {
+            'Content-Type': 'text/html; charset=utf-8',
+            'Content-Security-Policy': `default-src 'none'; script-src 'nonce-${nonce}'`
+        }
     });
 }
 
 // 交换授权码为访问令牌
-async function exchangeCodeForToken(code, env, redirectUri) {
+async function exchangeCodeForToken(code, env, redirectUri, codeVerifier) {
     try {
         const clientId = env.GITHUB_CLIENT_ID;
         const clientSecret = env.GITHUB_CLIENT_SECRET;
@@ -188,6 +227,10 @@ async function exchangeCodeForToken(code, env, redirectUri) {
             code: code,
             redirect_uri: redirectUri
         });
+        // PKCE：发起授权时带了 S256 challenge，换 token 必须携带 verifier
+        if (codeVerifier) {
+            requestBody.set('code_verifier', codeVerifier);
+        }
 
         // 创建AbortController用于超时控制
         const controller = new AbortController();
@@ -336,7 +379,10 @@ async function fetchUserInfo(accessToken) {
                 success: true,
                 data: {
                     ...userData,
-                    email: primaryEmail || `${userData.login}@github.user`
+                    email: primaryEmail || `${userData.login}@github.user`,
+                    // 仅当邮箱来自 /user/emails 的"primary + verified"结果时才标记可信，
+                    // 公开资料里的 userData.email 未经 GitHub 验证，不可用于账号合并
+                    emailVerified: !!primary
                 }
             };
 
@@ -373,10 +419,19 @@ async function processUserLogin(userData, env) {
         const email = userData.email || `${userData.login}@github.user`;
         const avatar = userData.avatar_url || '';
 
-        // 优先通过邮箱查找用户（统一账号）
-        let found = null;
-        if (email && email.indexOf('@') > -1 && !email.endsWith('@github.user')) {
-            found = await db.prepare(`SELECT id FROM user WHERE email = ?`).bind(email).first();
+        // 先按第三方 uid 查找：同一 GitHub 账号始终命中同一用户，
+        // 邮箱为空 / 使用虚拟邮箱时也不会每次登录都新建账号
+        let found = await db.prepare(
+            `SELECT id FROM user WHERE third_party_uid = ? AND third_party_type = 'github'`
+        ).bind(thirdPartyUid).first();
+
+        // 未命中再按邮箱合并（统一账号）：仅当邮箱是 GitHub 返回的
+        // 已验证主邮箱（fetchUserInfo 标记 emailVerified）。未验证的
+        // 公开资料邮箱不能用于合并，否则可借未验证邮箱接管既有账号
+        if (!found && userData.emailVerified && email && email.indexOf('@') > -1 && !email.endsWith('@github.user')) {
+            found = await db.prepare(
+                `SELECT id FROM user WHERE email = ? COLLATE NOCASE`
+            ).bind(email.toLowerCase()).first();
         }
 
         let userId;
@@ -392,10 +447,9 @@ async function processUserLogin(userData, env) {
                     last_login = ?,
                     username = ?,
                     third_party_uid = ?,
-                    third_party_type = 'github',
-                    user_level = ?
+                    third_party_type = 'github'
                 WHERE id = ?
-            `).bind(avatar, nowStr, username, thirdPartyUid, 0, userId).run();
+            `).bind(avatar, nowStr, username, thirdPartyUid, userId).run();
         } else {
             // 新用户，创建记录
             isNewUser = true;
@@ -408,9 +462,14 @@ async function processUserLogin(userData, env) {
             `).bind(userId, email, avatar, nowStr, nowStr, thirdPartyUid, username, 0, 'github').run();
         }
 
-        // 查询最新的 is_admin（无论新老用户都要重新取，确保 JWT 反映当前权限）
-        const adminRow = await db.prepare('SELECT is_admin FROM user WHERE id = ?').bind(userId).first();
-        const isAdmin = adminRow?.is_admin ? 1 : 0;
+        // 管理员状态 / 封禁 / token 版本一次查齐（JWT 反映最新权限，封禁即时拦截）
+        const stateRow = await db.prepare(
+            'SELECT is_admin, is_disabled, token_version FROM user WHERE id = ?'
+        ).bind(userId).first();
+        if (stateRow && stateRow.is_disabled) {
+            return { success: false, error: '该账号已被禁用，如有疑问请联系站长' };
+        }
+        const isAdmin = stateRow?.is_admin ? 1 : 0;
 
         // 生成JWT令牌
         const jwtSecret = env.JWT_SECRET;
@@ -425,6 +484,8 @@ async function processUserLogin(userData, env) {
             email: email,
             is_admin: isAdmin,
             thirdPartyType: 'github',
+            // ver 与库中 token_version 对齐：改密/重置/封禁后旧登录态立即失效
+            ver: stateRow?.token_version || 0,
             iat: Math.floor(Date.now() / 1000),
             exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60) // 7天过期
         };
@@ -445,9 +506,10 @@ async function processUserLogin(userData, env) {
 
     } catch (error) {
         console.error('[github-auth] processUserLogin failed:', error.message);
+        // 对外固定文案，内部错误细节只进日志（会经回调页回显给用户）
         return {
             success: false,
-            error: error.message
+            error: '登录处理失败，请稍后重试'
         };
     }
 }

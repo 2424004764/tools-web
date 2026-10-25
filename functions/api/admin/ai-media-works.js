@@ -3,6 +3,8 @@
 // 路由（本单文件）：
 //   GET /api/admin/ai-media-works          列表（全部状态），支持分页/筛选
 
+import { likeContains } from '../../utils/like.js'
+
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
@@ -60,7 +62,7 @@ export async function onRequest(context) {
     where.push(
       '(prompt LIKE ? OR model_name LIKE ? OR source_name LIKE ? OR tags LIKE ?)',
     )
-    const like = `%${keyword}%`
+    const like = likeContains(keyword)
     args.push(like, like, like, like)
   }
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : ''

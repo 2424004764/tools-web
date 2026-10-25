@@ -6,8 +6,10 @@
  *     初始 HTML 的 title / description / keywords / og:* / twitter:* 用。
  *     下划线前缀 = Pages Functions 不把它当路由，仅供 import。
  *
- *  2. --update-routes 时，把每个页面路径（/x 与 /x/* 两条规则）合并进
- *     functions/_routes.json 的 include，让中间件能收到页面请求。
+ *     （历史上的 --update-routes 模式已随 functions/_routes.json 一并移除：
+ *     部署时 wrangler 从 dist/_routes.json 读路由清单，functions/ 下那份从未
+ *     生效，且 527 条规则远超 Cloudflare 的 100 条上限——线上实际一直靠
+ *     wrangler 自动生成的 ["/*"] 兜底运行，维护那份清单只会造成"已注册"错觉。）
  *
  * vite.config.ts 也会 import functions/_page-meta.js 拿预渲染路由表
  * （vite-plugin-seo-prerender 的 routes 参数），并在 callback 里用同一份
@@ -31,7 +33,6 @@ import seoTitles from '../src/router/seo-titles.js'
 const root = process.cwd()
 const routerPath = path.join(root, 'src', 'router', 'router.ts')
 const outFile = path.join(root, 'functions', '_page-meta.js')
-const routesFile = path.join(root, 'functions', '_routes.json')
 
 // ---- env 读取（vite loadEnv 的极简版：.env → .env.production 后者覆盖）----
 function loadEnvFile(file, into) {
@@ -50,15 +51,20 @@ function loadEnvFile(file, into) {
 const env = {}
 loadEnvFile(path.join(root, '.env'), env)
 loadEnvFile(path.join(root, '.env.production'), env)
-const APP_TITLE = env.VITE_APP_TITLE || '开发者工具箱'
+const APP_TITLE = env.VITE_APP_TITLE || '一方工具箱'
 const APP_DESC = env.VITE_APP_DESC || ''
 const SITE_ORIGIN = (env.VITE_SITE_URL || env.SITE_ORIGIN || 'https://tool.fologde.com').replace(/\/$/, '')
+
+// 站名占位 token：router.ts / seo-titles.js 是 Node 与浏览器共用的静态字符串，
+// 不能直接引用 import.meta.env，统一写 {SITE}，生成时替换为 APP_TITLE
+const SITE_TOKEN_RE = /\{SITE\}/g
 
 // 与 src/router/index.ts afterEach 的 document.title 逻辑保持一致：
 // 优先取 seo-titles.js 的优化标题，否则用路由 meta.title，统一 " | 站名" 结尾
 const composeTitle = (norm, title) => {
   const base = seoTitles[norm] || title
-  return base ? `${base} | ${APP_TITLE}` : APP_DESC ? `${APP_TITLE}-${APP_DESC}` : APP_TITLE
+  const text = base ? `${base} | ${APP_TITLE}` : APP_DESC ? `${APP_TITLE}-${APP_DESC}` : APP_TITLE
+  return text.replace(SITE_TOKEN_RE, APP_TITLE)
 }
 
 // ---- 解析 router.ts ----
@@ -85,7 +91,7 @@ for (let i = 0; i < matches.length; i++) {
   }
   const title = pick('title')
   const keywords = pick('keywords')
-  const description = pick('description')
+  const description = pick('description').replace(SITE_TOKEN_RE, APP_TITLE)
 
   // 动态路由（:id 等）无法预生成静态 HTML，跳过
   if (routePath.includes(':')) continue
@@ -185,25 +191,3 @@ ${mapLines}
 `
 writeFileSync(outFile, out, 'utf-8')
 console.log(`[gen:page-meta] ${entries.length} 条路由 → functions/_page-meta.js`)
-
-// ---- --update-routes：把页面路径合并进 _routes.json ----
-if (process.argv.includes('--update-routes')) {
-  const pageRules = entries.flatMap((e) => [e.path, `${e.path}/*`])
-  let routes
-  try {
-    routes = JSON.parse(readFileSync(routesFile, 'utf-8'))
-  } catch (e) {
-    console.error(`[gen:page-meta] 解析 ${routesFile} 失败：${e.message}`)
-    process.exit(1)
-  }
-  const ruleSet = new Set(routes.include)
-  let added = 0
-  for (const rule of pageRules) {
-    if (!ruleSet.has(rule)) {
-      routes.include.push(rule)
-      added++
-    }
-  }
-  writeFileSync(routesFile, JSON.stringify(routes, null, 2) + '\n', 'utf-8')
-  console.log(`[gen:page-meta] _routes.json 新增 ${added} 条页面规则（现共 ${routes.include.length} 条 include）`)
-}
