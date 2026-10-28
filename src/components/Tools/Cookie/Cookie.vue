@@ -780,11 +780,17 @@ const updateCookieByOriginalIndex = (
 };
 
 // 高亮搜索文本（处理undefined）
+// 内容先做 HTML 转义再包 <mark>，cookie 值里出现 <img onerror=...> 之类不能进 v-html
 const highlightText = (text: string | undefined, searchText: string) => {
   if (!searchText.trim() || !text) return text || ''
-  
+
+  const escaped = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
   const regex = new RegExp(`(${searchText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
-  return text.replace(regex, '<mark class="search-highlight">$1</mark>')
+  return escaped.replace(regex, '<mark class="search-highlight">$1</mark>')
 }
 
 // 检查是否需要高亮显示（处理undefined）

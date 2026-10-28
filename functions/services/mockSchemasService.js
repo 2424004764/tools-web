@@ -43,7 +43,8 @@ export class MockSchemasService {
         name: (data.name || '').trim(),
         description: data.description ? data.description.trim() : '',
         schema: JSON.stringify(fields),
-        uid: uid
+        uid: uid,
+        isPublic: uid ? (data.isPublic ? 1 : 0) : 0
       })
 
       // 返回完整的配方对象（包含 uid），以便前端立即生成链接
@@ -66,20 +67,18 @@ export class MockSchemasService {
       if (data.description !== undefined) {
         updateData.description = data.description ? data.description.trim() : ''
       }
-      if (data.schema !== undefined) {
-        updateData.schema = JSON.stringify(Array.isArray(data.schema) ? data.schema : [])
+      if (data.isPublic !== undefined) updateData.isPublic = data.isPublic ? 1 : 0
+      if (uid === null && updateData.isPublic) {
+        return { success: false, error: '请登录后才能公开配方' }
       }
 
-      // 构建查询条件：匿名配方（uid 为 null）或用户自己的配方
+      // 构建查询条件：只允许登录用户修改自己的配方；匿名配方不可更新
       const queryBuilder = new QueryBuilder().where('id', '=', id)
 
       if (uid === null) {
-        // 匿名配方：uid IS NULL
-        queryBuilder.where('uid', 'IS', null)
-      } else {
-        // 用户配方：uid = user.id
-        queryBuilder.where('uid', '=', uid)
+        return { success: false, error: '匿名配方不支持云端更新' }
       }
+      queryBuilder.where('uid', '=', uid)
 
       const ok = await this.model.updateWithQuery(updateData, queryBuilder)
       return {

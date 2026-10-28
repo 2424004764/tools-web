@@ -17,6 +17,7 @@ import Link from '~icons/ep/link'
 import { v4 as uuidv4 } from 'uuid'
 import functionsRequest from '@/utils/functionsRequest'
 import { useUserStore } from '@/store/modules/user'
+import { normalizeHttpUrl } from '@/utils/external-url'
 
 interface Bookmark {
   id: string
@@ -215,9 +216,10 @@ const handleSubmit = async () => {
     return
   }
 
-  let url = formData.url.trim()
-  if (!/^https?:\/\//i.test(url)) {
-    url = 'https://' + url
+  const url = normalizeHttpUrl(formData.url)
+  if (!url) {
+    ElMessage.warning('请输入有效的 HTTP(S) 链接')
+    return
   }
 
   const tags = formData.tagsInput
@@ -353,6 +355,8 @@ const newBookmark = () => {
   isEditing.value = false
   editingId.value = null
   resetForm()
+  // 新增收藏时带入当前筛选的标签，用户大概率想归到同一标签下
+  formData.tagsInput = selectedTag.value
   showForm.value = true
 }
 
@@ -384,7 +388,12 @@ const toggleRead = async (bookmark: Bookmark) => {
 }
 
 const openUrl = (url: string) => {
-  window.open(url, '_blank')
+  const safeUrl = normalizeHttpUrl(url)
+  if (!safeUrl) {
+    ElMessage.error('链接协议无效，已阻止打开')
+    return
+  }
+  window.open(safeUrl, '_blank', 'noopener,noreferrer')
 }
 
 const extractTitle = (url: string) => {
@@ -404,13 +413,21 @@ const getDomain = (url: string) => {
   }
 }
 
+// 走自建 /api/favicon 代理（Cloudflare 出口取图标 + 边缘缓存）。
+// 此前直连 google.com/s2/favicons，国内访客全部裂图；代理对任何网络都稳定。
 const getFavicon = (url: string) => {
+  let hostname = ''
   try {
-    const u = new URL(url)
-    return `https://www.google.com/s2/favicons?domain=${u.hostname}&sz=64`
+    hostname = new URL(url).hostname
   } catch {
-    return ''
+    try {
+      hostname = new URL('https://' + url).hostname
+    } catch {
+      hostname = ''
+    }
   }
+  if (!hostname) return '/images/logo/link.png'
+  return `/api/favicon?domain=${encodeURIComponent(hostname)}&sz=64`
 }
 
 // ==================== 导入/导出 ====================

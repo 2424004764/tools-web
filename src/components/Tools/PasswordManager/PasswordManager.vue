@@ -9,6 +9,7 @@ import CryptoJS from 'crypto-js'
 import { useUserStore } from '@/store/modules/user'
 import * as passwordApi from '@/api/password'
 import type { PasswordEntry, PasswordGroup } from '@/api/password'
+import { normalizeHttpUrl } from '@/utils/external-url'
 
 // 密码条目接口（本地接口，用于编辑表单）
 
@@ -319,6 +320,11 @@ const saveEntry = async () => {
     return
   }
 
+  if (info.entryForm.url.trim() && !normalizeHttpUrl(info.entryForm.url)) {
+    ElMessage.warning('网址必须是有效的 HTTP(S) 链接')
+    return
+  }
+
   entryLoading.value = true
   try {
     // 加密密码
@@ -328,7 +334,7 @@ const saveEntry = async () => {
       title: info.entryForm.title,
       username: info.entryForm.username,
       password: encryptedPassword,
-      url: info.entryForm.url,
+      url: info.entryForm.url.trim() ? normalizeHttpUrl(info.entryForm.url) || '' : '',
       groupId: info.entryForm.group || null,
       notes: info.entryForm.notes
     }
@@ -802,7 +808,8 @@ defineExpose({ formatTime, exportPasswords, openImportDialog })
                 <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
                 </svg>
-                <a :href="entry.url" target="_blank" class="text-blue-600 hover:underline truncate">{{ entry.url }}</a>
+                <a v-if="normalizeHttpUrl(entry.url)" :href="normalizeHttpUrl(entry.url) || undefined" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline truncate">{{ entry.url }}</a>
+                <span v-else class="text-gray-500 truncate">{{ entry.url }}</span>
               </div>
             </div>
 

@@ -1,6 +1,6 @@
 // Admin 用户管理 API
 // GET  /api/admin/users?page=&pageSize=&keyword=&disabled=  用户分页列表
-// POST /api/admin/users    { email, username, password?, is_admin? }  手动创建用户
+// POST /api/admin/users    { email, username, password? }  手动创建普通用户
 //
 // 鉴权：上游 functions/api/admin/_middleware.js 已校验 Bearer JWT + is_admin=1
 
@@ -242,7 +242,7 @@ async function onRequestPost(context) {
     return jsonError('请求体必须是合法 JSON', 400)
   }
 
-  const { email, username, password, is_admin } = body || {}
+  const { email, username, password } = body || {}
 
   // 1) 必填校验
   if (!email || typeof email !== 'string' || !EMAIL_RE.test(email.trim())) {
@@ -254,7 +254,6 @@ async function onRequestPost(context) {
 
   const normalizedEmail = email.trim().toLowerCase()
   const normalizedUsername = username.trim()
-  const wantAdmin = is_admin === true || is_admin === 1 || is_admin === '1'
 
   try {
     // 2) 邮箱唯一性
@@ -300,7 +299,7 @@ async function onRequestPost(context) {
         hashedPassword,
         salt,
         '',
-        wantAdmin ? 1 : 0,
+        0,
         0,
         0,
         now,
@@ -313,7 +312,7 @@ async function onRequestPost(context) {
       id,
       email: normalizedEmail,
       username: normalizedUsername,
-      is_admin: wantAdmin,
+      is_admin: false,
     }
     if (passwordGenerated) {
       payload.generated_password = finalPassword

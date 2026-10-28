@@ -80,6 +80,17 @@ export interface SubsiteUploadRecord {
   settledAt: string | null
 }
 
+/** 「其他」占用的逐文件明细（R2 实时按前缀归集，不落文件表的两类占用） */
+export interface StorageOtherFile {
+  source: 'generated_image' | 'shopping_list'
+  /** 生成图对应的来源工具名（如 AI 图片编辑）；购物清单图片为 null */
+  tool: string | null
+  /** R2 对象完整 key */
+  key: string
+  bytes: number
+  uploadedAt: string | null
+}
+
 export interface StorageUserDetail {
   user: {
     uid: string
@@ -118,6 +129,14 @@ export interface StorageUserDetail {
   }>
   /** 最近子站上传记录（最新 20 条） */
   uploads: SubsiteUploadRecord[]
+  /** 「其他」占用逐文件明细（R2 实时归集，最新 200 条） */
+  otherFiles: StorageOtherFile[]
+  /** 超出展示上限或 R2 分页未读完 */
+  otherFilesTruncated: boolean
+  /** R2 归集合计；与 sources.other.bytes（账目残差）的差额即历史漂移 */
+  otherBytesFromR2: number
+  /** R2 归集失败原因（失败时其他数据仍返回） */
+  otherFilesError: string | null
 }
 
 export async function fetchStorageUserDetail(uid: string): Promise<StorageUserDetail> {

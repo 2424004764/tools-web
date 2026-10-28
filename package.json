@@ -63,6 +63,7 @@
     "markdown-it": "^14.3.3",
     "opencc-js": "^1.4.2",
     "pdfjs-dist": "^4.10.38",
+    "perfect-freehand": "^1.2.3",
     "pinia": "^2.1.7",
     "pinyin-pro": "^3.29.5",
     "prismjs": "^1.29.0",

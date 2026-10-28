@@ -1,7 +1,7 @@
 import { ApiResponse, initDatabase, QueryBuilder, ShoppingListModel } from '../../../utils/db.js'
 import { AuthMiddleware } from '../../../middlewares/auth.js'
 import { buildR2PublicUrl, signR2PutUrl } from '../../../services/r2.js'
-import { reserveStorage } from '../../../services/storageQuotaService.js'
+import { reserveStorage, releaseReservation } from '../../../services/storageQuotaService.js'
 
 const TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
 const MAX_BYTES = 5 * 1024 * 1024
@@ -35,10 +35,25 @@ export async function onRequest(context) {
     const r2Key = `shopping-list/${auth.user.id}/${listId}/${itemId}-${crypto.randomUUID()}.${extension}`
     // content-length 与 content-type 都锁进签名：实际 PUT 字节数 / 类型与声明不符 → R2 直接 403。
     // 只预留不锁长度时，"声明 1 字节实际上传 1GB"会绕过配额计费。
-    const signed = await signR2PutUrl(env, env.R2_BUCKET_NAME, r2Key, contentType, { contentLength: size })
-    const publicUrl = buildR2PublicUrl(env, r2Key)
-    if (!publicUrl) return ApiResponse.error('图片公网地址未配置', origin, 503)
-    return ApiResponse.success({ ...signed, publicUrl, r2Key, reservationId }, origin)
+    try {
+      const signed = await signR2PutUrl(env, env.R2_BUCKET_NAME, r2Key, contentType, { contentLength: size })
+      const publicUrl = buildR2PublicUrl(env, r2Key)
+      if (!publicUrl) throw new Error('图片公网地址未配置')
+
+      await init.db
+        .prepare(
+          `INSERT INTO shopping_list_image_uploads
+             (r2_key, uid, reservation_id, declared_bytes, status, created_at, updated_at)
+           VALUES (?, ?, ?, ?, 'pending', datetime('now'), datetime('now'))`,
+        )
+        .bind(r2Key, auth.user.id, reservationId, size)
+        .run()
+
+      return ApiResponse.success({ ...signed, publicUrl, r2Key, reservationId }, origin)
+    } catch (error) {
+      await releaseReservation(init.db, auth.user.id, reservationId).catch(() => {})
+      throw error
+    }
   } catch (error) {
     console.error('Shopping list image signing error:', error)
     return ApiResponse.error('图片上传服务暂不可用', origin, 503)

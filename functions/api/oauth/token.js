@@ -119,16 +119,32 @@ async function handleRefreshToken(db, env, client, { clientSecret, params }) {
 
   const tokenHash = await sha256Hex(refreshToken)
   const row = await db
-    .prepare(`SELECT * FROM oauth_refresh_tokens WHERE token_hash = ?`)
+    .prepare(
+      `SELECT t.*, u.is_disabled AS user_disabled
+       FROM oauth_refresh_tokens t
+       LEFT JOIN user u ON u.id = t.user_id
+       WHERE t.token_hash = ?`,
+    )
     .bind(tokenHash)
     .first()
   if (!row) return oauthError('invalid_grant', 'refresh_token 无效')
   if (row.client_id !== client.client_id) return oauthError('invalid_grant', 'refresh_token 与客户端不匹配')
   if (row.revoked) return oauthError('invalid_grant', 'refresh_token 已被撤销')
   if (row.expires_at < Math.floor(Date.now() / 1000)) return oauthError('invalid_grant', 'refresh_token 已过期')
+  if (row.user_disabled) return oauthError('invalid_grant', '用户不存在或账号已被禁用')
 
-  // 轮换：旧 refresh_token 作废，签发新的一对
-  await db.prepare(`UPDATE oauth_refresh_tokens SET revoked = 1 WHERE token_hash = ?`).bind(tokenHash).run()
+  // 条件消费保证并发刷新时只有一个请求能签发新令牌。
+  const consume = await db
+    .prepare(
+      `UPDATE oauth_refresh_tokens
+       SET revoked = 1
+       WHERE token_hash = ? AND client_id = ? AND revoked = 0 AND expires_at > ?`,
+    )
+    .bind(tokenHash, client.client_id, Math.floor(Date.now() / 1000))
+    .run()
+  if ((consume?.meta?.changes ?? consume?.changes ?? 0) !== 1) {
+    return oauthError('invalid_grant', 'refresh_token 已被使用或已过期')
+  }
 
   const tokens = await issueTokenPair(db, {
     clientId: client.client_id,

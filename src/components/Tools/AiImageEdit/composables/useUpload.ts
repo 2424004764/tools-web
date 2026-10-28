@@ -6,6 +6,8 @@ import { ElMessage } from 'element-plus'
 import type { UploadProps } from 'element-plus'
 import Sortable from 'sortablejs'
 import { fetchMyGenerationRecordImage } from '@/api/me'
+import { genUuid } from '@/utils/uuid'
+import { isImageFile } from '@/utils/file'
 import type { ResultSlot } from './useSlotVisuals'
 
 export const MAX_IMAGES = 16
@@ -71,6 +73,15 @@ export function useUpload() {
     uploadRef.value?.clearFiles()
   }
 
+  // 原生 input 选图入口（手机端主路径）：change 后立即清空 value，
+  // 否则「取消弹窗后重选同一张图」不会再触发 change
+  const onNativeFilePick = (e: Event) => {
+    const input = e.currentTarget as HTMLInputElement
+    const files = Array.from(input.files || [])
+    if (files.length > 0) addImageFiles(files)
+    input.value = ''
+  }
+
   // onExceed：超过 MAX_IMAGES 触发。直接提示，由用户自己处理。
   const handleExceed: UploadProps['onExceed'] = () => {
     ElMessage.warning(`最多上传 ${MAX_IMAGES} 张图片`)
@@ -89,13 +100,13 @@ export function useUpload() {
         ElMessage.warning(`已达上限 ${MAX_IMAGES} 张`)
         break
       }
-      if (!file.type.startsWith('image/')) {
+      if (!isImageFile(file)) {
         ElMessage.error(`已跳过非图片文件：${file.name || '未知'}`)
         continue
       }
       imageFiles.value.push(file)
       uploadedFileNames.value.push(file.name || 'image.png')
-      imageIds.value.push(crypto.randomUUID())
+      imageIds.value.push(genUuid())
       const reader = new FileReader()
       reader.onload = (e) => {
         // 同步追加到预览数组，保持索引一致
@@ -325,12 +336,20 @@ export function useUpload() {
       ghostClass: 'upload-thumb-ghost',
       chosenClass: 'upload-thumb-chosen',
       dragClass: 'upload-thumb-dragging',
-      // 延迟 80ms 才进入拖拽，避免和「点击放大」冲突（区分不动 vs 移动）
-      delay: 80,
+      // 延迟 150ms 才进入拖拽，避免和「点击放大」冲突（区分不动 vs 移动）。
+      // 不要低于 150：手机上按住 ~100ms + 晃动几像素的「慢点击」很常见，
+      // 太短会被 Sortable 判成拖拽并 preventDefault 掉 touchend，
+      // 表现为点了缩略图/添加格没反应
+      delay: 150,
       delayOnTouchOnly: true,
-      // 触摸起手在延迟期内移动超过 10px 即取消拖拽并放行滚动，
-      // 否则从缩略图上起手滑动页面时前 80ms 会被 preventDefault 卡住
+      // 触屏起手在延迟期内移动超过 10px 即取消拖拽并放行滚动，
+      // 否则从缩略图上起手滑动页面时前段会被 preventDefault 卡住
       touchStartThreshold: 10,
+      // 「继续添加」格不参与拖拽排序。preventOnFilter 必须为 false：
+      // 默认 true 时 Sortable 会对命中 filter 的 tap 调 preventDefault，
+      // 手机上该格的 click 会被吞掉，表现为点了不弹选图窗
+      filter: '.upload-add-tile',
+      preventOnFilter: false,
       // 生成中也可排序（FormData 已快照，不影响当前批次）
       disabled: false,
       onEnd: handleImageSortEnd,
@@ -390,6 +409,7 @@ export function useUpload() {
     handleChange,
     handleExceed,
     handleUpload,
+    onNativeFilePick,
     addImageFiles,
     removeImage,
     clearAllImages,

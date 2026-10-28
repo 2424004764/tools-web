@@ -1770,6 +1770,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/svg-to-image/',
+    component: () => import('@/components/Tools/SvgToImage/SvgToImage.vue'),
+    name: 'svg-to-image',
+    meta: {
+      title: "SVG转JPG/PNG",
+      keywords: 'SVG转JPG,SVG转PNG,SVG转换,SVG导出图片,SVG转位图,矢量图转换',
+      description: '在线SVG转JPG/PNG工具，上传SVG文件或粘贴SVG代码即可转换为高清位图，支持0.5~4倍缩放、自定义宽度、透明背景与质量调节，纯前端处理保护隐私'
+    }
+  },
+  {
     path: '/video-parser',
     component: () => import('@/components/Tools/VideoParser/VideoParser.vue'),
     name: 'video-parser',
@@ -1885,8 +1895,8 @@ export const constantRoute = [
     name: 'doodlePad',
     meta: {
       title: "在线涂鸦画板",
-      keywords: "在线涂鸦画板,在线画板,网页画板,涂鸦,画图,白板,画笔,橡皮,撤销,重做,下载PNG,透明背景",
-      description: "在线涂鸦画板工具，支持画笔/橡皮切换、10 种预设颜色+拾色器、可调画笔与橡皮粗细、撤销/重做最多 30 步、画布尺寸与背景色可设置（含透明背景）、一键下载 PNG 或复制到剪贴板，纯前端 HTML5 Canvas 实现，鼠标 / 触摸均可，隐私安全。",
+      keywords: "在线涂鸦画板,在线画板,网页画板,无限画布,涂鸦,画图,白板,画笔,橡皮,压感,撤销,重做,下载PNG,透明背景",
+      description: "在线无限画布涂鸦画板，支持平移缩放、画笔/橡皮切换、10 种预设颜色+拾色器、可调画笔与橡皮粗细、数位板压感、笔画级撤销/重做、透明背景，按内容自动裁剪导出 PNG 或复制到剪贴板，纯前端实现，鼠标 / 触摸均可，隐私安全。",
     }
   },
   {

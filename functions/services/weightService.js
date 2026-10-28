@@ -272,6 +272,12 @@ export class WeightService {
   // 创建体重记录
   async createRecord(recordData, uid) {
     try {
+      const member = await this.db
+        .prepare('SELECT id FROM weight_members WHERE id = ? AND uid = ?')
+        .bind(recordData.memberId, uid)
+        .first()
+      if (!member) return { success: false, error: '成员不存在或无权限' }
+
       const now = new Date()
       const recordDate = recordData.recordDate || now.toISOString().split('T')[0]
       const recordTime = recordData.recordTime || now.toTimeString().slice(0, 5)
@@ -300,6 +306,13 @@ export class WeightService {
   // 更新体重记录
   async updateRecord(id, recordData, uid) {
     try {
+      if (recordData.memberId !== undefined) {
+        const member = await this.memberModel.findOne(
+          new QueryBuilder().where('id', '=', recordData.memberId).where('uid', '=', uid),
+        )
+        if (!member) return { success: false, error: '成员不存在或无权限' }
+      }
+
       const updateData = {}
       if (recordData.weight !== undefined) {
         updateData.weight = recordData.weight
@@ -468,7 +481,7 @@ export class WeightService {
       let member = null
       if (memberId) {
         const memberResult = await this.memberModel.findOne(
-          new QueryBuilder().where('id', '=', memberId)
+          new QueryBuilder().where('id', '=', memberId).where('uid', '=', uid)
         )
         member = memberResult
       }

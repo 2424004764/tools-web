@@ -6,8 +6,7 @@
 // 预留超时（1 小时）自动失效，此处是主动提前释放；幂等。
 
 import { extractUidFromRequest } from '../_lib/model-resolver.js'
-import { releaseReservation } from '../../services/storageQuotaService.js'
-
+import { deleteR2Object } from '../../services/r2.js'
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
@@ -45,7 +44,20 @@ export async function onRequest(context) {
     const reservationId = String(body?.reservationId || '').trim()
     if (!reservationId) return jsonError('缺少 reservationId', 400)
 
-    const released = await releaseReservation(db, uid, reservationId)
+    const intent = await db
+      .prepare('SELECT r2_key FROM music_upload_intents WHERE uid = ? AND reservation_id = ?')
+      .bind(uid, reservationId)
+      .first()
+    const results = await db.batch([
+      db.prepare('DELETE FROM storage_reservations WHERE id = ? AND uid = ?').bind(reservationId, uid),
+      db.prepare('DELETE FROM music_upload_intents WHERE uid = ? AND reservation_id = ?').bind(uid, reservationId),
+    ])
+    const released = (results?.[0]?.meta?.changes ?? 0) > 0
+    if (intent?.r2_key && env.R2_BUCKET_NAME) {
+      await deleteR2Object(env, env.R2_BUCKET_NAME, intent.r2_key).catch((error) => {
+        console.error('failed to remove abandoned music upload:', error?.message || error)
+      })
+    }
     return json({ ok: true, released })
   } catch (error) {
     console.error('/api/storage-quota/release error:', error)

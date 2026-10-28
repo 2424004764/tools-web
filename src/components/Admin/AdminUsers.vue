@@ -172,8 +172,7 @@ const createDialogDirty = computed(() => {
   return (
     (f.email || '').trim().length > 0 ||
     (f.username || '').trim().length > 0 ||
-    (f.password || '').length > 0 ||
-    !!f.is_admin
+    (f.password || '').length > 0
   )
 })
 
@@ -723,7 +722,7 @@ const submitEdit = async () => {
 const createDialog = reactive({
   visible: false,
   submitting: false,
-  form: { email: '', username: '', password: '', is_admin: false },
+  form: { email: '', username: '', password: '' },
   showPassword: false,
   result: null as CreateUserResult | null,
 })
@@ -802,7 +801,7 @@ const generateLocalPassword = (len = 10): string => {
 }
 
 const openCreateDialog = () => {
-  createDialog.form = { email: '', username: '', password: '', is_admin: false }
+  createDialog.form = { email: '', username: '', password: '' }
   createDialog.showPassword = false
   createDialog.result = null
   createDialog.visible = true
@@ -822,25 +821,12 @@ const submitCreate = async () => {
     ElMessage.warning('请输入用户名')
     return
   }
-  // 管理员二次确认
-  if (createDialog.form.is_admin) {
-    try {
-      await ElMessageBox.confirm(
-        '确定将该用户创建为管理员？此操作后续可禁用但请谨慎。',
-        '二次确认',
-        { type: 'warning', confirmButtonText: '确认创建', cancelButtonText: '取消' },
-      )
-    } catch {
-      return
-    }
-  }
   createDialog.submitting = true
   try {
     const result = await createAdminUser({
       email: createDialog.form.email.trim(),
       username: createDialog.form.username.trim(),
       password: createDialog.form.password || undefined,
-      is_admin: createDialog.form.is_admin,
     })
     createDialog.result = result
     ElMessage.success('用户创建成功')
@@ -1751,14 +1737,6 @@ const updateIsMobile = () => {
               留空时由后端生成 10 位小写字母 + 数字随机密码，并在成功面板中展示一次。
             </div>
           </el-form-item>
-          <el-form-item label="权限">
-            <el-checkbox v-model="createDialog.form.is_admin">
-              设为管理员
-            </el-checkbox>
-            <div class="text-xs text-ink-500 mt-1">
-              管理员可访问 /admin 后台。勾选后创建时会有二次确认。
-            </div>
-          </el-form-item>
         </el-form>
       </template>
 
@@ -1787,13 +1765,7 @@ const updateIsMobile = () => {
             <span class="text-ink-900">{{ createDialog.result.username }}</span>
           </el-descriptions-item>
           <el-descriptions-item label="权限">
-            <el-tag
-              v-if="createDialog.result.is_admin"
-              type="warning"
-              effect="dark"
-              size="small"
-            >管理员</el-tag>
-            <el-tag v-else type="success" effect="plain" size="small">普通用户</el-tag>
+            <el-tag type="success" effect="plain" size="small">普通用户</el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="初始密码">
             <div class="flex items-center gap-2 flex-wrap">

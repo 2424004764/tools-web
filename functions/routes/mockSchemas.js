@@ -10,22 +10,7 @@ export class MockSchemasRouter {
   async handle(request, path, env, origin) {
     const authResult = await AuthMiddleware.extractUserFromRequest(request, env)
 
-    // 未登录用户允许 POST（创建匿名配方）和 PUT（更新匿名配方）
     if (!authResult.success) {
-      const id = path ? path.replace(/^\//, '') : ''
-
-      if (request.method === 'POST') {
-        // 允许匿名用户创建配方（uid 为 null）
-        if (id) return ApiResponse.error('创建 mock 配方不需要提供 ID', origin, 400)
-        return await this.controller.store(await request.json(), null, origin)
-      }
-
-      if (request.method === 'PUT') {
-        // 允许匿名用户更新配方（uid 为 null）
-        if (!id) return ApiResponse.error('更新 mock 配方需要提供 ID', origin, 400)
-        return await this.controller.update(id, await request.json(), null, origin)
-      }
-
       return AuthMiddleware.createAuthErrorResponse(authResult.error, origin)
     }
 

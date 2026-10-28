@@ -6,8 +6,8 @@ export class LinksController {
     this.linksService = new LinksService(db, env, waitUntil)
   }
 
-  async store(data, origin) {
-    const result = await this.linksService.createLink(data)
+  async store(data, origin, uid = null) {
+    const result = await this.linksService.createLink(data, uid)
     if (!result.success) {
       return ApiResponse.error(result.error, origin, 400)
     }
@@ -30,8 +30,11 @@ export class LinksController {
     return ApiResponse.success(result.data, origin)
   }
 
-  async destroy(slug, origin) {
-    await this.linksService.deleteLink(slug)
+  async destroy(slug, uid, origin) {
+    const result = await this.linksService.deleteLink(slug, uid)
+    if (!result.success) {
+      return ApiResponse.error(result.error, origin, 404)
+    }
     return ApiResponse.success({ success: true }, origin)
   }
 }

@@ -3,6 +3,27 @@ import { ElMessage } from 'element-plus'
 import { getLocalToken } from './user'
 import { handleHttpError } from './errorHandler'
 
+// Admin 接口 403 兜底：前端路由守卫只校验 token 里的 is_admin 声明，
+// 管理员被降权后旧 token 仍能进入后台页面，但所有接口会被后端 _middleware.js
+// 以 403 拒绝。此时提示并弹回首页，避免停留在后台空壳页。
+// 一个页面会并发多个 admin 请求，用标志位保证只提示/跳转一次。
+let handlingAdmin403 = false
+
+function handleAdmin403(message: string): void {
+  if (handlingAdmin403) return
+  handlingAdmin403 = true
+  ElMessage({
+    message: `${message}，即将返回首页`,
+    type: 'error',
+    duration: 2000,
+    showClose: true,
+  })
+  setTimeout(() => {
+    // replace 而非 href，避免返回键又退回无权限的后台页面
+    window.location.replace('/')
+  }, 1500)
+}
+
 // 创建functions代理专用的axios实例
 class FunctionsRequest {
   private instance: AxiosInstance
@@ -46,6 +67,17 @@ class FunctionsRequest {
         const status = error.response?.status
         if (status === 401) {
           handleHttpError(status)
+        } else if (
+          status === 403 &&
+          typeof error.config?.url === 'string' &&
+          error.config.url.startsWith('/api/admin/')
+        ) {
+          // 后端判定无管理员权限（token 声明与真实权限不一致）：提示后弹回首页
+          const backendMessage =
+            typeof error.response?.data?.error === 'string' && error.response.data.error
+              ? error.response.data.error
+              : '无管理员权限'
+          handleAdmin403(backendMessage)
         } else if (typeof error.response?.data?.error === 'string' && error.response.data.error) {
           message = error.response.data.error
           ElMessage.error(message)

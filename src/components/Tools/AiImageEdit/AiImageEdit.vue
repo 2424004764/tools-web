@@ -317,7 +317,7 @@ const {
   uploadRef, imageFiles, imagePreviews, uploadedFileNames, imageIds, imageAspectStyles,
   imageGridRef, canAddMore, remainingSlots, isDragOver, isRefillingImage, spinnerRef,
   handleChange, handleExceed, handleUpload, addImageFiles, removeImage, clearAllImages,
-  onDragEnter, onDragOver, onDragLeave, onUploadDrop, onSlotDragStart,
+  onDragEnter, onDragOver, onDragLeave, onUploadDrop, onSlotDragStart, onNativeFilePick,
 } = upload
 const {
   savedGroupIds, savedImageCount, successfulResults, autoSaveSlot,
@@ -462,12 +462,32 @@ const handleBeforeUnload = (e: BeforeUnloadEvent) => {
 // ============ 生成完成浏览器通知 ============
 // 场景：生成要几分钟，用户切到别的标签页等待。页面隐藏且授权过通知时，
 // 批次结束弹系统通知；点击通知聚焦回本页。权限在「触发生成」的用户手势里申请。
+//
+// 只弹一次授权：用户点过「拒绝」后浏览器会把 permission 记成 denied（天然不再弹），
+// 但「直接关掉授权框」或弹框失败（iOS 非PWA Safari 等）时 permission 仍是 default，
+// 按原逻辑每次生成都会再弹一遍，非常打扰。这里用 localStorage 记住「已问过」，
+// 只要申请过一次且没有 granted，之后一律不再申请；用户想恢复可去浏览器站点设置里手动允许。
+const NOTIFY_ASKED_KEY = 'ai-image-edit:notify-permission-asked'
+
 const requestNotifyPermission = async () => {
   if (typeof window === 'undefined' || !('Notification' in window)) return
   try {
-    if (Notification.permission === 'default') {
-      await Notification.requestPermission()
+    // granted/denied 都不会再弹系统授权框，直接返回
+    if (Notification.permission !== 'default') return
+    let asked = false
+    try {
+      asked = localStorage.getItem(NOTIFY_ASKED_KEY) === '1'
+    } catch {
+      // localStorage 不可用（隐私模式等）时退化为只按浏览器 permission 判断
     }
+    if (asked) return
+    // 无论结果如何都先标记：拒绝 / 关掉弹框 / 抛异常，统统视为「问过了，不再问」
+    try {
+      localStorage.setItem(NOTIFY_ASKED_KEY, '1')
+    } catch {
+      // 静默
+    }
+    await Notification.requestPermission()
   } catch {
     /* 部分浏览器（iOS Safari 等）不支持，静默 */
   }
@@ -634,13 +654,25 @@ onUnmounted(() => {
                 :on-exceed="handleExceed"
                 :http-request="handleUpload"
                 :show-file-list="false"
-                accept="image/png,image/jpeg,image/webp,image/gif"
+                accept="image/*"
               >
                 <!-- 空状态：上传提示 -->
                 <div
                   v-if="imageFiles.length === 0"
-                  class="flex flex-col items-center justify-center py-3"
+                  class="relative flex flex-col items-center justify-center py-3"
                 >
+                  <!-- 原生 input 透明铺满整个区域：手指/鼠标直接点到 input 本身，
+                       不依赖 el-upload 对隐藏 input 的 JS 合成 click（部分手机 WebView
+                       会静默忽略合成 click，表现为点了不弹选图窗）。@click.stop 阻止
+                       冒泡到 el-upload 触发器，避免二次调用弹两个窗 -->
+                  <input
+                    type="file"
+                    class="native-file-input"
+                    accept="image/*"
+                    multiple
+                    @change="onNativeFilePick"
+                    @click.stop
+                  />
                   <svg class="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
@@ -689,7 +721,15 @@ onUnmounted(() => {
                       <span class="upload-thumb-name">{{ uploadedFileNames[idx] }}</span>
                     </div>
                     <!-- 末尾「继续添加」占位（生成中也可继续添加图片） -->
-                    <div v-if="canAddMore" class="upload-add-tile" :title="`还可添加 ${remainingSlots} 张`">
+                    <div v-if="canAddMore" class="upload-add-tile relative" :title="`还可添加 ${remainingSlots} 张`">
+                      <input
+                        type="file"
+                        class="native-file-input"
+                        accept="image/*"
+                        multiple
+                        @change="onNativeFilePick"
+                        @click.stop
+                      />
                       <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4" />
                       </svg>
@@ -1459,6 +1499,28 @@ onUnmounted(() => {
 .upload-add-tile:hover {
   border-color: #3b82f6;
   background: #eff6ff;
+}
+
+/* 原生 file input 透明铺满父容器（父容器须 position:relative）。
+   点击直接命中 input 本身 → 浏览器原生弹出选图窗，绕开一切 JS 合成 click 的兼容性坑。
+   不能用 display:none / visibility:hidden —— 部分手机 WebView 会拒绝响应；
+   opacity:0 + 铺满点击区在所有浏览器上都等价于「可见可点」。
+   不用 inset 简写（老 X5 内核不认），逐边写。 */
+.native-file-input {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 3;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: 0;
 }
 
 /* ============ 拖拽视觉反馈 ============ */

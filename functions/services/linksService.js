@@ -2,6 +2,7 @@ import { LinkModel, QueryBuilder } from '../utils/db.js'
 
 export class LinksService {
   constructor(db, env = null, waitUntil = null) {
+    this.db = db
     this.linkModel = new LinkModel(db, env, waitUntil)
   }
 
@@ -26,15 +27,22 @@ export class LinksService {
 
   async createLink(data, uid = null) {
     try {
-      const { url, slug: customSlug, title, expireAt } = data
-
-      if (!url) {
-        return { success: false, error: '请输入链接' }
+      const rawUrl = typeof data?.url === 'string' ? data.url.trim() : ''
+      if (!rawUrl || rawUrl.length > 2048) {
+        return { success: false, error: '链接不能为空且不能超过 2048 个字符' }
       }
-
-      if (!/^(https?:\/\/)?([\w-]+\.)+\w+/i.test(url) && url !== 'localhost') {
-        return { success: false, error: '请输入有效的链接或域名' }
+      let parsedUrl
+      try {
+        parsedUrl = new URL(/^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`)
+      } catch {
+        return { success: false, error: '请输入有效的 HTTP(S) 链接' }
       }
+      if (!['http:', 'https:'].includes(parsedUrl.protocol) || !parsedUrl.hostname || parsedUrl.username || parsedUrl.password) {
+        return { success: false, error: '仅支持有效的 HTTP(S) 链接' }
+      }
+      const url = parsedUrl.toString()
+      const title = typeof data.title === 'string' ? data.title.trim().slice(0, 120) : ''
+      const { slug: customSlug, expireAt } = data
 
       let slug = customSlug
       if (slug) {
@@ -113,11 +121,11 @@ export class LinksService {
     }
   }
 
-  async deleteLink(slug) {
+  async deleteLink(slug, uid) {
     try {
-      const queryBuilder = new QueryBuilder().where('slug', '=', slug)
-      await this.linkModel.deleteWithQuery(queryBuilder)
-      return { success: true }
+      const queryBuilder = new QueryBuilder().where('slug', '=', slug).where('uid', '=', uid)
+      const deleted = await this.linkModel.deleteWithQuery(queryBuilder)
+      return { success: deleted }
     } catch (error) {
       console.error('LinksService deleteLink error:', error)
       return { success: false, error: '删除失败' }

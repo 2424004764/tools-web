@@ -64,3 +64,9 @@ export async function updateRedeemCodeBatch(
 ): Promise<void> {
   await functionsRequest.put(`/api/admin/redeem-code-batches/${batchId}`, payload)
 }
+
+/** 删除未兑换的整个批次 */
+export async function deleteRedeemCodeBatch(batchId: string): Promise<{ deleted: number }> {
+  const res = await functionsRequest.delete(`/api/admin/redeem-code-batches/${batchId}`)
+  return res.data.data
+}

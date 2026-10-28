@@ -219,6 +219,12 @@ export class HeightService {
 
   async createRecord(recordData, uid) {
     try {
+      const member = await this.db
+        .prepare('SELECT id FROM height_members WHERE id = ? AND uid = ?')
+        .bind(recordData.memberId, uid)
+        .first()
+      if (!member) return { success: false, error: '成员不存在或无权限' }
+
       const now = new Date()
       const recordDate = recordData.recordDate || now.toISOString().split('T')[0]
       const recordTime = recordData.recordTime || now.toTimeString().slice(0, 5)
@@ -243,6 +249,13 @@ export class HeightService {
 
   async updateRecord(id, recordData, uid) {
     try {
+      if (recordData.memberId !== undefined) {
+        const member = await this.memberModel.findOne(
+          new QueryBuilder().where('id', '=', recordData.memberId).where('uid', '=', uid),
+        )
+        if (!member) return { success: false, error: '成员不存在或无权限' }
+      }
+
       const updateData = {}
       if (recordData.height !== undefined) updateData.height = recordData.height
       if (recordData.note !== undefined) updateData.note = recordData.note
@@ -434,7 +447,7 @@ export class HeightService {
       let member = null
       if (memberId) {
         member = await this.memberModel.findOne(
-          new QueryBuilder().where('id', '=', memberId)
+          new QueryBuilder().where('id', '=', memberId).where('uid', '=', uid)
         )
       }
 

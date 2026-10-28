@@ -1300,6 +1300,7 @@ export class MockSchemaModel extends Model {
         name: { type: 'string' },
         description: { type: 'text' },
         schema: { type: 'text' },
+        isPublic: { type: 'integer', dbField: 'is_public' },
         createTime: { type: 'datetime', dbField: 'create_time' },
         updateTime: { type: 'datetime', dbField: 'update_time' }
       }

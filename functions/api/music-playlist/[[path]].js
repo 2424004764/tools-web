@@ -96,7 +96,7 @@ export async function onRequest(context) {
           return ApiResponse.error('不支持的请求方法', origin, 405)
         }
         // 拥有者自己播放也计入（不强制公开）
-        const playCount = await service.incrementSongPlayCount(songMatch.id)
+        const playCount = await service.incrementSongPlayCount(songMatch.id, uid)
         if (playCount === 0) {
           return ApiResponse.error('歌曲不存在', origin, 404)
         }

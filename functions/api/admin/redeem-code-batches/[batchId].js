@@ -1,11 +1,12 @@
 // Admin 兑换码批次单条 API
 // 鉴权：functions/api/admin/_middleware.js
 // 路由：
-//   GET  /api/admin/redeem-code-batches/:batchId   批次详情（全部 codes + 统计）
-//   PUT  /api/admin/redeem-code-batches/:batchId   body: { note }   更新该批次下所有码的备注
+//   GET    /api/admin/redeem-code-batches/:batchId   批次详情（全部 codes + 统计）
+//   PUT    /api/admin/redeem-code-batches/:batchId   body: { note }   更新该批次下所有码的备注
+//   DELETE /api/admin/redeem-code-batches/:batchId   删除未兑换的整个批次
 
 const corsHeaders = {
-  'Access-Control-Allow-Methods': 'GET, PUT, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 }
 
@@ -38,6 +39,9 @@ export async function onRequest(context) {
     }
     if (request.method === 'PUT') {
       return await handlePut(context, db, batchId)
+    }
+    if (request.method === 'DELETE') {
+      return await handleDelete(context, db, batchId)
     }
     return jsonError('不支持的请求方法', 405)
   } catch (err) {
@@ -133,4 +137,38 @@ async function handlePut(context, db, batchId) {
 
   console.log(`[admin/redeem-code-batches] batch=${batchId} updated note by adminUid=${context.data?.adminUid || '?'}`)
   return json({ updated: changes, batch_id: batchId })
+}
+
+// 删除未兑换批次，条件删除避免检查后并发兑换导致审计记录丢失。
+async function handleDelete(context, db, batchId) {
+  const result = await db
+    .prepare(
+      `DELETE FROM credit_redeem_codes
+       WHERE batch_id = ?
+         AND NOT EXISTS (
+           SELECT 1 FROM credit_redeem_codes
+           WHERE batch_id = ? AND used_at IS NOT NULL
+         )`,
+    )
+    .bind(batchId, batchId)
+    .run()
+
+  const deleted = result.meta?.changes ?? result.changes ?? 0
+  if (deleted === 0) {
+    const batch = await db
+      .prepare(
+        `SELECT COUNT(*) AS total,
+                SUM(CASE WHEN used_at IS NOT NULL THEN 1 ELSE 0 END) AS used
+         FROM credit_redeem_codes
+         WHERE batch_id = ?`,
+      )
+      .bind(batchId)
+      .first()
+
+    if (!batch || batch.total === 0) return jsonError('批次不存在', 404)
+    return jsonError('该批次包含已兑换码，不能删除，以保留兑换记录', 409)
+  }
+
+  console.log(`[admin/redeem-code-batches] batch=${batchId} deleted=${deleted} by adminUid=${context.data?.adminUid || '?'}`)
+  return json({ deleted, batch_id: batchId })
 }

@@ -44,7 +44,7 @@ const ALLOWED_KEYS = {
   },
   products_matrix: {
     remark:
-      '「更多产品」矩阵，JSON 数组：[{"key":"tiji","name":"题迹","desc":"一句话简介","url":"https://xxx","logo":"/images/logo/product-tiji.svg","enabled":true}]；key 为站内跳转白名单（小写字母/数字/连字符，全局唯一），enabled=false 隐藏该项，全部隐藏时前台不展示「更多产品」入口；留空 = 使用内置默认',
+      '「更多产品」矩阵，JSON 数组：[{"key":"tiji","name":"题迹","desc":"一句话简介","url":"https://xxx","logo":"/images/logo/product-tiji.svg","enabled":true}]；key 为站内跳转白名单（小写字母/数字/连字符，全局唯一），enabled=false 隐藏该项，全部隐藏时前台不展示「更多产品」入口；logo 选填，留空时前台取名称首字做图标；留空 = 使用内置默认',
     validate: validateProductsMatrix,
   },
   admin_dashboard_layout: {
@@ -102,7 +102,8 @@ function validateProductsMatrix(v) {
     const url = String(item.url ?? '').trim()
     if (!/^https?:\/\/\S+$/i.test(url)) return null
     const logo = String(item.logo ?? '').trim()
-    if (!/^(https?:\/\/\S+|\/\S+)$/i.test(logo)) return null
+    // logo 选填：留空时前台用名称首字做文字图标；填了才校验格式
+    if (logo && !/^(https?:\/\/\S+|\/\S+)$/i.test(logo)) return null
     seen.add(key)
     // enabled 缺省视为开启，显式 false 才隐藏
     out.push({ key, name, desc, url, logo, enabled: item.enabled !== false })

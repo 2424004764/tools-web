@@ -1,6 +1,7 @@
 // 每张生成结果格子的独立视觉与计时（timer + canvas 粒子动画）。
 // 只自持各自 Map，不依赖组件状态：startSlotTimer(slot) 收一个 slot 对象即可。
 import { nextTick } from 'vue'
+import { genUuid } from '@/utils/uuid'
 
 export type SlotStatus = 'pending' | 'success' | 'failed'
 
@@ -26,7 +27,7 @@ interface Particle {
 
 /** 创建一个新的 pending slot（本地临时图片在保存时由后端重排 id） */
 const createPendingSlot = (): ResultSlot => ({
-  id: crypto.randomUUID(),
+  id: genUuid(),
   status: 'pending',
   url: '',
   recordId: '',

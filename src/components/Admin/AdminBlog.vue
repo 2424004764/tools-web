@@ -9,6 +9,8 @@ import {
   fetchAdminBlogPosts,
   updateAdminBlogPost,
   deleteAdminBlogPost,
+  batchDeleteAdminBlogPosts,
+  batchReviewAdminBlogPosts,
   type AdminBlogPost,
   type AdminBlogPostCounts,
   type AdminBlogPostStatus,
@@ -20,6 +22,12 @@ const router = useRouter()
 
 const loading = ref(false)
 const list = ref<AdminBlogPost[]>([])
+const selectedIds = ref<string[]>([])
+const tableRef = ref<any>(null)
+const batchDeleting = ref(false)
+const batchReviewing = ref(false)
+const batchRejectDialogVisible = ref(false)
+const batchRejectReason = ref('')
 const counts = ref<AdminBlogPostCounts>({ pending: 0, draft: 0, published: 0, rejected: 0, total: 0 })
 const pagination = ref<AdminPagination>({
   total: 0,
@@ -71,7 +79,17 @@ const formatTime = (s: string | null) => {
   return d.toLocaleString('zh-CN', { hour12: false })
 }
 
+const clearSelection = () => {
+  selectedIds.value = []
+  tableRef.value?.clearSelection()
+}
+
+const handleSelectionChange = (rows: AdminBlogPost[]) => {
+  selectedIds.value = rows.map((row) => row.id)
+}
+
 const load = async () => {
+  clearSelection()
   loading.value = true
   try {
     const result = await fetchAdminBlogPosts({
@@ -83,6 +101,10 @@ const load = async () => {
     list.value = result.list
     pagination.value = result.pagination
     counts.value = result.counts
+    if (pagination.value.page > Math.max(1, pagination.value.totalPages)) {
+      pagination.value.page = Math.max(1, pagination.value.totalPages)
+      await load()
+    }
   } catch (err) {
     console.error(err)
   } finally {
@@ -169,6 +191,85 @@ const handleDelete = async (row: AdminBlogPost) => {
   }
 }
 
+const handleBatchDelete = async () => {
+  const ids = [...selectedIds.value]
+  if (!ids.length || batchDeleting.value) return
+  try {
+    await ElMessageBox.confirm(
+      `确定永久删除选中的 ${ids.length} 篇文章吗？此操作不可恢复。`,
+      '批量删除文章',
+      { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' },
+    )
+  } catch {
+    return
+  }
+
+  batchDeleting.value = true
+  try {
+    const result = await batchDeleteAdminBlogPosts(ids)
+    if (result.failed.length) {
+      ElMessage.warning(`已删除 ${result.deleted} 篇，${result.failed.length} 篇删除失败`)
+    } else {
+      ElMessage.success(`已删除 ${result.deleted} 篇文章`)
+    }
+    await load()
+  } catch (err: any) {
+    ElMessage.error(err?.response?.data?.error || err?.message || '批量删除失败')
+  } finally {
+    batchDeleting.value = false
+  }
+}
+
+const handleBatchReview = async (status: 'published' | 'rejected', reason = ''): Promise<boolean> => {
+  if (!selectedIds.value.length || batchReviewing.value) return false
+  const selected = new Set(selectedIds.value)
+  const pendingIds = list.value.filter((row) => selected.has(row.id) && row.status === 'pending').map((row) => row.id)
+  const skipped = selectedIds.value.length - pendingIds.length
+  if (!pendingIds.length) {
+    ElMessage.warning('所选文章中没有待审核投稿')
+    return false
+  }
+
+  const actionLabel = status === 'published' ? '通过并发布' : '驳回'
+  try {
+    await ElMessageBox.confirm(
+      `确定${actionLabel}选中的 ${pendingIds.length} 篇待审核投稿吗？${skipped ? `另有 ${skipped} 篇非待审文章将跳过。` : ''}`,
+      `批量${actionLabel}`,
+      { confirmButtonText: actionLabel, cancelButtonText: '取消', type: status === 'published' ? 'success' : 'warning' },
+    )
+  } catch {
+    return false
+  }
+
+  batchReviewing.value = true
+  try {
+    const result = await batchReviewAdminBlogPosts(pendingIds, status, reason)
+    const ignored = result.skipped + skipped
+    if (result.failed.length || ignored) {
+      ElMessage.warning(`${status === 'published' ? '通过' : '驳回'} ${result.updated} 篇，跳过 ${ignored} 篇，失败 ${result.failed.length} 篇`)
+    } else {
+      ElMessage.success(`已${status === 'published' ? '通过并发布' : '驳回'} ${result.updated} 篇文章`)
+    }
+    await load()
+    return true
+  } catch (err: any) {
+    ElMessage.error(err?.response?.data?.error || err?.message || `批量${actionLabel}失败`)
+    return false
+  } finally {
+    batchReviewing.value = false
+  }
+}
+
+const openBatchReject = () => {
+  batchRejectReason.value = ''
+  batchRejectDialogVisible.value = true
+}
+
+const confirmBatchReject = async () => {
+  const completed = await handleBatchReview('rejected', batchRejectReason.value.trim())
+  if (completed) batchRejectDialogVisible.value = false
+}
+
 onMounted(() => {
   load()
 })
@@ -228,9 +329,28 @@ const { isMobile } = useIsMobile()
       </el-select>
       <el-button @click="load">刷新</el-button>
       <el-button type="primary" @click="goWrite()">写文章</el-button>
+      <el-button
+        type="success"
+        :disabled="selectedIds.length === 0 || batchReviewing"
+        :loading="batchReviewing"
+        @click="handleBatchReview('published')"
+      >批量通过</el-button>
+      <el-button
+        type="warning"
+        :disabled="selectedIds.length === 0 || batchReviewing"
+        :loading="batchReviewing"
+        @click="openBatchReject"
+      >批量驳回</el-button>
+      <el-button
+        type="danger"
+        :disabled="selectedIds.length === 0 || batchDeleting"
+        :loading="batchDeleting"
+        @click="handleBatchDelete"
+      >删除所选（{{ selectedIds.length }}）</el-button>
     </div>
 
-    <el-table :data="list" stripe size="small">
+    <el-table ref="tableRef" :data="list" stripe size="small" @selection-change="handleSelectionChange">
+      <el-table-column type="selection" width="48" />
       <el-table-column label="标题" min-width="240">
         <template #default="{ row }">
           <div class="flex flex-col gap-0.5">
@@ -337,6 +457,23 @@ const { isMobile } = useIsMobile()
         @current-change="handlePageChange"
       />
     </div>
+
+    <!-- 批量驳回对话框 -->
+    <el-dialog v-model="batchRejectDialogVisible" title="批量驳回投稿" width="480px" :append-to-body="true">
+      <p class="text-body-sm text-ink-600 mb-3">将驳回所选待审核投稿；混选中的其他状态文章会跳过。</p>
+      <el-input
+        v-model="batchRejectReason"
+        type="textarea"
+        :rows="3"
+        maxlength="200"
+        show-word-limit
+        placeholder="统一驳回理由（选填）"
+      />
+      <template #footer>
+        <el-button @click="batchRejectDialogVisible = false">取消</el-button>
+        <el-button type="warning" :loading="batchReviewing" @click="confirmBatchReject">批量驳回</el-button>
+      </template>
+    </el-dialog>
 
     <!-- 驳回对话框 -->
     <el-dialog v-model="rejectDialogVisible" title="驳回投稿" width="480px" :append-to-body="true">

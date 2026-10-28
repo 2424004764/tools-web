@@ -14,6 +14,17 @@
 //   - 重定向逐跳校验（redirect:'manual' + Location 复查），防止公网 URL 302 跳内网
 //   - 上游返回非 image/* Content-Type 时直接 502 拒绝转发（避免被滥用当通用 HTTP 代理）
 
+const MAX_IMAGE_BYTES = 50 * 1024 * 1024
+const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+
+export function isAllowedImageResponse(contentType, contentLength) {
+  const mediaType = String(contentType || '').split(';', 1)[0].trim().toLowerCase()
+  if (!ALLOWED_IMAGE_TYPES.has(mediaType)) return false
+  if (contentLength === null || contentLength === undefined || contentLength === '') return true
+  const length = Number(contentLength)
+  return Number.isFinite(length) && length >= 0 && length <= MAX_IMAGE_BYTES
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
@@ -26,25 +37,20 @@ function jsonError(message, status = 400) {
   })
 }
 
-// 同步解析 hostname（DNS 解析可能慢，这里只校验字面 IP，省一次 DNS 也能挡住大部分 SSRF）
+  // 同步检查 URL 主机字面值；Workers fetch 无法绑定 DNS 解析地址，故不接受 IP literal 私网目标。
 function isPrivateHost(hostname) {
   if (!hostname) return true
+  const normalized = hostname.startsWith('[') && hostname.endsWith(']')
+    ? hostname.slice(1, -1)
+    : hostname
 
-  // IPv6：本地回环 + 唯一本地地址 + 链路本地（对应 IPv4 的 169.254/16）
-  if (hostname === '::1' || hostname === '[::1]') return true
-  if (/^fc[0-9a-f]{2}:/i.test(hostname) || /^fd[0-9a-f]{2}:/i.test(hostname)) return true
-  if (/^fe[89ab][0-9a-f]:/i.test(hostname)) return true
+  // Reject IPv6 literals conservatively; this avoids alternate, mapped, and scoped local forms.
+  if (normalized.includes(':')) return true
 
-  // IPv4 字面量：覆盖三类写法 —— 标准点分四段、十进制整数（http://2130706433/ = 127.0.0.1）、
-  // 以及八进制段/十六进制段/缺段等非标准形式（一律拒绝：正常图床不会用这些形式当主机名）
-  let host = hostname
-  if (host.includes(':')) {
-    // IPv6 里嵌的 IPv4 尾巴（如 ::ffff:10.0.0.1）；纯 IPv6 已由上方前缀判定覆盖
-    const tail = host.split(':').pop()
-    if (tail && tail.includes('.')) host = tail
-    else return host === '::' // ::（未指定地址）视为私网
-  }
-  // 十六进制 IP 形式（0x7f000001 / 0x7f.0.0.1 = 127.0.0.1）：直接拒绝
+  // IPv4 literal: cover dotted, integer, hexadecimal, and non-standard forms.
+  let host = normalized
+
+  // Hexadecimal IP forms are rejected outright.
   if (/^0x[0-9a-f.]+$/i.test(host)) return true
   if (/^[\d.]+$/.test(host)) {
     let oct = null
@@ -58,13 +64,12 @@ function isPrivateHost(hostname) {
     } else {
       return true // 0177.0.0.1（八进制）、0x7f.0.0.1（十六进制段）、1.2.3（缺段）等
     }
-    if (oct[0] === 10) return true                          // 10.0.0.0/8
-    if (oct[0] === 127) return true                         // 127.0.0.0/8
-    if (oct[0] === 0) return true                           // 0.0.0.0/8
-    if (oct[0] === 169 && oct[1] === 254) return true       // 169.254.0.0/16 link-local
-    if (oct[0] === 172 && oct[1] >= 16 && oct[1] <= 31) return true // 172.16/12
-    if (oct[0] === 192 && oct[1] === 168) return true       // 192.168/16
-    // 100.64.0.0/10 (CGNAT) 和 198.18.0.0/15 (benchmark) 也算内网
+    if (oct[0] === 10) return true
+    if (oct[0] === 127) return true
+    if (oct[0] === 0) return true
+    if (oct[0] === 169 && oct[1] === 254) return true
+    if (oct[0] === 172 && oct[1] >= 16 && oct[1] <= 31) return true
+    if (oct[0] === 192 && oct[1] === 168) return true
     if (oct[0] === 100 && oct[1] >= 64 && oct[1] <= 127) return true
     if (oct[0] === 198 && (oct[1] === 18 || oct[1] === 19)) return true
   }
@@ -167,26 +172,31 @@ export async function onRequest(context) {
       return jsonError(`上游返回 ${upstream.status}`, 502)
     }
 
-    // 内容类型校验：只允许图片，避免被当通用 HTTP 代理滥用
-    const contentType = upstream.headers.get('Content-Type') || ''
-    if (!contentType.startsWith('image/')) {
-      return jsonError(`不被允许的内容类型：${contentType}`, 415)
-    }
-
-    // Content-Length 兜底：图片一般不会很大，超过 50MB 直接拒绝
+    const contentType = (upstream.headers.get('Content-Type') || '').split(';', 1)[0].trim().toLowerCase()
     const lenHeader = upstream.headers.get('Content-Length')
-    if (lenHeader) {
-      const len = Number(lenHeader)
-      if (Number.isFinite(len) && len > 50 * 1024 * 1024) {
-        return jsonError('图片过大（>50MB）', 413)
-      }
+    if (!isAllowedImageResponse(contentType, lenHeader)) {
+      upstream.body?.cancel?.().catch?.(() => {})
+      return jsonError('上游内容类型或大小不被允许', 415)
     }
 
-    return new Response(upstream.body, {
+    if (!upstream.body) return jsonError('上游未返回图片内容', 502)
+    let totalBytes = 0
+    const limitedBody = upstream.body.pipeThrough(new TransformStream({
+      transform(chunk, controller) {
+        totalBytes += chunk.byteLength
+        if (totalBytes > MAX_IMAGE_BYTES) {
+          controller.error(new Error('图片超过 50MB 上限'))
+          return
+        }
+        controller.enqueue(chunk)
+      },
+    }))
+
+    return new Response(limitedBody, {
       status: 200,
       headers: {
         'Content-Type': contentType,
-        // 公共缓存：相同 URL 可复用上游结果，1 天内不重复拉
+        'X-Content-Type-Options': 'nosniff',
         'Cache-Control': 'public, max-age=86400',
         ...corsHeaders,
       },

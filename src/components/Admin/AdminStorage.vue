@@ -223,6 +223,12 @@ const fileTypeMeta = (type: string) =>
     ? { label: '音乐', type: 'primary' as const }
     : { label: 'AI 图片', type: 'success' as const }
 
+// 「其他」占用对象：生成图显示具体工具名（后端已映射），购物清单显示类目名
+const otherFileMeta = (source: string) =>
+  source === 'shopping_list'
+    ? { label: '购物清单图片', type: 'warning' as const }
+    : { label: '生成图持久化', type: 'info' as const }
+
 const copyUid = (uid: string) => {
   navigator.clipboard?.writeText(uid).then(
     () => ElMessage.success('UID 已复制'),
@@ -578,6 +584,46 @@ const updateIsMobile = () => {
                   </template>
                 </el-table-column>
               </el-table>
+            </el-tab-pane>
+
+            <el-tab-pane :label="`其他占用${detailDialog.detail.otherFiles.length ? `（${detailDialog.detail.otherFiles.length}）` : ''}`">
+              <el-table
+                :data="detailDialog.detail.otherFiles"
+                stripe
+                size="small"
+                max-height="320"
+                :empty-text="detailDialog.detail.otherFilesError || '暂无生成图持久化 / 购物清单对象'"
+              >
+                <el-table-column label="来源" width="130" align="center">
+                  <template #default="{ row }">
+                    <el-tag :type="otherFileMeta(row.source).type" size="small" effect="plain">
+                      {{ row.tool || otherFileMeta(row.source).label }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column label="R2 Key" min-width="240">
+                  <template #default="{ row }">
+                    <span class="block truncate text-xs text-ink-800" :title="row.key">{{ row.key }}</span>
+                  </template>
+                </el-table-column>
+                <el-table-column label="大小" width="100" align="right">
+                  <template #default="{ row }">
+                    <span class="text-xs tabular-nums text-ink-700">{{ row.bytes > 0 ? formatBytes(row.bytes) : '-' }}</span>
+                  </template>
+                </el-table-column>
+                <el-table-column label="上传时间" width="160">
+                  <template #default="{ row }">
+                    <span class="text-xs tabular-nums text-ink-500">{{ formatTime(row.uploadedAt) }}</span>
+                  </template>
+                </el-table-column>
+              </el-table>
+              <div class="text-[11px] text-ink-400 mt-2">
+                实时列出 R2 中 generated-images/ 与 shopping-list/ 前缀下的对象（这两类上传不落文件表，即「其他」的主要构成）。
+                R2 归集合计 {{ formatBytes(detailDialog.detail.otherBytesFromR2) }}，
+                账目「其他」{{ formatBytes(detailDialog.detail.sources.other.bytes) }}，
+                差额为历史漂移（如已删对象未退额度）。
+                <template v-if="detailDialog.detail.otherFilesTruncated">对象较多，仅展示最近 200 条。</template>
+              </div>
             </el-tab-pane>
 
             <el-tab-pane :label="`上传预留${detailDialog.detail.reservations.length ? `（${detailDialog.detail.reservations.length}）` : ''}`">

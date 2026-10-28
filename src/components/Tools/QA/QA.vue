@@ -583,7 +583,7 @@ const showQADetail = computed(() =>
                 v-model="formData.headerContent"
                 type="textarea"
                 :rows="3"
-                placeholder="在QA问题上方显示的自定义内容..."
+                placeholder="在QA问题上方显示的自定义内容（纯文本，不解析HTML）..."
                 class="header-textarea"
                 resize="vertical"
               />
@@ -594,7 +594,7 @@ const showQADetail = computed(() =>
                 v-model="formData.footerContent"
                 type="textarea"
                 :rows="3"
-                placeholder="在QA答案下方显示的自定义内容..."
+                placeholder="在QA答案下方显示的自定义内容（纯文本，不解析HTML）..."
                 class="footer-textarea"
                 resize="vertical"
               />
@@ -740,7 +740,7 @@ const showQADetail = computed(() =>
           <div class="preview-content">
             <!-- 头部自定义内容 -->
             <div v-if="currentQA.headerContent" class="preview-header-content">
-              <div class="custom-content" v-html="currentQA.headerContent"></div>
+              <div class="custom-content">{{ currentQA.headerContent }}</div>
             </div>
             
             <!-- QA内容 -->
@@ -785,7 +785,7 @@ const showQADetail = computed(() =>
             
             <!-- 尾部自定义内容 -->
             <div v-if="currentQA.footerContent" class="preview-footer-content">
-              <div class="custom-content" v-html="currentQA.footerContent"></div>
+              <div class="custom-content">{{ currentQA.footerContent }}</div>
             </div>
           </div>
         </div>
@@ -1457,6 +1457,9 @@ const showQADetail = computed(() =>
   color: #2d3748;
   font-size: 15px;
   line-height: 1.6;
+  /* 纯文本展示：保留换行，不解析任何 HTML/JS */
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .preview-qa-section {

@@ -169,9 +169,10 @@ export async function lookupAccessToken(db, token) {
   return db
     .prepare(
       `SELECT t.token_hash, t.client_id, t.user_id, t.scope, t.expires_at, t.revoked,
-              c.is_disabled AS client_disabled
+              c.is_disabled AS client_disabled, u.id AS user_exists, u.is_disabled AS user_disabled
        FROM oauth_access_tokens t
        LEFT JOIN oauth_clients c ON c.client_id = t.client_id
+       LEFT JOIN user u ON u.id = t.user_id
        WHERE t.token_hash = ?`,
     )
     .bind(await sha256Hex(token))
@@ -179,7 +180,7 @@ export async function lookupAccessToken(db, token) {
 }
 
 export function isTokenUsable(row) {
-  return Boolean(row && !row.revoked && row.expires_at > Math.floor(Date.now() / 1000) && !row.client_disabled)
+  return Boolean(row && row.user_exists && !row.revoked && row.expires_at > Math.floor(Date.now() / 1000) && !row.client_disabled && !row.user_disabled)
 }
 
 // access_token 是否被授予了某个 scope

@@ -1,7 +1,7 @@
 // OAuth2 用户信息端点
 // GET /api/oauth/userinfo   Authorization: Bearer <access_token>（或 ?access_token=）
 // 返回主站账号资料（scope: profile）
-import { oauthJson, oauthError, openCorsPreflight, lookupAccessToken, isTokenUsable } from './_lib.js'
+import { oauthJson, oauthError, openCorsPreflight, lookupAccessToken, isTokenUsable, tokenHasScope } from './_lib.js'
 
 export async function onRequest(context) {
   const { request, env } = context
@@ -23,6 +23,9 @@ export async function onRequest(context) {
     const tokenRow = await lookupAccessToken(db, token)
     if (!tokenRow || !isTokenUsable(tokenRow)) {
       return oauthError('invalid_token', 'access_token 无效或已过期', 401)
+    }
+    if (!tokenHasScope(tokenRow, 'profile')) {
+      return oauthError('insufficient_scope', '该 access_token 未被授予 profile scope', 403)
     }
 
     const user = await db

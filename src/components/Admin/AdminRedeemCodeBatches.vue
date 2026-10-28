@@ -5,6 +5,7 @@ import { useIsMobile } from '@/composables/useIsMobile'
 import {
   fetchRedeemCodeBatch,
   fetchRedeemCodeBatches,
+  deleteRedeemCodeBatch,
   updateRedeemCodeBatch,
   type RedeemCodeBatchRow,
 } from '@/api/admin/redeem-code-batches'
@@ -81,6 +82,37 @@ const copyState = reactive<{ id: string; copying: boolean }>({
   id: '',
   copying: false,
 })
+
+const deletingBatchId = ref('')
+
+const deleteBatch = async (row: RedeemCodeBatchRow) => {
+  const shortId = row.batch_id.slice(0, 8) + '…'
+  try {
+    await ElMessageBox.confirm(
+      `确定删除批次 ${shortId} 中的 ${row.total} 个兑换码吗？此操作不可恢复；含已兑换码的批次无法删除。`,
+      '删除兑换码批次',
+      {
+        type: 'warning',
+        confirmButtonText: '删除批次',
+        cancelButtonText: '取消',
+        confirmButtonClass: 'el-button--danger',
+      },
+    )
+  } catch {
+    return
+  }
+
+  deletingBatchId.value = row.batch_id
+  try {
+    const result = await deleteRedeemCodeBatch(row.batch_id)
+    ElMessage.success(`已删除批次 ${shortId}，共 ${result.deleted} 个兑换码`)
+    await load()
+  } catch (err: any) {
+    ElMessage.error(err?.response?.data?.error || '删除批次失败')
+  } finally {
+    deletingBatchId.value = ''
+  }
+}
 
 const copyBatchCodes = async (row: RedeemCodeBatchRow) => {
   copyState.id = row.batch_id
@@ -247,11 +279,12 @@ onMounted(load)
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" width="220" fixed="right">
+        <el-table-column label="操作" width="300" fixed="right">
           <template #default="{ row }">
             <el-button
               link
               type="primary"
+              :disabled="Boolean(deletingBatchId)"
               :loading="copyState.id === row.batch_id && copyState.copying"
               @click="copyBatchCodes(row)"
             >
@@ -260,9 +293,19 @@ onMounted(load)
             <el-button
               link
               type="primary"
+              :disabled="Boolean(deletingBatchId)"
               @click="openNoteDialog(row)"
             >
               ✏️ 编辑备注
+            </el-button>
+            <el-button
+              link
+              type="danger"
+              :loading="deletingBatchId === row.batch_id"
+              :disabled="Boolean(deletingBatchId) && deletingBatchId !== row.batch_id"
+              @click="deleteBatch(row)"
+            >
+              删除
             </el-button>
           </template>
         </el-table-column>

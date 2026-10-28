@@ -232,27 +232,12 @@ export const confessionDb = {
 
     if (queryErr) throw queryErr
 
-    const column = reactionType === 'like' ? 'likes_count' : 'hugs_count'
-
     if (existing) {
       const { error: delErr } = await supabase
         .from('confession_reactions')
         .delete()
         .eq('id', existing.id)
       if (delErr) throw delErr
-
-      const { data: msg, error: getErr } = await supabase
-        .from('confession_messages')
-        .select('likes_count, hugs_count')
-        .eq('id', messageId)
-        .single()
-      if (getErr) throw getErr
-      const currentVal = (msg as any)[column] || 0
-      const { error: updErr } = await supabase
-        .from('confession_messages')
-        .update({ [column]: Math.max(0, currentVal - 1) })
-        .eq('id', messageId)
-      if (updErr) throw updErr
       return { reacted: false }
     } else {
       const { error: insErr } = await supabase
@@ -263,19 +248,6 @@ export const confessionDb = {
           user_fingerprint: userFingerprint,
         })
       if (insErr) throw insErr
-
-      const { data: msg, error: getErr } = await supabase
-        .from('confession_messages')
-        .select('likes_count, hugs_count')
-        .eq('id', messageId)
-        .single()
-      if (getErr) throw getErr
-      const currentVal = (msg as any)[column] || 0
-      const { error: updErr } = await supabase
-        .from('confession_messages')
-        .update({ [column]: currentVal + 1 })
-        .eq('id', messageId)
-      if (updErr) throw updErr
       return { reacted: true }
     }
   },

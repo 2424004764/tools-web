@@ -36,6 +36,7 @@
   <url><loc>https://tool.fologde.com/charset</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2026-10-17T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/chinese-convert</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2026-10-10T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/chinese-name</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2026-09-29T00:00:00+00:00</lastmod></url>
+  <url><loc>https://tool.fologde.com/chmod</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2026-10-26T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/code-image</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2026-09-29T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/coin</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2026-01-18T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/colorpicker</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2026-01-18T00:00:00+00:00</lastmod></url>
@@ -140,6 +141,7 @@
   <url><loc>https://tool.fologde.com/qrcode</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2026-01-18T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/qrcode-scan</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2026-01-18T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/radiation-sample</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2026-09-29T00:00:00+00:00</lastmod></url>
+  <url><loc>https://tool.fologde.com/radix</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2026-10-26T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/random</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2026-01-18T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/randompassword</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2026-01-18T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/reg</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2026-01-18T00:00:00+00:00</lastmod></url>
@@ -159,6 +161,7 @@
   <url><loc>https://tool.fologde.com/sql-format</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2026-10-10T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/stringclean</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2026-09-29T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/sudoku</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2026-01-18T00:00:00+00:00</lastmod></url>
+  <url><loc>https://tool.fologde.com/svg-to-image</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2026-10-26T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/temp-chat</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2026-09-29T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/tetris</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2026-01-18T00:00:00+00:00</lastmod></url>
   <url><loc>https://tool.fologde.com/text-crypto</loc><changefreq>weekly</changefreq><priority>0.6</priority><lastmod>2026-09-29T00:00:00+00:00</lastmod></url>

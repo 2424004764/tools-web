@@ -76,6 +76,32 @@ class ValidationError extends Error {}
 
 const now = () => new Date().toISOString()
 
+export function matchesMusicUploadIntent(intent, expected) {
+  return !!intent && intent.uid === expected.uid && intent.song_id === expected.songId && intent.r2_key === expected.r2Key &&
+    intent.mime_type === expected.mimeType && intent.file_size === Math.floor(expected.fileSize) &&
+    intent.file_sha256 === expected.sha256 && intent.reservation_id === expected.reservationId
+}
+
+async function releaseExpiredMusicUploadIntents(db, uid, env) {
+  const { results = [] } = await db.prepare(
+    `SELECT song_id, r2_key, reservation_id
+     FROM music_upload_intents
+     WHERE uid = ? AND created_at < datetime('now', '-15 minutes')
+     LIMIT 50`,
+  ).bind(uid).all()
+  for (const intent of results) {
+    try {
+      await db.batch([
+        db.prepare('DELETE FROM music_upload_intents WHERE song_id = ? AND uid = ?').bind(intent.song_id, uid),
+        db.prepare('DELETE FROM storage_reservations WHERE id = ? AND uid = ?').bind(intent.reservation_id, uid),
+      ])
+      await _deleteR2Object(env, env.R2_BUCKET_NAME, intent.r2_key).catch(() => {})
+    } catch (error) {
+      console.error('[music-playlist] expired upload cleanup failed:', error?.message || error)
+    }
+  }
+}
+
 function str(value, max, fallback = '') {
   if (typeof value !== 'string') return fallback
   const trimmed = value.trim()
@@ -206,6 +232,7 @@ export class MusicService {
   // ---------- 鉴权端点：歌曲 ----------
 
   async requestUploadUrl(uid, payload) {
+    await releaseExpiredMusicUploadIntents(this.db, uid, this.env)
     const filename = safeFilename(payload?.filename)
     const mimeType = typeof payload?.mimeType === 'string' ? payload.mimeType : ''
     const fileSize = Number(payload?.fileSize)
@@ -248,26 +275,42 @@ export class MusicService {
     const r2Key = `songs/${uid}/${songId}.${ext}`
 
     const bucket = this.env.R2_BUCKET_NAME
-    if (!bucket) throw new ValidationError('R2 桶名未配置（缺少 env.R2_BUCKET_NAME）')
+    if (!bucket) {
+      await releaseReservation(this.db, uid, reservationId)
+      throw new ValidationError('R2 桶名未配置（缺少 env.R2_BUCKET_NAME）')
+    }
 
-    // content-length 与 content-type 都锁进签名：实际 PUT 字节数 / 类型与声明不符 → R2 直接 403，
-    // 否则"声明 1 字节实际上传整个文件"会绕过按声明大小的额度预扣。
-    const { uploadUrl, expiresAt } = await _signR2PutUrl(this.env, bucket, r2Key, mimeType, {
-      contentLength: Math.floor(fileSize),
-    })
+    try {
+      // content-length 与 content-type 都锁进签名：PUT 内容必须与预留声明一致。
+      const { uploadUrl, expiresAt } = await _signR2PutUrl(this.env, bucket, r2Key, mimeType, {
+        contentLength: Math.floor(fileSize),
+      })
+      await this.db
+        .prepare(
+          `INSERT INTO music_upload_intents
+             (song_id, uid, r2_key, mime_type, file_size, file_sha256, reservation_id, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        )
+        .bind(songId, uid, r2Key, mimeType, Math.floor(fileSize), sha256, reservationId, now().slice(0, 19).replace('T', ' '))
+        .run()
 
-    return {
-      exists: false,
-      uploadUrl,
-      r2Key,
-      songId,
-      expiresAt,
-      publicUrl: this.buildPublicUrl(r2Key),
-      reservationId,
+      return {
+        exists: false,
+        uploadUrl,
+        r2Key,
+        songId,
+        expiresAt,
+        publicUrl: this.buildPublicUrl(r2Key),
+        reservationId,
+      }
+    } catch (error) {
+      await releaseReservation(this.db, uid, reservationId).catch(() => {})
+      throw error
     }
   }
 
   async createSong(uid, payload) {
+    await releaseExpiredMusicUploadIntents(this.db, uid, this.env)
     const r2Key = typeof payload?.r2Key === 'string' ? payload.r2Key.trim() : ''
     if (!r2Key.startsWith(`songs/${uid}/`)) {
       throw new ValidationError('r2Key 必须以 songs/{uid}/ 开头')
@@ -287,14 +330,29 @@ export class MusicService {
     if (!SHA256_REGEX.test(sha256)) {
       throw new ValidationError('文件 SHA-256 不合法')
     }
-    // upload-url 时预扣存储额度返回的预留 id；缺省（旧客户端）则只按声明大小直接累计
-    const reservationId = typeof payload?.reservationId === 'string' ? payload.reservationId.trim() : ''
 
-    // 复用 pre-generated songId（前端在 upload-url 时已经分配），保持 R2 key 与 DB id 一致
-    // 从 r2Key 提取 uuid 段
     const songId = r2Key.split('/').pop().split('.')[0]
     if (!/^[0-9a-f-]{36}$/i.test(songId)) {
       throw new ValidationError('songId 不合法')
+    }
+
+    const reservationId = typeof payload?.reservationId === 'string' ? payload.reservationId.trim() : ''
+    const intent = await this.db
+      .prepare(
+        `SELECT song_id, r2_key, mime_type, file_size, file_sha256, reservation_id
+         FROM music_upload_intents
+         WHERE song_id = ? AND uid = ? AND created_at >= datetime('now', '-15 minutes')`,
+      )
+      .bind(songId, uid)
+      .first()
+    if (!matchesMusicUploadIntent(intent, { uid, songId, r2Key, mimeType, fileSize, sha256, reservationId })) {
+      throw new ValidationError('上传凭证不存在、已过期或与文件信息不匹配')
+    }
+
+    const bucket = this.env.R2_BUCKET_NAME
+    const actualSize = bucket ? await _headR2ObjectSize(this.env, bucket, r2Key).catch(() => null) : null
+    if (actualSize === null || actualSize !== intent.file_size) {
+      throw new ValidationError('上传文件不存在或实际大小与声明不符')
     }
 
     // 二次查重：极端竞态下 upload-url 与 createSong 之间并发同 sha256 落地，
@@ -305,58 +363,49 @@ export class MusicService {
       .first()
     if (dupRow) {
       if (reservationId) {
-        try { await releaseReservation(this.db, uid, reservationId) } catch (e) {
-          console.error('[music-playlist] createSong dup releaseReservation failed:', e?.message || e)
+        try {
+          await releaseReservation(this.db, uid, reservationId)
+          await this.db.prepare('DELETE FROM music_upload_intents WHERE song_id = ? AND uid = ?').bind(songId, uid).run()
+        } catch (e) {
+          console.error('[music-playlist] createSong dup release failed:', e?.message || e)
         }
       }
       return songFromRow(dupRow)
     }
 
-    const slug = await this.generateUniqueSlug('music_songs')
-    const ts = now()
-
+    const statements = [
+      this.db.prepare(
+        `INSERT INTO music_songs
+           (id, uid, slug, title, artist, album, cover_r2_key, audio_r2_key, mime_type,
+            file_size, duration_sec, is_public, play_count,
+            credit_cost_paid, credit_tx_id, file_sha256, free_portion_bytes,
+            created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, 0, 0, 0, NULL, ?, 0, ?, ?)`,
+      ).bind(songId, uid, slug, title, artist, album, r2Key, mimeType, actualSize,
+        durationSec ?? null, sha256, ts, ts),
+      this.db.prepare('UPDATE user_storage_quota SET used_bytes = used_bytes + ?, updated_at = ? WHERE uid = ?')
+        .bind(actualSize, ts, uid),
+      this.db.prepare('DELETE FROM storage_reservations WHERE id = ? AND uid = ?')
+        .bind(reservationId, uid),
+      this.db.prepare('DELETE FROM music_upload_intents WHERE song_id = ? AND uid = ? AND reservation_id = ?')
+        .bind(songId, uid, reservationId),
+    ]
     try {
-      await this.db
-        .prepare(
-          `INSERT INTO music_songs
-             (id, uid, slug, title, artist, album, cover_r2_key, audio_r2_key, mime_type,
-              file_size, duration_sec, is_public, play_count,
-              credit_cost_paid, credit_tx_id, file_sha256, free_portion_bytes,
-              created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, 0, 0, 0, NULL, ?, 0, ?, ?)`
-        )
-        .bind(songId, uid, slug, title, artist, album, r2Key, mimeType, fileSize,
-          durationSec ?? null,
-          sha256, ts, ts)
-        .run()
+      await this.db.batch(statements)
     } catch (err) {
       const msg = err?.message || ''
-      // UNIQUE 冲突兜底：捕获后查已存在的同行，做预留释放 + 返回
       if (/UNIQUE.*file_sha256/i.test(msg) || /uq_music_songs_uid_sha256/.test(msg)) {
         const existingRow = await this.db
           .prepare('SELECT * FROM music_songs WHERE uid = ? AND file_sha256 = ? LIMIT 1')
           .bind(uid, sha256)
           .first()
         if (existingRow) {
-          if (reservationId) {
-            try { await releaseReservation(this.db, uid, reservationId) } catch (e) {
-              console.error('[music-playlist] createSong dup releaseReservation failed:', e?.message || e)
-            }
-          }
+          await releaseReservation(this.db, uid, reservationId)
+          await this.db.prepare('DELETE FROM music_upload_intents WHERE song_id = ? AND uid = ?').bind(songId, uid).run()
           return songFromRow(existingRow)
         }
       }
       throw err
-    }
-
-    // 结算统一存储额度：以 R2 真实大小为准（HEAD 失败回退声明值），并释放预留
-    try {
-      const bucket = this.env.R2_BUCKET_NAME
-      const headSize = bucket ? await _headR2ObjectSize(this.env, bucket, r2Key).catch(() => null) : null
-      const actualSize = headSize ?? Math.max(0, Math.floor(fileSize))
-      await settleReservation(this.db, uid, reservationId, actualSize)
-    } catch (e) {
-      console.error('[music-playlist] createSong settleReservation failed:', e?.message || e)
     }
 
     const row = await this.findOwnedSongRow(songId, uid)
@@ -491,14 +540,20 @@ export class MusicService {
     return true
   }
 
-  async incrementSongPlayCount(id) {
-    await this.db
-      .prepare('UPDATE music_songs SET play_count = play_count + 1 WHERE id = ?')
-      .bind(id)
+  async incrementSongPlayCount(id, uid) {
+    // 播放计数仅允许歌曲拥有者或公开曲目增加
+    const countResult = await this.db
+      .prepare(
+        `UPDATE music_songs SET play_count = play_count + 1
+         WHERE id = ? AND (uid = ? OR is_public = 1)`,
+      )
+      .bind(id, uid)
       .run()
+    if ((countResult?.meta?.changes ?? 0) !== 1) return 0
+
     const row = await this.db
-      .prepare('SELECT play_count FROM music_songs WHERE id = ?')
-      .bind(id)
+      .prepare('SELECT play_count FROM music_songs WHERE id = ? AND (uid = ? OR is_public = 1)')
+      .bind(id, uid)
       .first()
     return row?.play_count ?? 0
   }
@@ -510,7 +565,7 @@ export class MusicService {
       .bind(slug)
       .first()
     if (!row) return null
-    const playCount = await this.incrementSongPlayCount(row.id)
+    const playCount = await this.incrementSongPlayCount(row.id, null)
     return playCount
   }
 
@@ -545,18 +600,20 @@ export class MusicService {
   async getPlaylistForOwner(id, uid) {
     const row = await this.findOwnedPlaylistRow(id, uid)
     if (!row) return null
-    return { ...playlistFromRow(row), songs: await this.loadPlaylistSongs(id) }
+    return { ...playlistFromRow(row), songs: await this.loadPlaylistSongs(id, uid) }
   }
 
-  async loadPlaylistSongs(playlistId) {
+  async loadPlaylistSongs(playlistId, ownerUid = null) {
+    const ownerClause = ownerUid ? 'AND (s.uid = ? OR s.is_public = 1)' : 'AND s.is_public = 1'
+    const args = ownerUid ? [playlistId, ownerUid] : [playlistId]
     const { results } = await this.db
       .prepare(
         `SELECT s.* FROM music_songs s
          JOIN music_playlist_songs ps ON ps.song_id = s.id
-         WHERE ps.playlist_id = ?
+         WHERE ps.playlist_id = ? ${ownerClause}
          ORDER BY ps.sort_order ASC, ps.added_at ASC`
       )
-      .bind(playlistId)
+      .bind(...args)
       .all()
     return (results || []).map((r) => songMetaFromRow(r, this.buildPublicUrl(r.audio_r2_key)))
   }
@@ -727,7 +784,7 @@ export class MusicService {
     // play_count 自增
     try {
       await this.db
-        .prepare('UPDATE music_songs SET play_count = play_count + 1 WHERE id = ?')
+        .prepare('UPDATE music_songs SET play_count = play_count + 1 WHERE id = ? AND is_public = 1')
         .bind(row.id)
         .run()
     } catch (error) {

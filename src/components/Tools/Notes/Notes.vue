@@ -14,6 +14,7 @@ import CopyDocument from '~icons/ep/copy-document'
 import MoreFilled from '~icons/ep/more-filled'
 // Markdown 渲染（详情页 + 编辑器实时预览共用同一份实例）
 import MarkdownIt from 'markdown-it'
+import { sanitizeCustomHtml } from '@/utils/sanitizeHtml'
 import 'highlight.js/styles/github.css'
 
 const md = new MarkdownIt({
@@ -22,6 +23,9 @@ const md = new MarkdownIt({
   typographer: true,
   breaks: true,
 })
+
+// html:true 是为了工具栏的 <u> 等原生标签能用，渲染产物必须过 DOMPurify 再进 v-html
+const renderNoteHtml = (source: string) => sanitizeCustomHtml(md.render(source || ''))
 
 // 列表卡片用：把 Markdown 语法剥离成可读纯文本，避免在卡片里显示 #、* 等符号
 const stripMarkdown = (text: string): string => {
@@ -511,11 +515,11 @@ const showNoteDetail = computed(() =>
 
 // 详情页 Markdown 渲染结果
 const renderedDetailContent = computed(() =>
-  currentNote.value ? md.render(currentNote.value.content || '') : ''
+  currentNote.value ? renderNoteHtml(currentNote.value.content) : ''
 )
 
 // 编辑器实时预览：用同一份 markdown-it 实例渲染
-const renderedFormPreview = computed(() => md.render(formData.content || ''))
+const renderedFormPreview = computed(() => renderNoteHtml(formData.content))
 
 // 工具栏：在 textarea 光标处插入 Markdown 语法
 const textareaRef = ref<HTMLTextAreaElement | null>(null)

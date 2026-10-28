@@ -1,6 +1,71 @@
 import { ApiResponse, QAModel, QueryBuilder, Pager } from '../utils/db.js'
 import { AuthMiddleware } from '../middlewares/auth.js'
 
+const MAX_TITLE_LENGTH = 200
+const MAX_QA_ITEMS = 50
+const MAX_QUESTION_LENGTH = 5000
+const MAX_ANSWER_LENGTH = 20000
+const MAX_CUSTOM_CONTENT_LENGTH = 10000
+const MAX_TOTAL_CONTENT_LENGTH = 500000
+const MAX_REQUEST_BYTES = 600000
+
+async function readQARequestBody(request) {
+  const declaredLength = Number(request.headers.get('Content-Length'))
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_REQUEST_BYTES) return null
+  const reader = request.body?.getReader()
+  if (!reader) return null
+  const chunks = []
+  let total = 0
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      total += value.byteLength
+      if (total > MAX_REQUEST_BYTES) {
+        await reader.cancel()
+        return null
+      }
+      chunks.push(value)
+    }
+    const bytes = new Uint8Array(total)
+    let offset = 0
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset)
+      offset += chunk.byteLength
+    }
+    return JSON.parse(new TextDecoder().decode(bytes))
+  } catch {
+    return null
+  }
+}
+
+export function validateQAInput(body) {
+  if (!body || typeof body !== 'object' || typeof body.title !== 'string' || !body.title.trim()) {
+    return '标题和问答对不能为空'
+  }
+  if (body.title.length > MAX_TITLE_LENGTH) return `标题不能超过 ${MAX_TITLE_LENGTH} 个字符`
+  if (!Array.isArray(body.qaItems) || body.qaItems.length === 0 || body.qaItems.length > MAX_QA_ITEMS) {
+    return `问答对数量需为 1-${MAX_QA_ITEMS}`
+  }
+  let total = body.title.length
+  for (const item of body.qaItems) {
+    if (!item || typeof item.question !== 'string' || typeof item.answer !== 'string' ||
+        !item.question.trim() || !item.answer.trim()) return '每个问答对的问题和答案都不能为空'
+    if (item.question.length > MAX_QUESTION_LENGTH || item.answer.length > MAX_ANSWER_LENGTH) {
+      return '问题或答案超过长度上限'
+    }
+    total += item.question.length + item.answer.length
+  }
+  for (const key of ['headerContent', 'footerContent']) {
+    const value = body[key] ?? ''
+    if (typeof value !== 'string' || value.length > MAX_CUSTOM_CONTENT_LENGTH) {
+      return `头部/尾部内容不能超过 ${MAX_CUSTOM_CONTENT_LENGTH} 个字符`
+    }
+    total += value.length
+  }
+  return total > MAX_TOTAL_CONTENT_LENGTH ? 'QA页面总内容超过长度上限' : ''
+}
+
 export class QARouter {
   constructor(db, env = null, waitUntil = null) {
     this.db = db
@@ -75,20 +140,10 @@ export class QARouter {
     }
 
     const user = authResult.user
-    const body = await request.json()
+    const body = await readQARequestBody(request)
+    const validationError = validateQAInput(body)
+    if (validationError) return ApiResponse.error(validationError, origin, 400)
     
-    // 验证必填字段
-    if (!body.title || !body.qaItems || !Array.isArray(body.qaItems) || body.qaItems.length === 0) {
-      return ApiResponse.error('标题和问答对不能为空', origin, 400)
-    }
-
-    // 验证问答对格式
-    for (const qaItem of body.qaItems) {
-      if (!qaItem.question || !qaItem.answer) {
-        return ApiResponse.error('每个问答对的问题和答案都不能为空', origin, 400)
-      }
-    }
-
     const qaData = {
       uid: user.id,
       title: body.title.trim(),
@@ -152,19 +207,9 @@ export class QARouter {
     }
 
     const user = authResult.user
-    const body = await request.json()
-
-    // 验证必填字段
-    if (!body.title || !body.qaItems || !Array.isArray(body.qaItems) || body.qaItems.length === 0) {
-      return ApiResponse.error('标题和问答对不能为空', origin, 400)
-    }
-
-    // 验证问答对格式
-    for (const qaItem of body.qaItems) {
-      if (!qaItem.question || !qaItem.answer) {
-        return ApiResponse.error('每个问答对的问题和答案都不能为空', origin, 400)
-      }
-    }
+    const body = await readQARequestBody(request)
+    const validationError = validateQAInput(body)
+    if (validationError) return ApiResponse.error(validationError, origin, 400)
 
     // 检查QA是否存在且属于当前用户
     const existingQA = await this.qaModel.findById(id)

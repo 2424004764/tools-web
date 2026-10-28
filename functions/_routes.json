@@ -73,6 +73,7 @@
     "/api/ai-models/*",
     "/api/ai-proxy",
     "/api/image-proxy",
+    "/api/favicon",
     "/api/open-providers",
     "/api/oss-configs",
     "/api/oss-configs/*",

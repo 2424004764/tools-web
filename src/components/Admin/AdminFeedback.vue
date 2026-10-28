@@ -7,6 +7,7 @@ import {
   fetchAdminFeedback,
   updateAdminFeedback,
   deleteAdminFeedback,
+  batchDeleteAdminFeedback,
   type FeedbackItem,
   type FeedbackCounts,
   type FeedbackStatus,
@@ -16,6 +17,9 @@ import type { AdminPagination } from '@/types/admin'
 
 const loading = ref(false)
 const list = ref<FeedbackItem[]>([])
+const selectedIds = ref<string[]>([])
+const tableRef = ref<any>(null)
+const batchDeleting = ref(false)
 const counts = ref<FeedbackCounts>({ pending: 0, resolved: 0, closed: 0, total: 0 })
 const pagination = ref<AdminPagination>({
   total: 0,
@@ -97,7 +101,17 @@ const openDetail = (row: FeedbackItem) => {
   detailVisible.value = true
 }
 
+const clearSelection = () => {
+  selectedIds.value = []
+  tableRef.value?.clearSelection()
+}
+
+const handleSelectionChange = (rows: FeedbackItem[]) => {
+  selectedIds.value = rows.map((row) => row.id)
+}
+
 const load = async () => {
+  clearSelection()
   loading.value = true
   try {
     const result = await fetchAdminFeedback({
@@ -110,6 +124,10 @@ const load = async () => {
     list.value = result.list
     pagination.value = result.pagination
     counts.value = result.counts
+    if (pagination.value.page > Math.max(1, pagination.value.totalPages)) {
+      pagination.value.page = Math.max(1, pagination.value.totalPages)
+      await load()
+    }
   } catch (err) {
     console.error(err)
   } finally {
@@ -196,6 +214,35 @@ const handleDelete = async (row: FeedbackItem) => {
   }
 }
 
+const handleBatchDelete = async () => {
+  const ids = [...selectedIds.value]
+  if (!ids.length || batchDeleting.value) return
+  try {
+    await ElMessageBox.confirm(
+      `确定永久删除选中的 ${ids.length} 条反馈吗？此操作不可恢复。`,
+      '批量删除反馈',
+      { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' },
+    )
+  } catch {
+    return
+  }
+
+  batchDeleting.value = true
+  try {
+    const result = await batchDeleteAdminFeedback(ids)
+    if (result.failed.length) {
+      ElMessage.warning(`已删除 ${result.deleted} 条，${result.failed.length} 条删除失败`)
+    } else {
+      ElMessage.success(`已删除 ${result.deleted} 条反馈`)
+    }
+    await load()
+  } catch (err: any) {
+    ElMessage.error(err?.response?.data?.error || err?.message || '批量删除失败')
+  } finally {
+    batchDeleting.value = false
+  }
+}
+
 onMounted(() => {
   load()
 })
@@ -245,9 +292,16 @@ const { isMobile } = useIsMobile()
         <el-option v-for="o in statusOptions" :key="o.value" :label="o.label" :value="o.value" />
       </el-select>
       <el-button @click="load">刷新</el-button>
+      <el-button
+        type="danger"
+        :disabled="selectedIds.length === 0"
+        :loading="batchDeleting"
+        @click="handleBatchDelete"
+      >删除所选（{{ selectedIds.length }}）</el-button>
     </div>
 
-    <el-table :data="list" stripe size="small">
+    <el-table ref="tableRef" :data="list" stripe size="small" @selection-change="handleSelectionChange">
+      <el-table-column type="selection" width="48" />
       <el-table-column label="类型" width="96">
         <template #default="{ row }">
           <el-tag :type="typeTagType(row.type)" effect="plain" size="small">{{ typeLabel(row.type) }}</el-tag>

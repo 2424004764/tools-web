@@ -1,0 +1,1 @@
+ALTER TABLE mock_schemas ADD COLUMN is_public INTEGER NOT NULL DEFAULT 0;

@@ -100,3 +100,30 @@ export async function deleteAdminBlogPost(id: string): Promise<{ id: string; del
   const res = await functionsRequest.delete(`/api/admin/blog/posts/${encodeURIComponent(id)}`)
   return res.data.data
 }
+
+export async function batchDeleteAdminBlogPosts(ids: string[]): Promise<{
+  requested: number
+  deleted: number
+  failed: Array<{ id: string; error: string }>
+}> {
+  const res = await functionsRequest.post('/api/admin/blog/posts/batch-delete', { ids })
+  return res.data.data
+}
+
+export async function batchReviewAdminBlogPosts(
+  ids: string[],
+  status: 'published' | 'rejected',
+  rejectReason = '',
+): Promise<{
+  requested: number
+  updated: number
+  skipped: number
+  failed: Array<{ id: string; error: string }>
+}> {
+  const res = await functionsRequest.post('/api/admin/blog/posts/batch-review', {
+    ids,
+    status,
+    ...(status === 'rejected' ? { reject_reason: rejectReason } : {}),
+  })
+  return res.data.data
+}

@@ -9,7 +9,8 @@ import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import GenerationHistoryDialog from '@/components/Tools/AiImageEdit/GenerationHistoryDialog.vue'
 import UserPromptLibraryDialog from '@/components/Common/UserPromptLibraryDialog.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
-import { autoDown } from '@/utils/file'
+import { autoDown, isImageFile } from '@/utils/file'
+import { genUuid } from '@/utils/uuid'
 import { functionsRequest } from '@/utils/functionsRequest'
 import { fetchToolModels, type PublicToolModel } from '@/api/tool-models'
 import { fetchMyGenerationRecordImage } from '@/api/me'
@@ -139,13 +140,13 @@ const addPersonFiles = (files: File[]) => {
       ElMessage.warning(`人物照已达上限（共 ${MAX_TOTAL_IMAGES} 张）`)
       break
     }
-    if (!file.type.startsWith('image/')) {
+    if (!isImageFile(file)) {
       ElMessage.error(`已跳过非图片文件：${file.name || '未知'}`)
       continue
     }
     personFiles.value.push(file)
     personFileNames.value.push(file.name || 'person.png')
-    personIds.value.push(crypto.randomUUID())
+    personIds.value.push(genUuid())
     const reader = new FileReader()
     reader.onload = (e) => { personPreviews.value.push(e.target?.result as string) }
     reader.readAsDataURL(file)
@@ -185,13 +186,13 @@ const addClothingFiles = (files: File[]) => {
       ElMessage.warning(`衣物照已达上限（共 ${MAX_TOTAL_IMAGES} 张）`)
       break
     }
-    if (!file.type.startsWith('image/')) {
+    if (!isImageFile(file)) {
       ElMessage.error(`已跳过非图片文件：${file.name || '未知'}`)
       continue
     }
     clothingFiles.value.push(file)
     clothingFileNames.value.push(file.name || 'clothing.png')
-    clothingIds.value.push(crypto.randomUUID())
+    clothingIds.value.push(genUuid())
     const reader = new FileReader()
     reader.onload = (e) => { clothingPreviews.value.push(e.target?.result as string) }
     reader.readAsDataURL(file)
@@ -210,6 +211,17 @@ const removeClothingImage = (idx: number) => {
   clothingFileNames.value.splice(idx, 1)
   clothingIds.value.splice(idx, 1)
 }
+
+// 原生 input 选图入口（手机端主路径）：change 后立即清空 value，
+// 否则「取消弹窗后重选同一张图」不会再触发 change
+const makeNativePickHandler = (add: (files: File[]) => void) => (e: Event) => {
+  const input = e.currentTarget as HTMLInputElement
+  const files = Array.from(input.files || [])
+  if (files.length > 0) add(files)
+  input.value = ''
+}
+const onNativePersonPick = makeNativePickHandler(addPersonFiles)
+const onNativeClothingPick = makeNativePickHandler(addClothingFiles)
 
 // 清空（按钮触发）
 const clearAllPersonImages = () => {
@@ -668,8 +680,14 @@ const initPersonSortable = () => {
     ghostClass: 'upload-thumb-ghost',
     chosenClass: 'upload-thumb-chosen',
     dragClass: 'upload-thumb-dragging',
-    delay: 80,
+    delay: 150,
     delayOnTouchOnly: true,
+    touchStartThreshold: 10,
+    // 「继续添加」格不参与拖拽。preventOnFilter 必须为 false：
+    // 默认 true 时 Sortable 会对命中 filter 的 tap 调 preventDefault，
+    // 手机上该格的 click 会被吞掉，表现为点了不弹选图窗
+    filter: '.upload-add-tile',
+    preventOnFilter: false,
     disabled: isLoading.value,
     onEnd: handlePersonSortEnd,
   })
@@ -684,8 +702,12 @@ const initClothingSortable = () => {
     ghostClass: 'upload-thumb-ghost',
     chosenClass: 'upload-thumb-chosen',
     dragClass: 'upload-thumb-dragging',
-    delay: 80,
+    delay: 150,
     delayOnTouchOnly: true,
+    touchStartThreshold: 10,
+    // 同人物照 Sortable：排除「继续添加」格并放行其点击
+    filter: '.upload-add-tile',
+    preventOnFilter: false,
     disabled: isLoading.value,
     onEnd: handleClothingSortEnd,
   })
@@ -802,7 +824,7 @@ const generateImage = async () => {
       fd.append('style', stylePrompt.value.trim())
     }
 
-    const idempotencyKey = crypto.randomUUID()
+    const idempotencyKey = genUuid()
     const res = await functionsRequest.post('/api/ai-outfit', fd, {
       timeout: 660000,
       headers: { 'Idempotency-Key': idempotencyKey },
@@ -959,9 +981,19 @@ const modeBadge = computed(() => clothingFiles.value.length > 0
                 :on-exceed="handlePersonExceed"
                 :http-request="handlePersonUpload"
                 :show-file-list="false"
-                accept="image/png,image/jpeg,image/webp,image/gif"
+                accept="image/*"
               >
-                <div v-if="personFiles.length === 0" class="flex flex-col items-center justify-center py-3">
+                <div v-if="personFiles.length === 0" class="relative flex flex-col items-center justify-center py-3">
+                  <!-- 原生 input 透明铺满：点击直接命中 input 本身，不依赖 el-upload
+                       对隐藏 input 的 JS 合成 click（部分手机 WebView 会忽略合成 click） -->
+                  <input
+                    type="file"
+                    class="native-file-input"
+                    accept="image/*"
+                    multiple
+                    @change="onNativePersonPick"
+                    @click.stop
+                  />
                   <svg class="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
@@ -999,7 +1031,15 @@ const modeBadge = computed(() => clothingFiles.value.length > 0
                       </button>
                       <span class="upload-thumb-name">{{ personFileNames[idx] }}</span>
                     </div>
-                    <div v-if="personCanAddMore && !isLoading" class="upload-add-tile" :title="`还可添加 ${remainingSlots} 张`">
+                    <div v-if="personCanAddMore && !isLoading" class="upload-add-tile relative" :title="`还可添加 ${remainingSlots} 张`">
+                      <input
+                        type="file"
+                        class="native-file-input"
+                        accept="image/*"
+                        multiple
+                        @change="onNativePersonPick"
+                        @click.stop
+                      />
                       <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4" />
                       </svg>
@@ -1060,9 +1100,17 @@ const modeBadge = computed(() => clothingFiles.value.length > 0
                 :on-exceed="handleClothingExceed"
                 :http-request="handleClothingUpload"
                 :show-file-list="false"
-                accept="image/png,image/jpeg,image/webp,image/gif"
+                accept="image/*"
               >
-                <div v-if="clothingFiles.length === 0" class="flex flex-col items-center justify-center py-3">
+                <div v-if="clothingFiles.length === 0" class="relative flex flex-col items-center justify-center py-3">
+                  <input
+                    type="file"
+                    class="native-file-input"
+                    accept="image/*"
+                    multiple
+                    @change="onNativeClothingPick"
+                    @click.stop
+                  />
                   <svg class="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
                   </svg>
@@ -1100,7 +1148,15 @@ const modeBadge = computed(() => clothingFiles.value.length > 0
                       </button>
                       <span class="upload-thumb-name">{{ clothingFileNames[idx] }}</span>
                     </div>
-                    <div v-if="clothingCanAddMore && !isLoading" class="upload-add-tile" :title="`还可添加 ${remainingSlots} 张`">
+                    <div v-if="clothingCanAddMore && !isLoading" class="upload-add-tile relative" :title="`还可添加 ${remainingSlots} 张`">
+                      <input
+                        type="file"
+                        class="native-file-input"
+                        accept="image/*"
+                        multiple
+                        @change="onNativeClothingPick"
+                        @click.stop
+                      />
                       <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4" />
                       </svg>
@@ -1563,6 +1619,27 @@ const modeBadge = computed(() => clothingFiles.value.length > 0
 .upload-add-tile:hover {
   border-color: #ec4899;
   background: #fdf2f8;
+}
+
+/* 原生 file input 透明铺满父容器（父容器须 position:relative）。
+   点击直接命中 input 本身 → 浏览器原生弹出选图窗，绕开 JS 合成 click 在
+   部分手机 WebView 上被忽略的坑。opacity:0 而非 display:none（后者部分
+   WebView 拒绝响应）；不用 inset 简写（老 X5 内核不认）。 */
+.native-file-input {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 3;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: 0;
 }
 
 /* ============ 拖拽视觉反馈（粉色主题，AiOutfit 配色）============ */

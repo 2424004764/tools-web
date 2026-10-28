@@ -4,6 +4,7 @@ import { ref, computed, watch } from 'vue'
 import type { Ref, ComputedRef } from 'vue'
 import { ElMessage } from 'element-plus'
 import { functionsRequest } from '@/utils/functionsRequest'
+import { genUuid } from '@/utils/uuid'
 import type { PublicToolModel } from '@/api/tool-models'
 import type { ResultSlot } from './useSlotVisuals'
 
@@ -239,7 +240,7 @@ export function useGenerate(opts: {
 
     // N 路独立请求：每路一个 FormData、一个 Idempotency-Key、一个 Promise
     const tasks = results.map((slot) => {
-      const idempotencyKey = crypto.randomUUID()
+      const idempotencyKey = genUuid()
       const fd = buildFormData()
       return fireOneRequest(slot, fd, idempotencyKey)
     })
@@ -326,7 +327,7 @@ export function useGenerate(opts: {
     }
 
     try {
-      const idempotencyKey = crypto.randomUUID()
+      const idempotencyKey = genUuid()
       const fd = buildFormData()
       const result = await fireOneRequest(slot, fd, idempotencyKey)
 

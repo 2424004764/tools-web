@@ -71,6 +71,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import MarkdownIt from 'markdown-it'
+import { sanitizeCustomHtml } from '@/utils/sanitizeHtml'
 
 const md = new MarkdownIt({
   html: true,
@@ -102,7 +103,7 @@ defineEmits<{
 }>()
 
 const renderMarkdown = (content: string) => {
-  return md.render(content)
+  return sanitizeCustomHtml(md.render(content))
 }
 
 defineExpose({

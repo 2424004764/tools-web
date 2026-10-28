@@ -8,6 +8,7 @@ export interface ProductInfo {
   name: string
   desc: string
   url: string
+  /** 选填：站内绝对路径或 http(s) 图片地址；为空时前台用名称首字文字图标兜底 */
   logo: string
   /** 是否启用；后台 JSON 配置用，内置列表恒为 true（缺省视为 true） */
   enabled?: boolean
@@ -16,6 +17,11 @@ export interface ProductInfo {
 /** 由 key 取规范化后的站内跳转路径（带尾斜杠，与工具路由风格一致） */
 export function productJumpPath(key: string): string {
   return `/app-jump/${key}/`
+}
+
+/** logo 缺省时的文字图标：取名称第一个字符（按 Unicode 码点切，emoji 安全）；名称为空回退 🧩 */
+export function productLogoFallbackChar(name: string): string {
+  return [...(name || '').trim()][0] || '🧩'
 }
 
 export const PRODUCTS: ProductInfo[] = [

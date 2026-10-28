@@ -141,10 +141,46 @@ BEGIN
 END $$;
 
 -- ---------- 6. RLS 策略 ----------
--- confession_messages：任何人能读、匿名发、点赞（点赞数更新需要 UPDATE 权限）
+-- confession_messages：任何人能读、匿名发；计数仅由 reaction 触发器维护
 CREATE POLICY "anyone_read_messages"   ON confession_messages FOR SELECT USING (true);
 CREATE POLICY "anyone_insert_messages" ON confession_messages FOR INSERT WITH CHECK (length(content) BETWEEN 1 AND 500);
-CREATE POLICY "anyone_update_messages" ON confession_messages FOR UPDATE USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "anyone_update_messages" ON confession_messages;
+
+CREATE OR REPLACE FUNCTION update_confession_reaction_counts()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.reaction_type = 'like' THEN
+      UPDATE confession_messages SET likes_count = likes_count + 1 WHERE id = NEW.message_id;
+    ELSE
+      UPDATE confession_messages SET hugs_count = hugs_count + 1 WHERE id = NEW.message_id;
+    END IF;
+    RETURN NEW;
+  END IF;
+
+  IF OLD.reaction_type = 'like' THEN
+    UPDATE confession_messages SET likes_count = GREATEST(0, likes_count - 1) WHERE id = OLD.message_id;
+  ELSE
+    UPDATE confession_messages SET hugs_count = GREATEST(0, hugs_count - 1) WHERE id = OLD.message_id;
+  END IF;
+  RETURN OLD;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS confession_reaction_counts_insert ON confession_reactions;
+CREATE TRIGGER confession_reaction_counts_insert
+AFTER INSERT ON confession_reactions
+FOR EACH ROW EXECUTE FUNCTION update_confession_reaction_counts();
+
+DROP TRIGGER IF EXISTS confession_reaction_counts_delete ON confession_reactions;
+CREATE TRIGGER confession_reaction_counts_delete
+AFTER DELETE ON confession_reactions
+FOR EACH ROW EXECUTE FUNCTION update_confession_reaction_counts();
+REVOKE ALL ON FUNCTION update_confession_reaction_counts() FROM PUBLIC, anon, authenticated;
 
 -- confession_reactions：任何人能读、点赞、取消点赞
 CREATE POLICY "anyone_read_reactions"   ON confession_reactions FOR SELECT USING (true);

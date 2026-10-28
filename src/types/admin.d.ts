@@ -61,7 +61,6 @@ export interface CreateUserPayload {
   username: string
   /** 可选；留空时后端兜底生成 10 位 [a-z0-9] */
   password?: string
-  is_admin?: boolean
 }
 
 /** 创建用户返回结果 */
@@ -70,7 +69,7 @@ export interface CreateUserResult {
   email: string
   username: string
   is_admin: boolean
-  /** 仅当 password 留空由后端兜底生成时才存在；前端需提示管理员复制并告知用户 */
+  /** 仅当 password 留空由后端兜底生成时才存在；前端需提示用户复制并妥善保存 */
   generated_password?: string
 }
 

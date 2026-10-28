@@ -55,9 +55,13 @@ export async function onRequest(context) {
     // PBKDF2 哈希 + token_version 递增：重置后所有旧设备的登录态立即失效
     const { salt, hash: hashedPassword } = await hashPassword(newPassword, user.salt || crypto.randomUUID())
     const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
-    await env.DB.prepare(
-      'UPDATE user SET password = ?, salt = ?, last_login = ?, token_version = token_version + 1 WHERE id = ?'
-    ).bind(hashedPassword, salt, now, user.id).run()
+    await env.DB.batch([
+      env.DB.prepare(
+        'UPDATE user SET password = ?, salt = ?, last_login = ?, token_version = token_version + 1 WHERE id = ?',
+      ).bind(hashedPassword, salt, now, user.id),
+      env.DB.prepare('UPDATE oauth_access_tokens SET revoked = 1 WHERE user_id = ?').bind(user.id),
+      env.DB.prepare('UPDATE oauth_refresh_tokens SET revoked = 1 WHERE user_id = ?').bind(user.id),
+    ])
 
     return ApiResponse.success({ message: '密码重置成功' }, request.headers.get('Origin'))
   } catch (error) {

@@ -7,10 +7,21 @@
 //   sources   来源拆解（音乐 / AI 创作图 / 子站上传 / 其他）
 //   files     最近文件（音乐 + AI 创作图合并，按创建时间倒序取 20 条）
 //   uploads   最近子站上传记录（含队列结算状态，倒序取 20 条）
+//   otherFiles 「其他」占用的逐文件明细（R2 实时按前缀归集，见 collectOtherFiles）
 //
 // 鉴权：/api/admin/_middleware.js 已校验管理员，这里无需重复检查。
 
 import { STORAGE_RESERVATION_TTL_SECONDS } from '../../../config/storage.js'
+
+// 「其他」类目 R2 归集上限与展示条数
+const OTHER_R2_MAX_OBJECTS = 2000
+const OTHER_FILES_LIMIT = 200
+
+// 生成图持久化对象的来源工具（generation_records.source）
+const GENERATION_SOURCE_LABELS = {
+  'ai-image-edit': 'AI 图片编辑',
+  'ai-outfit': 'AI 穿搭',
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
@@ -34,6 +45,76 @@ function jsonError(message, status = 500) {
 function intOr0(v) {
   const n = Number(v)
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0
+}
+
+// 分页列出一个前缀下的 R2 对象（封顶 maxObjects，超出置 truncated）
+async function listR2Objects(bucket, prefix, maxObjects) {
+  const objects = []
+  let cursor
+  while (objects.length < maxObjects) {
+    const page = await bucket.list({ prefix, limit: 1000, cursor })
+    objects.push(...page.objects)
+    if (!page.truncated) return { objects, truncated: false }
+    cursor = page.cursor
+  }
+  return { objects, truncated: true }
+}
+
+/**
+ * 「其他」类目逐文件归集。
+ * 其他 = 已用 - 三表可归集来源，其构成在库里没有逐文件记录，但对象都在 R2：
+ *   generated-images/{uid}/{recordId}.{ext}  AI 图片编辑 / AI 穿搭生成图持久化
+ *   shopping-list/{uid}/…                    购物清单条目图片
+ * 这里按前缀实时 list R2（对象自带 size / uploaded），生成图再反查
+ * generation_records 把 recordId 映射回来源工具，供后台直接定位用量出处。
+ * R2 归集合计与账目残差的差额即历史漂移（如已删对象未退额度），单独返回对账。
+ */
+async function collectOtherFiles(env, uid) {
+  const bucket = env?.MEDIA
+  if (!bucket) return { files: [], truncated: false, bytes: 0, total: 0, error: 'R2 绑定未配置' }
+
+  const [generated, shopping] = await Promise.all([
+    listR2Objects(bucket, `generated-images/${uid}/`, OTHER_R2_MAX_OBJECTS),
+    listR2Objects(bucket, `shopping-list/${uid}/`, OTHER_R2_MAX_OBJECTS),
+  ])
+
+  // recordId → 来源工具（生成图 key 的最后一段去掉扩展名即 generation_records.id）
+  const toolByRecordId = new Map()
+  for (const obj of generated.objects) {
+    const last = String(obj.key).split('/').pop() || ''
+    const recordId = last.replace(/\.[a-z0-9]+$/i, '')
+    if (recordId) toolByRecordId.set(recordId, null)
+  }
+  if (toolByRecordId.size > 0) {
+    const records = await env.DB.prepare(
+      'SELECT id, source FROM generation_records WHERE uid = ? LIMIT 5000',
+    ).bind(uid).all()
+    for (const row of records.results || []) toolByRecordId.set(row.id, row.source || null)
+  }
+
+  const toFile = (obj, source, tool) => ({
+    source,
+    tool: tool == null ? null : GENERATION_SOURCE_LABELS[tool] || tool,
+    key: obj.key,
+    bytes: intOr0(obj.size),
+    uploadedAt: obj.uploaded || null,
+  })
+
+  const files = [
+    ...generated.objects.map((obj) => {
+      const last = String(obj.key).split('/').pop() || ''
+      const recordId = last.replace(/\.[a-z0-9]+$/i, '')
+      return toFile(obj, 'generated_image', toolByRecordId.get(recordId))
+    }),
+    ...shopping.objects.map((obj) => toFile(obj, 'shopping_list', null)),
+  ].sort((a, b) => String(b.uploadedAt || '').localeCompare(String(a.uploadedAt || '')))
+
+  return {
+    files: files.slice(0, OTHER_FILES_LIMIT),
+    truncated: files.length > OTHER_FILES_LIMIT || generated.truncated || shopping.truncated,
+    bytes: files.reduce((sum, f) => sum + f.bytes, 0),
+    total: files.length,
+  }
 }
 
 export async function onRequest(context) {
@@ -122,6 +203,25 @@ export async function onRequest(context) {
       .all()
 
     const user = userRow?.results?.[0]
+
+    // ============ 「其他」占用逐文件归集（R2 实时列出，失败不阻塞整体明细） ============
+    let otherFiles = []
+    let otherFilesTruncated = false
+    let otherBytesFromR2 = 0
+    let otherFilesError = null
+    let otherTotal = 0
+    try {
+      const collected = await collectOtherFiles(env, uid)
+      otherFiles = collected.files
+      otherFilesTruncated = collected.truncated
+      otherBytesFromR2 = collected.bytes
+      otherFilesError = collected.error || null
+      otherTotal = collected.total
+    } catch (error) {
+      console.error('[admin/storage/detail] collectOtherFiles failed:', error)
+      otherFilesError = error?.message || 'R2 归集失败'
+    }
+
     return json({
       user: {
         uid,
@@ -144,8 +244,18 @@ export async function onRequest(context) {
         aiCreation,
         subsite,
         // 已用减去可归集来源：生成图持久化（generated-images）、购物清单图片、历史漂移等
-        other: { count: 0, bytes: Math.max(0, usedBytes - identified) },
+        // count 为 R2 归集到的对象数（见 otherFiles），字节仍是账目残差口径
+        other: {
+          count: otherFilesError ? 0 : otherTotal,
+          bytes: Math.max(0, usedBytes - identified),
+        },
       },
+      // 「其他」占用的逐文件明细：R2 实时按前缀归集；bytes 为归集合计，
+      // 与 sources.other.bytes（账目残差）的差额即历史漂移（已删对象未退额度等）
+      otherFiles,
+      otherFilesTruncated,
+      otherBytesFromR2,
+      otherFilesError,
       // 有效预留明细（>0 且长期不消说明结算链路异常，可在前端一键清理）
       reservations: (reservationsResult.results || []).map((r) => ({
         id: r.id,

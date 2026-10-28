@@ -113,7 +113,7 @@ onMounted(() => {
         
         <!-- 头部自定义内容 -->
         <div v-if="qa.headerContent" class="qa-header-content">
-          <div class="custom-content" v-html="qa.headerContent"></div>
+          <div class="custom-content">{{ qa.headerContent }}</div>
         </div>
         
         <!-- QA内容区域 -->
@@ -173,7 +173,7 @@ onMounted(() => {
         
         <!-- 尾部自定义内容 -->
         <div v-if="qa.footerContent" class="qa-footer-content">
-          <div class="custom-content" v-html="qa.footerContent"></div>
+          <div class="custom-content">{{ qa.footerContent }}</div>
         </div>
         
         <!-- 页面信息 -->
@@ -259,6 +259,9 @@ onMounted(() => {
   font-size: 16px;
   line-height: 1.6;
   text-align: center;
+  /* 纯文本展示：保留换行，不解析任何 HTML/JS */
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .qa-main-content {

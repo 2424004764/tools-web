@@ -60,3 +60,12 @@ export async function deleteAdminFeedback(id: string): Promise<{ id: string; del
   const res = await functionsRequest.delete(`/api/admin/feedback/${encodeURIComponent(id)}`)
   return res.data.data
 }
+
+export async function batchDeleteAdminFeedback(ids: string[]): Promise<{
+  requested: number
+  deleted: number
+  failed: Array<{ id: string; error: string }>
+}> {
+  const res = await functionsRequest.post('/api/admin/feedback/batch-delete', { ids })
+  return res.data.data
+}

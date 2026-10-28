@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import MarkdownIt from 'markdown-it'
 import { copy } from '@/utils/string'
+import { sanitizeCustomHtml } from '@/utils/sanitizeHtml'
 
 interface Message {
   id: string
@@ -49,24 +50,24 @@ const md = new MarkdownIt({
   breaks: true
 })
 
-// 渲染Markdown内容
+// 渲染Markdown内容（html:true 的产物必须过 DOMPurify；用户消息原文也不能直接进 v-html）
 const renderedContent = computed(() => {
   if (props.message.type === 'assistant') {
-    const content = typeof props.message.content === 'string' 
-      ? props.message.content 
+    const content = typeof props.message.content === 'string'
+      ? props.message.content
       : String(props.message.content || '');
-    return md.render(content);
+    return sanitizeCustomHtml(md.render(content));
   }
-  return props.message.content;
+  return md.utils.escapeHtml(props.message.content || '');
 });
 
 // 渲染思考过程内容
 const renderedReasoning = computed(() => {
   if (props.message.type === 'assistant' && props.message.reasoning) {
-    const reasoning = typeof props.message.reasoning === 'string' 
-      ? props.message.reasoning 
+    const reasoning = typeof props.message.reasoning === 'string'
+      ? props.message.reasoning
       : String(props.message.reasoning || '');
-    return md.render(reasoning);
+    return sanitizeCustomHtml(md.render(reasoning));
   }
   return '';
 });

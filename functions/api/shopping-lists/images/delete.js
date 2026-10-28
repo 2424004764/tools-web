@@ -7,7 +7,6 @@
 
 import { extractUidFromRequest } from '../../_lib/model-resolver.js'
 import { deleteR2Object, headR2ObjectSize } from '../../../services/r2.js'
-import { refundStorageUsage } from '../../../services/storageQuotaService.js'
 
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -67,16 +66,63 @@ export async function onRequest(context) {
     const r2Key = resolveR2Key(env, body, uid)
     if (!r2Key) return jsonError('图片地址不合法或不属于当前用户', 403)
 
-    const bucket = env.R2_BUCKET_NAME
-    if (!bucket) return jsonError('R2 桶名未配置', 500)
-
-    // 先 HEAD 再删：拿真实大小用于退额度；404 说明早已删除，不重复退
-    const size = await headR2ObjectSize(env, bucket, r2Key)
-    if (size === null) {
-      return json({ deleted: false, refunded: 0 })
+    const lockToken = crypto.randomUUID()
+    const upload = await db
+      .prepare(
+        `UPDATE shopping_list_image_uploads
+         SET status = 'deleting', lock_token = ?, updated_at = datetime('now')
+         WHERE r2_key = ? AND uid = ? AND status = 'confirmed' AND lock_token IS NULL`,
+      )
+      .bind(lockToken, r2Key, uid)
+      .run()
+    if ((upload?.meta?.changes ?? 0) !== 1) {
+      const bucket = env.R2_BUCKET_NAME
+      const row = await db
+        .prepare('SELECT status FROM shopping_list_image_uploads WHERE r2_key = ? AND uid = ?')
+        .bind(r2Key, uid)
+        .first()
+      if (row) return json({ deleted: false, refunded: 0, alreadyDeleted: row.status === 'deleted' })
+      if (!bucket) return jsonError('R2 桶名未配置', 500)
+      const size = await headR2ObjectSize(env, bucket, r2Key)
+      if (size === null) return json({ deleted: false, refunded: 0 })
+      await deleteR2Object(env, bucket, r2Key)
+      return json({ deleted: true, refunded: 0, legacy: true })
     }
-    await deleteR2Object(env, bucket, r2Key)
-    await refundStorageUsage(db, uid, size)
+
+    const bucket = env.R2_BUCKET_NAME
+    if (!bucket) {
+      await db.prepare("UPDATE shopping_list_image_uploads SET status = 'confirmed', lock_token = NULL WHERE r2_key = ? AND uid = ? AND lock_token = ?").bind(r2Key, uid, lockToken).run()
+      return jsonError('R2 桶名未配置', 500)
+    }
+
+    let size
+    try {
+      size = await headR2ObjectSize(env, bucket, r2Key)
+      if (size === null) {
+        await db.prepare("UPDATE shopping_list_image_uploads SET status = 'deleted', lock_token = NULL WHERE r2_key = ? AND uid = ? AND lock_token = ?").bind(r2Key, uid, lockToken).run()
+        return json({ deleted: false, refunded: 0 })
+      }
+      await deleteR2Object(env, bucket, r2Key)
+    } catch (error) {
+      await db.prepare("UPDATE shopping_list_image_uploads SET status = 'confirmed', lock_token = NULL WHERE r2_key = ? AND uid = ? AND lock_token = ?").bind(r2Key, uid, lockToken).run()
+      throw error
+    }
+
+    const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
+    const results = await db.batch([
+      db.prepare(
+        `UPDATE user_storage_quota SET used_bytes = MAX(0, used_bytes - ?), updated_at = ?
+         WHERE uid = ? AND EXISTS (
+           SELECT 1 FROM shopping_list_image_uploads
+           WHERE r2_key = ? AND uid = ? AND status = 'deleting' AND lock_token = ?
+         )`,
+      ).bind(size, now, uid, r2Key, uid, lockToken),
+      db.prepare(
+        `UPDATE shopping_list_image_uploads SET status = 'deleted', lock_token = NULL, updated_at = ?
+         WHERE r2_key = ? AND uid = ? AND status = 'deleting' AND lock_token = ?`,
+      ).bind(now, r2Key, uid, lockToken),
+    ])
+    if ((results?.[1]?.meta?.changes ?? 0) !== 1) return jsonError('退款结算失败，请联系管理员', 500)
     return json({ deleted: true, refunded: size })
   } catch (error) {
     console.error('Shopping list image delete error:', error)

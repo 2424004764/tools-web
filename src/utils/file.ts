@@ -45,9 +45,21 @@ export function getFileExtension(filename) {
   return filename.substr(dotIndex + 1); // 返回'.'之后的部分作为后缀名  
 }
 
+/**
+ * 判断 File 是否图片：MIME 为空时按扩展名兜底。
+ * 部分 Android WebView（微信等）从相册选图后 File.type 是空字符串，
+ * 只看 type 会把真实图片误判成非图片，表现为手机端选完图没反应。
+ */
+const IMAGE_EXT_RE = /\.(png|jpe?g|webp|gif|bmp|avif|heic|heif)$/i
+export function isImageFile(file: File): boolean {
+  if (file.type) return file.type.startsWith('image/')
+  return IMAGE_EXT_RE.test(file.name || '')
+}
+
 const FileUtils = {
   base64ToBlod,
   autoDown,
-  getFileExtension
+  getFileExtension,
+  isImageFile
 }
 export default FileUtils

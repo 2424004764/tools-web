@@ -42,6 +42,7 @@ interface Recipe {
   name: string
   description: string
   schema: Field[]
+  isPublic?: boolean | number
   createTime: string
   updateTime: string
 }
@@ -198,15 +199,18 @@ const generatedText = computed(() => JSON.stringify(generated.value, null, 2))
 // 上次载入/保存时的基线，用于检测未保存修改
 const baselineName = ref('')
 const baselineDescription = ref('')
+const baselinePublic = ref(false)
 const baselineFields = ref<string>('')
 const captureBaseline = () => {
   baselineName.value = recipeMeta.name
   baselineDescription.value = recipeMeta.description
+  baselinePublic.value = isRecipePublic.value
   baselineFields.value = JSON.stringify(fields.value)
 }
 const isDirty = computed(() => {
   if (recipeMeta.name !== baselineName.value) return true
   if (recipeMeta.description !== baselineDescription.value) return true
+  if (isRecipePublic.value !== baselinePublic.value) return true
   return JSON.stringify(fields.value) !== baselineFields.value
 })
 
@@ -216,6 +220,7 @@ const loadingSamples = ref(false)
 const syncing = ref(false)
 const saving = ref(false)
 const editingRecipeId = ref<string | null>(null)
+const isRecipePublic = ref(false)
 
 // ==================== localStorage 工具 ====================
 
@@ -237,11 +242,12 @@ const loadRemote = async () => {
   try {
     const res = await functionsRequest.get('/api/mock-schemas', { params: { page: 1, pageSize: 100 } })
     if (res.status === 200) {
-      recipes.value = (res.data.data || []).map((it: any) => ({ ...it, synced: true }))
+      const remote = (res.data.data || []).map((it: any) => ({ ...it, synced: true })) as Recipe[]
+      const pendingLocal = recipes.value.filter((r) => !(r as any).synced && !r.uid)
+      recipes.value = [...pendingLocal, ...remote]
     }
   } catch (e) {
     console.error('获取云端配方失败:', e)
-    recipes.value = []
   }
 }
 
@@ -252,24 +258,25 @@ const loadData = () => {
 
 // 登录后：把本地未同步的配方逐条上传到云端
 const syncLocalToRemote = async () => {
-  const local = recipes.value.filter(r => !(r as any).synced && !r.uid)
+  const local = recipes.value.filter((r) => !(r as any).synced && !r.uid)
   if (local.length === 0) return
   syncing.value = true
-  let ok = 0
+  const syncedIds = new Set<string>()
   for (const r of local) {
     try {
       const res = await functionsRequest.post('/api/mock-schemas', {
         name: r.name,
         description: r.description,
-        schema: r.schema
+        schema: r.schema,
+        isPublic: false,
       })
-      if (res.status === 201) ok++
-    } catch { /* skip */ }
+      if (res.status === 201) syncedIds.add(r.id)
+    } catch { /* keep failed items for retry */ }
   }
-  if (ok > 0) {
-    ElMessage.success(`已将 ${ok} 条本地配方同步到云端`)
-    saveLocal() // 同步成功后清掉 localStorage
-    localStorage.removeItem(STORAGE_KEY)
+  if (syncedIds.size > 0) {
+    recipes.value = recipes.value.filter((r) => !syncedIds.has(r.id))
+    saveLocal()
+    ElMessage.success(`已将 ${syncedIds.size} 条本地配方同步到云端`)
   }
   syncing.value = false
 }
@@ -310,6 +317,7 @@ const nextDefaultName = () => {
 
 const newRecipe = () => {
   editingRecipeId.value = null
+  isRecipePublic.value = false
   recipeMeta.name = nextDefaultName()
   recipeMeta.description = ''
   fields.value = [
@@ -374,12 +382,14 @@ const baseUrl = (import.meta.env.VITE_SITE_URL as string) || (typeof window !== 
 const currentShareUrl = computed(() => {
   if (!editingRecipeId.value) return ''
   const r = recipes.value.find(it => it.id === editingRecipeId.value)
-  if (!r) return ''
-  // 只要配方有 id，就能生成链接（无论是否登录）
+  if (!r || !(r.isPublic === true || r.isPublic === 1)) return ''
   return `${baseUrl}/api/mock/${r.id}`
 })
 
-const recipeShareUrl = (r: Recipe) => (r && r.id ? `${baseUrl}/api/mock/${r.id}` : '')
+const recipeShareUrl = (r: Recipe) =>
+  r && r.id && (r.isPublic === true || r.isPublic === 1)
+    ? `${baseUrl}/api/mock/${r.id}`
+    : ''
 
 const handleCopyShareUrl = async (text: string) => {
   if (!text) {
@@ -446,64 +456,44 @@ const handleSaveRecipe = async () => {
   const payload = {
     name: recipeMeta.name.trim(),
     description: recipeMeta.description.trim(),
-    schema: fields.value.map(cleanField)
+    schema: fields.value.map(cleanField),
+    isPublic: isRecipePublic.value,
   }
 
-  // 未登录用户:也保存到云端(匿名配方,uid 为 null)
   try {
-    if (editingRecipeId.value) {
-      // 更新现有配方:统一调用云端 API
-      await functionsRequest.put(`/api/mock-schemas/${editingRecipeId.value}`, payload)
-      ElMessage.success('已更新')
-
-      // 更新本地列表中的数据
-      const idx = recipes.value.findIndex(r => r.id === editingRecipeId.value)
-      if (idx !== -1) {
-        recipes.value[idx] = {
-          ...recipes.value[idx],
-          ...payload,
-          updateTime: now
-        }
+    if (useRemote.value) {
+      if (editingRecipeId.value) {
+        await functionsRequest.put(`/api/mock-schemas/${editingRecipeId.value}`, payload)
+        const idx = recipes.value.findIndex(r => r.id === editingRecipeId.value)
+        if (idx !== -1) recipes.value[idx] = { ...recipes.value[idx], ...payload, updateTime: now }
+      } else {
+        const res = await functionsRequest.post('/api/mock-schemas', payload)
+        if (res.status !== 201 || !res.data) throw new Error('创建配方失败')
+        editingRecipeId.value = res.data.id
+        recipes.value.unshift(res.data)
       }
+      ElMessage.success('已保存到云端')
     } else {
-      // 创建新配方:登录或未登录都保存到云端
-      const res = await functionsRequest.post('/api/mock-schemas', payload)
-      if (res.status === 201 && res.data) {
-        const newRecipe = res.data
-        editingRecipeId.value = newRecipe.id
-        recipes.value.unshift(newRecipe)
-        ElMessage.success(useRemote.value ? '已保存到云端' : '已保存(登录后可管理)')
+      const localRecipe: Recipe = {
+        ...(recipes.value.find(r => r.id === editingRecipeId.value) || {} as Recipe),
+        id: editingRecipeId.value || uuid(),
+        ...payload,
+        isPublic: false,
+        createTime: recipes.value.find(r => r.id === editingRecipeId.value)?.createTime || now,
+        updateTime: now,
       }
+      const idx = recipes.value.findIndex(r => r.id === localRecipe.id)
+      if (idx === -1) recipes.value.unshift(localRecipe)
+      else recipes.value[idx] = localRecipe
+      editingRecipeId.value = localRecipe.id
+      isRecipePublic.value = false
+      saveLocal()
+      ElMessage.success('已保存到本地；登录后可同步和分享')
     }
     captureBaseline()
   } catch (e) {
-    console.error('保存到云端失败:', e)
-    // 未登录用户保存失败,降级到 localStorage
-    if (!useRemote.value) {
-      if (editingRecipeId.value) {
-        const idx = recipes.value.findIndex(r => r.id === editingRecipeId.value)
-        if (idx !== -1) {
-          recipes.value[idx] = {
-            ...recipes.value[idx],
-            ...payload,
-            updateTime: now
-          }
-        }
-        ElMessage.success('已更新')
-      } else {
-        recipes.value.unshift({
-          id: uuid(),
-          ...payload,
-          createTime: now,
-          updateTime: now
-        } as Recipe)
-        ElMessage.success('已保存到本地')
-      }
-      saveLocal()
-      captureBaseline()
-    } else {
-      ElMessage.error('保存失败')
-    }
+    console.error('保存配方失败:', e)
+    ElMessage.error('保存失败')
   } finally {
     saving.value = false
   }
@@ -528,6 +518,7 @@ const handleLoadRecipe = async (r: Recipe) => {
     }
   }
   editingRecipeId.value = r.id
+  isRecipePublic.value = r.isPublic === true || r.isPublic === 1
   recipeMeta.name = r.name
   recipeMeta.description = r.description || ''
   fields.value = (r.schema || []).map(f => ({ ...f, id: uuid() }))
@@ -584,8 +575,13 @@ const loadSamples = async () => {
 
 // ==================== 挂载 ====================
 
-onMounted(() => {
-  if (recipes.value.length === 0) loadData()
+onMounted(async () => {
+  if (!useRemote.value) loadLocal()
+  else {
+    loadLocal()
+    await syncLocalToRemote()
+    await loadRemote()
+  }
   newRecipe()
 })
 </script>
@@ -647,7 +643,13 @@ onMounted(() => {
           </el-form-item>
         </el-form>
 
-        <!-- 分享链接（保存后才有） -->
+        <div class="mb-3 flex items-center gap-3">
+          <el-switch v-model="isRecipePublic" :disabled="!useRemote" />
+          <span class="text-body-sm text-gray-700">公开此配方接口</span>
+          <span v-if="!useRemote" class="text-caption text-gray-500">登录后可公开分享</span>
+        </div>
+
+        <!-- 分享链接（仅公开配方显示） -->
         <div v-if="currentShareUrl" class="mb-3 p-2.5 rounded-lg bg-blue-50 border border-blue-200">
           <div class="flex items-center gap-2 text-caption text-blue-700">
             <el-icon><Link /></el-icon>

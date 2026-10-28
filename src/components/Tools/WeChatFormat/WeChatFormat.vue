@@ -6,6 +6,7 @@ import { copy } from '@/utils/string'
 import { ElMessage, ElMessageBox, ElButton } from 'element-plus'
 import type { UploadFile } from 'element-plus'
 import MarkdownIt from 'markdown-it'
+import { sanitizeCustomHtml } from '@/utils/sanitizeHtml'
 import hljs from 'highlight.js/lib/core'
 import javascript from 'highlight.js/lib/languages/javascript'
 import typescript from 'highlight.js/lib/languages/typescript'
@@ -778,7 +779,7 @@ const previewContent = computed(() => {
 // 完整的预览 HTML（包含容器）
 const previewHTML = computed(() => {
   const theme = getThemeStyles(info.currentTheme)
-  return wrapWithStyles(previewContent.value, theme)
+  return sanitizeCustomHtml(wrapWithStyles(previewContent.value, theme))
 })
 
 // ============ MarkdownIt 实例缓存 ============
@@ -795,7 +796,7 @@ const getMarkdownIt = (theme: ThemeStyles): MarkdownIt => {
   const safeFontFamily = theme.fontFamily.replace(/"/g, "'")
 
   const mdIt = new MarkdownIt({
-    html: true,
+    html: false,
     linkify: true,
     typographer: true,
     highlight: (str, lang) => {
@@ -904,7 +905,7 @@ const getMarkdownIt = (theme: ThemeStyles): MarkdownIt => {
 const formatMarkdown = (md: string, theme: ThemeStyles): string => {
   try {
     const mdIt = getMarkdownIt(theme)
-    return mdIt.render(md)
+    return sanitizeCustomHtml(mdIt.render(md))
   } catch (error) {
     console.error('Markdown 解析失败:', error)
     return '<p style="color: red;">内容解析失败，请检查 Markdown 语法</p>'

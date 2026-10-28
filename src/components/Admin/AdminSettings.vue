@@ -8,7 +8,7 @@ import IconEdit from '~icons/ep/edit'
 import IconDelete from '~icons/ep/delete'
 import { fetchAdminSiteConfig, updateAdminSiteConfig, type AdminSiteConfig } from '@/api/admin/site-config'
 import { clearSiteConfigCache, fetchProductsConfig } from '@/api/site-config'
-import { DEFAULT_PRODUCTS } from '@/components/Layout/Header/products'
+import { DEFAULT_PRODUCTS, productLogoFallbackChar } from '@/components/Layout/Header/products'
 
 const loading = ref(false)
 const saving = ref(false)
@@ -224,7 +224,10 @@ function validateDraftItem(
   if (!p.name.trim() || p.name.trim().length > 30) return '名称必填且不超过 30 字'
   if (p.desc.trim().length > 60) return '简介不超过 60 字'
   if (!/^https?:\/\/\S+$/i.test(p.url.trim())) return '链接必须是 http(s):// 开头的完整地址'
-  if (!/^(https?:\/\/\S+|\/\S+)$/i.test(p.logo.trim())) return 'Logo 必填：站内绝对路径或 http(s) 图片地址'
+  // logo 选填：留空时前台用名称首字做文字图标；填了才校验格式
+  if (p.logo.trim() && !/^(https?:\/\/\S+|\/\S+)$/i.test(p.logo.trim())) {
+    return 'Logo 格式不正确：需站内绝对路径或 http(s) 图片地址'
+  }
   return ''
 }
 
@@ -440,9 +443,9 @@ onBeforeUnmount(() => {
           />
           <div
             v-else
-            class="order-3 lg:order-none w-8 h-8 rounded-lg bg-surface-2 dark:bg-surface-3 flex items-center justify-center text-base shrink-0"
+            class="order-3 lg:order-none w-8 h-8 rounded-lg bg-accent-50 dark:bg-surface-3 flex items-center justify-center text-base font-semibold text-accent-600 dark:text-accent-300 shrink-0 select-none"
             aria-hidden="true"
-          >🧩</div>
+          >{{ productLogoFallbackChar(p.name) }}</div>
 
           <div class="order-1 w-full flex-none min-w-0 lg:order-none lg:w-auto lg:flex-1 flex flex-col gap-0.5">
             <div class="flex items-baseline gap-2 min-w-0">
@@ -545,7 +548,7 @@ onBeforeUnmount(() => {
         </div>
 
         <div>
-          <div class="text-body-sm font-medium text-ink-700 mb-1.5">Logo 图片</div>
+          <div class="text-body-sm font-medium text-ink-700 mb-1.5">Logo 图片（选填）</div>
           <div class="flex items-center gap-3">
             <img
               v-if="draft.logo && !draftLogoBroken"
@@ -554,19 +557,21 @@ onBeforeUnmount(() => {
               class="w-10 h-10 rounded-xl object-cover shrink-0 bg-surface-1"
               @error="draftLogoBroken = true"
             />
+            <!-- 未填 logo（或加载失败）时预览名称首字文字图标，与前台展示一致 -->
             <div
               v-else
-              class="w-10 h-10 rounded-xl bg-surface-2 dark:bg-surface-3 flex items-center justify-center text-lg shrink-0"
+              class="w-10 h-10 rounded-xl bg-accent-50 dark:bg-surface-3 flex items-center justify-center text-lg font-semibold text-accent-600 dark:text-accent-300 shrink-0 select-none"
               aria-hidden="true"
-            >🧩</div>
+            >{{ productLogoFallbackChar(draft.name) }}</div>
             <el-input
               v-model="draft.logo"
               class="flex-1"
-              placeholder="/images/logo/product-tiji.svg 或 https://…"
+              placeholder="/images/logo/product-tiji.svg 或 https://…；留空则用名称首字"
               clearable
               @input="draftLogoBroken = false"
             />
           </div>
+          <div class="text-caption text-ink-400 mt-1">留空时前台自动取名称第一个字作为图标</div>
         </div>
 
         <div>

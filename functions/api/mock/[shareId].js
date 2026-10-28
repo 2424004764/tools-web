@@ -26,7 +26,7 @@ export async function onRequest(context) {
 
   try {
     const row = await dbInit.db
-      .prepare('SELECT schema, name, description FROM mock_schemas WHERE id = ?')
+      .prepare('SELECT schema, name, description FROM mock_schemas WHERE id = ? AND is_public = 1')
       .bind(id)
       .first()
 

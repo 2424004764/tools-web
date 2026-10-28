@@ -14,7 +14,7 @@ import 'element-plus/theme-chalk/display.css'
 import { ToolsInfo } from '@/components/Tools/tools.type.ts';
 
 import UserBalanceBadge from '@/components/User/UserBalanceBadge.vue'
-import { productJumpPath, type ProductInfo } from './products'
+import { productJumpPath, productLogoFallbackChar, type ProductInfo } from './products'
 import { fetchProductsConfig } from '@/api/site-config'
 import { useRouter, useRoute } from 'vue-router'
 
@@ -442,7 +442,13 @@ onUnmounted(() => {
               rel="noopener noreferrer"
               class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-accent-50 dark:hover:bg-surface-3 transition-colors group c-xs:flex-col c-xs:items-center c-xs:gap-1.5 c-xs:px-1 c-xs:py-3 c-xs:text-center"
             >
-              <img :src="p.logo" :alt="p.name + '图标'" class="w-10 h-10 rounded-xl shrink-0" loading="lazy" />
+              <img v-if="p.logo" :src="p.logo" :alt="p.name + '图标'" class="w-10 h-10 rounded-xl shrink-0" loading="lazy" />
+              <!-- logo 未配置时取名称首字做文字图标 -->
+              <span
+                v-else
+                class="w-10 h-10 rounded-xl shrink-0 bg-accent-50 dark:bg-surface-3 text-lg font-semibold text-accent-600 dark:text-accent-300 flex items-center justify-center select-none"
+                aria-hidden="true"
+              >{{ productLogoFallbackChar(p.name) }}</span>
               <span class="min-w-0">
                 <span class="block text-[15px] leading-5 font-semibold text-ink-800 group-hover:text-accent-700 dark:group-hover:text-accent-300 transition-colors">{{ p.name }}</span>
                 <!-- 手机端磁贴放不下描述，只保留名称 -->

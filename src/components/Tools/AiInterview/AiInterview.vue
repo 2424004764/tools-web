@@ -5,6 +5,7 @@ import MarkdownIt from 'markdown-it';
 import DetailHeader from "@/components/Layout/DetailHeader/DetailHeader.vue";
 import ToolDetail from "@/components/Layout/ToolDetail/ToolDetail.vue";
 import { copy } from '@/utils/string';
+import { sanitizeCustomHtml } from '@/utils/sanitizeHtml';
 import { chat } from '@/components/Tools/AiTextToVideo/api';
 
 const route = useRoute();
@@ -216,11 +217,12 @@ const md = new MarkdownIt({
 });
 
 // 渲染消息内容（仅 AI 消息走 Markdown）
+// 两支都不可直接进 v-html：AI 输出可能被诱导注入标签，用户输入原样进 v-html 同样是 XSS
 const renderMessageContent = (msg: { type: 'user' | 'assistant', content: string }) => {
   if (msg.type === 'assistant') {
-    return md.render(msg.content || '');
+    return sanitizeCustomHtml(md.render(msg.content || ''));
   }
-  return msg.content;
+  return md.utils.escapeHtml(msg.content || '');
 };
 </script>
 
