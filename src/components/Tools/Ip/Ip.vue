@@ -39,7 +39,8 @@ const search = async (type: string) => {
     const res = await functionsRequest.get('/api/ip', {
       params: ipInput.value ? { ip: ipInput.value } : {}
     })
-    ipData.value = res.data.data
+    // ApiResponse.success 直接把 payload 作为响应体（无 code/data 信封），res.data 即结果
+    ipData.value = res.data
   } catch {
     // 错误提示由 functionsRequest 拦截器统一处理
   } finally {

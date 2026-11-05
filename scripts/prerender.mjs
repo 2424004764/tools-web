@@ -248,6 +248,12 @@ async function main() {
         req.abort().catch(() => {})
         return
       }
+      // /api/ip 同理要掐：Ip.vue 挂载即查本机 IP，不拦会把构建机出口 IP
+      // 烤进 /ip/ 的预渲染 HTML，访客首屏闪现别人的 IP
+      if (url.includes('/api/ip')) {
+        req.abort().catch(() => {})
+        return
+      }
       const m = url.match(/\/api\/blog\/posts\/([^/?#]+)/)
       const slug = m ? decodeURIComponent(m[1]) : null
       if (slug && blogApiMocks.has(slug)) {
