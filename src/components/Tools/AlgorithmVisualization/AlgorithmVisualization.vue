@@ -80,6 +80,24 @@ const arrayData = ref<number[]>([])
 const arrayStates = ref<string[]>([]) // 'normal', 'comparing', 'swapping', 'sorted', 'found'
 const animationSteps = ref<any[]>([])
 
+// 与 arrayData 平行的元素唯一 id：交换时同步移动 id，DOM 节点跟随移动，产生位滑动动画
+const elementIds = ref<number[]>([])
+let elementUid = 0
+
+// 可视化条目：稳定 id 供 TransitionGroup 做 FLIP 位移动画
+const visualItems = computed(() =>
+  arrayData.value.map((value, index) => ({
+    id: elementIds.value[index],
+    value,
+    index
+  }))
+)
+
+// 每步等待时长（动画速度换算），最低 15ms 保证位移动画可见
+const stepDelay = computed(() => Math.max(15, 1000 - state.animationSpeed * 10))
+// 位移过渡时长：随步进间隔缩放，夹在 60ms ~ 300ms 之间
+const moveDuration = computed(() => Math.min(300, Math.max(60, Math.round(stepDelay.value * 0.7))))
+
 // 添加响应式计算属性
 const isMobile = computed(() => {
   return window.innerWidth < 768
@@ -108,6 +126,7 @@ const generateRandomArray = () => {
   }
   
   arrayData.value = Array.from({ length: state.arraySize }, () => Math.floor(Math.random() * 100) + 1)
+  elementIds.value = arrayData.value.map(() => ++elementUid)
   arrayStates.value = Array(state.arraySize).fill('normal')
   state.currentStep = 0
   state.totalSteps = 0
@@ -1099,6 +1118,10 @@ const executeStep = (step: any) => {
         const temp = arrayData.value[i]
         arrayData.value[i] = arrayData.value[j]
         arrayData.value[j] = temp
+        // 同步交换元素 id，让两个柱子平滑滑动换位
+        const tempId = elementIds.value[i]
+        elementIds.value[i] = elementIds.value[j]
+        elementIds.value[j] = tempId
       }
       break
     case 'gap_highlight':
@@ -1296,7 +1319,7 @@ const startVisualization = async () => {
     // 调试：打印当前统计
     console.log(`步骤 ${i + 1}: 比较=${state.comparisons}, 交换=${state.swaps}`)
     
-    await new Promise(resolve => setTimeout(resolve, 1000 - state.animationSpeed * 10))
+    await new Promise(resolve => setTimeout(resolve, stepDelay.value))
   }
   
   // 停止时间更新并记录最终时间
@@ -1527,43 +1550,46 @@ onUnmounted(() => {
       <div class="bg-gray-50 p-3 sm:p-6 rounded-lg min-h-[350px] sm:min-h-[400px]">
         <!-- 添加水平滚动容器 -->
         <div class="overflow-x-auto">
-          <div 
+          <transition-group
+            tag="div"
+            name="bar"
             class="flex items-end justify-center space-x-1 h-64 sm:h-80 min-w-full"
-            :style="{ minWidth: `${Math.max(320, state.arraySize * (barWidth + 4))}px` }"
+            :style="{ minWidth: `${Math.max(320, state.arraySize * (barWidth + 4))}px`, '--bar-move-duration': `${moveDuration}ms` }"
           >
             <div
-              v-for="(value, index) in arrayData"
-              :key="index"
-              class="flex flex-col items-center transition-all duration-300 flex-shrink-0"
+              v-for="item in visualItems"
+              :key="item.id"
+              class="flex flex-col items-center flex-shrink-0"
             >
               <!-- 数值显示 - 响应式字体 -->
-              <div 
+              <div
                 class="text-caption mb-1 font-mono"
                 :class="{ 'text-[10px]': isMobile && state.arraySize > 10 }"
               >
-                {{ value }}
+                {{ item.value }}
               </div>
-              
+
               <!-- 柱状图 - 动态宽度 -->
               <div
                 class="transition-all duration-300 rounded-t-sm"
+                :class="{ 'bar-swapping': arrayStates[item.index] === 'swapping' }"
                 :style="{
                   width: `${barWidth}px`,
-                  height: `${(value / 100) * (isMobile ? 200 : 250)}px`,
-                  backgroundColor: getBarColor(index),
+                  height: `${(item.value / 100) * (isMobile ? 200 : 250)}px`,
+                  backgroundColor: getBarColor(item.index),
                   minHeight: '15px'
                 }"
               ></div>
-              
+
               <!-- 索引显示 - 响应式字体 -->
-              <div 
+              <div
                 class="text-caption mt-1 text-gray-500"
                 :class="{ 'text-[10px]': isMobile && state.arraySize > 10 }"
               >
-                {{ index }}
+                {{ item.index }}
               </div>
             </div>
-          </div>
+          </transition-group>
         </div>
         
         <!-- 手机端提示 -->
@@ -1654,5 +1680,15 @@ onUnmounted(() => {
 <style scoped>
 .transition-all {
   transition: all 0.3s ease;
+}
+
+/* 相邻元素交换换位动画（TransitionGroup FLIP）：柱子沿水平方向平滑滑到新位置 */
+.bar-move {
+  transition: transform var(--bar-move-duration, 250ms) cubic-bezier(0.45, 0, 0.2, 1);
+}
+
+/* 交换中的柱子微微上抬，配合滑动更易读 */
+.bar-swapping {
+  transform: translateY(-8px);
 }
 </style>

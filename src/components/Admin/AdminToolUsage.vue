@@ -6,11 +6,20 @@ import { useIsMobile } from '@/composables/useIsMobile'
 import {
   fetchToolUsageRecords,
   fetchToolUsageStats,
+  fetchSourceBlacklist,
+  addSourceBlacklist,
+  removeSourceBlacklist,
 } from '@/api/admin/tool-usage'
 import { fetchIpBans, createIpBan, deleteIpBan } from '@/api/admin/ip-ban'
 import { functionsRequest } from '@/utils/functionsRequest'
 import { formatLocation } from '@/utils/geo-name'
-import { SOURCE_LABELS, getSourceLabel } from '@/utils/source'
+import {
+  SOURCE_LABELS,
+  getSourceLabel,
+  getSourceCategory,
+  SOURCE_CATEGORY_LABELS,
+  type SourceCategory,
+} from '@/utils/source'
 import { PRODUCTS } from '@/components/Layout/Header/products'
 import { fetchProductsConfig } from '@/api/site-config'
 import type {
@@ -19,6 +28,8 @@ import type {
   ToolUsageStats,
   ToolFeature,
   IpBanRule,
+  TopSourceSummary,
+  SourceBlacklistItem,
 } from '@/types/admin'
 
 /**
@@ -130,7 +141,7 @@ const formatUTC8Date = (sec: number | null | undefined) => {
   return `${y}-${m}-${day}`
 }
 
-// 整张表的统计区间（顶部 4 卡和 TOP 来源卡共用）
+// 整张表的统计区间（顶部 4 卡和 TOP 工具/用户卡共用）
 const rangeLabel = computed(() => {
   const s = stats.value?.rangeStart
   const e = stats.value?.rangeEnd
@@ -138,6 +149,21 @@ const rangeLabel = computed(() => {
   if (s === e) return `${s}`
   return `${s || '?'} ~ ${e || '?'}`
 })
+
+// 推广来源统计卡的区间：跟随「使用明细」时间筛选；选「全部」时退回整表区间
+const sourceRangeLabel = computed(() => {
+  const { startDate, endDate } = rangeToDates(filter.range)
+  if (!startDate && !endDate) return rangeLabel.value
+  if (startDate === endDate) return startDate
+  if (startDate && endDate) return `${startDate} ~ ${endDate}`
+  return startDate ? `${startDate} 起` : `至 ${endDate}`
+})
+
+// 区间内来源合计（未屏蔽），作为来源卡的「总计」与占比分母——与整表 totalCount 不同步，
+// 因为来源统计受时间窗约束
+const sourcesWindowTotal = computed(() =>
+  (stats.value?.sources || []).reduce((sum, s) => sum + s.use_count, 0),
+)
 
 // 拼接悬浮提示，展示全部 CF 原始字段（方便排查异常）
 const geoTooltip = (row: ToolUsageRecord) => {
@@ -150,10 +176,145 @@ const geoTooltip = (row: ToolUsageRecord) => {
   return parts.length ? parts.join('\n') : '无地理位置信息'
 }
 
+// 来源分组统计：search → social → dev → direct → other，组内保持后端 use_count 倒序
+const sourceGroups = computed(() => {
+  const groups = new Map<SourceCategory, TopSourceSummary[]>()
+  for (const s of stats.value?.sources || []) {
+    const cat = getSourceCategory(s.source)
+    if (!groups.has(cat)) groups.set(cat, [])
+    groups.get(cat)!.push(s)
+  }
+  const order: SourceCategory[] = ['search', 'social', 'dev', 'direct', 'other']
+  return order
+    .filter((cat) => groups.has(cat))
+    .map((cat) => {
+      const items = groups.get(cat)!
+      return {
+        category: cat,
+        label: SOURCE_CATEGORY_LABELS[cat],
+        subtotal: items.reduce((sum, s) => sum + s.use_count, 0),
+        items,
+      }
+    })
+})
+
+// 搜索引擎渠道合计（google / baidu / bing / sogou / so360 / duckduckgo 之和）
+const searchEngineTotal = computed(
+  () => sourceGroups.value.find((g) => g.category === 'search')?.subtotal ?? 0,
+)
+
+// 次数占比（分母 = 当前统计窗口内来源合计；每条记录必归一个来源，NULL 已由后端归 direct）
+const sourcePercent = (count: number) => {
+  const total = sourcesWindowTotal.value
+  if (!total) return '0%'
+  return `${((count / total) * 100).toFixed(1)}%`
+}
+
+// ============ 来源黑名单管理 ============
+
+// 黑名单列表（弹窗数据源）
+const sourceBlacklist = ref<SourceBlacklistItem[]>([])
+const blacklistDialog = reactive({ visible: false })
+
+const loadSourceBlacklist = async () => {
+  try {
+    sourceBlacklist.value = await fetchSourceBlacklist()
+  } catch (err: any) {
+    console.error('[tool-usage] source-blacklist error:', err)
+  }
+}
+
+// 拉黑来源（单个或批量）。拉黑仅影响统计与明细展示，记录保留，可随时解禁
+const handleBlacklistSources = async (sources: string[]) => {
+  const list = sources.filter((s) => s && s !== 'direct')
+  if (!list.length) return
+  const tip =
+    list.length === 1
+      ? `确定拉黑来源「${list[0]}」？其历史与新增记录将不再计入统计和明细。`
+      : `确定批量拉黑 ${list.length} 个来源？相关记录将不再计入统计和明细。`
+  try {
+    await ElMessageBox.confirm(tip, '拉黑来源', {
+      type: 'warning',
+      confirmButtonText: '拉黑',
+      cancelButtonText: '取消',
+    })
+  } catch {
+    return
+  }
+  try {
+    const res = await addSourceBlacklist(list)
+    ElMessage.success(`已拉黑 ${res.added.length} 个来源`)
+    // 清掉已拉黑项的勾选（其余勾选保留，方便连续分批操作）
+    list.forEach((s) => selectedSources.value.delete(s))
+    await Promise.all([loadStats(), loadList(), loadSourceBlacklist()])
+  } catch {
+    // 错误提示由 functionsRequest 拦截器统一弹出
+  }
+}
+
+// ============ 来源多选（批量拉黑用；direct 不可选） ============
+
+const selectedSources = ref(new Set<string>())
+const selectedCount = computed(() => selectedSources.value.size)
+
+type SourceGroup = (typeof sourceGroups.value)[number]
+
+const selectableItems = (group: SourceGroup) => group.items.filter((i) => i.source !== 'direct')
+
+const isGroupAllSelected = (group: SourceGroup) => {
+  const items = selectableItems(group)
+  return items.length > 0 && items.every((i) => selectedSources.value.has(i.source))
+}
+
+const isGroupIndeterminate = (group: SourceGroup) => {
+  const items = selectableItems(group)
+  const n = items.filter((i) => selectedSources.value.has(i.source)).length
+  return n > 0 && n < items.length
+}
+
+const toggleGroupSelection = (group: SourceGroup) => {
+  const items = selectableItems(group)
+  if (isGroupAllSelected(group)) {
+    items.forEach((i) => selectedSources.value.delete(i.source))
+  } else {
+    items.forEach((i) => selectedSources.value.add(i.source))
+  }
+}
+
+const toggleSourceSelection = (source: string, checked: boolean) => {
+  if (checked) selectedSources.value.add(source)
+  else selectedSources.value.delete(source)
+}
+
+// 解禁单个来源
+const handleUnblacklist = async (source: string) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定解除对来源「${source}」的拉黑吗？其历史记录将重新计入统计和明细。`,
+      '解禁确认',
+      { type: 'warning', confirmButtonText: '解禁', cancelButtonText: '取消' },
+    )
+  } catch {
+    return
+  }
+  try {
+    await removeSourceBlacklist([source])
+    ElMessage.success('已解禁')
+    await Promise.all([loadStats(), loadList(), loadSourceBlacklist()])
+  } catch {
+    // 同上，拦截器已提示
+  }
+}
+
+// 统计加载：来源统计随明细时间筛选联动（startDate/endDate 与 loadList 同一口径）
 const loadStats = async () => {
   statsLoading.value = true
   try {
-    stats.value = await fetchToolUsageStats()
+    const dateRange = rangeToDates(filter.range)
+    stats.value = await fetchToolUsageStats({
+      startDate: dateRange.startDate,
+      endDate: dateRange.endDate,
+    })
   } catch (err: any) {
     console.error('[tool-usage] stats error:', err)
     ElMessage.error('统计加载失败')
@@ -219,11 +380,12 @@ const handlePageChange = (p: number) => {
   loadList()
 }
 
-// range 变化即重新加载（无需点搜索）
+// range 变化即重新加载明细 + 来源统计（无需点搜索）
 watch(
   () => filter.range,
   () => {
     pagination.value.page = 1
+    loadStats()
     loadList()
   },
 )
@@ -334,6 +496,7 @@ onMounted(() => {
   loadList()
   loadToolsOptions()
   loadBanRules()
+  loadSourceBlacklist()
   // 从仪表盘带锚点跳入时（如 /admin/tool-usage?range=week#usage-detail）滚动到目标卡片。
   // 路由 afterEach 有 RAF 钉顶，且统计卡 / TOP 榜异步渲染会持续改变上方高度，
   // 因此轮询校正滚动位置，直到贴住锚点（scroll-mt-20 提供吸顶头部偏移）再停止
@@ -373,7 +536,7 @@ onMounted(() => {
       <span>数据范围（UTC+8 自然日）：</span>
       <span class="font-medium text-ink-600 tabular-nums">{{ rangeLabel }}</span>
       <span class="text-ink-300">·</span>
-      <span class="text-ink-400">以下 TOP 10 / 活跃用户 / 总次数均按此区间统计</span>
+      <span class="text-ink-400">以下 TOP 10 / 活跃用户 / 总次数均按此区间统计；「推广来源统计」随下方时间筛选联动</span>
     </div>
 
     <!-- 顶部 4 个统计卡 -->
@@ -462,52 +625,142 @@ onMounted(() => {
       </el-card>
     </div>
 
-    <!-- 推广来源 TOP 10（独立一行：来源维度比工具/用户少，宽屏下单独成行更易读） -->
+    <!-- 推广来源分组统计（独立一行：搜索引擎合计是核心关注指标，置顶醒目展示） -->
     <el-card shadow="never" class="!rounded-xl mb-6">
       <template #header>
         <div class="flex items-center justify-between gap-3 flex-wrap">
           <div class="flex items-center gap-2 flex-wrap">
-            <span class="font-medium text-ink-900">推广来源 TOP 10</span>
+            <span class="font-medium text-ink-900">推广来源统计</span>
             <span class="text-xs text-ink-400">utm_source 优先 → referer 指纹 → direct</span>
-            <!-- 总计 = 所有来源次数之和（每条记录必归一个来源，NULL 已归 direct），含未进 TOP 10 的来源 -->
+            <!-- 总计 = 当前窗口内未屏蔽来源的使用次数合计 -->
             <span
               class="text-xs text-ink-500"
-              title="所有来源的使用次数合计（含未进 TOP 10 的来源）"
+              title="当前统计窗口内未屏蔽来源的使用次数合计"
             >
               · 总计
-              <span class="font-medium text-ink-700 tabular-nums">{{ stats?.totalCount ?? 0 }}</span>
+              <span class="font-medium text-ink-700 tabular-nums">{{ sourcesWindowTotal }}</span>
               次
             </span>
           </div>
-          <span class="text-xs text-ink-500">
-            统计区间：
-            <span class="font-medium text-ink-700 tabular-nums">{{ rangeLabel }}</span>
-            <span class="text-ink-400">（UTC+8 自然日）</span>
-          </span>
+          <div class="flex flex-col items-end gap-0.5">
+            <span class="text-xs text-ink-500">
+              统计区间：
+              <span class="font-medium text-ink-700 tabular-nums">{{ sourceRangeLabel }}</span>
+              <span class="text-ink-400">（UTC+8 自然日，跟随「使用明细」时间筛选）</span>
+            </span>
+            <span v-if="stats?.blockedSourceCount" class="text-xs text-ink-400">
+              已屏蔽 {{ stats.blockedSourceCount }} 个来源 · {{ stats.blockedCount }} 次记录未计入
+              <el-button
+                link
+                type="primary"
+                size="small"
+                class="!p-0"
+                @click="blacklistDialog.visible = true"
+              >
+                管理黑名单
+              </el-button>
+            </span>
+          </div>
         </div>
       </template>
-      <div v-if="stats?.topSources?.length" class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
-        <div
-          v-for="(s, i) in stats.topSources"
-          :key="s.source"
-          class="flex items-center gap-3 text-sm"
+
+      <!-- 搜索引擎合计横幅：直接回答「通过搜索引擎来的有多少次」 -->
+      <div
+        v-if="stats?.totalCount"
+        class="flex items-baseline gap-2 flex-wrap px-4 py-2.5 mb-4 rounded-lg bg-accent-50 border border-accent-100"
+      >
+        <span class="text-sm text-ink-700">通过搜索引擎进入：</span>
+        <span class="text-xl font-semibold text-accent-700 tabular-nums">
+          {{ searchEngineTotal }}
+        </span>
+        <span class="text-sm text-ink-700">次</span>
+        <span class="text-xs text-ink-500 tabular-nums">
+          占总量 {{ sourcePercent(searchEngineTotal) }}
+        </span>
+        <span class="text-xs text-ink-400">
+          （google / baidu / bing / sogou / so360 / duckduckgo）
+        </span>
+      </div>
+
+      <!-- 勾选来源后的批量操作条 -->
+      <div
+        v-if="selectedCount > 0"
+        class="flex items-center gap-3 flex-wrap px-4 py-2 mb-4 rounded-lg bg-red-50 border border-red-100"
+      >
+        <span class="text-sm text-ink-700">
+          已选
+          <span class="font-semibold text-red-600 tabular-nums">{{ selectedCount }}</span>
+          个来源
+        </span>
+        <el-button
+          type="danger"
+          size="small"
+          @click="handleBlacklistSources([...selectedSources])"
         >
-          <span class="text-ink-400 w-5 text-right tabular-nums">{{ i + 1 }}</span>
-          <span class="text-ink-900 truncate flex-1" :title="getSourceLabel(s.source)">
-            {{ getSourceLabel(s.source) }}
-          </span>
-          <span class="text-[10px] text-ink-400 font-mono shrink-0" :title="s.source">
-            {{ s.source }}
-          </span>
-          <span
-            class="text-[10px] text-ink-500 shrink-0 tabular-nums"
-            :title="s.last_used_at ? `最近一次：${formatTime(s.last_used_at)}` : ''"
-          >
-            {{ formatUTC8Date(s.last_used_at) }}
-          </span>
-          <span class="text-accent-700 font-medium tabular-nums w-14 text-right">
-            {{ s.use_count }}
-          </span>
+          拉黑选中
+        </el-button>
+        <el-button size="small" @click="selectedSources.clear()">清除选择</el-button>
+      </div>
+
+      <div v-if="sourceGroups.length" class="space-y-4">
+        <div v-for="group in sourceGroups" :key="group.category">
+          <div class="flex items-baseline gap-2 mb-1.5">
+            <span class="text-sm font-medium text-ink-900">{{ group.label }}</span>
+            <span class="text-xs text-ink-500 tabular-nums">{{ group.subtotal }} 次</span>
+            <span class="text-xs text-ink-400 tabular-nums">· {{ sourcePercent(group.subtotal) }}</span>
+            <!-- 组级全选：勾选后配合顶部「拉黑选中」批量操作 -->
+            <el-checkbox
+              v-if="selectableItems(group).length"
+              :model-value="isGroupAllSelected(group)"
+              :indeterminate="isGroupIndeterminate(group)"
+              size="small"
+              class="!mr-0 ml-auto"
+              @change="toggleGroupSelection(group)"
+            >
+              全选本组
+            </el-checkbox>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+            <div
+              v-for="s in group.items"
+              :key="s.source"
+              class="flex items-center gap-3 text-sm"
+            >
+              <el-checkbox
+                v-if="s.source !== 'direct'"
+                :model-value="selectedSources.has(s.source)"
+                size="small"
+                class="!mr-0 shrink-0"
+                @change="toggleSourceSelection(s.source, Boolean($event))"
+              />
+              <span v-else class="w-[14px] shrink-0" aria-hidden="true"></span>
+              <span class="text-ink-900 truncate flex-1" :title="getSourceLabel(s.source)">
+                {{ getSourceLabel(s.source) }}
+              </span>
+              <span class="text-[10px] text-ink-400 font-mono shrink-0" :title="s.source">
+                {{ s.source }}
+              </span>
+              <span
+                class="text-[10px] text-ink-500 shrink-0 tabular-nums"
+                :title="s.last_used_at ? `最近一次：${formatTime(s.last_used_at)}` : ''"
+              >
+                {{ formatUTC8Date(s.last_used_at) }}
+              </span>
+              <span class="text-accent-700 font-medium tabular-nums w-14 text-right">
+                {{ s.use_count }}
+              </span>
+              <el-button
+                v-if="s.source !== 'direct'"
+                link
+                type="danger"
+                size="small"
+                class="!p-0 shrink-0"
+                @click="handleBlacklistSources([s.source])"
+              >
+                拉黑
+              </el-button>
+            </div>
+          </div>
         </div>
       </div>
       <el-empty v-else description="暂无数据" :image-size="60" />
@@ -778,6 +1031,41 @@ onMounted(() => {
       <template #footer>
         <el-button @click="banDialog.visible = false">取消</el-button>
         <el-button type="danger" :loading="banSubmitting" @click="submitBan">确认封禁</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 来源黑名单管理弹窗 -->
+    <el-dialog v-model="blacklistDialog.visible" title="来源黑名单" width="640px">
+      <div class="text-xs text-ink-400 mb-3">
+        被拉黑的来源不计入统计与明细；记录保留在库中，解禁即恢复。新上报的同名来源同样会被屏蔽。
+      </div>
+      <el-table v-if="sourceBlacklist.length" :data="sourceBlacklist" stripe size="small" max-height="420">
+        <el-table-column label="来源" min-width="220">
+          <template #default="{ row }">
+            <span class="text-xs text-ink-900 font-mono break-all">{{ row.source }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="原因" min-width="110">
+          <template #default="{ row }">
+            <span class="text-xs text-ink-600" :title="row.reason">{{ row.reason || '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="拉黑时间" min-width="140">
+          <template #default="{ row }">
+            <span class="text-xs text-ink-500">{{ formatBanTime(row.created_at) }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="70">
+          <template #default="{ row }">
+            <el-button link type="primary" size="small" @click="handleUnblacklist(row.source)">
+              解禁
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-empty v-else description="暂无黑名单" :image-size="60" />
+      <template #footer>
+        <el-button @click="blacklistDialog.visible = false">关闭</el-button>
       </template>
     </el-dialog>
   </div>

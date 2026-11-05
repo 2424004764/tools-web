@@ -354,12 +354,22 @@ export interface TopUserSummary {
   user_name: string | null
 }
 
-/** TOP 来源条目（后台统计） */
+/** 来源统计条目（后台统计，全量） */
 export interface TopSourceSummary {
   /** 来源标识（与 src/utils/source.ts SOURCE_LABELS 一致，如 'google' / 'direct'） */
   source: string
   use_count: number
   last_used_at: number
+}
+
+/** 来源黑名单条目（后台「推广来源统计」卡片管理） */
+export interface SourceBlacklistItem {
+  source: string
+  reason: string
+  created_by: string | null
+  created_by_email: string
+  /** UTC 'YYYY-MM-DD HH:MM:SS' */
+  created_at: string
 }
 
 /** 工具使用记录明细 */
@@ -410,8 +420,12 @@ export interface ToolUsageStats {
   activeUsers30d: number
   topTools: TopToolSummary[]
   topUsers: TopUserSummary[]
-  /** 推广来源 TOP 10，按 use_count 倒序 */
-  topSources: TopSourceSummary[]
+  /** 推广来源统计（全量，按 use_count 倒序；分组与搜索引擎合计由前端按 SOURCE_CATEGORY_MEMBERS 计算） */
+  sources: TopSourceSummary[]
+  /** 被黑名单来源屏蔽的记录数（不计入上述任何统计） */
+  blockedCount: number
+  /** 黑名单来源个数 */
+  blockedSourceCount: number
   /** 整张表的最早记录日期（UTC+8 'YYYY-MM-DD'）；用于标注统计区间 */
   rangeStart?: string | null
   /** 整张表的最新记录日期（UTC+8 'YYYY-MM-DD'）；用于标注统计区间 */

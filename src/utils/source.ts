@@ -186,3 +186,45 @@ export function getSourceLabel(source: string | null | undefined): string {
   if (!source) return '-'
   return SOURCE_LABELS[source] || source
 }
+
+/**
+ * 来源分类（后台「推广来源统计」按此分组，并汇总搜索引擎渠道合计）。
+ * 'other' 兜底：utm_source 自定义值 / 异常串（如注入探测）均归入，不与内置渠道混排。
+ */
+export type SourceCategory = 'search' | 'social' | 'dev' | 'direct' | 'other'
+
+/** 各分类包含的内置来源标识（与 SOURCE_LABELS 对应；未列出的归 other） */
+export const SOURCE_CATEGORY_MEMBERS: Record<Exclude<SourceCategory, 'other'>, string[]> = {
+  search: ['google', 'baidu', 'bing', 'sogou', 'so360', 'duckduckgo'],
+  social: ['wechat', 'weibo', 'zhihu', 'xiaohongshu', 'douyin', 'x', 'facebook'],
+  dev: ['csdn', 'juejin', 'v2ex', 'segmentfault', 'sspai'],
+  direct: ['direct'],
+}
+
+/** 分类在后台的展示名（分组标题 / 小计展示用） */
+export const SOURCE_CATEGORY_LABELS: Record<SourceCategory, string> = {
+  search: '搜索引擎',
+  social: '社交媒体',
+  dev: '开发者社区',
+  direct: '直接访问',
+  other: '其他/自定义渠道',
+}
+
+// source → category 反查表（构建一次，查询 O(1)）
+const SOURCE_CATEGORY_LOOKUP: Map<string, SourceCategory> = (() => {
+  const map = new Map<string, SourceCategory>()
+  for (const [category, members] of Object.entries(SOURCE_CATEGORY_MEMBERS)) {
+    for (const s of members) map.set(s, category as SourceCategory)
+  }
+  return map
+})()
+
+/**
+ * 获取来源的分类。
+ * null/undefined 与 'direct' 一致归 direct（与后端 stats 的 COALESCE 口径对齐），
+ * 未命中内置渠道的自定义来源归 other。
+ */
+export function getSourceCategory(source: string | null | undefined): SourceCategory {
+  if (!source) return 'direct'
+  return SOURCE_CATEGORY_LOOKUP.get(source) ?? 'other'
+}

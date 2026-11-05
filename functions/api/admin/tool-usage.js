@@ -3,6 +3,8 @@
 //     鉴权：目录中间件 _middleware.js 已保证 admin
 //     返回：明细 + 分页；每行附 ip_ban_id（该 IP 处于封禁中时为 ip_bans 行 id，
 //     供前端展示「已封禁」标签与解封按钮，null 表示未封禁）
+//     来源黑名单（tool_usage_source_blacklist）中的来源默认剔除，与统计口径一致；
+//     记录本身保留在库中，解禁即恢复展示。
 //
 // 时间约定：used_at 是秒级时间戳，SQL 内统一用秒比较；
 //   startDate/endDate 是 YYYY-MM-DD（本地 UTC+8），被解析为当天的 00:00:00 与次日 00:00:00（含当天）。
@@ -12,6 +14,7 @@
 //   拆分惯例（与 credits/transactions.js 一致）。
 
 import { normalizeBanKey } from '../../utils/ip-ban.js'
+import { loadSourceBlacklist, SOURCE_NOT_IN_BLACKLIST_R } from '../../utils/source-blacklist.js'
 
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
@@ -97,6 +100,12 @@ export async function onRequestGet(context) {
     if (endDate != null) {
       where.push('r.used_at < ?')
       args.push(endDate)
+    }
+    // 黑名单来源默认剔除（子查询 0 绑定参数，不受 D1 每查询 100 参数上限约束；
+    // 表不存在时跳过，向后兼容未迁移环境）
+    const blacklist = await loadSourceBlacklist(db)
+    if (Array.isArray(blacklist) && blacklist.length) {
+      where.push(SOURCE_NOT_IN_BLACKLIST_R)
     }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : ''
     const offset = (page - 1) * pageSize
