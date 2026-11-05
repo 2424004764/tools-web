@@ -3,11 +3,6 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "puppeteer"
-    ]
-  },
   "scripts": {
     "dev": "vite",
     "dev:wrangler": "pnpm build && pnpm sync:functions && wrangler pages dev dist --local --d1 yifang-tool:afdabfae-6edd-4def-8e77-6a1171009b9c",

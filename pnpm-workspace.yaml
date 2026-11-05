@@ -1,0 +1,16 @@
+# pnpm 12 起设置项不再读 package.json 的 "pnpm" 字段，统一放这里（allowBuilds
+# 由 pnpm approve-builds 生成）。仅放行确需 install 脚本的依赖：puppeteer
+# （下载浏览器供 prerender 用）；其余依赖构建脚本一律明确拒绝，防供应链投毒。
+allowBuilds:
+  '@parcel/watcher': false
+  canvas: false
+  core-js: false
+  es5-ext: false
+  esbuild: false
+  puppeteer: true
+  sharp: false
+  v-code-diff: false
+  vue-demi: false
+  vue3-danmaku: false
+  workerd: false
+  x-data-spreadsheet: false
