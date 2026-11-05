@@ -1224,7 +1224,7 @@ export const constantRoute = [
     meta: {
       title: '文本转 PDF',
       keywords: '文本转PDF,文字转PDF,在线生成PDF,中文转PDF',
-      description: '在线将文本内容转换为 A4 PDF，支持中文、自动换行、长文分页及字号和页边距设置，浏览器本地处理',
+      description: '在线将文本内容转换为 A4 PDF，支持中文、自动换行、长文分页、指定页码下载与按页拆分多个文件，浏览器本地处理',
     }
   },
   {

@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import jsPDF from 'jspdf'
+import JSZip from 'jszip'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 
@@ -14,6 +15,10 @@ interface TextLayout {
   lineHeight: number
 }
 
+type DownloadMode = 'all' | 'range' | 'split'
+
+class PageRangeError extends Error {}
+
 const title = '文本转 PDF'
 const text = ref('')
 const filename = ref('文本')
@@ -24,7 +29,14 @@ const exportProgress = ref('')
 const exportProgressPercent = ref(0)
 const previewImage = ref('')
 const previewPageCount = ref(0)
+const previewPageIndex = ref(1)
+const downloadMode = ref<DownloadMode>('all')
+const pageRangeText = ref('')
+const splitSize = ref(4)
+const splitAsZip = ref(false)
 const characterCount = computed(() => text.value.length)
+
+let previewLayout: TextLayout | null = null
 
 const settings = reactive({
   pageWidth: 210,
@@ -123,17 +135,33 @@ const renderPreview = async (version: number) => {
   if (!text.value.trim()) {
     previewImage.value = ''
     previewPageCount.value = 0
+    previewPageIndex.value = 1
+    previewLayout = null
     return
   }
 
   try {
     const layout = await createTextLayout()
     if (version !== previewVersion) return
+    previewLayout = layout
     previewPageCount.value = layout.pageCount
-    previewImage.value = renderPage(layout, 0)
+    previewPageIndex.value = Math.min(previewPageIndex.value || 1, layout.pageCount)
+    previewImage.value = renderPage(layout, previewPageIndex.value - 1)
   } catch (error) {
     console.error('PDF 预览生成失败:', error)
     if (version === previewVersion) previewImage.value = ''
+  }
+}
+
+const gotoPreviewPage = (page: number) => {
+  if (!previewLayout || !previewPageCount.value) return
+  if (!Number.isFinite(page)) return
+  const target = Math.min(Math.max(1, Math.round(page)), previewPageCount.value)
+  previewPageIndex.value = target
+  try {
+    previewImage.value = renderPage(previewLayout, target - 1)
+  } catch (error) {
+    console.error('PDF 预览翻页失败:', error)
   }
 }
 
@@ -150,9 +178,72 @@ const formatTimestamp = (date: Date) => {
   return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}_${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`
 }
 
+const splitFileCount = computed(() => {
+  if (!previewPageCount.value) return 0
+  return Math.max(1, Math.ceil(previewPageCount.value / Math.max(1, splitSize.value)))
+})
+
+const exportButtonLabel = computed(() => {
+  if (downloadMode.value === 'split') {
+    return splitAsZip.value ? `下载 ZIP（${splitFileCount.value || '…'} 个 PDF）` : `下载 ${splitFileCount.value || '…'} 个 PDF`
+  }
+  if (downloadMode.value === 'range') return '下载所选页 PDF'
+  return '下载 PDF'
+})
+
+/** 解析页码范围文本（支持 1-4、7、9-12、5- 到末页，兼容中英文逗号和顿号），返回去重升序页码 */
+const parsePageSelection = (input: string, totalPages: number): number[] => {
+  const normalized = input.replace(/，/g, ',').replace(/、/g, ',').replace(/\s+/g, '')
+  if (!normalized) throw new PageRangeError('请填写页码范围，如 1-4, 7, 9-12')
+
+  const selected = new Set<number>()
+  for (const part of normalized.split(',')) {
+    const match = part.match(/^(\d+)(?:-(\d*))?$/)
+    if (!match) throw new PageRangeError(`页码格式不正确：“${part}”，示例 1-4, 7, 9-12`)
+    const start = Number(match[1])
+    const end = match[2] ? Number(match[2]) : part.includes('-') ? totalPages : start
+    const low = Math.min(start, end)
+    const high = Math.max(start, end)
+    if (low < 1 || high > totalPages) throw new PageRangeError(`页码需在 1-${totalPages} 之间`)
+    for (let page = low; page <= high; page++) selected.add(page)
+  }
+
+  const pages = [...selected].sort((a, b) => a - b)
+  if (!pages.length) throw new PageRangeError('未选择任何页码')
+  return pages
+}
+
+/** 将页码列表压缩为区间文本，如 [1,2,3,7] -> "1-3,7" */
+const formatPageRanges = (pages: number[]) => {
+  const parts: string[] = []
+  let index = 0
+  while (index < pages.length) {
+    let end = index
+    while (end + 1 < pages.length && pages[end + 1] === pages[end] + 1) end++
+    parts.push(index === end ? `${pages[index]}` : `${pages[index]}-${pages[end]}`)
+    index = end + 1
+  }
+  return parts.join(',')
+}
+
+const saveBlob = (blob: Blob, name: string) => {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = name
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.setTimeout(() => URL.revokeObjectURL(url), 10000)
+}
+
 const exportPdf = async () => {
   if (!text.value.trim()) {
     ElMessage.warning('请输入要转换的文本')
+    return
+  }
+  if (downloadMode.value === 'range' && !pageRangeText.value.trim()) {
+    ElMessage.warning('请填写要下载的页码范围，如 1-4, 7, 9-12')
     return
   }
 
@@ -171,24 +262,82 @@ const exportPdf = async () => {
     await nextPaint()
 
     const layout = await createTextLayout()
-    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true })
-    for (let pageIndex = 0; pageIndex < layout.pageCount; pageIndex++) {
-      if (pageIndex > 0) pdf.addPage()
-      pdf.addImage(renderPage(layout, pageIndex), 'PNG', 0, 0, settings.pageWidth, settings.pageHeight)
-      exportProgress.value = `正在生成第 ${pageIndex + 1}/${layout.pageCount} 页…`
-      exportProgressPercent.value = Math.round((pageIndex + 1) / layout.pageCount * 100)
-      await nextTick()
-      await nextPaint()
+    const totalPages = layout.pageCount
+
+    let fileGroups: number[][] = []
+    if (downloadMode.value === 'range') {
+      fileGroups = [parsePageSelection(pageRangeText.value, totalPages)]
+    } else if (downloadMode.value === 'split') {
+      const size = Math.max(1, Math.round(splitSize.value) || 1)
+      for (let start = 1; start <= totalPages; start += size) {
+        const end = Math.min(start + size - 1, totalPages)
+        const pages: number[] = []
+        for (let page = start; page <= end; page++) pages.push(page)
+        fileGroups.push(pages)
+      }
+    } else {
+      fileGroups = [Array.from({ length: totalPages }, (_, index) => index + 1)]
     }
 
     const safeFilename = filename.value.trim().replace(/[\\/:*?"<>|]/g, '_').replace(/\.pdf$/i, '') || '文本'
     const domain = window.location.hostname.replace(/^www\./, '').replace(/[\\/:*?"<>|]/g, '-') || 'localhost'
-    const downloadFilename = `${safeFilename}_${domain}_${formatTimestamp(new Date())}.pdf`
-    pdf.save(downloadFilename)
-    ElMessage.success(`PDF 已生成，共 ${layout.pageCount} 页`)
+    const timestamp = formatTimestamp(new Date())
+
+    const useZip = downloadMode.value === 'split' && splitAsZip.value
+    const zip = useZip ? new JSZip() : null
+    const totalPagesToRender = fileGroups.reduce((sum, pages) => sum + pages.length, 0)
+    let renderedPages = 0
+
+    for (let groupIndex = 0; groupIndex < fileGroups.length; groupIndex++) {
+      const pages = fileGroups[groupIndex]
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true })
+      for (let index = 0; index < pages.length; index++) {
+        if (index > 0) pdf.addPage()
+        pdf.addImage(renderPage(layout, pages[index] - 1), 'PNG', 0, 0, settings.pageWidth, settings.pageHeight)
+        renderedPages++
+        const prefix = fileGroups.length > 1 ? `第 ${groupIndex + 1}/${fileGroups.length} 个文件，` : ''
+        exportProgress.value = `${prefix}正在生成第 ${index + 1}/${pages.length} 页…`
+        exportProgressPercent.value = Math.min(100, Math.round(renderedPages / totalPagesToRender * 100))
+        await nextTick()
+        await nextPaint()
+      }
+
+      if (zip) {
+        const rangeLabel = `${pages[0]}-${pages[pages.length - 1]}`
+        zip.file(`${safeFilename}_第${rangeLabel}页.pdf`, pdf.output('blob'))
+      } else if (fileGroups.length > 1) {
+        const rangeLabel = `${pages[0]}-${pages[pages.length - 1]}`
+        pdf.save(`${safeFilename}_第${rangeLabel}页_${domain}_${timestamp}.pdf`)
+        if (groupIndex < fileGroups.length - 1) await new Promise<void>(resolve => window.setTimeout(resolve, 400))
+      } else {
+        let suffix = ''
+        if (downloadMode.value === 'range' && pages.length < totalPages) {
+          const ranges = formatPageRanges(pages)
+          suffix = `_第${ranges.length > 20 ? `选取${pages.length}页` : ranges}页`
+        }
+        pdf.save(`${safeFilename}${suffix}_${domain}_${timestamp}.pdf`)
+      }
+    }
+
+    if (zip) {
+      exportProgress.value = '正在打包 ZIP…'
+      exportProgressPercent.value = 100
+      await nextTick()
+      await nextPaint()
+      saveBlob(await zip.generateAsync({ type: 'blob' }), `${safeFilename}_拆分_${domain}_${timestamp}.zip`)
+      ElMessage.success(`已打包 ${fileGroups.length} 个 PDF 文件为 ZIP`)
+    } else if (fileGroups.length > 1) {
+      ElMessage.success(`已生成 ${fileGroups.length} 个 PDF 文件，如浏览器询问请允许下载多个文件`)
+    } else {
+      ElMessage.success(`PDF 已生成，共 ${fileGroups[0].length} 页`)
+    }
   } catch (error) {
     console.error('文本转 PDF 失败:', error)
-    ElMessage.error('PDF 生成失败，请稍后重试')
+    if (error instanceof PageRangeError) {
+      ElMessage.warning(error.message)
+    } else {
+      ElMessage.error('PDF 生成失败，请稍后重试')
+    }
   } finally {
     const remainingFeedbackTime = Math.max(0, 450 - (performance.now() - exportStartedAt))
     if (remainingFeedbackTime) await new Promise<void>(resolve => window.setTimeout(resolve, remainingFeedbackTime))
@@ -229,13 +378,29 @@ const exportPdf = async () => {
         <aside class="text-pdf-preview" aria-label="PDF 实时预览">
           <div class="text-pdf-field-head">
             <h2>PDF 预览</h2>
-            <span v-if="previewPageCount">第 1 页，共 {{ previewPageCount }} 页</span>
+            <span v-if="previewPageCount <= 1">{{ previewPageCount ? '共 1 页' : '' }}</span>
+            <div v-else class="text-pdf-preview-nav">
+              <el-button size="small" text bg :disabled="previewPageIndex <= 1" @click="gotoPreviewPage(previewPageIndex - 1)">上一页</el-button>
+              <el-input-number
+                v-model="previewPageIndex"
+                class="text-pdf-preview-page-input"
+                size="small"
+                :min="1"
+                :max="previewPageCount"
+                :step="1"
+                :controls="false"
+                aria-label="预览页码"
+                @change="gotoPreviewPage(previewPageIndex)"
+              />
+              <span>/ {{ previewPageCount }} 页</span>
+              <el-button size="small" text bg :disabled="previewPageIndex >= previewPageCount" @click="gotoPreviewPage(previewPageIndex + 1)">下一页</el-button>
+            </div>
           </div>
           <div class="text-pdf-preview-stage">
             <img
               v-if="previewImage"
               :src="previewImage"
-              alt="PDF 第一页预览"
+              alt="PDF 页面预览"
               class="text-pdf-preview-page"
             />
             <div v-else class="text-pdf-preview-empty">
@@ -259,10 +424,46 @@ const exportPdf = async () => {
           </div>
         </div>
 
+        <div class="text-pdf-download">
+          <div class="text-pdf-setting text-pdf-download-mode">
+            <label>下载范围</label>
+            <el-radio-group v-model="downloadMode">
+              <el-radio-button value="all">全部页面</el-radio-button>
+              <el-radio-button value="range">指定页码</el-radio-button>
+              <el-radio-button value="split">按页拆分</el-radio-button>
+            </el-radio-group>
+          </div>
+
+          <div v-if="downloadMode === 'range'" class="text-pdf-setting text-pdf-download-range">
+            <label for="text-pdf-page-range">页码范围</label>
+            <el-input
+              id="text-pdf-page-range"
+              v-model="pageRangeText"
+              maxlength="120"
+              clearable
+              placeholder="如 1-4, 7, 9-12；填 5- 表示第 5 页到末页"
+            />
+            <span v-if="previewPageCount" class="text-pdf-download-hint">全文共 {{ previewPageCount }} 页，仅导出所选页</span>
+          </div>
+
+          <template v-if="downloadMode === 'split'">
+            <div class="text-pdf-setting text-pdf-download-split">
+              <label for="text-pdf-split-size">每份最多页数</label>
+              <el-input-number id="text-pdf-split-size" v-model="splitSize" :min="1" :max="200" :step="1" />
+              <span v-if="previewPageCount" class="text-pdf-download-hint">共 {{ previewPageCount }} 页 → 拆分为 {{ splitFileCount }} 个文件</span>
+            </div>
+            <div class="text-pdf-setting text-pdf-download-pack">
+              <label>打包方式</label>
+              <el-checkbox v-model="splitAsZip">打包成 1 个 ZIP</el-checkbox>
+              <span class="text-pdf-download-hint">{{ splitAsZip ? '所有 PDF 压缩为一个 ZIP 文件下载' : '逐个下载 PDF，浏览器可能提示允许下载多个文件' }}</span>
+            </div>
+          </template>
+        </div>
+
         <div class="text-pdf-actions">
           <div class="text-pdf-action-row">
             <el-button type="primary" :loading="isExporting" :disabled="isExporting" @click="exportPdf">
-              {{ isExporting ? '正在生成 PDF' : '下载 PDF' }}
+              {{ isExporting ? '正在生成 PDF' : exportButtonLabel }}
             </el-button>
             <span class="text-body-sm text-slate-500">{{ characterCount.toLocaleString() }} 个字符</span>
             <span v-if="exportProgress" class="text-body-sm text-slate-500" aria-live="polite">{{ exportProgress }}</span>
@@ -280,7 +481,7 @@ const exportPdf = async () => {
 
     <ToolDetail title="使用说明">
       <el-text>
-        输入或粘贴文本，按需设置 PDF 文件名、字号和页边距，然后下载。右侧显示第一页实时预览，长文会自动换行并在新页面继续排版；下载文件名会包含当前域名和生成时间。导出的 PDF 采用页面图像以保证中文显示，但不能在 PDF 阅读器中搜索或复制文字。
+        输入或粘贴文本，按需设置 PDF 文件名、字号和页边距。右侧实时预览 A4 排版效果，可翻页查看任意页；长文自动换行分页。下载范围支持三种方式：全部页面（默认，生成 1 个 PDF）、指定页码（如 1-4, 7, 9-12，仅导出所选页，填 5- 表示第 5 页到末页）、按页拆分（每份最多 N 页生成多个 PDF，可逐个下载或打包成 ZIP）。下载文件名会包含当前域名和生成时间。导出的 PDF 采用页面图像以保证中文显示，但不能在 PDF 阅读器中搜索或复制文字。
       </el-text>
     </ToolDetail>
   </div>
@@ -293,6 +494,7 @@ const exportPdf = async () => {
   grid-template-areas:
     "editor preview"
     "settings settings"
+    "download download"
     "actions actions";
   align-items: start;
   column-gap: 24px;
@@ -419,6 +621,55 @@ const exportPdf = async () => {
   width: 100%;
 }
 
+.text-pdf-preview-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.text-pdf-preview-nav :deep(.el-input-number) {
+  width: 56px;
+}
+
+.text-pdf-preview-nav .el-button + .el-button {
+  margin-left: 0;
+}
+
+.text-pdf-download {
+  grid-area: download;
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: start;
+  gap: 16px 28px;
+}
+
+.text-pdf-download-mode,
+.text-pdf-download-split,
+.text-pdf-download-pack {
+  flex: 0 0 auto;
+}
+
+.text-pdf-download-range {
+  flex: 1 1 280px;
+  min-width: 240px;
+  max-width: 520px;
+}
+
+.text-pdf-download-mode :deep(.el-radio-group) {
+  flex-wrap: wrap;
+}
+
+.text-pdf-download-pack :deep(.el-checkbox) {
+  height: 32px;
+}
+
+.text-pdf-download-hint {
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
 .text-pdf-actions {
   grid-area: actions;
   min-width: 0;
@@ -444,6 +695,7 @@ const exportPdf = async () => {
       "editor"
       "preview"
       "settings"
+      "download"
       "actions";
   }
 
