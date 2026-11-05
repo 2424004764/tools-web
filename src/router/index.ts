@@ -66,7 +66,7 @@ router.beforeEach((to, _from, next) => {
   // 也会在路由离开时取消，双层保护共享的 window 滚动状态。
   cancelScrollPin()
   // 记录目标路径，供 onError 硬刷时使用（避免 currentRoute 还指向旧路由）
-  sessionStorage.setItem(TARGET_PATH_KEY, to.fullPath)
+  sessionStorage.setItem(TARGET_PATH_KEY, to.path.startsWith('/notes/share/') ? '/notes/share/' : to.fullPath)
 
   // 版本过期检查（后台非阻塞）：导航立即放行、点击零延迟。
   // 探测由 version-guard 内部做单飞 + TTL 限频（成功后 5 分钟内不重复探测）；
@@ -127,7 +127,7 @@ router.onError((error) => {
     // 这里改用 createElement + addEventListener，绕开转义问题。
     sessionStorage.removeItem(CHUNK_ERROR_KEY)
     const currentPath = (sessionStorage.getItem(TARGET_PATH_KEY) || router.currentRoute.value.fullPath || '/')
-    const search = location.search || ''
+    const search = currentPath.startsWith('/notes/share/') ? '' : (location.search || '')
 
     // 把错误对象的关键信息提取出来（name / message / 部分 stack），
     // 直接渲染到错误卡片上方便本地排查。dev 环境有 vite 错误页兜底；
@@ -323,7 +323,7 @@ router.afterEach((to, _from, failure) => {
   // 工具使用埋点：所有用户进入工具页都打点（登录用户带 uid，未登录 uid 留空）
   // 排除 /admin（后台不算工具使用）和 /login（登录页本身不是工具）
   try {
-    if (!to.path.startsWith('/admin') && to.path !== '/login') {
+    if (!to.path.startsWith('/admin') && to.path !== '/login' && !to.path.startsWith('/notes/share/')) {
       const tool = matchToolByPath(to.path)
       if (tool) recordToolUsage(tool.url, tool.title)
     }
@@ -334,7 +334,7 @@ router.afterEach((to, _from, failure) => {
   // 网站访问埋点（站点级 PV）：任意页面每次成功导航都记一条（重复刷新也算一次）。
   // 排除 /admin、/login 等（见 shouldTrackSiteVisit），避免后台自己刷自己污染数据
   try {
-    if (shouldTrackSiteVisit(to.path)) recordSiteVisit(to.path)
+    if (shouldTrackSiteVisit(to.path) && !to.path.startsWith('/notes/share/')) recordSiteVisit(to.path)
   } catch (err) {
     console.warn('[router] site-visit tracking failed:', (err as Error)?.message || err)
   }

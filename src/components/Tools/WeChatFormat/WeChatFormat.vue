@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { reactive, ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { copy } from '@/utils/string'
@@ -163,6 +164,22 @@ greet('World');
 
 // Markdown 内容
 const markdownContent = ref(INITIAL_CONTENT)
+const router = useRouter()
+
+const publishToBlog = () => {
+  const content = markdownContent.value.trim()
+  if (!content) {
+    ElMessage.warning('请先输入文章内容')
+    return
+  }
+
+  try {
+    sessionStorage.setItem('blog_editor_handoff', JSON.stringify({ content }))
+    router.push({ path: '/blog/write', query: { from: 'wechat-format' } })
+  } catch {
+    ElMessage.error('无法准备博客内容，请检查浏览器存储设置')
+  }
+}
 
 // ========== 新增功能状态 ==========
 // 导入状态（大文件导入优化）
@@ -1785,6 +1802,10 @@ const quickSyntaxButtons = [
           </el-button>
           <el-button class="w-full sm:w-auto" @click="saveCurrentDraft" title="保存草稿 (Ctrl+S)">
             💾 保存
+          </el-button>
+
+          <el-button class="w-full sm:w-auto" @click="publishToBlog">
+            发布到博客
           </el-button>
 
           <!-- 更多操作下拉菜单 -->

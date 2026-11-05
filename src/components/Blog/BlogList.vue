@@ -2,7 +2,7 @@
 // 博客列表页：文章卡片流 + 标签筛选 + 关键词搜索 + 加载更多
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { fetchBlogPosts, type BlogHotTag, type BlogPostItem } from '@/api/blog'
+import { fetchBlogPosts, fetchMyBlogPosts, type BlogHotTag, type BlogPostItem, type MyBlogPost } from '@/api/blog'
 import { useUserStore } from '@/store/modules/user'
 import EditPen from '~icons/ep/edit-pen'
 import View from '~icons/ep/view'
@@ -13,6 +13,10 @@ const router = useRouter()
 const userStore = useUserStore()
 
 const loading = ref(false)
+const myPostsLoading = ref(false)
+const myPostsLoaded = ref(false)
+const myPosts = ref<MyBlogPost[]>([])
+const viewMode = ref<'public' | 'mine'>('public')
 const list = ref<BlogPostItem[]>([])
 const hotTags = ref<BlogHotTag[]>([])
 const activeTag = ref('')
@@ -31,6 +35,63 @@ const tagsOf = (item: BlogPostItem) =>
 
 const formatDate = (value: string | null) => (value ? String(value).slice(0, 10) : '')
 
+const myPostSummary = (item: MyBlogPost) => {
+  if (item.summary) return item.summary
+  if (item.status === 'pending') return '内容已提交，正在审核中'
+  if (item.status === 'rejected') return '暂无摘要，可编辑后重新提交审核'
+  if (item.status === 'draft') return '草稿尚未提交，可继续编辑并提交审核'
+  return '暂无摘要'
+}
+
+const statusLabels: Record<MyBlogPost['status'], string> = {
+  draft: '草稿',
+  pending: '审核中',
+  published: '已发布',
+  rejected: '未通过',
+}
+
+const statusClasses: Record<MyBlogPost['status'], string> = {
+  draft: 'bg-surface-2 text-ink-500 dark:text-ink-400',
+  pending: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+  published: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+  rejected: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300',
+}
+
+const loadMyPosts = async () => {
+  if (!isLoggedIn.value || myPostsLoading.value || myPostsLoaded.value) return
+  myPostsLoading.value = true
+  try {
+    myPosts.value = await fetchMyBlogPosts()
+    myPostsLoaded.value = true
+  } catch (e) {
+    console.error('load my blog posts failed:', e)
+    myPosts.value = []
+  } finally {
+    myPostsLoading.value = false
+  }
+}
+
+const openMine = async () => {
+  if (!isLoggedIn.value) {
+    router.push({ path: '/login', query: { redirect: '/blog' } })
+    return
+  }
+  viewMode.value = 'mine'
+  await loadMyPosts()
+}
+
+const showPublicPosts = () => {
+  viewMode.value = 'public'
+}
+
+const editMyPost = (post: MyBlogPost) => {
+  router.push({ path: '/blog/write', query: { id: post.id } })
+}
+
+const openMyPublishedPost = (post: MyBlogPost) => {
+  if (post.status === 'published') router.push(`/blog/${post.slug}`)
+}
+
 const avatarBg = (name: string) => {
   let hash = 0
   for (const ch of name) hash = (hash * 31 + ch.charCodeAt(0)) % 360
@@ -38,6 +99,8 @@ const avatarBg = (name: string) => {
 }
 
 const isLoggedIn = computed(() => userStore.getLoginStatus)
+
+if (isLoggedIn.value) loadMyPosts()
 
 const goWrite = () => {
   if (isLoggedIn.value) {
@@ -96,25 +159,40 @@ onMounted(reload)
 </script>
 
 <template>
-  <div class="max-w-5xl mx-auto px-4 pt-6 pb-2 w-full">
+  <div class="w-full px-4 md:px-6 pt-6 pb-2">
     <!-- 页头 -->
     <div class="flex items-start justify-between gap-4 flex-wrap">
       <div>
-        <h1 class="text-2xl font-bold text-ink-900 dark:text-ink-100">博客</h1>
+        <div class="flex items-center gap-2">
+          <h1 class="text-2xl font-bold text-ink-900 dark:text-ink-100">博客</h1>
+          <span v-if="loadedOnce" class="text-sm text-ink-400">{{ total }} 篇</span>
+        </div>
         <p class="mt-1.5 text-sm text-ink-500 dark:text-ink-400">
           技巧、教程与工具使用心得，学以致用
         </p>
       </div>
-      <button
-        type="button"
-        class="inline-flex items-center gap-1.5 h-9 px-4 rounded-full bg-brand-gradient text-white text-sm font-medium shadow-md shadow-accent-500/25 border-0 cursor-pointer hover:opacity-90 transition-opacity shrink-0"
-        @click="goWrite"
-      >
-        <EditPen class="w-4 h-4" aria-hidden="true" />
-        <span>写文章</span>
-      </button>
+      <div class="ml-auto flex items-center justify-end gap-3 shrink-0">
+        <button
+          v-if="isLoggedIn"
+          type="button"
+          class="inline-flex items-center gap-1.5 h-9 px-4 rounded-full border border-border-subtle bg-white dark:bg-surface-1 text-sm text-ink-600 dark:text-ink-300 cursor-pointer hover:border-accent-400 hover:text-accent-600 transition-colors"
+          @click="openMine"
+        >
+          我的投稿
+          <span v-if="myPostsLoaded" class="text-xs opacity-65">{{ myPosts.length }}</span>
+        </button>
+        <button
+          type="button"
+          class="inline-flex items-center gap-1.5 h-9 px-4 rounded-full bg-brand-gradient text-white text-sm font-medium shadow-md shadow-accent-500/25 border-0 cursor-pointer hover:opacity-90 transition-opacity"
+          @click="goWrite"
+        >
+          <EditPen class="w-4 h-4" aria-hidden="true" />
+          <span>写文章</span>
+        </button>
+      </div>
     </div>
 
+    <template v-if="viewMode === 'public'">
     <!-- 标签筛选 + 搜索 -->
     <div class="mt-5 flex items-center gap-3 flex-wrap">
       <div class="flex items-center gap-2 flex-wrap flex-1 min-w-0">
@@ -164,7 +242,7 @@ onMounted(reload)
     </div>
 
     <!-- 文章卡片列表 -->
-    <div v-if="list.length" class="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div v-if="list.length" class="mt-5 grid grid-cols-[repeat(auto-fill,minmax(min(100%,280px),1fr))] gap-4">
       <article
         v-for="item in list"
         :key="item.id"
@@ -256,5 +334,60 @@ onMounted(reload)
         {{ loading ? '加载中…' : `加载更多（共 ${total} 篇）` }}
       </button>
     </div>
+    </template>
+
+    <section v-else class="mt-5">
+      <div class="mb-4 flex items-center justify-between gap-3 flex-wrap">
+        <div class="flex items-center gap-3">
+          <h2 class="m-0 text-lg font-semibold text-ink-900 dark:text-ink-100">我的投稿</h2>
+        </div>
+        <button
+          type="button"
+          class="h-8 px-3 rounded-full border border-border-subtle bg-white dark:bg-surface-1 text-xs text-ink-600 dark:text-ink-300 cursor-pointer hover:border-accent-400 hover:text-accent-600 transition-colors"
+          @click="showPublicPosts"
+        >
+          返回博客
+        </button>
+      </div>
+      <div v-if="myPostsLoading" class="py-16 flex items-center justify-center gap-2 text-sm text-ink-400">
+        <Loading class="w-4 h-4 animate-spin" aria-hidden="true" />
+        加载中…
+      </div>
+      <el-empty v-else-if="myPostsLoaded && !myPosts.length" description="还没有投稿记录" />
+      <div v-else-if="myPosts.length" class="grid grid-cols-[repeat(auto-fill,minmax(min(100%,280px),1fr))] gap-4">
+        <article
+          v-for="item in myPosts"
+          :key="item.id"
+          class="flex min-w-0 flex-col rounded-xl border border-border-subtle bg-white dark:bg-surface-1 p-4"
+          :class="item.status === 'published' ? 'cursor-pointer hover:shadow-md transition-shadow' : ''"
+          @click="openMyPublishedPost(item)"
+        >
+          <div class="flex items-start justify-between gap-3">
+            <h3 class="m-0 min-w-0 text-base font-semibold leading-snug text-ink-900 dark:text-ink-100 line-clamp-2">{{ item.title }}</h3>
+            <span class="shrink-0 rounded-full px-2 py-1 text-xs font-medium" :class="statusClasses[item.status]">
+              {{ statusLabels[item.status] || '处理中' }}
+            </span>
+          </div>
+          <p class="mt-2 min-h-10 text-sm leading-relaxed text-ink-500 dark:text-ink-400 line-clamp-2">
+            {{ myPostSummary(item) }}
+          </p>
+          <p v-if="item.status === 'rejected'" class="mt-2 text-xs text-red-600 dark:text-red-400">
+            未通过原因：{{ item.reject_reason || '该记录未填写具体理由，请联系站长确认。' }}
+          </p>
+          <div class="mt-auto flex items-center justify-between gap-3 pt-4 text-xs text-ink-400">
+            <span>{{ formatDate(item.updated_at || item.created_at) }}</span>
+            <button
+              v-if="item.status !== 'published'"
+              type="button"
+              class="h-7 px-3 rounded-full border-0 bg-accent-50 dark:bg-accent-500/10 text-accent-700 dark:text-accent-300 cursor-pointer hover:bg-accent-100 dark:hover:bg-accent-500/20"
+              @click.stop="editMyPost(item)"
+            >
+              编辑
+            </button>
+            <span v-else class="inline-flex items-center gap-1"><View class="w-3.5 h-3.5" aria-hidden="true" />{{ item.views }}</span>
+          </div>
+        </article>
+      </div>
+    </section>
   </div>
 </template>

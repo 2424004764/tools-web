@@ -29,7 +29,7 @@ export async function onRequest(context) {
     // 上传前预扣存储额度；额度不足（含未购买）返回 402 引导购买
     const reservationId = await reserveStorage(init.db, auth.user.id, size)
     if (!reservationId) {
-      return ApiResponse.error('存储空间不足，请先在「积分」页购买存储额度（1 积分 = 100MB）', origin, 402)
+      return ApiResponse.error('存储空间不足，请先在「积分」页购买存储额度', origin, 402)
     }
     const extension = contentType === 'image/jpeg' ? 'jpg' : contentType.slice('image/'.length)
     const r2Key = `shopping-list/${auth.user.id}/${listId}/${itemId}-${crypto.randomUUID()}.${extension}`

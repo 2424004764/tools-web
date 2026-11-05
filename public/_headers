@@ -43,7 +43,22 @@
 #    不要为它加 'unsafe-inline'（会撤销整个 CSP 加固）。
 #  - frame-src 加 4 个 jx.* 域名：视频解析工具（/video-parser/）内嵌的第三方解析线路 iframe。
 #    与 VideoParser.vue 里 PARSE_LINES 的 url 保持同步；解析服务商换域名时此处需同步更新。
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-eval' 'sha256-L8j/PFB8npmY0W8fE9/oRzIRKCqyVb2jn8TFRUtB7fI=' https://static.cloudflareinsights.com https://accounts.google.com https://giscus.app https://api.tianditu.gov.cn; style-src 'self' 'unsafe-inline' https://giscus.app; img-src 'self' data: blob: https:; media-src 'self' https: blob:; font-src 'self' data:; connect-src 'self' https: wss:; frame-src https://giscus.app https://jx.xmflv.com https://jx.m3u8.tv https://jx.playerjy.com https://jx.hls.one; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://accounts.google.com
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-eval' 'sha256-L8j/PFB8npmY0W8fE9/oRzIRKCqyVb2jn8TFRUtB7fI=' 'sha256-rm1DHQlS0mMMafcKkFvIw//BcEQlgY8gApUd4R0A04=' https://static.cloudflareinsights.com https://accounts.google.com https://giscus.app https://api.tianditu.gov.cn; style-src 'self' 'unsafe-inline' https://giscus.app; img-src 'self' data: blob: https:; media-src 'self' https: blob:; font-src 'self' data:; connect-src 'self' https: wss:; frame-src https://giscus.app https://jx.xmflv.com https://jx.m3u8.tv https://jx.playerjy.com https://jx.hls.one; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://accounts.google.com
+
+# ─── 旅游地图：天地图 SDK 4.1.x 需要运行时注入「内容随机」的内联脚本 ───
+# （2026-11 线上事故：点位 T.Label 全部画不出来，控制台大量 CSP 拦截报错）
+# 这些内联脚本 hash 每次加载都不同，无法枚举；本站 prerender 静态页又不经过
+# Functions 中间件，只能在此按路径放宽。先用 detach 语法（!）移除 /* 规则的
+# 严格 CSP，再设置本路径专用 CSP —— script-src 放开 'unsafe-inline'（注意
+# CSP 规则：hash 与 'unsafe-inline' 并存时后者失效，所以本路径不能带 hash）。
+# 其余站点页面仍走 /* 的 hash 严格策略，不受影响。
+/travel-map
+  ! Content-Security-Policy
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://static.cloudflareinsights.com https://accounts.google.com https://giscus.app https://api.tianditu.gov.cn; style-src 'self' 'unsafe-inline' https://giscus.app; img-src 'self' data: blob: https:; media-src 'self' https: blob:; font-src 'self' data:; connect-src 'self' https: wss:; frame-src https://giscus.app https://jx.xmflv.com https://jx.m3u8.tv https://jx.playerjy.com https://jx.hls.one; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://accounts.google.com
+
+/travel-map/*
+  ! Content-Security-Policy
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://static.cloudflareinsights.com https://accounts.google.com https://giscus.app https://api.tianditu.gov.cn; style-src 'self' 'unsafe-inline' https://giscus.app; img-src 'self' data: blob: https:; media-src 'self' https: blob:; font-src 'self' data:; connect-src 'self' https: wss:; frame-src https://giscus.app https://jx.xmflv.com https://jx.m3u8.tv https://jx.playerjy.com https://jx.hls.one; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://accounts.google.com
 
 /js/*
   Cache-Control: public, max-age=31536000, immutable

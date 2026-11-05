@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive } from "vue";
+import { ref, reactive, computed } from "vue";
 import DetailHeader from "@/components/Layout/DetailHeader/DetailHeader.vue";
 import ToolDetail from "@/components/Layout/ToolDetail/ToolDetail.vue";
 import { chat } from "@/components/Tools/AiTextToVideo/api";
@@ -73,6 +73,11 @@ const generate = async () => {
     loading.value = false;
   }
 };
+
+// 实际字数（去除空白字符后的长度）
+const actualWordCount = computed(() =>
+  result.value.replace(/\s/g, "").length
+);
 
 const copyText = async (text: string) => {
   try {
@@ -213,6 +218,9 @@ const resetForm = () => {
             class="w-full p-3 border rounded min-h-[320px] bg-gray-50"
             placeholder="生成的作文将显示在这里"
           ></textarea>
+          <div v-if="result" class="text-sm text-gray-500 text-right">
+            实际字数：{{ actualWordCount }} 字
+          </div>
         </div>
       </div>
     </div>

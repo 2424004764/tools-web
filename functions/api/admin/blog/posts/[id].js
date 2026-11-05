@@ -181,8 +181,10 @@ export async function onRequest(context) {
       sets.push(`reviewed_at = datetime('now')`)
 
       if (status === 'rejected') {
+        const rejectReason = sanitizeText(body.reject_reason, 200)
+        if (!rejectReason) return jsonError('驳回理由不能为空')
         sets.push('reject_reason = ?')
-        args.push(sanitizeText(body.reject_reason, 200))
+        args.push(rejectReason)
       } else {
         sets.push('reject_reason = ?')
         args.push('')

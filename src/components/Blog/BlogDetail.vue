@@ -6,6 +6,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { fetchBlogPost, type BlogPost } from '@/api/blog'
 import { renderMarkdownWithToc } from './blog-markdown'
 import { useToolsStore } from '@/store/modules/tools'
+import { useUserStore } from '@/store/modules/user'
 import { functionsRequest } from '@/utils/functionsRequest'
 import type { ToolsInfo } from '@/components/Tools/tools.type'
 import View from '~icons/ep/view'
@@ -16,6 +17,8 @@ import magicStick from '~icons/ep/magic-stick'
 const route = useRoute()
 const router = useRouter()
 const toolsStore = useToolsStore()
+const userStore = useUserStore()
+const canEdit = computed(() => userStore.getIsAdmin || Boolean(post.value?.can_edit))
 
 const loading = ref(true)
 const notFound = ref(false)
@@ -71,6 +74,15 @@ const avatarBg = (name: string) => {
 const goBack = () => {
   if (window.history.length > 1) router.back()
   else router.push('/blog')
+}
+
+const editPost = () => {
+  if (!post.value) return
+  if (userStore.getIsAdmin) {
+    router.push({ path: '/admin/blog/write', query: { id: post.value.id } })
+  } else {
+    router.push({ path: '/blog/write', query: { id: post.value.id } })
+  }
 }
 
 // ---- 相关工具（引流推荐位） ----
@@ -158,7 +170,7 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
 </script>
 
 <template>
-  <div class="max-w-6xl px-4 pt-6 pb-2 w-full">
+  <div class="max-w-6xl mx-auto px-4 pt-6 pb-2 w-full">
     <!-- 加载中 -->
     <div v-if="loading" class="mt-16 text-center text-sm text-ink-400">加载中…</div>
 
@@ -195,6 +207,13 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
 
         <div class="flex-1 min-w-0 max-w-4xl mx-auto w-full">
       <article class="rounded-2xl border border-border-subtle bg-white dark:bg-surface-1 px-6 md:px-10 py-8">
+        <div class="mb-4 flex items-center justify-between gap-3">
+          <el-button size="small" @click="router.push('/blog')">
+            <Back class="w-4 h-4" aria-hidden="true" />
+            返回博客列表
+          </el-button>
+          <el-button v-if="canEdit" size="small" @click="editPost">编辑文章</el-button>
+        </div>
         <!-- 标题与元信息 -->
         <h1 class="text-2xl md:text-3xl font-bold text-ink-900 dark:text-ink-100 leading-snug m-0">
           {{ post.title }}

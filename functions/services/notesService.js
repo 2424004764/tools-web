@@ -1,8 +1,57 @@
 import { NoteModel, NoteGroupModel, QueryBuilder } from '../utils/db.js'
+import { likeContains } from '../utils/like.js'
+
+const base64Url = (bytes) => {
+  let binary = ''
+  for (const byte of bytes) binary += String.fromCharCode(byte)
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
+}
+
+const hashShareToken = async (token) => {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token))
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('')
+}
+
+const createShareToken = () => {
+  const bytes = crypto.getRandomValues(new Uint8Array(32))
+  return base64Url(bytes)
+}
+
+const encodeBase64Url = (bytes) => base64Url(bytes)
+
+const decodeBase64Url = (value) => {
+  const base64 = value.replace(/-/g, '+').replace(/_/g, '/')
+  const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4)
+  const binary = atob(padded)
+  return Uint8Array.from(binary, (character) => character.charCodeAt(0))
+}
+
+const getShareEncryptionKey = async (secret) => {
+  const material = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`notes-share:v1:${secret}`))
+  return crypto.subtle.importKey('raw', material, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt'])
+}
+
+const encryptShareToken = async (token, secret) => {
+  const iv = crypto.getRandomValues(new Uint8Array(12))
+  const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await getShareEncryptionKey(secret), new TextEncoder().encode(token))
+  return `${encodeBase64Url(iv)}.${encodeBase64Url(new Uint8Array(encrypted))}`
+}
+
+const decryptShareToken = async (ciphertext, secret) => {
+  const [ivPart, encryptedPart] = String(ciphertext || '').split('.')
+  if (!ivPart || !encryptedPart) return null
+  const decrypted = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: decodeBase64Url(ivPart) },
+    await getShareEncryptionKey(secret),
+    decodeBase64Url(encryptedPart),
+  )
+  return new TextDecoder().decode(decrypted)
+}
 
 export class NotesService {
   constructor(db, env = null, waitUntil = null) {
     this.db = db
+    this.env = env
     this.noteModel = new NoteModel(db, env, waitUntil)
     this.groupModel = new NoteGroupModel(db, env, waitUntil)
   }
@@ -167,16 +216,109 @@ export class NotesService {
     }
   }
 
+  // ===== 分享操作 =====
+
+  async getNoteShare(id, uid) {
+    try {
+      const result = await this.db.prepare(
+        `SELECT s.is_active, s.create_time, s.token_ciphertext
+         FROM note_shares s
+         INNER JOIN notes n ON n.id = s.note_id
+         WHERE s.note_id = ? AND s.owner_uid = ? AND n.uid = ? LIMIT 1`,
+      ).bind(id, uid, uid).first()
+      const data = { isActive: Boolean(result && Number(result.is_active) === 1), canCopy: false }
+      if (data.isActive && result.token_ciphertext && this.env?.JWT_SECRET) {
+        try {
+          const token = await decryptShareToken(result.token_ciphertext, this.env.JWT_SECRET)
+          if (/^[A-Za-z0-9_-]{43}$/.test(token || '')) {
+            data.canCopy = true
+            data.token = token
+          }
+        } catch (error) {
+          console.error('读取加密分享令牌失败:', error)
+        }
+      }
+      return { success: true, data }
+    } catch (error) {
+      console.error('获取笔记分享状态失败:', error)
+      return { success: false, error: '获取分享状态失败' }
+    }
+  }
+
+  async enableNoteShare(id, uid) {
+    try {
+      const note = await this.noteModel.findOne(new QueryBuilder().where('id', '=', id).where('uid', '=', uid))
+      if (!note) return { success: false, error: '笔记不存在或无权限', status: 404 }
+      const token = createShareToken()
+      const tokenHash = await hashShareToken(token)
+      if (!this.env?.JWT_SECRET) throw new Error('JWT_SECRET 未配置')
+      const tokenCiphertext = await encryptShareToken(token, this.env.JWT_SECRET)
+      await this.db.prepare(
+        `INSERT INTO note_shares (note_id, owner_uid, token_hash, token_ciphertext, is_active, create_time, revoke_time)
+         VALUES (?, ?, ?, ?, 1, CURRENT_TIMESTAMP, NULL)
+         ON CONFLICT(note_id) DO UPDATE SET owner_uid = excluded.owner_uid,
+           token_hash = excluded.token_hash, token_ciphertext = excluded.token_ciphertext,
+           is_active = 1, create_time = CURRENT_TIMESTAMP, revoke_time = NULL`,
+      ).bind(id, uid, tokenHash, tokenCiphertext).run()
+      return { success: true, data: { token } }
+    } catch (error) {
+      console.error('开启笔记分享失败:', error)
+      return { success: false, error: '开启分享失败' }
+    }
+  }
+
+  async revokeNoteShare(id, uid) {
+    try {
+      const result = await this.db.prepare(
+        `UPDATE note_shares SET is_active = 0, revoke_time = CURRENT_TIMESTAMP
+         WHERE note_id = ? AND owner_uid = ?
+           AND EXISTS (SELECT 1 FROM notes WHERE notes.id = note_shares.note_id AND notes.uid = ?)`,
+      ).bind(id, uid, uid).run()
+      return { success: true, data: { revoked: Number(result?.meta?.changes ?? result?.changes ?? 0) > 0 } }
+    } catch (error) {
+      console.error('关闭笔记分享失败:', error)
+      return { success: false, error: '关闭分享失败' }
+    }
+  }
+
+  async getSharedNote(tokenHash) {
+    try {
+      const note = await this.db.prepare(
+        `SELECT n.title, n.content, n.create_time AS createTime, n.update_time AS updateTime
+         FROM note_shares s
+         INNER JOIN notes n ON n.id = s.note_id AND n.uid = s.owner_uid
+         WHERE s.token_hash = ? AND s.is_active = 1 LIMIT 1`,
+      ).bind(tokenHash).first()
+      return { success: true, data: note || null }
+    } catch (error) {
+      console.error('读取分享笔记失败:', error)
+      return { success: false, error: '读取分享内容失败' }
+    }
+  }
+
   // ===== 笔记操作 =====
 
-  // 获取当前用户的所有笔记（支持分页 + 按分组过滤）
-  // filters.groupId:
-  //   - 'all' / undefined: 不过滤
-  //   - 'ungrouped': 仅 group_id IS NULL
-  //   - 具体 id: 仅 group_id = 该 id
+  // 获取当前用户的所有笔记（支持分页、分组过滤和跨分组搜索）
   async getAllNotes(uid, pager, filters = {}) {
     try {
-      const { groupId } = filters
+      const { groupId, search } = filters
+
+      if (search) {
+        const pattern = likeContains(search)
+        const countResult = await this.db
+          .prepare('SELECT COUNT(*) AS count FROM notes WHERE uid = ? AND (title LIKE ? OR content LIKE ?)')
+          .bind(uid, pattern, pattern)
+          .first()
+        const rows = await this.db
+          .prepare('SELECT * FROM notes WHERE uid = ? AND (title LIKE ? OR content LIKE ?) ORDER BY create_time DESC LIMIT ? OFFSET ?')
+          .bind(uid, pattern, pattern, pager.pageSize, pager.offset)
+          .all()
+        const notes = (rows.results || []).map(row => this.noteModel.mapFromDb(row))
+        return {
+          success: true,
+          data: pager.createResult(notes, Number(countResult?.count) || 0)
+        }
+      }
 
       // 构建 count 查询
       const countBuilder = new QueryBuilder().where('uid', '=', uid)

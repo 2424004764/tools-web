@@ -1104,7 +1104,7 @@ onUnmounted(() => {
           >
             删除所选
           </el-button>
-          <span class="ml-auto text-[11px] text-amber-600">批量操作以「合集」为单位，打包下载走 image-proxy 拉原图</span>
+          <span class="ml-auto text-[11px] text-amber-600">批量操作以「合集」为单位</span>
         </div>
 
         <!-- 分类 -->

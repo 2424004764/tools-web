@@ -163,9 +163,14 @@ const openReject = (row: AdminBlogPost) => {
 const confirmReject = async () => {
   const target = rejectTarget.value
   if (!target || rejectSubmitting.value) return
+  const reason = rejectReason.value.trim()
+  if (!reason) {
+    ElMessage.warning('请填写驳回理由，投稿人会看到该说明')
+    return
+  }
   rejectSubmitting.value = true
   try {
-    await applyStatus(target, 'rejected', rejectReason.value.trim())
+    await applyStatus(target, 'rejected', reason)
     rejectDialogVisible.value = false
   } finally {
     rejectSubmitting.value = false
@@ -266,7 +271,12 @@ const openBatchReject = () => {
 }
 
 const confirmBatchReject = async () => {
-  const completed = await handleBatchReview('rejected', batchRejectReason.value.trim())
+  const reason = batchRejectReason.value.trim()
+  if (!reason) {
+    ElMessage.warning('请填写统一驳回理由，投稿人会看到该说明')
+    return
+  }
+  const completed = await handleBatchReview('rejected', reason)
   if (completed) batchRejectDialogVisible.value = false
 }
 
@@ -467,7 +477,7 @@ const { isMobile } = useIsMobile()
         :rows="3"
         maxlength="200"
         show-word-limit
-        placeholder="统一驳回理由（选填）"
+        placeholder="统一驳回理由（必填，投稿人可见）"
       />
       <template #footer>
         <el-button @click="batchRejectDialogVisible = false">取消</el-button>
@@ -487,7 +497,7 @@ const { isMobile } = useIsMobile()
         :rows="3"
         maxlength="200"
         show-word-limit
-        placeholder="驳回理由（选填，帮助投稿人改进）"
+        placeholder="驳回理由（必填，投稿人可见，帮助投稿人改进）"
       />
       <template #footer>
         <el-button @click="rejectDialogVisible = false">取消</el-button>

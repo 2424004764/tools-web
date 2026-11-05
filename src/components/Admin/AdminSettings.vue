@@ -24,6 +24,23 @@ const form = reactive<AdminSiteConfig>({
   giscus_mapping: '',
   products_matrix: '',
   admin_dashboard_layout: '',
+  registration_storage_bytes: '0',
+  registration_credits: '0',
+  storage_bytes_per_credit: String(100 * 1024 * 1024),
+})
+
+const MIB_BYTES = 1024 * 1024
+const registrationStorageMib = computed({
+  get: () => Math.floor((Number(form.registration_storage_bytes) || 0) / MIB_BYTES),
+  set: (value: number) => { form.registration_storage_bytes = String(Math.max(0, Math.floor(value || 0) * MIB_BYTES)) },
+})
+const registrationCreditsValue = computed({
+  get: () => Number(form.registration_credits) || 0,
+  set: (value: number) => { form.registration_credits = String(Math.max(0, Math.floor(value || 0))) },
+})
+const storageBytesPerCreditMib = computed({
+  get: () => Math.floor((Number(form.storage_bytes_per_credit) || 100 * MIB_BYTES) / MIB_BYTES),
+  set: (value: number) => { form.storage_bytes_per_credit = String(Math.max(1, Math.floor(value || 1)) * MIB_BYTES) },
 })
 
 const mappingOptions = [
@@ -265,6 +282,9 @@ const load = async () => {
   try {
     const data = await fetchAdminSiteConfig()
     Object.assign(form, data.values)
+    form.registration_storage_bytes = String(Number(data.values.registration_storage_bytes) || 0)
+    form.registration_credits = String(Number(data.values.registration_credits) || 0)
+    form.storage_bytes_per_credit = String(Number(data.values.storage_bytes_per_credit) || 100 * MIB_BYTES)
     remarks.value = data.remarks || {}
     const parsed = parseProductsToList(data.values.products_matrix)
     productsList.value = parsed.list
@@ -594,6 +614,31 @@ onBeforeUnmount(() => {
         <el-button type="primary" :loading="savingProducts" @click="confirmProductDialog">确定并生效</el-button>
       </template>
     </el-dialog>
+
+    <!-- 新注册用户奖励 -->
+    <div class="rounded-xl border border-border-subtle bg-white dark:bg-surface-1 p-5 mb-4">
+      <h3 class="text-body-lg font-semibold text-ink-900 mb-1">新用户注册奖励</h3>
+      <p class="text-body-sm text-ink-500 mb-4">仅首次注册时发放；已注册用户不受影响。</p>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+        <div>
+          <div class="text-body-sm font-medium text-ink-700 mb-1.5">赠送存储空间（MiB）</div>
+          <el-input-number v-model="registrationStorageMib" :min="0" :max="100000000" :step="100" controls-position="right" />
+          <p v-if="remarks.registration_storage_bytes" class="text-caption text-ink-400 mt-1">{{ remarks.registration_storage_bytes }}</p>
+        </div>
+        <div>
+          <div class="text-body-sm font-medium text-ink-700 mb-1.5">赠送积分</div>
+          <el-input-number v-model="registrationCreditsValue" :min="0" :max="1000000000" :step="1" controls-position="right" />
+          <p v-if="remarks.registration_credits" class="text-caption text-ink-400 mt-1">{{ remarks.registration_credits }}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="rounded-xl border border-border-subtle bg-white dark:bg-surface-1 p-5 mb-4">
+      <h3 class="text-body-lg font-semibold text-ink-900 mb-1">积分兑换存储空间</h3>
+      <div class="text-body-sm font-medium text-ink-700 mb-1.5">1 积分可兑换（MiB）</div>
+      <el-input-number v-model="storageBytesPerCreditMib" :min="1" :max="1000000000" :step="10" controls-position="right" />
+      <p v-if="remarks.storage_bytes_per_credit" class="text-caption text-ink-400 mt-1">{{ remarks.storage_bytes_per_credit }}</p>
+    </div>
 
     <div class="flex justify-end">
       <el-button type="primary" :loading="saving" @click="handleSave">保存设置</el-button>

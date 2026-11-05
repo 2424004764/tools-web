@@ -180,7 +180,7 @@ async function handleInit(db, uid, body, env) {
     const rid = await reserveStorage(db, uid, declaredBytes)
     if (!rid) {
       // 不允许跳过预扣的旁路（含 ai-image-edit）：否则 0 配额账号可无限上传（渗透测试 MEDIUM finding）
-      return jsonError('存储空间不足，请先购买存储额度（1 积分 = 100MB）', 402)
+      return jsonError('存储空间不足，请先购买存储额度', 402)
     }
     reservationId = rid
   }

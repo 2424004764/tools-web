@@ -1,5 +1,7 @@
 // 谷歌登录回调
 import { verifyGoogleIdToken } from './utils/google-idtoken.js';
+import { grantRegistrationRewards } from './services/registrationRewardService.js'
+import { MAIN_JWT_TTL_SECONDS } from './config/auth.js'
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -74,6 +76,7 @@ export async function onRequest(context) {
         INSERT INTO user (id, email, avatar, created_at, last_login, third_party_uid, username, user_level, third_party_type)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(userId, email, avatar, nowStr, nowStr, thirdPartyUid, username, 0, 'google').run();
+      await grantRegistrationRewards(db, userId);
     }
 
     // 管理员状态 / 封禁 / token 版本一次查齐（JWT 反映最新权限，封禁即时拦截）
@@ -104,7 +107,7 @@ export async function onRequest(context) {
         // ver 与库中 token_version 对齐：改密/重置/封禁后旧登录态立即失效
         ver: stateRow?.token_version || 0,
         iat: Math.floor(Date.now() / 1000),
-        exp: Math.floor(Date.now() / 1000) + 24 * 60 * 60 * 7
+        exp: Math.floor(Date.now() / 1000) + MAIN_JWT_TTL_SECONDS
       },
       env.JWT_SECRET
     );

@@ -305,6 +305,17 @@ const sourceClass = (s: 'system' | 'admin' | 'tool' | null | undefined) => {
   }
 }
 
+const userRegistrationDateQuery = (range: 'today' | 'week' | 'month') => {
+  const utc8Now = new Date(Date.now() + 8 * 60 * 60 * 1000)
+  const end = Date.UTC(utc8Now.getUTCFullYear(), utc8Now.getUTCMonth(), utc8Now.getUTCDate())
+  const start = new Date(end)
+  if (range === 'week') start.setUTCDate(start.getUTCDate() - ((start.getUTCDay() + 6) % 7))
+  if (range === 'month') start.setUTCDate(1)
+  if (range === 'today') start.setUTCDate(start.getUTCDate())
+  const dateString = (timestamp: number) => new Date(timestamp).toISOString().slice(0, 10)
+  return { startDate: dateString(start.getTime()), endDate: dateString(end) }
+}
+
 // ============ 趋势曲线（工具使用次数 / 用户总数注册趋势共用一套图逻辑） ============
 const TREND_RANGES = [
   { key: 'daily', label: '每日' },
@@ -1036,30 +1047,46 @@ onUnmounted(() => {
             </el-radio-group>
           </div>
           <div class="grid grid-cols-4 divide-x divide-ink-100">
-            <div class="pr-2 first:pl-0">
-              <div class="text-[11px] text-ink-400">今日</div>
-              <div class="mt-0.5 text-lg font-semibold text-accent-700 tabular-nums leading-tight">
+            <router-link
+              :to="{ path: '/admin/users', query: userRegistrationDateQuery('today') }"
+              class="block pr-2 first:pl-0 group"
+              title="查看今日注册用户"
+            >
+              <div class="text-[11px] text-ink-400 group-hover:text-accent-600 transition-colors">今日</div>
+              <div class="mt-0.5 text-lg font-semibold text-accent-700 group-hover:text-accent-600 tabular-nums leading-tight transition-colors">
                 {{ data?.todayNew ?? 0 }}
               </div>
-            </div>
-            <div class="px-2">
-              <div class="text-[11px] text-ink-400">本周</div>
-              <div class="mt-0.5 text-lg font-semibold text-ink-900 tabular-nums leading-tight">
+            </router-link>
+            <router-link
+              :to="{ path: '/admin/users', query: userRegistrationDateQuery('week') }"
+              class="block px-2 group"
+              title="查看本周注册用户"
+            >
+              <div class="text-[11px] text-ink-400 group-hover:text-accent-600 transition-colors">本周</div>
+              <div class="mt-0.5 text-lg font-semibold text-ink-900 group-hover:text-accent-600 tabular-nums leading-tight transition-colors">
                 {{ data?.weekNewUsers ?? 0 }}
               </div>
-            </div>
-            <div class="px-2">
-              <div class="text-[11px] text-ink-400">本月</div>
-              <div class="mt-0.5 text-lg font-semibold text-ink-900 tabular-nums leading-tight">
+            </router-link>
+            <router-link
+              :to="{ path: '/admin/users', query: userRegistrationDateQuery('month') }"
+              class="block px-2 group"
+              title="查看本月注册用户"
+            >
+              <div class="text-[11px] text-ink-400 group-hover:text-accent-600 transition-colors">本月</div>
+              <div class="mt-0.5 text-lg font-semibold text-ink-900 group-hover:text-accent-600 tabular-nums leading-tight transition-colors">
                 {{ data?.monthNewUsers ?? 0 }}
               </div>
-            </div>
-            <div class="pl-2 last:pr-0">
-              <div class="text-[11px] text-ink-400">累计</div>
-              <div class="mt-0.5 text-lg font-semibold text-ink-900 tabular-nums leading-tight">
+            </router-link>
+            <router-link
+              to="/admin/users"
+              class="block pl-2 last:pr-0 group"
+              title="查看全部用户"
+            >
+              <div class="text-[11px] text-ink-400 group-hover:text-accent-600 transition-colors">累计</div>
+              <div class="mt-0.5 text-lg font-semibold text-ink-900 group-hover:text-accent-600 tabular-nums leading-tight transition-colors">
                 {{ data?.totalUsers ?? 0 }}
               </div>
-            </div>
+            </router-link>
           </div>
           <div class="text-[11px] text-ink-400 mt-2">
             今日 / 本周 / 本月为新增注册用户数，累计为用户总数

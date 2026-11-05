@@ -1,7 +1,7 @@
 // 统一存储额度 API 客户端
 // 后端：
 //   GET  /api/me/storage-quota        查询额度（含价格配置）
-//   POST /api/storage-quota/purchase  积分购买额度（1 积分 = 100MB）
+//   POST /api/storage-quota/purchase  积分购买额度（兑换比例由站点配置提供）
 //   POST /api/storage-quota/release   释放上传预留（放弃上传时调用）
 //
 // 所有接口要求登录（后端校验 uid）。
@@ -17,7 +17,7 @@ export interface StorageQuotaInfo {
   price: {
     /** 购买 1 单元需要的积分 */
     credits: number
-    /** 1 单元对应的字节数（100MB） */
+    /** 1 单元对应的字节数 */
     bytes: number
   }
 }
@@ -41,7 +41,7 @@ export async function getStorageQuota(): Promise<StorageQuotaInfo> {
   return res.data as StorageQuotaInfo
 }
 
-/** 积分购买存储额度（units：1 积分 = 100MB）；余额不足时后端返回 400 */
+/** 积分购买存储额度；兑换比例由服务端站点配置决定，余额不足时后端返回 400 */
 export async function purchaseStorageQuota(units: number): Promise<PurchaseResult> {
   const res = await functionsRequest.post('/api/storage-quota/purchase', { units })
   return res.data as PurchaseResult
@@ -57,7 +57,7 @@ export async function releaseStorageReservation(reservationId: string): Promise<
   }
 }
 
-/** 字节数 → 人类可读（MB 为主，与"1 积分 = 100MB"口径一致） */
+/** 字节数 → 人类可读 */
 export function formatStorageBytes(bytes: number): string {
   const value = Number(bytes) || 0
   if (value >= 1024 * 1024 * 1024) return `${(value / 1024 / 1024 / 1024).toFixed(2)} GB`

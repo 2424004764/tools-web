@@ -155,10 +155,9 @@ export class AuthMiddleware {
 
       const verifyResult = await this.verifyToken(token, env.JWT_SECRET)
       if (!verifyResult.success) {
-        return { success: true, user: null } // Token 无效但允许继续
+        return { success: true, user: null }
       }
 
-      // 与强制认证相同的服务端实时校验：无效/失效 token 一律按未登录处理
       const liveCheck = await checkUserTokenState(env, verifyResult.payload)
       if (!liveCheck.ok) {
         return { success: true, user: null }

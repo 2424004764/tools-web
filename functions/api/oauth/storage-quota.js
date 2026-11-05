@@ -2,8 +2,7 @@
 // GET /api/oauth/storage-quota   Authorization: Bearer <access_token>（或 ?access_token=）
 // 返回用户可上传存储空间额度（scope: storage）
 import { oauthJson, oauthError, openCorsPreflight, lookupAccessToken, isTokenUsable, tokenHasScope } from './_lib.js'
-import { getStorageQuota } from '../../services/storageQuotaService.js'
-import { STORAGE_BYTES_PER_CREDIT } from '../../config/storage.js'
+import { getStorageQuota, getStorageBytesPerCredit } from '../../services/storageQuotaService.js'
 
 export async function onRequest(context) {
   const { request, env } = context
@@ -43,7 +42,7 @@ export async function onRequest(context) {
       remaining_bytes: quota.remainingBytes,
       price: {
         credits: 1,
-        bytes: STORAGE_BYTES_PER_CREDIT,
+        bytes: await getStorageBytesPerCredit(db),
       },
     })
   } catch (error) {

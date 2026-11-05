@@ -104,7 +104,7 @@ const loadRecent = async () => {
   }
   loading.value = true
   try {
-    recentTools.value = await fetchRecentUsedTools(20)
+    recentTools.value = await fetchRecentUsedTools(50)
   } catch (err: any) {
     console.warn('[RecentToolsFab] 拉取最近使用失败：', err?.message || err)
     recentTools.value = []

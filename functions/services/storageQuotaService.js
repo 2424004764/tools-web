@@ -7,10 +7,20 @@
 //   - 并发安全：单条条件 INSERT/UPDATE 原子完成，不依赖跨语句事务
 
 import {
-  STORAGE_BYTES_PER_CREDIT,
+  STORAGE_BYTES_PER_CREDIT as DEFAULT_STORAGE_BYTES_PER_CREDIT,
   STORAGE_RESERVATION_TTL_SECONDS,
   STORAGE_RESERVATION_SWEEP_SECONDS,
 } from '../config/storage.js'
+
+export async function getStorageBytesPerCredit(db) {
+  try {
+    const row = await db.prepare('SELECT value FROM site_config WHERE key = ? LIMIT 1').bind('storage_bytes_per_credit').first()
+    const value = Number(row?.value)
+    return Number.isSafeInteger(value) && value > 0 ? value : DEFAULT_STORAGE_BYTES_PER_CREDIT
+  } catch {
+    return DEFAULT_STORAGE_BYTES_PER_CREDIT
+  }
+}
 
 function nowSql() {
   return new Date().toISOString().slice(0, 19).replace('T', ' ')
@@ -161,7 +171,7 @@ export async function refundStorageUsage(db, uid, bytes) {
 }
 
 /**
- * 积分购买额度。units × 1 积分 = units × 100MB。
+ * 积分购买额度。每个 unit 消耗 1 积分。
  * 返回 { ok: true, balance, ...quota }；余额不足返回 { ok: false }。
  * 并发场景：先条件扣积分（batch 内），若 changes=0 则补偿回滚刚执行的赠送。
  */
@@ -177,7 +187,7 @@ export async function purchaseStorage(db, uid, units) {
   if (balance < count) return { ok: false, reason: 'insufficient', balance }
 
   const cost = count // 1 积分/单元
-  const grantBytes = count * STORAGE_BYTES_PER_CREDIT
+  const grantBytes = count * await getStorageBytesPerCredit(db)
   const now = nowSql()
   const txId = crypto.randomUUID()
 
@@ -237,5 +247,5 @@ export async function purchaseStorage(db, uid, units) {
   }
 
   const quota = await getStorageQuota(db, uid)
-  return { ok: true, ...quota, balance: balance - cost }
+  return { ok: true, ...quota, balance: balance - cost, purchasedBytes: grantBytes }
 }

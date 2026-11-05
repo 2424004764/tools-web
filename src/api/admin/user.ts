@@ -26,6 +26,8 @@ export interface AdminUserListParams {
   sort?: 'today_usage'
   /** 配合 sort=today_usage 使用，默认 desc */
   order?: 'asc' | 'desc'
+  startDate?: string
+  endDate?: string
 }
 
 export async function fetchAdminUsers(

@@ -52,6 +52,28 @@ const ALLOWED_KEYS = {
       '管理后台仪表盘卡片顺序，JSON 数组（元素为卡片 id），如 ["users","disabled","credits","tools","usage","topTools","slowlog","pending","transactions"]；只校验格式（卡片 id 由前端代码维护），未出现的卡片由前端按默认顺序补尾；留空 = 使用内置默认顺序',
     validate: validateDashboardLayout,
   },
+  registration_storage_bytes: {
+    remark: '新注册用户赠送的存储空间，后台按 MiB 输入，配置按字节保存；0 表示不赠送',
+    validate: validateNonNegativeInteger,
+  },
+  registration_credits: {
+    remark: '新注册用户赠送的积分；0 表示不赠送',
+    validate: validateNonNegativeInteger,
+  },
+  storage_bytes_per_credit: {
+    remark: '每 1 积分可兑换的存储空间，后台按 MiB 输入，配置按字节保存',
+    validate: validatePositiveInteger,
+  },
+}
+
+function validateNonNegativeInteger(v) {
+  const n = typeof v === 'number' ? v : Number(v)
+  return Number.isSafeInteger(n) && n >= 0 ? String(n) : null
+}
+
+function validatePositiveInteger(v) {
+  const n = typeof v === 'number' ? v : Number(v)
+  return Number.isSafeInteger(n) && n > 0 ? String(n) : null
 }
 
 // 校验仪表盘卡片顺序：JSON 字符串数组（id 去重、单个 ≤40 字符、总数 ≤50）；'' = 恢复默认顺序

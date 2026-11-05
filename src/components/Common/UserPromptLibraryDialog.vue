@@ -656,6 +656,9 @@ const activeGroup = computed<UserToolPromptGroup | null>(() => {
             maxlength="5000"
             show-word-limit
           />
+          <div class="prompt-slot-hint">
+            可用 &#123;&#123;变量名&#125;&#125; 设置插槽；选择提示词后会显示对应输入框，同名变量共用一个输入值。
+          </div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -725,6 +728,13 @@ const activeGroup = computed<UserToolPromptGroup | null>(() => {
 </template>
 
 <style scoped>
+.prompt-slot-hint {
+  margin-top: 6px;
+  color: #909399;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 /* 移动端卡片列表：整卡片可点选，底部放操作按钮（大尺寸触屏友好） */
 .prompt-cards {
   display: flex;

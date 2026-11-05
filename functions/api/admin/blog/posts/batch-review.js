@@ -53,6 +53,7 @@ export async function onRequest(context) {
     return jsonError('status 必须是 published 或 rejected', 400)
   }
   const rejectReason = status === 'rejected' ? sanitizeText(body.reject_reason, 200) : ''
+  if (status === 'rejected' && !rejectReason) return jsonError('驳回理由不能为空', 400)
 
   try {
     const statements = ids.map((id) => {

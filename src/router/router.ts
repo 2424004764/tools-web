@@ -534,6 +534,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/notes/share/:token',
+    component: () => import('@/components/Tools/Notes/NotesShare.vue'),
+    name: 'notes-share',
+    meta: {
+      title: '备忘录分享',
+      robots: 'noindex,nofollow,noarchive',
+      referrer: 'no-referrer',
+    },
+  },
+  {
     path: '/notes',
     component: () => import('@/components/Tools/Notes/Notes.vue'),
     name: 'notes',

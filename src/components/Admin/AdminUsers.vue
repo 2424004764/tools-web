@@ -64,6 +64,7 @@ const filter = reactive({
   // 今日使用工具排序：'' 走默认注册时间倒序；'today_usage' 走后端聚合排序
   sort: '' as '' | 'today_usage',
   order: 'desc' as 'desc' | 'asc',
+  registrationDateRange: [] as string[],
 })
 
 // 库里的时间格式不统一：既有 "2026-10-23 05:13:00"（UTC），也有完整
@@ -108,6 +109,8 @@ const load = async () => {
       disabled: filter.disabled || undefined,
       sort: filter.sort || undefined,
       order: filter.sort ? filter.order : undefined,
+      startDate: filter.registrationDateRange[0] || undefined,
+      endDate: filter.registrationDateRange[1] || undefined,
     })
     if (seq !== loadSeq) return
     list.value = result.list
@@ -874,8 +877,13 @@ const copyText = (text: string, label = '内容') => {
 }
 
 onMounted(() => {
-  // 支持从仪表盘等入口带 query 跳入：?disabled=1 直接筛选禁用用户
+  // 支持从仪表盘等入口带 query 跳入并恢复筛选
   if (route.query.disabled === '1') filter.disabled = '1'
+  const startDate = typeof route.query.startDate === 'string' ? route.query.startDate : ''
+  const endDate = typeof route.query.endDate === 'string' ? route.query.endDate : ''
+  if (/^\d{4}-\d{2}-\d{2}$/.test(startDate) && /^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
+    filter.registrationDateRange = [startDate, endDate]
+  }
   load()
   updateIsMobile()
   window.addEventListener('resize', updateIsMobile)
@@ -908,6 +916,18 @@ const updateIsMobile = () => {
           <el-button @click="handleSearch">搜索</el-button>
         </template>
       </el-input>
+
+      <el-date-picker
+        v-model="filter.registrationDateRange"
+        type="daterange"
+        value-format="YYYY-MM-DD"
+        range-separator="至"
+        start-placeholder="注册开始日期"
+        end-placeholder="注册结束日期"
+        clearable
+        class="!w-[320px] !max-w-[320px] !flex-none"
+        @change="handleSearch"
+      />
 
       <el-select
         v-model="filter.disabled"
@@ -981,10 +1001,13 @@ const updateIsMobile = () => {
         />
         <el-table-column label="头像" width="56" align="center">
           <template #default="{ row }">
-            <img
+            <el-image
               :src="row.avatar || defaultAvatar"
               :alt="row.username || row.email"
               :title="row.username || row.email"
+              :preview-src-list="[row.avatar || defaultAvatar]"
+              preview-teleported
+              fit="cover"
               class="w-8 h-8 rounded-full object-cover border border-border-default bg-ink-50"
               loading="lazy"
               @error="onAvatarError"

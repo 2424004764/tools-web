@@ -1,6 +1,7 @@
 // 博客文章详情（公开）
 // GET /api/blog/posts/:slug   按 slug 取已发布文章；浏览量异步 +1（waitUntil，不阻塞响应）
 import { ApiResponse, initDatabase } from '../../../utils/db.js'
+import { extractUidFromRequest } from '../../_lib/model-resolver.js'
 
 export async function onRequest(context) {
   const { request, env, params } = context
@@ -23,10 +24,11 @@ export async function onRequest(context) {
   const db = dbInit.db
 
   try {
+    const uid = await extractUidFromRequest(request, env)
     const row = await db
       .prepare(
         `SELECT id, slug, title, summary, content, cover, tags, related_tools,
-                author_name, author_avatar, author_type, views, published_at, updated_at
+                author_id, author_name, author_avatar, author_type, views, published_at, updated_at
          FROM blog_posts
          WHERE slug = ? AND status = 'published'`,
       )
@@ -46,7 +48,8 @@ export async function onRequest(context) {
       bumpViews.catch(() => {})
     }
 
-    return ApiResponse.success({ data: { post: row } }, origin)
+    const { author_id, ...publicPost } = row
+    return ApiResponse.success({ data: { post: { ...publicPost, can_edit: Boolean(uid && uid === author_id && row.author_type === 'user') } } }, origin)
   } catch (error) {
     console.error('blog post detail error:', error)
     const msg = String(error?.message || error || '')

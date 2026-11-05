@@ -1,6 +1,6 @@
 // 积分购买存储额度
 // POST /api/storage-quota/purchase
-//   Body: { units: number }（1 单元 = 1 积分 = 100MB，1~100）
+//   Body: { units: number }（1 单元 = 1 积分，兑换比例由站点配置提供，1~100）
 //   返回 { ok: true, balance, quotaBytes, usedBytes, pendingBytes, remainingBytes }
 //   余额不足 → 400 { ok: false, error }
 //
@@ -8,11 +8,7 @@
 
 import { extractUidFromRequest } from '../_lib/model-resolver.js'
 import { purchaseStorage } from '../../services/storageQuotaService.js'
-import {
-  STORAGE_BYTES_PER_CREDIT,
-  STORAGE_MIN_UNITS,
-  STORAGE_MAX_UNITS,
-} from '../../config/storage.js'
+import { STORAGE_MIN_UNITS, STORAGE_MAX_UNITS } from '../../config/storage.js'
 
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -76,7 +72,7 @@ export async function onRequest(context) {
       purchased: {
         units,
         credits: units,
-        bytes: units * STORAGE_BYTES_PER_CREDIT,
+        bytes: result.purchasedBytes,
       },
     })
   } catch (error) {

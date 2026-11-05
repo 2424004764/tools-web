@@ -594,7 +594,7 @@ const confirmUpload = async () => {
       // 存储额度不足（HTTP 402）：引导去购买
       if (err?.response?.status === 402) {
         ElMessageBox.confirm(
-          err?.response?.data?.error || '存储空间不足，请先购买存储额度（1 积分 = 100MB）',
+          err?.response?.data?.error || '存储空间不足，请先购买存储额度',
           '存储空间不足',
           { type: 'warning', confirmButtonText: '去购买', cancelButtonText: '取消' },
         )

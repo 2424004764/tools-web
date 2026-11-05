@@ -71,6 +71,13 @@ async function onRequestGet(context) {
   const disabled = url.searchParams.get('disabled') // '0' | '1' | null
   const sort = url.searchParams.get('sort') // 'today_usage' | null
   const sortOrder = url.searchParams.get('order') === 'asc' ? 'ASC' : 'DESC'
+  const startDate = url.searchParams.get('startDate') || ''
+  const endDate = url.searchParams.get('endDate') || ''
+  const isValidDate = (value) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+    const date = new Date(`${value}T00:00:00Z`)
+    return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value
+  }
   const offset = (page - 1) * pageSize
   const todayStart = startOfTodayUTC8()
 
@@ -79,19 +86,27 @@ async function onRequestGet(context) {
     const where = []
     const params = []
     if (keyword) {
-      where.push('(email LIKE ? OR username LIKE ? OR id LIKE ?)')
+      where.push('(u.email LIKE ? OR u.username LIKE ? OR u.id LIKE ?)')
       const like = likeContains(keyword)
       params.push(like, like, like)
     }
     if (disabled === '0' || disabled === '1') {
-      where.push('is_disabled = ?')
+      where.push('u.is_disabled = ?')
       params.push(parseInt(disabled, 10))
+    }
+    if (startDate && isValidDate(startDate)) {
+      where.push("u.created_at >= datetime(?, '-8 hours')")
+      params.push(`${startDate} 00:00:00`)
+    }
+    if (endDate && isValidDate(endDate)) {
+      where.push("u.created_at < datetime(?, '+16 hours')")
+      params.push(endDate)
     }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : ''
 
     // 总数
     const totalRow = await db
-      .prepare(`SELECT COUNT(*) AS c FROM user ${whereSql}`)
+      .prepare(`SELECT COUNT(*) AS c FROM user u ${whereSql}`)
       .bind(...params)
       .first()
     const total = totalRow?.c || 0

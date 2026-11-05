@@ -266,7 +266,7 @@ export class MusicService {
     // ============ 2) 统一存储额度预留（079 迁移起，不再走独立免费额度/积分按量计费）============
     const reservationId = await reserveStorage(this.db, uid, Math.floor(fileSize))
     if (!reservationId) {
-      throw new ValidationError('存储空间不足，请先购买存储额度（1 积分 = 100MB）')
+      throw new ValidationError('存储空间不足，请先购买存储额度')
     }
 
     // ============ 3) 签 R2 URL ============

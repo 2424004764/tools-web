@@ -1,6 +1,7 @@
 import { ApiResponse } from '../utils/db.js'
 import { verifyPassword, hashPassword } from '../utils/password.js'
 import { getClientIp, hitLimit, getLockRemaining, recordAuthFail, clearAuthFails, fmtWaitSec } from '../utils/rate-limit.js'
+import { MAIN_JWT_TTL_SECONDS } from '../config/auth.js'
 
 // ===== 登录防爆破参数 =====
 // 单账号连续失败 5 次锁定 15 分钟；单 IP 每 10 分钟最多 30 次密码登录尝试（防撞库扫描）
@@ -123,7 +124,7 @@ export async function onRequest(context) {
         is_admin: user.is_admin ? 1 : 0,
         ver: user.token_version || 0,
         iat: Math.floor(Date.now() / 1000),
-        exp: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60
+        exp: Math.floor(Date.now() / 1000) + MAIN_JWT_TTL_SECONDS
       },
       env.JWT_SECRET
     )

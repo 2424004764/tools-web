@@ -6,7 +6,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { submitBlogPost } from '@/api/blog'
+import { submitBlogPost, fetchMyBlogPost, updateMyBlogPost } from '@/api/blog'
 import {
   fetchAdminBlogPost,
   createAdminBlogPost,
@@ -29,8 +29,9 @@ const toolsStore = useToolsStore()
 const isAdmin = computed(() => userStore.getIsAdmin)
 // 后台上下文（/admin/blog/write）成功后回文章管理；前台上下文回博客列表
 const inAdmin = computed(() => route.path.startsWith('/admin'))
-// 编辑模式：仅管理员可用（?id=）
-const editingId = computed(() => (isAdmin.value ? String(route.query.id || '') : ''))
+// 管理员使用后台 API；普通用户通过独立接口修改本人已发布文章，修改后重新审核
+const editingId = computed(() => String(route.query.id || ''))
+const isUserEditing = computed(() => Boolean(editingId.value) && !isAdmin.value)
 
 const form = reactive({
   title: '',
@@ -67,23 +68,25 @@ const loadToolOptions = async () => {
   }
 }
 
-// 编辑回填（仅管理员）
+// 编辑回填：管理员通过后台 API；普通用户只能读取自己已发布的文章
 const loadForEdit = async () => {
   if (!editingId.value) return
   loading.value = true
   try {
-    const post = await fetchAdminBlogPost(editingId.value)
+    const post = isAdmin.value
+      ? await fetchAdminBlogPost(editingId.value)
+      : await fetchMyBlogPost(editingId.value)
     form.title = post.title || ''
     form.summary = post.summary || ''
     form.cover = post.cover || ''
     form.tags = post.tags || ''
-    form.slug = post.slug || ''
+    form.slug = isAdmin.value && 'slug' in post ? post.slug || '' : ''
     form.content = post.content || ''
     relatedTools.value = String(post.related_tools || '').split(',').map((s) => s.trim()).filter(Boolean)
-    editingStatus.value = post.status || ''
+    if (isAdmin.value && 'status' in post) editingStatus.value = post.status || ''
   } catch (e) {
     console.error('load blog post for edit failed:', e)
-    ElMessage.error('文章加载失败')
+    ElMessage.error('文章加载失败或无权编辑')
   } finally {
     loading.value = false
   }
@@ -142,12 +145,14 @@ const saveAsAdmin = async (target: 'draft' | 'published' | 'keep') => {
   }
 }
 
-// ---- 普通用户：提交投稿 ----
+// ---- 普通用户：投稿或提交文章修改审核 ----
 const submitContribution = async () => {
   if (!canSubmit.value) return
   submitting.value = true
   try {
-    const res = await submitBlogPost(buildPayload())
+    const res = isUserEditing.value
+      ? await updateMyBlogPost(editingId.value, buildPayload())
+      : await submitBlogPost(buildPayload())
     afterSaved(res.message)
   } catch (e) {
     console.error('submit blog post failed:', e)
@@ -177,6 +182,23 @@ onMounted(() => {
     router.replace({ path: '/login', query: { redirect: route.fullPath } })
     return
   }
+  if (route.query.from === 'wechat-format' && !editingId.value) {
+    try {
+      const handoff = sessionStorage.getItem('blog_editor_handoff')
+      sessionStorage.removeItem('blog_editor_handoff')
+      if (handoff) {
+        const { content } = JSON.parse(handoff) as { content?: unknown }
+        if (typeof content === 'string') {
+          form.content = content
+          const heading = content.match(/^#\s+(.+)$/m)?.[1]?.trim()
+          if (heading && !form.title) form.title = heading.slice(0, 120)
+        }
+      }
+    } catch {
+      sessionStorage.removeItem('blog_editor_handoff')
+      ElMessage.error('导入排版内容失败，请返回后重试')
+    }
+  }
   loadToolOptions()
   loadForEdit()
 })
@@ -204,7 +226,9 @@ onMounted(() => {
             {{
               isAdmin
                 ? '支持 Markdown；可存草稿或直接发布'
-                : '支持 Markdown；提交后经站长审核通过即展示'
+                : isUserEditing
+                  ? '修改提交后将进入审核，审核通过后重新展示'
+                  : '支持 Markdown；提交后经站长审核通过即展示'
             }}
           </p>
         </div>
@@ -339,7 +363,7 @@ onMounted(() => {
             :loading="submitting"
             @click="submitContribution"
           >
-            提交投稿
+            {{ isUserEditing ? '提交修改审核' : '提交投稿' }}
           </el-button>
         </template>
       </div>

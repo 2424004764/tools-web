@@ -1,6 +1,8 @@
 // Gitee 登录认证
 import { handleCORSPreflight, createCORSResponse, createCORSErrorResponse, isOriginAllowed } from './utils/cors.js'
 import { buildStateCookie, clearStateCookie, readStateCookie } from './utils/oauth-state.js'
+import { grantRegistrationRewards } from './services/registrationRewardService.js'
+import { MAIN_JWT_TTL_SECONDS } from './config/auth.js'
 
 export async function onRequest(context) {
     const { request, env } = context;
@@ -352,6 +354,7 @@ async function processUserLogin(userData, env) {
         INSERT INTO user (id, email, avatar, created_at, last_login, third_party_uid, username, user_level, third_party_type)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(userId, email, avatar, nowStr, nowStr, thirdPartyUid, username, 0, 'gitee').run();
+      await grantRegistrationRewards(db, userId);
         }
 
         // 管理员状态 / 封禁 / token 版本一次查齐（JWT 反映最新权限，封禁即时拦截）
@@ -383,7 +386,7 @@ async function processUserLogin(userData, env) {
                 location,
                 blog,
                 iat: Math.floor(Date.now() / 1000),
-                exp: Math.floor(Date.now() / 1000) + 24 * 60 * 60 * 7
+                exp: Math.floor(Date.now() / 1000) + MAIN_JWT_TTL_SECONDS
             },
             env.JWT_SECRET
         );

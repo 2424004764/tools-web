@@ -46,7 +46,7 @@ function isOAuthPublicPath(path) {
 }
 
 // 错误日志自身相关的路径不记录，避免日志页故障时自我循环放大
-const ERROR_LOG_EXCLUDED = ['/api/admin/error-logs']
+const ERROR_LOG_EXCLUDED = ['/api/admin/error-logs', '/api/notes-share']
 
 function shouldLogError(path, status) {
   if (status < 400) return false
@@ -329,6 +329,25 @@ async function maybeRewritePageMeta(request, path, response, env) {
     const headers = new Headers(response.headers)
     headers.delete('Content-Length') // body 已变，交给运行时按实际长度生成
 
+    // ---- 路径级 CSP 放宽：天地图 SDK 4.1.x 的内联脚本（2026-11 旅游地图点位不显示事故）----
+    // 天地图 JS API（请求 v=4.0 实际返回 4.1.6）运行时会注入多段「内容随机」的内联
+    // <script>（T.Label 等 UI 组件渲染依赖），hash 每次加载都不同，无法用 hash 白名单。
+    // 全站放开 'unsafe-inline' 会废掉 hash 加固，所以只对旅游地图相关页面改写 script-src：
+    // 去掉页面 hash、加 'unsafe-inline'（注意 CSP 规则：hash 与 unsafe-inline 并存时
+    // 后者会被忽略，因此改写时必须把 hash 一并去掉）。其余指令原样保留。
+    if (normPath === '/travel-map' || normPath.startsWith('/travel-map/')) {
+      const csp = headers.get('Content-Security-Policy')
+      if (csp) {
+        headers.set(
+          'Content-Security-Policy',
+          csp.replace(
+            /script-src[^;]*/i,
+            `script-src 'self' 'unsafe-eval' 'unsafe-inline' https://static.cloudflareinsights.com https://accounts.google.com https://giscus.app https://api.tianditu.gov.cn`
+          )
+        )
+      }
+    }
+
     // ---- 页面 HTML 一律 no-store（2026-10 深链白屏二次事故）----
     // _headers 只能按请求路径匹配：/ 与 /index.html 有 no-store 规则，
     // 但工具页深链（/skill-poster/ 等全部页面路由）经本
@@ -410,7 +429,12 @@ export async function onRequest(context) {
   if (!needsCORS(path)) {
     const resp = await context.next()
     const rewritten = await maybeRewritePageMeta(request, path, resp, context.env)
-    return withSecurityHeaders(rewritten)
+    const secured = withSecurityHeaders(rewritten)
+    if (path.startsWith('/notes/share/')) {
+      secured.headers.set('Referrer-Policy', 'no-referrer')
+      secured.headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive')
+    }
+    return secured
   }
 
   // OAuth2 公开端点：保留错误日志与安全头，但不再强制覆盖 CORS（端点自带 *）

@@ -358,6 +358,7 @@ const handleEmailRegister = async () => {
       password: emailForm.password,
       code: emailForm.code,
       username: emailForm.username
+
     })
 
     if (result.data.token) {
@@ -386,6 +387,7 @@ const handleEmailCodeLogin = async () => {
     const result = await axios.post('/api/email-login', {
       email: emailForm.email,
       code: emailForm.code
+
     })
 
     if (result.data.token) {
@@ -414,6 +416,7 @@ const handleEmailPasswordLogin = async () => {
     const result = await axios.post('/api/email-password-login', {
       email: emailForm.email,
       password: emailForm.password
+
     })
 
     if (result.data.token) {

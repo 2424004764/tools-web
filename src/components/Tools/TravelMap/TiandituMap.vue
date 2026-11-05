@@ -626,6 +626,32 @@ async function initMap() {
     map.enableScrollWheelZoom()
     map.addControl(new t.Control.Zoom())
     map.addControl(new t.Control.Scale())
+
+    // ---- 拖动时线路「抖动」缓解（天地图 4.1.6 热更引入）----
+    // 天地图的矢量渲染器内部有个 updateWhenIdle 选项（源码被混淆成 `te`，且默认值
+    // 取「移动端检测」的结果）：为 false 时渲染器会在拖动的每个 move 事件里节流
+    // 重投影折线（约 200ms 一次），表现就是拖动地图时线反复「追一下、跳一下」。
+    // 这里在地图实例上探测该内部渲染器对象并把 te 强制为 true（等价 Leaflet 桌面
+    // 默认）：拖动中不再重投影，松手后 moveend 一次到位。SDK 后续版本若混淆名
+    // 变化，探测不到就静默跳过，不影响功能。
+    // 注意：渲染器是懒创建的（添加第一个矢量覆盖物后才存在），所以要在绘制完成后再打补丁。
+    const forceRendererIdleUpdate = () => {
+      let patched = 0
+      for (const key in map) {
+        const candidate = (map as any)[key]
+        if (
+          candidate &&
+          typeof candidate === 'object' &&
+          candidate.options &&
+          candidate.options.te === false &&
+          candidate.options.Ye !== undefined
+        ) {
+          candidate.options.te = true
+          patched++
+        }
+      }
+      if (patched) console.debug(`[travel-map] 已修正天地图渲染器拖动重投影行为（${patched} 个）`)
+    }
     mapInstance.value = map
 
     applyBaseLayer(props.baseLayer)
@@ -687,10 +713,20 @@ async function initMap() {
     //
     // 平移（拖动）不再隐藏：label 跟着地图容器一起平移，位置不会失真，
     // 隐藏反而让点位整段消失（用户反馈「拖动的时候点位消失了」）。
+    // 天地图 SDK 是服务端随时可热更的（请求 v=4.0 实际可能返回 4.1.x），
+    // 某些版本/场景下 zoomstart 触发后 zoomend 可能不触发（动画被打断、双指缩放
+    // 取消等）。一旦如此 isAnimating 永远为 true，CSS 会把所有点位 label 藏没
+    // —— 表现就是「点位列表还在，地图上点位全消失」。所以这里加两层兜底：
+    //   1. zoomstart 起强制 1.2s 后恢复，即使 zoomend 丢了；
+    //   2. moveend 也恢复一次（平移结束是「动画已停」的可靠信号）。
     const startZoomAnim = () => {
       if (animTimer) clearTimeout(animTimer)
-      animTimer = null
       isAnimating.value = true
+      // 兜底 1：无论 zoomend 是否到来，最迟 1.2s 后一定恢复显示
+      animTimer = setTimeout(() => {
+        isAnimating.value = false
+        animTimer = null
+      }, 1200)
     }
     const endZoomAnim = () => {
       if (animTimer) clearTimeout(animTimer)
@@ -701,10 +737,13 @@ async function initMap() {
     }
     map.addEventListener('zoomstart', startZoomAnim)
     map.addEventListener('zoomend', endZoomAnim)
+    // 兜底 2：平移结束也解除隐藏（拖动/惯性结束后 label 已重投影完毕）
+    map.addEventListener('moveend', endZoomAnim)
 
     drawRoutes()
     drawPoints()
     drawDraft()
+    forceRendererIdleUpdate()
 
     // 容器尺寸一变就补 checkResize，防止弹窗/抽屉引起的布局位移把地图搞灰
     if (typeof ResizeObserver !== 'undefined' && mapEl.value) {

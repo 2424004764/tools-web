@@ -2,6 +2,8 @@ import { ApiResponse } from '../utils/db.js'
 import { verifyCode } from './send-verification-code.js'
 import { hashPassword } from '../utils/password.js'
 import { getClientIp, hitLimit, fmtWaitSec } from '../utils/rate-limit.js'
+import { grantRegistrationRewards } from '../services/registrationRewardService.js'
+import { MAIN_JWT_TTL_SECONDS } from '../config/auth.js'
 
 // 单 IP 每小时最多 10 次注册尝试（防批量注册；验证码爆破由 verifyCode 尝试上限拦截）
 const IP_REGISTER_LIMIT = 10
@@ -11,7 +13,7 @@ const IP_REGISTER_WINDOW_SEC = 3600
 const generateJWT = async (payload, secret) => {
   const header = { alg: 'HS256', typ: 'JWT' }
   const now = Math.floor(Date.now() / 1000)
-  const jwtPayload = { ...payload, iat: now, exp: now + 30 * 86400 }
+  const jwtPayload = { ...payload, iat: now, exp: now + MAIN_JWT_TTL_SECONDS }
 
   const base64url = (obj) => {
     const str = JSON.stringify(obj)
@@ -82,6 +84,7 @@ export async function onRequest(context) {
     await env.DB.prepare(
       'INSERT INTO user (id, email, username, password, salt, avatar, created_at, last_login) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
     ).bind(userId, email, username, hashedPassword, salt, '', now, now).run()
+    await grantRegistrationRewards(env.DB, userId)
 
     // 生成JWT（ver 与库中 token_version 对齐，新用户为 0）
     const token = await generateJWT({ uid: userId, email, username, avatar: '', is_admin: 0, ver: 0 }, env.JWT_SECRET)

@@ -57,6 +57,19 @@ function collectInlineScripts(html) {
   return scripts
 }
 
+// 第三方 SDK 运行时注入的内联脚本 hash 白名单（构建扫描不到，只能手动维护）。
+//
+// 天地图 JS API（服务端已热更到 4.1.6，即使我们请求 v=4.0）在运行时会往页面
+// 注入内联 <script>（Label / 信息窗等 UI 组件的渲染逻辑依赖它）。2026-11-01
+// 线上事故：CSP 拦掉这些内联脚本 → 旅游地图点位 T.Label 全部画不出来，但
+// 瓦片（img）与路线（SVG polyline）正常，极具迷惑性。hash 取自浏览器控制台
+// 的 CSP 违规提示「a hash 'sha256-…' is required」。
+// ⚠️ 天地图再热更 SDK 后 hash 可能变化，症状复现时先看控制台 CSP 报错里的
+//    新 hash，更新这个列表即可。
+const EXTRA_SCRIPT_HASHES = [
+  'sha256-rm1DHQlS0mMMafcKkFvIw//BcEQlgY8gApUd4R0A04=', // tianditu api 4.1.6 注入的内联脚本
+]
+
 const headersPath = join(process.cwd(), 'dist', '_headers')
 if (!existsSync(headersPath)) {
   console.error('[gen-script-hashes] dist/_headers 不存在，请确认 vite build 已把 public/ 拷进 dist')
@@ -107,10 +120,12 @@ csp = csp
   .replace(/'(?:sha256-[A-Za-z0-9+/=]*|PLACEHOLDER-REPLACED-BY-BUILD)'/g, '')
   .replace(/\s{2,}/g, ' ')
 if (tokens.length) {
-  csp = csp.replace(/script-src\s+/i, `script-src ${tokens.join(' ')} `)
+  csp = csp.replace(/script-src\s+/i, `script-src ${[...tokens, ...EXTRA_SCRIPT_HASHES.map((h) => `'${h}'`)].join(' ')} `)
+} else if (EXTRA_SCRIPT_HASHES.length) {
+  csp = csp.replace(/script-src\s+/i, `script-src ${EXTRA_SCRIPT_HASHES.map((h) => `'${h}'`).join(' ')} `)
 } else {
   console.warn('[gen-script-hashes] ⚠️ 本次产物没有任何内联脚本（若非刻意移除请人工确认）')
 }
 lines[cspLineIndex] = csp
 writeFileSync(headersPath, lines.join('\n'))
-console.log(`[gen-script-hashes] 已回写 dist/_headers 的 script-src（${tokens.length} 个 hash）`)
+console.log(`[gen-script-hashes] 已回写 dist/_headers 的 script-src（${tokens.length} 个页面 hash + ${EXTRA_SCRIPT_HASHES.length} 个第三方 SDK hash）`)

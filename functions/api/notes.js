@@ -5,9 +5,23 @@ export async function onRequest(context) {
   const { request, env } = context
   const url = new URL(request.url)
   const path = url.pathname.replace('/api/notes', '')
+  const shareRoute = path.match(/^\/([^/]+)\/share$/)
+  if (shareRoute) {
+    const { request, env } = context
+    const origin = request.headers.get('Origin')
+    if (request.method === 'OPTIONS') return ApiResponse.cors(origin)
+    const dbInit = initDatabase(env, context.waitUntil)
+    if (!dbInit.success) return dbInit.response
+    try {
+      const router = new NotesRouter(dbInit.db, dbInit.env, dbInit.waitUntil)
+      return await router.handle(request, path, env, origin)
+    } catch (error) {
+      console.error('Notes share management API error:', error)
+      return ApiResponse.error('内部服务器错误', origin, 500)
+    }
+  }
   const origin = request.headers.get('Origin')
 
-  // 处理OPTIONS请求
   if (request.method === 'OPTIONS') {
     return ApiResponse.cors(origin)
   }

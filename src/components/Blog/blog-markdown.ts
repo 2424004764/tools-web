@@ -7,17 +7,38 @@
 import MarkdownIt from 'markdown-it'
 import DOMPurify from 'dompurify'
 
+export const isSafeMarkdownUrl = (raw: string) => {
+  const value = raw.trim()
+  if (!value || /[\\\\\u0000-\u001f\u007f]/.test(value)) return false
+  if (value.startsWith('#')) return true
+  if (value.startsWith('//')) return false
+
+  try {
+    const url = new URL(value, 'https://blog.invalid')
+    if (url.origin === 'https://blog.invalid') return true
+    return url.protocol === 'http:' || url.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
 const md = new MarkdownIt({
   html: false,
   linkify: true,
   typographer: true,
   breaks: true,
+  validateLink: isSafeMarkdownUrl,
 })
 
-// ADD_ATTR：markdown 渲染规则会写入的属性补进白名单（DOMPurify 默认放行
-// 绝大多数，这里显式声明防止未来版本默认值变化导致目录锚点/懒加载失效）
 const sanitize = (html: string) =>
-  DOMPurify.sanitize(html, { ADD_ATTR: ['id', 'target', 'rel', 'loading'] })
+  DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: [
+      'a', 'blockquote', 'br', 'code', 'del', 'em', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+      'hr', 'img', 'li', 'ol', 'p', 'pre', 's', 'strong', 'table', 'tbody', 'td', 'th',
+      'thead', 'tr', 'ul',
+    ],
+    ALLOWED_ATTR: ['alt', 'class', 'href', 'id', 'loading', 'rel', 'src', 'target', 'title'],
+  })
 
 // 外链统一新窗口打开 + nofollow（引流与安全双保险）
 const defaultLinkOpen =

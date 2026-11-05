@@ -16,6 +16,15 @@ export class NotesRouter {
     }
 
     const user = authResult.user
+    const shareMatch = path.match(/^\/([^/]+)\/share$/)
+    if (shareMatch) {
+      const noteId = decodeURIComponent(shareMatch[1])
+      if (request.method === 'GET') return await this.controller.shareStatus(noteId, user, origin)
+      if (request.method === 'POST') return await this.controller.enableShare(noteId, user, origin)
+      if (request.method === 'DELETE') return await this.controller.revokeShare(noteId, user, origin)
+      return ApiResponse.error('不支持的请求方法', origin, 405)
+    }
+
     const hasGroupsPrefix = path === '/groups' || path.startsWith('/groups/')
 
     // 分组资源：/api/notes/groups 与 /api/notes/groups/{id}

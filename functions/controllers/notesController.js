@@ -78,13 +78,52 @@ export class NotesController {
     return ApiResponse.success(result.data, origin)
   }
 
+  // ===== 笔记分享 =====
+
+  async shareStatus(id, user, origin) {
+    const validation = Validator.validateId(id)
+    if (!validation.isValid) return Validator.createValidationErrorResponse(validation.errors)
+    const result = await this.notesService.getNoteShare(id, user.id)
+    if (!result.success) return ApiResponse.error(result.error, origin, 500)
+    return ApiResponse.success(result.data, origin)
+  }
+
+  async enableShare(id, user, origin) {
+    const validation = Validator.validateId(id)
+    if (!validation.isValid) return Validator.createValidationErrorResponse(validation.errors)
+    const result = await this.notesService.enableNoteShare(id, user.id)
+    if (!result.success) return ApiResponse.error(result.error, origin, result.status || 500)
+    return ApiResponse.success(result.data, origin)
+  }
+
+  async revokeShare(id, user, origin) {
+    const validation = Validator.validateId(id)
+    if (!validation.isValid) return Validator.createValidationErrorResponse(validation.errors)
+    const result = await this.notesService.revokeNoteShare(id, user.id)
+    if (!result.success) return ApiResponse.error(result.error, origin, 500)
+    return ApiResponse.success(result.data, origin)
+  }
+
+  async getSharedNote(tokenHash, origin) {
+    const result = await this.notesService.getSharedNote(tokenHash)
+    if (!result.success) return ApiResponse.error(result.error, origin, 500)
+    if (!result.data) return ApiResponse.error('分享内容不存在或已失效', origin, 404)
+    return ApiResponse.success(result.data, origin)
+  }
+
   // ===== 笔记 =====
 
-  // 获取当前用户的所有笔记（支持分页 + 分组过滤）
+  // 获取当前用户的所有笔记（支持分页、分组过滤和跨分组搜索）
   async index(user, pager, request, origin) {
     const url = new URL(request.url)
+    const rawSearch = url.searchParams.get('q')
+    if (rawSearch !== null && rawSearch.length > 100) {
+      return ApiResponse.error('搜索关键词不能超过100个字符', origin, 400)
+    }
+    const search = (rawSearch || '').trim()
     const filters = {
-      groupId: url.searchParams.get('groupId') || 'all'
+      groupId: url.searchParams.get('groupId') || 'all',
+      search
     }
     const result = await this.notesService.getAllNotes(user.id, pager, filters)
 

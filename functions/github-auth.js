@@ -1,6 +1,8 @@
 // GitHub 登录认证
 import { handleCORSPreflight, createCORSResponse, createCORSErrorResponse, isOriginAllowed } from './utils/cors.js'
 import { buildStateCookie, clearStateCookie, readStateCookie } from './utils/oauth-state.js'
+import { grantRegistrationRewards } from './services/registrationRewardService.js'
+import { MAIN_JWT_TTL_SECONDS } from './config/auth.js'
 
 const base64url = (buf) =>
     btoa(String.fromCharCode(...new Uint8Array(buf)))
@@ -40,9 +42,6 @@ async function getAuthUrl(request, env, origin) {
 
         // 生成state参数防止CSRF攻击
         const state = crypto.randomUUID();
-
-        // PKCE（S256，GitHub 支持）：verifier 存入 state cookie，回调换 token 时携带，
-        // 授权码即使被拦截也无法单独使用
         const codeVerifier = base64url(crypto.getRandomValues(new Uint8Array(32)));
         const codeChallenge = base64url(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(codeVerifier)));
 
@@ -460,6 +459,7 @@ async function processUserLogin(userData, env) {
                 INSERT INTO user (id, email, avatar, created_at, last_login, third_party_uid, username, user_level, third_party_type)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             `).bind(userId, email, avatar, nowStr, nowStr, thirdPartyUid, username, 0, 'github').run();
+            await grantRegistrationRewards(db, userId);
         }
 
         // 管理员状态 / 封禁 / token 版本一次查齐（JWT 反映最新权限，封禁即时拦截）
@@ -487,7 +487,7 @@ async function processUserLogin(userData, env) {
             // ver 与库中 token_version 对齐：改密/重置/封禁后旧登录态立即失效
             ver: stateRow?.token_version || 0,
             iat: Math.floor(Date.now() / 1000),
-            exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60) // 7天过期
+            exp: Math.floor(Date.now() / 1000) + MAIN_JWT_TTL_SECONDS
         };
 
         const token = await signJWT(payload, jwtSecret);

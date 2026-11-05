@@ -6,8 +6,7 @@
 // 无额度行 → 全 0（不返回 404），前端按 0 处理
 
 import { extractUidFromRequest } from '../_lib/model-resolver.js'
-import { getStorageQuota } from '../../services/storageQuotaService.js'
-import { STORAGE_BYTES_PER_CREDIT } from '../../config/storage.js'
+import { getStorageQuota, getStorageBytesPerCredit } from '../../services/storageQuotaService.js'
 
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
@@ -49,7 +48,7 @@ export async function onRequest(context) {
       ...quota,
       price: {
         credits: 1,
-        bytes: STORAGE_BYTES_PER_CREDIT,
+        bytes: await getStorageBytesPerCredit(db),
       },
     })
   } catch (error) {

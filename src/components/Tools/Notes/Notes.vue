@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { reactive, ref, onMounted, computed, nextTick, watch } from 'vue'
+import { reactive, ref, onMounted, onBeforeUnmount, computed, nextTick, watch } from 'vue'
+import html2canvas from 'html2canvas'
 import functionsRequest from '@/utils/functionsRequest'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
@@ -12,20 +13,12 @@ import View from '~icons/ep/view'
 import Document from '~icons/ep/document'
 import CopyDocument from '~icons/ep/copy-document'
 import MoreFilled from '~icons/ep/more-filled'
-// Markdown 渲染（详情页 + 编辑器实时预览共用同一份实例）
-import MarkdownIt from 'markdown-it'
+import Search from '~icons/ep/search'
+// Markdown 渲染（详情页 + 编辑器实时预览共用同一份安全渲染器）
 import { sanitizeCustomHtml } from '@/utils/sanitizeHtml'
-import 'highlight.js/styles/github.css'
+import { renderSafeNoteMarkdown } from '@/utils/notesMarkdown'
 
-const md = new MarkdownIt({
-  html: true,
-  linkify: true,
-  typographer: true,
-  breaks: true,
-})
-
-// html:true 是为了工具栏的 <u> 等原生标签能用，渲染产物必须过 DOMPurify 再进 v-html
-const renderNoteHtml = (source: string) => sanitizeCustomHtml(md.render(source || ''))
+const renderNoteHtml = (source: string) => sanitizeCustomHtml(renderSafeNoteMarkdown(source))
 
 // 列表卡片用：把 Markdown 语法剥离成可读纯文本，避免在卡片里显示 #、* 等符号
 const stripMarkdown = (text: string): string => {
@@ -80,6 +73,9 @@ const info = reactive({
 
 const notes = ref<Note[]>([])
 const currentNote = ref<Note | null>(null)
+const searchQuery = ref('')
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+let notesRequestId = 0
 const isEditing = ref(false)
 const showForm = ref(false)
 const editingNoteId = ref<string | null>(null)
@@ -131,6 +127,10 @@ const formData = reactive({
 // loading 状态
 const loading = ref(false)
 const operationLoading = ref(false)
+const shareLoading = ref(false)
+const shareUrl = ref('')
+const shareActive = ref(false)
+const detailCaptureRef = ref<HTMLElement | null>(null)
 
 // ===== 计算属性 =====
 
@@ -148,6 +148,7 @@ const totalNotesCount = computed(() => {
 
 // 当前分组名称（用于头部副标题）
 const currentGroupTitle = computed(() => {
+  if (searchQuery.value.trim()) return '搜索结果'
   if (selectedGroup.value === 'all') return '全部笔记'
   if (selectedGroup.value === 'ungrouped') return '未分组'
   const g = getGroupById(selectedGroup.value)
@@ -276,16 +277,18 @@ async function deleteGroup(group: NoteGroup) {
 
 // 获取笔记列表（支持分页 + 分组过滤）
 async function fetchNotes(page = 1, pageSize = 12) {
+  const requestId = ++notesRequestId
   try {
     loading.value = true
     const response = await functionsRequest.get('/api/notes', {
       params: {
         page,
         pageSize,
-        groupId: selectedGroup.value,
+        groupId: searchQuery.value.trim() ? 'all' : selectedGroup.value,
+        q: searchQuery.value.trim() || undefined,
       }
     })
-    if (response.status === 200) {
+    if (response.status === 200 && requestId === notesRequestId) {
       const data = response.data
       notes.value = data.data || []
       if (data.pagination) {
@@ -293,11 +296,26 @@ async function fetchNotes(page = 1, pageSize = 12) {
       }
     }
   } catch (error) {
-    console.error('获取笔记列表失败:', error)
-    ElMessage.error('获取笔记列表失败')
+    if (requestId === notesRequestId) {
+      console.error('获取笔记列表失败:', error)
+      ElMessage.error('获取笔记列表失败')
+    }
   } finally {
-    loading.value = false
+    if (requestId === notesRequestId) loading.value = false
   }
+}
+
+const handleSearchInput = () => {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    pagination.value.page = 1
+    fetchNotes(1, pagination.value.pageSize)
+  }, 400)
+}
+
+function clearSearch() {
+  searchQuery.value = ''
+  handleSearchInput()
 }
 
 // 分组切换处理
@@ -436,11 +454,115 @@ function editNote(note: Note) {
 
 // 查看笔记
 function viewNote(note: Note) {
-  // 如果正在编辑，不执行查看逻辑
   if (isEditing.value) return
 
   currentNote.value = note
+  shareUrl.value = ''
+  shareActive.value = false
   showForm.value = false
+  void loadShareStatus(note.id)
+}
+
+async function loadShareStatus(noteId: string) {
+  try {
+    const response = await functionsRequest.get(`/api/notes/${encodeURIComponent(noteId)}/share`)
+    const status = response.data?.data ?? response.data
+    shareActive.value = Boolean(status?.isActive)
+    if (shareActive.value && typeof status?.token === 'string') {
+      shareUrl.value = `${window.location.origin}/notes/share/${status.token}`
+    }
+  } catch {
+    shareActive.value = false
+    shareUrl.value = ''
+  }
+}
+
+async function createShareLink() {
+  if (!currentNote.value) return
+  if (shareActive.value && !shareUrl.value) {
+    try {
+      await ElMessageBox.confirm('重新生成后，之前的分享链接将立即失效。确定继续吗？', '重新生成分享链接', {
+        confirmButtonText: '重新生成',
+        cancelButtonText: '取消',
+        type: 'warning',
+      })
+    } catch {
+      return
+    }
+  }
+  try {
+    shareLoading.value = true
+    const response = await functionsRequest.post(`/api/notes/${encodeURIComponent(currentNote.value.id)}/share`)
+    const result = response.data?.data ?? response.data
+    const token = result?.token
+    if (typeof token !== 'string') throw new Error('分享链接生成失败')
+    shareActive.value = true
+    shareUrl.value = `${window.location.origin}/notes/share/${token}`
+    await copyText(shareUrl.value, '分享链接已复制')
+  } catch (error) {
+    console.error('生成备忘录分享链接失败:', error)
+    ElMessage.error('分享链接生成失败')
+  } finally {
+    shareLoading.value = false
+  }
+}
+
+async function copyCurrentShareLink() {
+  if (!shareUrl.value) {
+    await createShareLink()
+    return
+  }
+  await copyText(shareUrl.value, '分享链接已复制')
+}
+
+async function revokeShareLink() {
+  if (!currentNote.value) return
+  try {
+    await ElMessageBox.confirm('关闭分享后，已有分享链接将立即失效。确定继续吗？', '关闭分享', {
+      confirmButtonText: '关闭分享',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+    shareLoading.value = true
+    await functionsRequest.delete(`/api/notes/${encodeURIComponent(currentNote.value.id)}/share`)
+    shareActive.value = false
+    shareUrl.value = ''
+    ElMessage.success('分享已关闭')
+  } catch (error: any) {
+    if (error !== 'cancel' && error !== 'close') {
+      console.error('关闭备忘录分享失败:', error)
+      ElMessage.error('关闭分享失败')
+    }
+  } finally {
+    shareLoading.value = false
+  }
+}
+
+async function exportNoteImage() {
+  const note = currentNote.value
+  const target = detailCaptureRef.value
+  if (!note || !target) return
+  try {
+    shareLoading.value = true
+    if (document.fonts?.ready) await document.fonts.ready
+    const canvas = await html2canvas(target, { backgroundColor: '#ffffff', scale: 2, useCORS: false, allowTaint: false, logging: false })
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((value) => value ? resolve(value) : reject(new Error('PNG 生成失败')), 'image/png')
+    })
+    const safeTitle = note.title.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').trim().slice(0, 80) || '备忘录'
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${safeTitle}.png`
+    link.click()
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+    ElMessage.success('图片已导出')
+  } catch (error) {
+    console.error('导出备忘录图片失败:', error)
+    ElMessage.error('图片导出失败')
+  } finally {
+    shareLoading.value = false
+  }
 }
 
 // 新建笔记
@@ -621,6 +743,10 @@ watch(showGroupDialog, (val) => {
   }
 })
 
+onBeforeUnmount(() => {
+  if (searchTimer) clearTimeout(searchTimer)
+})
+
 onMounted(async () => {
   await fetchGroups()
   await fetchNotes()
@@ -641,14 +767,27 @@ onMounted(async () => {
           <div>
             <h3 class="header-title">{{ currentGroupTitle }}</h3>
             <p class="header-subtitle">
-              共 {{ pagination.total }} 条笔记
-              <span v-if="selectedGroup !== 'all'" class="filter-tag">
+              <template v-if="searchQuery.trim()">搜索全部分组 · 找到 {{ pagination.total }} 条笔记</template>
+              <template v-else>共 {{ pagination.total }} 条笔记</template>
+              <span v-if="!searchQuery.trim() && selectedGroup !== 'all'" class="filter-tag">
                 · 已筛选自全部 {{ totalNotesCount }} 条
               </span>
             </p>
           </div>
         </div>
         <div class="header-actions">
+          <el-input
+            v-model="searchQuery"
+            class="notes-search"
+            clearable
+            maxlength="100"
+            placeholder="搜索所有分组的标题或内容"
+            aria-label="搜索所有分组的备忘录"
+            @input="handleSearchInput"
+            @clear="handleSearchInput"
+          >
+            <template #prefix><el-icon><Search /></el-icon></template>
+          </el-input>
           <!-- 移动端：分组下拉 -->
           <el-select
             v-if="groups.length > 0 || ungroupedCount > 0"
@@ -739,21 +878,23 @@ onMounted(async () => {
             <span class="group-color" :style="{ background: g.color }" />
             <span class="group-name" :title="g.name">{{ g.name }}</span>
             <span class="group-count">{{ g.count || 0 }}</span>
-            <el-dropdown trigger="click" @click.stop>
-              <el-icon class="group-more"><MoreFilled /></el-icon>
-              <template #dropdown>
-                <el-dropdown-item @click="openEditGroupDialog(g)">
-                  <el-icon><Edit /></el-icon> 编辑
-                </el-dropdown-item>
-                <el-dropdown-item
-                  v-if="g.name !== '默认'"
-                  @click="deleteGroup(g)"
-                  divided
-                >
-                  <el-icon><Delete /></el-icon> 删除
-                </el-dropdown-item>
-              </template>
-            </el-dropdown>
+            <span class="group-more-trigger" @click.stop>
+              <el-dropdown trigger="click">
+                <el-icon class="group-more"><MoreFilled /></el-icon>
+                <template #dropdown>
+                  <el-dropdown-item @click="openEditGroupDialog(g)">
+                    <el-icon><Edit /></el-icon> 编辑
+                  </el-dropdown-item>
+                  <el-dropdown-item
+                    v-if="g.name !== '默认'"
+                    @click="deleteGroup(g)"
+                    divided
+                  >
+                    <el-icon><Delete /></el-icon> 删除
+                  </el-dropdown-item>
+                </template>
+              </el-dropdown>
+            </span>
           </div>
 
           <div v-if="groups.length === 0 && !groupLoading" class="sidebar-empty">
@@ -767,12 +908,13 @@ onMounted(async () => {
             <div v-if="notes.length === 0 && !loading" class="empty-state">
               <el-icon class="empty-icon"><Document /></el-icon>
               <h3 class="empty-title">
-                {{ selectedGroup === 'all' ? '暂无笔记' : '该分组下暂无笔记' }}
+                {{ searchQuery.trim() ? '没有找到匹配的笔记' : (selectedGroup === 'all' ? '暂无笔记' : '该分组下暂无笔记') }}
               </h3>
               <p class="empty-desc">
-                {{ selectedGroup === 'all' ? '开始创建你的第一条笔记吧' : '切换到「全部」查看所有笔记，或在这里新建一条' }}
+                {{ searchQuery.trim() ? '试试其他关键词' : (selectedGroup === 'all' ? '开始创建你的第一条笔记吧' : '切换到「全部」查看所有笔记，或在这里新建一条') }}
               </p>
-              <el-button type="primary" @click="newNote" :icon="Plus">创建笔记</el-button>
+              <el-button v-if="searchQuery.trim()" @click="clearSearch">清空搜索</el-button>
+              <el-button v-else type="primary" @click="newNote" :icon="Plus">创建笔记</el-button>
             </div>
 
             <div
@@ -990,7 +1132,7 @@ onMounted(async () => {
         class="group-dialog"
         destroy-on-close
       >
-        <el-form :model="groupForm" label-position="top">
+        <el-form :model="groupForm" label-position="top" @submit.prevent="submitGroupForm">
           <el-form-item label="分组名称" required>
             <el-input
               v-model="groupForm.name"
@@ -1029,7 +1171,7 @@ onMounted(async () => {
               type="primary"
               :loading="operationLoading"
               :disabled="operationLoading"
-              @click="submitGroupForm"
+              native-type="submit"
             >
               {{ groupDialogMode === 'add' ? '创建' : '保存' }}
             </el-button>
@@ -1047,7 +1189,7 @@ onMounted(async () => {
         @close="currentNote = null"
         destroy-on-close
       >
-        <div v-if="currentNote" class="detail-container">
+          <div v-if="currentNote" class="detail-container">
           <div class="detail-header">
             <div class="detail-title-row">
               <h2 class="detail-title">{{ currentNote.title }}</h2>
@@ -1071,6 +1213,48 @@ onMounted(async () => {
                 >
                   复制全部
                 </el-button>
+                <el-button
+                  class="detail-copy-btn"
+                  size="default"
+                  :loading="shareLoading"
+                  @click="exportNoteImage"
+                >
+                  导出图片
+                </el-button>
+                <el-button
+                  class="detail-copy-btn"
+                  size="default"
+                  type="success"
+                  :loading="shareLoading"
+                  @click="copyCurrentShareLink"
+                >
+                  {{ shareActive && !shareUrl ? '重新生成分享链接' : '复制分享链接' }}
+                </el-button>
+                <el-button
+                  v-if="shareActive && shareUrl"
+                  class="detail-copy-btn"
+                  size="default"
+                  type="primary"
+                  plain
+                  :loading="shareLoading"
+                  @click="copyText(shareUrl, '分享链接已复制')"
+                >
+                  复制当前链接
+                </el-button>
+                <span v-else-if="shareActive && !shareUrl" class="share-status-hint">
+                  旧分享需重新生成
+                </span>
+                <el-button
+                  v-if="shareActive"
+                  class="detail-copy-btn"
+                  size="default"
+                  type="danger"
+                  plain
+                  :loading="shareLoading"
+                  @click="revokeShareLink"
+                >
+                  关闭分享
+                </el-button>
               </div>
             </div>
             <div class="detail-meta">
@@ -1089,7 +1273,7 @@ onMounted(async () => {
             </div>
           </div>
 
-          <div class="detail-content">
+          <div ref="detailCaptureRef" class="detail-content">
             <div class="content-wrapper">
               <div class="markdown-body" v-html="renderedDetailContent"></div>
             </div>
@@ -1211,6 +1395,12 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.notes-search {
+  width: min(320px, 100%);
 }
 
 /* 移动端分组下拉：默认隐藏在桌面端 */
@@ -1342,6 +1532,17 @@ onMounted(async () => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.group-more-trigger {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  cursor: default;
+}
+
+.group-more-trigger :deep(.el-dropdown) {
+  display: flex;
 }
 
 .group-count {

@@ -1,6 +1,7 @@
 import { ApiResponse } from '../utils/db.js'
 import { verifyCode } from './send-verification-code.js'
 import { getClientIp, hitLimit, fmtWaitSec } from '../utils/rate-limit.js'
+import { MAIN_JWT_TTL_SECONDS } from '../config/auth.js'
 
 // 单 IP 每 10 分钟最多 30 次验证码登录尝试（验证码本身的爆破由 verifyCode 的
 // 尝试次数上限拦截，这里再兜一层，防跨账号低频喷洒）
@@ -11,7 +12,7 @@ const IP_LOGIN_WINDOW_SEC = 600
 const generateJWT = async (payload, secret) => {
   const header = { alg: 'HS256', typ: 'JWT' }
   const now = Math.floor(Date.now() / 1000)
-  const jwtPayload = { ...payload, iat: now, exp: now + 30 * 86400 }
+  const jwtPayload = { ...payload, iat: now, exp: now + MAIN_JWT_TTL_SECONDS }
 
   const base64url = (obj) => {
     const str = JSON.stringify(obj)

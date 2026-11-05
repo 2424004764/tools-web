@@ -24,6 +24,7 @@ export interface BlogPost extends BlogPostItem {
   content: string
   related_tools: string
   updated_at: string | null
+  can_edit?: boolean
 }
 
 export interface BlogPagination {
@@ -80,4 +81,39 @@ export async function submitBlogPost(
 ): Promise<{ post: { id: string; slug: string; title: string; status: string }; message: string }> {
   const res = await functionsRequest.post('/api/blog/posts', payload)
   return { post: res.data.data, message: res.data.message || '投稿已提交，审核通过后将会展示' }
+}
+
+export interface MyBlogPost {
+  id: string
+  slug: string
+  title: string
+  summary: string
+  tags: string
+  status: 'draft' | 'pending' | 'published' | 'rejected'
+  reject_reason: string
+  views: number
+  published_at: string | null
+  created_at: string | null
+  updated_at: string | null
+}
+
+export async function fetchMyBlogPosts(): Promise<MyBlogPost[]> {
+  const res = await functionsRequest.get('/api/blog/my-posts')
+  return res.data.data.list
+}
+
+export async function fetchMyBlogPost(id: string): Promise<BlogSubmitPayload> {
+  const res = await functionsRequest.get(`/api/blog/my-posts/${encodeURIComponent(id)}`)
+  return res.data.data.post
+}
+
+export async function updateMyBlogPost(
+  id: string,
+  payload: BlogSubmitPayload,
+): Promise<{ id: string; status: string; message: string }> {
+  const res = await functionsRequest.put(`/api/blog/my-posts/${encodeURIComponent(id)}`, payload)
+  return {
+    ...res.data.data,
+    message: res.data.message || '修改已提交，审核通过后重新展示',
+  }
 }
