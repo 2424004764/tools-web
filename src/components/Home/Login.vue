@@ -158,6 +158,14 @@ const initializeGoogleSignIn = () => {
   }
 };
 
+// ---------- 登录失败统一提示 ----------
+// 透传后端真实错误文案（如"该账号已被禁用，如有疑问请联系站长"），避免笼统的
+// "登录失败，请重试"和接口返回不一致、用户摸不清具体原因；
+// persistent（禁用等无法靠重试解决的错误）时 Toast 常驻，必须手动关闭
+const showLoginError = (message: string, persistent = false) => {
+  ElMessage.error({ message, duration: persistent ? 0 : 3000, showClose: true })
+}
+
 const handleGoogleSignIn = async (response: any) => {
   if (response.credential) {
     loading.value = true;
@@ -181,8 +189,13 @@ const handleGoogleSignIn = async (response: any) => {
       } else {
         throw new Error(result.data.error || "认证失败");
       }
-    } catch (error) {
-      ElMessage.error("谷歌登录失败，请重试");
+    } catch (error: any) {
+      // HTTP 403 时取 error.response.data.error；HTTP 200 + success:false 时
+      // 上面 throw 的 Error.message 即后端真实错误，两者都不能吞掉
+      showLoginError(
+        error.response?.data?.error || error.message || "谷歌登录失败，请重试",
+        error.response?.status === 403,
+      );
       console.error("Google sign-in error:", error);
     } finally {
       loading.value = false;
@@ -255,7 +268,10 @@ const openOAuthLogin = async (name: OAuthProvider, loading: Ref<boolean>) => {
     stopPopupPoll(name);
     popup.close();
     loading.value = false;
-    ElMessage.error(error.response?.data?.error || error.message || `${oauthLabels[name]}登录失败，请重试`);
+    showLoginError(
+      error.response?.data?.error || error.message || `${oauthLabels[name]}登录失败，请重试`,
+      error.response?.status === 403,
+    );
   }
 };
 
@@ -290,7 +306,9 @@ const handleLoginMessage = (event: MessageEvent) => {
     window.location.href = redirectUrl.value;
   } else {
     pendingProvider = "";
-    ElMessage.error(data.message || "登录失败，请重试");
+    const msg = data.message || "登录失败，请重试";
+    // 回调页 postMessage 不带 HTTP 状态码，"禁用"类错误按文案识别并常驻显示
+    showLoginError(msg, msg.includes("禁用"));
   }
 };
 
@@ -350,7 +368,7 @@ const handleEmailRegister = async () => {
       window.location.href = redirectUrl.value
     }
   } catch (error: any) {
-    ElMessage.error(error.response?.data?.error || '注册失败')
+    showLoginError(error.response?.data?.error || '注册失败', error.response?.status === 403)
   } finally {
     loading.value = false
   }
@@ -378,7 +396,7 @@ const handleEmailCodeLogin = async () => {
       window.location.href = redirectUrl.value
     }
   } catch (error: any) {
-    ElMessage.error(error.response?.data?.error || '登录失败')
+    showLoginError(error.response?.data?.error || '登录失败', error.response?.status === 403)
   } finally {
     loading.value = false
   }
@@ -406,7 +424,7 @@ const handleEmailPasswordLogin = async () => {
       window.location.href = redirectUrl.value
     }
   } catch (error: any) {
-    ElMessage.error(error.response?.data?.error || '登录失败')
+    showLoginError(error.response?.data?.error || '登录失败', error.response?.status === 403)
   } finally {
     loading.value = false
   }

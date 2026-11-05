@@ -91,6 +91,8 @@
     "/api/oauth/*",
     "/api/comments",
     "/api/site-config",
+    "/api/ip",
+    "/api/ip/*",
     "/api/friend-links",
     "/api/feedback",
     "/api/feedback/*",

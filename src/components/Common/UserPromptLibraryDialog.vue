@@ -68,6 +68,18 @@ const groupFormMode = ref<'create' | 'edit'>('create')
 const groupFormNameInput = ref('')
 const groupFormColorInput = ref<string>('')
 const groupFormSaving = ref(false)
+// 标签颜色候选（与列表侧 bg-{color}-500 展示保持一致，取 Tailwind 500 色值）
+const colorOptions = [
+  { value: 'red', label: '红', hex: '#ef4444' },
+  { value: 'orange', label: '橙', hex: '#f97316' },
+  { value: 'amber', label: '琥珀', hex: '#f59e0b' },
+  { value: 'green', label: '绿', hex: '#22c55e' },
+  { value: 'teal', label: '青', hex: '#14b8a6' },
+  { value: 'blue', label: '蓝', hex: '#3b82f6' },
+  { value: 'indigo', label: '靛', hex: '#6366f1' },
+  { value: 'violet', label: '紫', hex: '#8b5cf6' },
+  { value: 'pink', label: '粉', hex: '#ec4899' },
+]
 const editingGroupId = ref<string | null>(null)
 
 // 大控件：外层弹窗可见
@@ -673,18 +685,33 @@ const activeGroup = computed<UserToolPromptGroup | null>(() => {
           />
         </el-form-item>
         <el-form-item label="标签颜色">
-          <el-radio-group v-model="groupFormColorInput">
-            <el-radio-button value="">无</el-radio-button>
-            <el-radio-button value="red">红</el-radio-button>
-            <el-radio-button value="orange">橙</el-radio-button>
-            <el-radio-button value="amber">琥珀</el-radio-button>
-            <el-radio-button value="green">绿</el-radio-button>
-            <el-radio-button value="teal">青</el-radio-button>
-            <el-radio-button value="blue">蓝</el-radio-button>
-            <el-radio-button value="indigo">靛</el-radio-button>
-            <el-radio-button value="violet">紫</el-radio-button>
-            <el-radio-button value="pink">粉</el-radio-button>
-          </el-radio-group>
+          <div class="group-color-options" role="radiogroup" aria-label="标签颜色">
+            <button
+              type="button"
+              role="radio"
+              :aria-checked="groupFormColorInput === ''"
+              class="group-color-swatch group-color-none"
+              :class="{ active: groupFormColorInput === '' }"
+              title="无"
+              @click="groupFormColorInput = ''"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <line x1="5" y1="19" x2="19" y2="5" />
+              </svg>
+            </button>
+            <button
+              v-for="c in colorOptions"
+              :key="c.value"
+              type="button"
+              role="radio"
+              :aria-checked="groupFormColorInput === c.value"
+              class="group-color-swatch"
+              :class="{ active: groupFormColorInput === c.value }"
+              :title="c.label"
+              :style="{ backgroundColor: c.hex }"
+              @click="groupFormColorInput = c.value"
+            />
+          </div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -766,5 +793,41 @@ const activeGroup = computed<UserToolPromptGroup | null>(() => {
   gap: 8px;
   padding-top: 4px;
   border-top: 1px solid #f3f4f6;
+}
+/* 标签颜色色块选择 */
+.group-color-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.group-color-swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.group-color-swatch:hover {
+  transform: scale(1.1);
+}
+.group-color-swatch.active {
+  box-shadow:
+    0 0 0 2px #ffffff,
+    0 0 0 4px var(--el-color-primary);
+}
+.group-color-none {
+  background-color: #ffffff;
+  border: 1px solid #d4d4d8;
+  color: #a1a1aa;
+}
+.group-color-none svg {
+  width: 14px;
+  height: 14px;
 }
 </style>

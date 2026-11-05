@@ -87,6 +87,8 @@ const loadPDF = async (file: File) => {
     totalPages.value = pdfDocument.numPages
     currentPage.value = 1
     pdfLoaded.value = true
+    // 上传成功即进入编辑模式，省去手动开开关
+    editMode.value = true
 
     // 等待 DOM 更新
     await nextTick()
@@ -314,79 +316,71 @@ const exportPDF = async () => {
       </div>
 
       <div class="main-content">
-        <!-- 编辑面板 - 移到上面 -->
-        <div v-if="editMode && pdfLoaded" class="edit-panel-top">
-          <el-row :gutter="20">
-            <el-col :span="8">
-              <el-card header="页眉设置">
-                <el-form label-width="80px" size="small">
-                  <el-form-item label="文本内容">
-                    <el-input v-model="headerSettings.text" placeholder="输入页眉文本，使用 {page} 表示页码" />
-                  </el-form-item>
-                  <el-form-item label="字体">
-                    <el-select v-model="headerSettings.font">
-                      <el-option label="无衬线" value="sans-serif" />
-                      <el-option label="衬线" value="serif" />
-                      <el-option label="等宽" value="monospace" />
-                    </el-select>
-                  </el-form-item>
-                  <el-form-item label="字号">
-                    <el-input-number v-model="headerSettings.size" :min="8" :max="32" />
-                  </el-form-item>
-                  <el-form-item label="对齐">
-                    <el-select v-model="headerSettings.align">
-                      <el-option label="左对齐" value="left" />
-                      <el-option label="居中" value="center" />
-                      <el-option label="右对齐" value="right" />
-                    </el-select>
-                  </el-form-item>
-                </el-form>
-              </el-card>
-            </el-col>
+        <!-- 编辑面板：左侧栏纵向排列，PDF 预览在右侧（窄屏回退上下堆叠） -->
+        <div v-if="editMode && pdfLoaded" class="edit-panel-side">
+          <el-card header="页眉设置">
+            <el-form label-width="80px" size="small">
+              <el-form-item label="文本内容">
+                <el-input v-model="headerSettings.text" placeholder="输入页眉文本，使用 {page} 表示页码" />
+              </el-form-item>
+              <el-form-item label="字体">
+                <el-select v-model="headerSettings.font">
+                  <el-option label="无衬线" value="sans-serif" />
+                  <el-option label="衬线" value="serif" />
+                  <el-option label="等宽" value="monospace" />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="字号">
+                <el-input-number v-model="headerSettings.size" :min="8" :max="32" />
+              </el-form-item>
+              <el-form-item label="对齐">
+                <el-select v-model="headerSettings.align">
+                  <el-option label="左对齐" value="left" />
+                  <el-option label="居中" value="center" />
+                  <el-option label="右对齐" value="right" />
+                </el-select>
+              </el-form-item>
+            </el-form>
+          </el-card>
 
-            <el-col :span="8">
-              <el-card header="页脚设置">
-                <el-form label-width="80px" size="small">
-                  <el-form-item label="文本内容">
-                    <el-input v-model="footerSettings.text" placeholder="输入页脚文本，使用 {page} 表示页码" />
-                  </el-form-item>
-                  <el-form-item label="字体">
-                    <el-select v-model="footerSettings.font">
-                      <el-option label="无衬线" value="sans-serif" />
-                      <el-option label="衬线" value="serif" />
-                      <el-option label="等宽" value="monospace" />
-                    </el-select>
-                  </el-form-item>
-                  <el-form-item label="字号">
-                    <el-input-number v-model="footerSettings.size" :min="8" :max="32" />
-                  </el-form-item>
-                  <el-form-item label="对齐">
-                    <el-select v-model="footerSettings.align">
-                      <el-option label="左对齐" value="left" />
-                      <el-option label="居中" value="center" />
-                      <el-option label="右对齐" value="right" />
-                    </el-select>
-                  </el-form-item>
-                </el-form>
-              </el-card>
-            </el-col>
+          <el-card header="页脚设置">
+            <el-form label-width="80px" size="small">
+              <el-form-item label="文本内容">
+                <el-input v-model="footerSettings.text" placeholder="输入页脚文本，使用 {page} 表示页码" />
+              </el-form-item>
+              <el-form-item label="字体">
+                <el-select v-model="footerSettings.font">
+                  <el-option label="无衬线" value="sans-serif" />
+                  <el-option label="衬线" value="serif" />
+                  <el-option label="等宽" value="monospace" />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="字号">
+                <el-input-number v-model="footerSettings.size" :min="8" :max="32" />
+              </el-form-item>
+              <el-form-item label="对齐">
+                <el-select v-model="footerSettings.align">
+                  <el-option label="左对齐" value="left" />
+                  <el-option label="居中" value="center" />
+                  <el-option label="右对齐" value="right" />
+                </el-select>
+              </el-form-item>
+            </el-form>
+          </el-card>
 
-            <el-col :span="8">
-              <el-card header="应用设置">
-                <el-form label-width="80px" size="small">
-                  <el-form-item label="应用范围">
-                    <el-select v-model="applyRange">
-                      <el-option label="当前页" value="current" />
-                      <el-option label="所有页" value="all" />
-                    </el-select>
-                  </el-form-item>
-                  <el-form-item>
-                    <el-button type="primary" @click="applySettings" style="width: 100%">应用设置</el-button>
-                  </el-form-item>
-                </el-form>
-              </el-card>
-            </el-col>
-          </el-row>
+          <el-card header="应用设置">
+            <el-form label-width="80px" size="small">
+              <el-form-item label="应用范围">
+                <el-select v-model="applyRange">
+                  <el-option label="当前页" value="current" />
+                  <el-option label="所有页" value="all" />
+                </el-select>
+              </el-form-item>
+              <el-form-item>
+                <el-button type="primary" @click="applySettings" style="width: 100%">应用设置</el-button>
+              </el-form-item>
+            </el-form>
+          </el-card>
         </div>
 
         <div class="canvas-area">
@@ -484,16 +478,23 @@ const exportPDF = async () => {
 
 .main-content {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: flex-start;
   gap: 20px;
 }
 
-.edit-panel-top {
-  width: 100%;
+.edit-panel-side {
+  width: 320px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .canvas-area {
   flex: 1;
+  /* min-width:0 让 flex 子项内的宽 canvas 可收缩，不把左栏挤走 */
+  min-width: 0;
   background: #f5f5f5;
   border-radius: 8px;
   padding: 20px;
@@ -501,6 +502,16 @@ const exportPDF = async () => {
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+
+/* 窄屏回退：设置面板回到预览区上方纵向堆叠 */
+@media (max-width: 900px) {
+  .main-content {
+    flex-direction: column;
+  }
+  .edit-panel-side {
+    width: 100%;
+  }
 }
 
 .upload-prompt {
@@ -521,6 +532,9 @@ const exportPDF = async () => {
   background: white;
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
   border-radius: 4px;
+  /* 右栏变窄后 PDF 渲染宽度可能超出容器：按容器宽缩放显示，避免盖住左侧设置面板 */
+  max-width: 100%;
+  height: auto;
 }
 
 .page-nav {

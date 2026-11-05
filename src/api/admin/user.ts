@@ -22,6 +22,10 @@ export interface AdminUserListParams {
   pageSize?: number
   keyword?: string
   disabled?: '0' | '1' | ''
+  /** 按今日使用工具次数排序（后端 SQL 聚合排序） */
+  sort?: 'today_usage'
+  /** 配合 sort=today_usage 使用，默认 desc */
+  order?: 'asc' | 'desc'
 }
 
 export async function fetchAdminUsers(

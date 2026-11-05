@@ -1,5 +1,7 @@
 // Admin 用户管理 API
-// GET  /api/admin/users?page=&pageSize=&keyword=&disabled=  用户分页列表
+// GET  /api/admin/users?page=&pageSize=&keyword=&disabled=&sort=&order=
+//      sort=today_usage 时按今日使用工具次数排序（order=asc|desc，默认 desc），
+//      默认按注册时间倒序
 // POST /api/admin/users    { email, username, password? }  手动创建普通用户
 //
 // 鉴权：上游 functions/api/admin/_middleware.js 已校验 Bearer JWT + is_admin=1
@@ -67,7 +69,10 @@ async function onRequestGet(context) {
   const pageSize = Math.min(100, Math.max(1, parseInt(url.searchParams.get('pageSize')) || 20))
   const keyword = (url.searchParams.get('keyword') || '').trim()
   const disabled = url.searchParams.get('disabled') // '0' | '1' | null
+  const sort = url.searchParams.get('sort') // 'today_usage' | null
+  const sortOrder = url.searchParams.get('order') === 'asc' ? 'ASC' : 'DESC'
   const offset = (page - 1) * pageSize
+  const todayStart = startOfTodayUTC8()
 
   try {
     // 构造 WHERE 子句
@@ -93,6 +98,19 @@ async function onRequestGet(context) {
 
     // 列表（LEFT JOIN 积分表，缺失积分记录的用户余额=0）
     // has_password：是否有密码（邮箱+密码注册为 1；Google 等第三方登录用户为 0，前端据此隐藏改密入口）
+    // 按今日使用次数排序时 JOIN 今日聚合子查询（分页场景排序必须在 SQL 内完成）
+    const sortByTodayUsage = sort === 'today_usage'
+    const todayJoinSql = sortByTodayUsage
+      ? `LEFT JOIN (
+           SELECT uid, COUNT(*) AS use_count
+           FROM tool_usage_records
+           WHERE used_at >= ?
+           GROUP BY uid
+         ) tu ON tu.uid = u.id`
+      : ''
+    const orderSql = sortByTodayUsage
+      ? `COALESCE(tu.use_count, 0) ${sortOrder}, u.created_at DESC, u.id DESC`
+      : 'u.created_at DESC, u.id DESC'
     const list = await db
       .prepare(
         `SELECT u.id, u.email, u.username, u.avatar, u.is_admin, u.is_disabled,
@@ -106,11 +124,12 @@ async function onRequestGet(context) {
          FROM user u
          LEFT JOIN user_credits c ON c.uid = u.id
          LEFT JOIN user_storage_quota sq ON sq.uid = u.id
+         ${todayJoinSql}
          ${whereSql}
-         ORDER BY u.created_at DESC, u.id DESC
+         ORDER BY ${orderSql}
          LIMIT ? OFFSET ?`,
       )
-      .bind(...params, pageSize, offset)
+      .bind(...(sortByTodayUsage ? [todayStart] : []), ...params, pageSize, offset)
       .all()
 
     const totalPages = Math.ceil(total / pageSize)
@@ -122,7 +141,6 @@ async function onRequestGet(context) {
     if (rows.length > 0) {
       const uids = rows.map((r) => r.id)
       const placeholders = uids.map(() => '?').join(',')
-      const todayStart = startOfTodayUTC8()
       const usageResult = await db
         .prepare(
           `SELECT uid,

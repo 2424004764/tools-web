@@ -313,6 +313,17 @@ async function maybeRewritePageMeta(request, path, response, env) {
         const ldJson = JSON.stringify(ld).replace(/</g, '\\u003c')
         out = out.replace(/<\/head>/i, `  <script type="application/ld+json">${ldJson}</script>\n  </head>`)
       }
+    } else if (normPath !== '/') {
+      // 无专属 meta 且非首页：登录页 / 个人中心 / admin 后台 / 404 及
+      // 未收录进 _page-meta.js 的路径。这些页面会 fallback 成首页的
+      // title/keywords/description，被搜索引擎当作"一批首页重复页"收录；
+      // 统一注入 noindex 让其退出索引（首页、工具页、博客详情不受影响）。
+      const robotsTag = '<meta name="robots" content="noindex">'
+      if (/<meta\s+name=["']robots["']/i.test(out)) {
+        out = out.replace(/<meta\s+name=["']robots["'][^>]*>/i, robotsTag)
+      } else {
+        out = out.replace(/<\/head>/i, `  ${robotsTag}\n  </head>`)
+      }
     }
 
     const headers = new Headers(response.headers)
@@ -374,8 +385,10 @@ export async function onRequest(context) {
 
   // ---- IP 封禁拦截（ip_bans 表，后台「工具使用记录」页管理）----
   // 管理端点豁免：若管理员 IP 被误封（如与滥用者同一出口 IP），仍能进后台解封；
-  // /api/admin/* 本身有 JWT + is_admin 鉴权，豁免不构成暴露面
-  if (!path.startsWith('/api/admin')) {
+  // /api/admin/* 本身有 JWT + is_admin 鉴权，豁免不构成暴露面。
+  // /admin 页面壳同样豁免：SPA 的 HTML 都进不来则后台永远打不开，解封后门名存实亡
+  // （壳本身无敏感数据，真正的数据接口全部在 /api/admin/* 的鉴权后面）
+  if (!path.startsWith('/api/admin') && !path.startsWith('/admin')) {
     const clientIp = request.headers.get('CF-Connecting-IP')
     if (clientIp && (await isIpBanned(env?.DB, clientIp))) {
       if ((request.headers.get('Accept') || '').includes('text/html')) {

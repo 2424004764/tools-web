@@ -230,13 +230,25 @@ async function main() {
     bail(`Chrome 启动失败（${e.message}）。可检查 puppeteer 浏览器缓存，或 PRERENDER=0 显式跳过。`)
   }
 
+  // 埋点请求计数：预渲染是给爬虫"拍照"，不是真实使用。埋点走 functionsRequest
+  // 的绝对地址（VITE_SITE_URL）会打到生产 API——不拦截的话每次部署都会给线上
+  // 灌进上百条"匿名 + 构建机出口 IP"的假工具使用 / PV 记录，后台看起来像爬虫扫站
+  let blockedTracking = 0
+
   // 每个标签页都挂请求拦截：渲染博客详情时，用预取的线上数据应答
   // /api/blog/posts/<slug>（vite preview 没挂 functions，不拦截拿不到正文）
   async function newRenderPage() {
     const page = await browser.newPage()
     await page.setRequestInterception(true)
     page.on('request', (req) => {
-      const m = req.url().match(/\/api\/blog\/posts\/([^/?#]+)/)
+      const url = req.url()
+      // 掐断埋点：工具使用上报 + 站点 PV（详见上方 blockedTracking 注释）
+      if (url.includes('/api/me/tool-usage') || url.includes('/api/me/site-visit')) {
+        blockedTracking++
+        req.abort().catch(() => {})
+        return
+      }
+      const m = url.match(/\/api\/blog\/posts\/([^/?#]+)/)
       const slug = m ? decodeURIComponent(m[1]) : null
       if (slug && blogApiMocks.has(slug)) {
         req
@@ -292,6 +304,7 @@ async function main() {
 
   const secs = ((Date.now() - started) / 1000).toFixed(1)
   console.log(`[prerender] 完成：${okRoutes.length}/${routes.length} 页，耗时 ${secs}s，并发 ${CONCURRENCY}`)
+  console.log(`[prerender] 已拦截 ${blockedTracking} 条埋点请求（工具使用/PV 未污染线上统计）`)
   if (failedRoutes.length) {
     console.error(`[prerender] ⚠️ ${failedRoutes.length} 页渲染失败（已退回 SPA 壳 + 中间件 meta 兜底）: ${failedRoutes.join(', ')}`)
   }

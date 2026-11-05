@@ -61,6 +61,9 @@ const pagination = ref<AdminPagination>({
 const filter = reactive({
   keyword: '',
   disabled: '' as '' | '0' | '1',
+  // 今日使用工具排序：'' 走默认注册时间倒序；'today_usage' 走后端聚合排序
+  sort: '' as '' | 'today_usage',
+  order: 'desc' as 'desc' | 'asc',
 })
 
 // 库里的时间格式不统一：既有 "2026-10-23 05:13:00"（UTC），也有完整
@@ -103,6 +106,8 @@ const load = async () => {
       pageSize: pagination.value.pageSize,
       keyword: filter.keyword || undefined,
       disabled: filter.disabled || undefined,
+      sort: filter.sort || undefined,
+      order: filter.sort ? filter.order : undefined,
     })
     if (seq !== loadSeq) return
     list.value = result.list
@@ -121,6 +126,25 @@ const handleSearch = () => {
 
 const handlePageChange = (p: number) => {
   pagination.value.page = p
+  load()
+}
+
+// 「今日使用工具」表头排序：排序键下发后端（分页下必须 SQL 排序，前端排当前页无意义）
+const handleSortChange = ({
+  prop,
+  order,
+}: {
+  prop: string
+  order: 'ascending' | 'descending' | null
+}) => {
+  if (prop === 'today_usage_count' && order) {
+    filter.sort = 'today_usage'
+    filter.order = order === 'ascending' ? 'asc' : 'desc'
+  } else {
+    filter.sort = ''
+    filter.order = 'desc'
+  }
+  pagination.value.page = 1
   load()
 }
 
@@ -948,6 +972,7 @@ const updateIsMobile = () => {
         size="small"
         class="user-list-table"
         @selection-change="handleSelectionChange"
+        @sort-change="handleSortChange"
       >
         <el-table-column
           type="selection"
@@ -1027,7 +1052,13 @@ const updateIsMobile = () => {
             <el-tag v-else type="success" effect="plain" size="small">正常</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="今日使用工具" width="128" align="center">
+        <el-table-column
+          label="今日使用工具"
+          prop="today_usage_count"
+          sortable="custom"
+          width="142"
+          align="center"
+        >
           <template #default="{ row }">
             <template v-if="(row.today_usage_count ?? 0) > 0">
               <el-popover
