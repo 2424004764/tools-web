@@ -600,6 +600,18 @@ onBeforeUnmount(() => {
       </template>
     </el-dialog>
 
+    <!-- 顶部分页：与底部同一份 pagination 状态，列表太长时不用滚到底也能翻页 -->
+    <div v-if="pagination.totalPages > 1" class="mb-4 flex justify-center">
+      <el-pagination
+        v-model:current-page="pagination.page"
+        :page-size="pagination.pageSize"
+        :page-count="pagination.totalPages"
+        :total="pagination.total"
+        layout="prev, pager, next, total"
+        @current-change="handlePageChange"
+      />
+    </div>
+
     <!-- 待办列表 -->
     <div v-loading="loading" class="flex-1">
       <div v-if="todos.length === 0" class="text-center py-12 text-gray-500">

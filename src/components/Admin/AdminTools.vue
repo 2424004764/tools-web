@@ -596,6 +596,21 @@ const { isMobile } = useIsMobile()
           >
             <div class="flex items-center gap-1">
               <div class="text-sm text-ink-700 truncate flex-1">{{ cat.category_name }}</div>
+              <el-button
+                size="small"
+                type="primary"
+                link
+                class="!px-0.5"
+                @click.stop="openCategoryDialog(cat)"
+              >
+                编辑
+              </el-button>
+              <el-switch
+                size="small"
+                :model-value="cat.is_enabled !== 0"
+                @click.stop
+                @change="(v: number | string | boolean) => handleCategoryEnabled(cat, v)"
+              />
               <span
                 class="category-drag-handle shrink-0 cursor-grab text-ink-300 hover:text-ink-500 active:cursor-grabbing"
                 title="拖拽调整分类顺序"
@@ -611,22 +626,6 @@ const { isMobile } = useIsMobile()
             <div class="mt-1 text-lg font-semibold text-ink-900">
               {{ cat.enabled }}
               <span class="text-xs text-ink-400">/ {{ cat.total }}</span>
-            </div>
-            <div class="mt-2 flex items-center gap-1">
-              <el-button
-                size="small"
-                type="primary"
-                link
-                @click.stop="openCategoryDialog(cat)"
-              >
-                编辑
-              </el-button>
-              <el-switch
-                size="small"
-                :model-value="cat.is_enabled !== 0"
-                @click.stop
-                @change="(v: number | string | boolean) => handleCategoryEnabled(cat, v)"
-              />
             </div>
           </el-card>
         </div>

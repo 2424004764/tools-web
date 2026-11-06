@@ -28,10 +28,16 @@ const SOURCES = [
   { key: 'v2ex', label: 'V2EX', icon: '💬' },
 ]
 
-// 移动端默认 active tab；桌面端不使用此字段（所有列同时展示）
-const active = ref<string>('toutiao')
+// 桌面端分组切换：一次展示一组 3 个源（一行三列），把新闻区从两行压到一行
+const GROUPS = [
+  { key: 'hot', label: '全网热榜', icon: '📊', sources: ['toutiao', 'baidu', 'sspai'] },
+  { key: 'tech', label: '技术社区', icon: '💻', sources: ['github', 'hn', 'v2ex'] },
+]
 
-// 每个源独立缓存，避免重渲染闪烁
+const activeGroup = ref<string>('hot') // 桌面端当前分组
+const active = ref<string>('toutiao') // 移动端当前源（单列模式）
+
+// 每个源独立缓存，避免来回切换闪烁
 const cache = ref<Record<string, SourceState>>(
   Object.fromEntries(
     SOURCES.map((s) => [
@@ -41,10 +47,19 @@ const cache = ref<Record<string, SourceState>>(
   ),
 )
 
-// 顶部"更新于"显示最近一次任意源的时间戳
-const lastUpdate = computed(() => {
-  const times = Object.values(cache.value)
-    .map((s) => s.updateTime)
+// 当前分组对应的 3 个源
+const activeGroupSources = computed(() =>
+  GROUPS.find((g) => g.key === activeGroup.value)!.sources.map(
+    (k) => SOURCES.find((s) => s.key === k)!,
+  ),
+)
+
+const activeState = computed(() => cache.value[active.value])
+
+// "更新于"取当前分组内最新时间
+const groupTime = computed(() => {
+  const times = activeGroupSources.value
+    .map((s) => cache.value[s.key].updateTime)
     .filter(Boolean)
     .sort()
     .reverse()
@@ -71,14 +86,21 @@ async function load(type: string, force = false) {
   }
 }
 
-// 一次性并发拉所有源（响应式布局需要同时展示）
-async function loadAll() {
-  await Promise.all(SOURCES.map((s) => load(s.key)))
+// 加载一组（3 个源）；已缓存的自动跳过
+async function loadGroup() {
+  await Promise.all(activeGroupSources.value.map((s) => load(s.key)))
+}
+
+function switchGroup(key: string) {
+  if (activeGroup.value === key) return
+  activeGroup.value = key
+  loadGroup()
 }
 
 function switchTab(type: string) {
+  if (active.value === type) return
   active.value = type
-  load(type) // 移动端切 tab 时按需补齐
+  load(type) // 首次切换按需加载，之后走缓存
 }
 
 function openItem(item: HotItem) {
@@ -95,13 +117,14 @@ function formatTime(iso: string) {
 }
 
 onMounted(() => {
-  loadAll()
+  // 首屏只拉当前分组；另一组切换时按需加载（此前首屏并发拉全部 6 个源）
+  loadGroup()
 })
 </script>
 
 <template>
   <section class="hotlist-card mt-8" aria-label="全球与全国热门信息">
-    <!-- 标题行 -->
+    <!-- 标题行：桌面端右侧为分组切换 + 更新时间 -->
     <header class="hotlist-header">
       <div class="flex items-center gap-2.5">
         <span
@@ -113,11 +136,28 @@ onMounted(() => {
         <h2 class="text-h3 font-bold m-0 text-ink-900">热门资讯</h2>
         <span class="hotlist-sub">全球 · 全国 · 技术圈</span>
       </div>
-      <span v-if="lastUpdate" class="hotlist-update">更新于 {{ lastUpdate }}</span>
+      <div class="hotlist-header-right">
+        <!-- 分组切换：仅 ≥768px，一次换 3 个源 -->
+        <nav class="hotlist-tabs hotlist-tabs-group" role="tablist" aria-label="新闻源分组">
+          <button
+            v-for="g in GROUPS"
+            :key="g.key"
+            type="button"
+            role="tab"
+            :aria-selected="activeGroup === g.key"
+            :class="['hotlist-tab', { 'is-active': activeGroup === g.key }]"
+            @click="switchGroup(g.key)"
+          >
+            <span class="hotlist-tab-icon" aria-hidden="true">{{ g.icon }}</span>
+            <span>{{ g.label }}</span>
+          </button>
+        </nav>
+        <span v-if="groupTime" class="hotlist-update">更新于 {{ groupTime }}</span>
+      </div>
     </header>
 
-    <!-- Tab 栏：仅 < 768px 显示 -->
-    <nav class="hotlist-tabs" role="tablist">
+    <!-- 源切换：仅 <768px 单列模式 -->
+    <nav class="hotlist-tabs hotlist-tabs-source" role="tablist" aria-label="新闻源">
       <button
         v-for="src in SOURCES"
         :key="src.key"
@@ -132,15 +172,9 @@ onMounted(() => {
       </button>
     </nav>
 
-    <!-- 多列网格：< 768px 单列只显示 active；≥ 768px 2 列；≥ 1280px 3 列源 + 右侧装饰面板 -->
-    <div class="hotlist-grid" role="list">
-      <article
-        v-for="src in SOURCES.slice(0, 3)"
-        :key="src.key"
-        class="hotlist-col"
-        :class="{ 'is-active': active === src.key }"
-        role="listitem"
-      >
+    <!-- 桌面端：当前分组一行三列，每列 6 条 -->
+    <div class="hotlist-grid">
+      <article v-for="src in activeGroupSources" :key="src.key" class="hotlist-col">
         <header class="hotlist-col-header">
           <span class="hotlist-col-icon" aria-hidden="true">{{ src.icon }}</span>
           <h3 class="hotlist-col-title">{{ src.label }}</h3>
@@ -151,17 +185,17 @@ onMounted(() => {
 
         <!-- 加载中 -->
         <ul v-if="cache[src.key].loading && cache[src.key].items.length === 0" class="hotlist-col-list">
-          <li v-for="i in 6" :key="i" class="hotlist-col-skel">
+          <li v-for="i in 6" :key="i" class="hotlist-row">
             <span class="hotlist-rank skel-block" />
             <span class="hotlist-title skel-block skel-wide" />
           </li>
         </ul>
 
         <!-- 空 / 错误 -->
-        <div v-else-if="cache[src.key].items.length === 0" class="hotlist-col-empty">
+        <div v-else-if="cache[src.key].items.length === 0" class="hotlist-empty">
           <template v-if="cache[src.key].error">
             <p>数据源暂时不可用</p>
-            <button class="hotlist-col-retry" type="button" @click="load(src.key, true)">重试</button>
+            <button class="hotlist-retry" type="button" @click="load(src.key, true)">重试</button>
           </template>
           <template v-else>
             <p>暂无数据</p>
@@ -173,65 +207,7 @@ onMounted(() => {
           <li
             v-for="(item, idx) in cache[src.key].items.slice(0, 6)"
             :key="idx"
-            class="hotlist-col-item"
-            @click="openItem(item)"
-          >
-            <span :class="['hotlist-rank', idx < 3 ? `hotlist-rank-${idx + 1}` : '']">
-              {{ idx + 1 }}
-            </span>
-            <span class="hotlist-title" :title="item.title">{{ item.title }}</span>
-            <span v-if="item.hot" class="hotlist-hot">{{ item.hot }}</span>
-          </li>
-        </ol>
-      </article>
-
-      <!-- 装饰面板：仅 ≥1280px 显示，跨两行占最右列 -->
-      <div class="hotlist-deco" aria-hidden="true">
-        <span class="hotlist-deco-ring"></span>
-        <span class="hotlist-deco-ring hotlist-deco-ring-sm"></span>
-        <div class="hotlist-deco-glass">
-          <IconLightning class="w-8 h-8" />
-        </div>
-      </div>
-
-      <!-- 第 4 个及之后的源（768-1280px 补齐 2 列网格；≥1280px 换行到第二行） -->
-      <article
-        v-for="src in SOURCES.slice(3)"
-        :key="src.key"
-        class="hotlist-col"
-        :class="{ 'is-active': active === src.key }"
-        role="listitem"
-      >
-        <header class="hotlist-col-header">
-          <span class="hotlist-col-icon" aria-hidden="true">{{ src.icon }}</span>
-          <h3 class="hotlist-col-title">{{ src.label }}</h3>
-          <span v-if="cache[src.key].updateTime" class="hotlist-col-time">
-            {{ formatTime(cache[src.key].updateTime) }}
-          </span>
-        </header>
-
-        <ul v-if="cache[src.key].loading && cache[src.key].items.length === 0" class="hotlist-col-list">
-          <li v-for="i in 6" :key="i" class="hotlist-col-skel">
-            <span class="hotlist-rank skel-block" />
-            <span class="hotlist-title skel-block skel-wide" />
-          </li>
-        </ul>
-
-        <div v-else-if="cache[src.key].items.length === 0" class="hotlist-col-empty">
-          <template v-if="cache[src.key].error">
-            <p>数据源暂时不可用</p>
-            <button class="hotlist-col-retry" type="button" @click="load(src.key, true)">重试</button>
-          </template>
-          <template v-else>
-            <p>暂无数据</p>
-          </template>
-        </div>
-
-        <ol v-else class="hotlist-col-list">
-          <li
-            v-for="(item, idx) in cache[src.key].items.slice(0, 6)"
-            :key="idx"
-            class="hotlist-col-item"
+            class="hotlist-row hotlist-item"
             @click="openItem(item)"
           >
             <span :class="['hotlist-rank', idx < 3 ? `hotlist-rank-${idx + 1}` : '']">
@@ -243,6 +219,42 @@ onMounted(() => {
         </ol>
       </article>
     </div>
+
+    <!-- 移动端：当前源单列 6 条 -->
+    <!-- 加载中 -->
+    <div v-if="activeState.loading && activeState.items.length === 0" class="hotlist-list">
+      <div v-for="i in 6" :key="i" class="hotlist-row">
+        <span class="hotlist-rank skel-block" />
+        <span class="hotlist-title skel-block skel-wide" />
+      </div>
+    </div>
+
+    <!-- 空 / 错误 -->
+    <div v-else-if="activeState.items.length === 0" class="hotlist-empty">
+      <template v-if="activeState.error">
+        <p>数据源暂时不可用</p>
+        <button class="hotlist-retry" type="button" @click="load(active, true)">重试</button>
+      </template>
+      <template v-else>
+        <p>暂无数据</p>
+      </template>
+    </div>
+
+    <!-- 列表 -->
+    <ol v-else class="hotlist-list">
+      <li
+        v-for="(item, idx) in activeState.items.slice(0, 6)"
+        :key="idx"
+        class="hotlist-row hotlist-item"
+        @click="openItem(item)"
+      >
+        <span :class="['hotlist-rank', idx < 3 ? `hotlist-rank-${idx + 1}` : '']">
+          {{ idx + 1 }}
+        </span>
+        <span class="hotlist-title" :title="item.title">{{ item.title }}</span>
+        <span v-if="item.hot" class="hotlist-hot">{{ item.hot }}</span>
+      </li>
+    </ol>
   </section>
 </template>
 
@@ -260,9 +272,16 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 18px;
+  margin-bottom: 16px;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.hotlist-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .hotlist-sub {
@@ -278,16 +297,30 @@ onMounted(() => {
   color: rgb(var(--ink-400));
 }
 
-/* Tab 栏：< 768px 时显示，≥ 768px 隐藏（768px+ 进入多列网格模式，不再需要 tab 切换） */
+/* Tab 栏通用：屏幕不够时自动换行，全部 tab 可见，不依赖横向滚动 */
 .hotlist-tabs {
   display: flex;
-  flex-wrap: wrap; /* 屏幕不够时自动换行，全部 tab 可见，不依赖横向滚动 */
+  flex-wrap: wrap;
   gap: 6px;
   margin-bottom: 12px;
 }
 
+/* 分组切换（桌面端）：放在标题行右侧，不吃单独一行 */
+.hotlist-tabs-group {
+  display: none;
+  margin-bottom: 0;
+}
+
+/* 源切换（移动端单列模式） */
+.hotlist-tabs-source {
+  display: flex;
+}
+
 @media (min-width: 768px) {
-  .hotlist-tabs {
+  .hotlist-tabs-group {
+    display: flex;
+  }
+  .hotlist-tabs-source {
     display: none;
   }
 }
@@ -318,123 +351,30 @@ onMounted(() => {
   font-size: 14px;
 }
 
-/* 网格布局：< 768px 单列（仅 active），≥ 768px 2 列，≥ 1280px 3 列源 + 装饰列 */
+/* 桌面端三列网格：<768px 隐藏（走单列模式） */
 .hotlist-grid {
-  display: block; /* < 768px：单列，仅 .is-active 显示 */
-}
-
-.hotlist-col {
-  display: none; /* < 768px：默认隐藏 */
-  min-width: 0;
-}
-
-.hotlist-col.is-active {
-  display: block; /* < 768px：active 列显示 */
+  display: none;
 }
 
 @media (min-width: 768px) {
   .hotlist-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
-  }
-  .hotlist-col {
-    display: flex !important; /* 覆盖 .is-active display: block */
-    flex-direction: column;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
   }
 }
 
-@media (min-width: 1280px) {
-  .hotlist-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 0.85fr);
-    gap: 20px;
-  }
+.hotlist-col {
+  min-width: 0;
 }
 
-/* 装饰面板 */
-.hotlist-deco {
-  display: none;
-}
-@media (min-width: 1280px) {
-  .hotlist-deco {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    grid-row: span 2;
-    position: relative;
-    border-radius: 20px;
-    background: linear-gradient(
-      135deg,
-      rgb(var(--accent-100)) 0%,
-      rgb(var(--accent-50)) 45%,
-      rgb(var(--violet-100)) 100%
-    );
-    overflow: hidden;
-    min-height: 260px;
-  }
-}
-.hotlist-deco-ring {
-  position: absolute;
-  width: 260px;
-  height: 260px;
-  border-radius: 50%;
-  border: 1.5px solid rgb(255 255 255 / 0.65);
-  right: -70px;
-  top: -70px;
-}
-.hotlist-deco-ring-sm {
-  width: 170px;
-  height: 170px;
-  right: -25px;
-  top: -25px;
-  border-color: rgb(255 255 255 / 0.5);
-}
-.hotlist-deco-glass {
-  width: 92px;
-  height: 92px;
-  border-radius: 24px;
+.hotlist-col-header {
   display: flex;
   align-items: center;
-  justify-content: center;
-  color: rgb(var(--accent-600));
-  background: rgb(255 255 255 / 0.75);
-  border: 1px solid rgb(255 255 255 / 0.9);
-  box-shadow: 0 12px 32px rgb(var(--accent-500) / 0.18);
-  backdrop-filter: blur(6px);
-  transform: rotate(-6deg);
-}
-html.dark .hotlist-deco {
-  background: linear-gradient(
-    135deg,
-    rgb(var(--accent-500) / 0.18) 0%,
-    rgb(var(--violet-500) / 0.16) 100%
-  );
-}
-html.dark .hotlist-deco-ring {
-  border-color: rgb(var(--accent-300) / 0.25);
-}
-html.dark .hotlist-deco-ring-sm {
-  border-color: rgb(var(--accent-300) / 0.18);
-}
-html.dark .hotlist-deco-glass {
-  background: rgb(var(--surface-0) / 0.7);
-  border-color: rgb(var(--accent-300) / 0.3);
-}
-
-/* 列内容 */
-.hotlist-col-header {
-  display: none; /* < 768px 单列模式下隐藏（与 tab 标题重复） */
-}
-
-@media (min-width: 768px) {
-  .hotlist-col-header {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    padding-bottom: 10px;
-    margin-bottom: 6px;
-    border-bottom: 1px solid rgb(var(--border-subtle));
-  }
+  gap: 7px;
+  padding-bottom: 10px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid rgb(var(--border-subtle));
 }
 
 .hotlist-col-icon {
@@ -461,19 +401,36 @@ html.dark .hotlist-deco-glass {
   margin: 0;
 }
 
-.hotlist-col-item {
+/* 移动端单列列表：≥768px 隐藏（走三列网格） */
+.hotlist-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: 2px;
+}
+
+@media (min-width: 768px) {
+  .hotlist-list {
+    display: none;
+  }
+}
+
+.hotlist-row {
   display: flex;
   align-items: center;
   gap: 9px;
   padding: 7px 8px;
   border-radius: 8px;
+  min-width: 0;
+}
+
+.hotlist-item {
   cursor: pointer;
   transition: background 0.15s ease;
 }
-.hotlist-col-item:hover {
+.hotlist-item:hover {
   background: rgb(var(--accent-50));
 }
-html.dark .hotlist-col-item:hover {
+html.dark .hotlist-item:hover {
   background: rgb(var(--accent-500) / 0.12);
 }
 
@@ -523,12 +480,6 @@ html.dark .hotlist-col-item:hover {
   white-space: nowrap;
 }
 
-.hotlist-col-skel {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 7px 8px;
-}
 .skel-block {
   height: 12px;
   border-radius: 4px;
@@ -547,13 +498,13 @@ html.dark .hotlist-col-item:hover {
   100% { background-position: -200% 0; }
 }
 
-.hotlist-col-empty {
+.hotlist-empty {
   text-align: center;
   padding: 30px 0;
   font-size: 13px;
   color: rgb(var(--ink-500));
 }
-.hotlist-col-retry {
+.hotlist-retry {
   margin-top: 8px;
   padding: 4px 14px;
   border-radius: 999px;
@@ -563,10 +514,10 @@ html.dark .hotlist-col-item:hover {
   cursor: pointer;
   font-size: 12px;
 }
-.hotlist-col-retry:hover {
+.hotlist-retry:hover {
   background: rgb(var(--accent-50));
 }
-html.dark .hotlist-col-retry:hover {
+html.dark .hotlist-retry:hover {
   background: rgb(var(--accent-500) / 0.12);
 }
 
