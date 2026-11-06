@@ -1530,6 +1530,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/subnet',
+    component: () => import('@/components/Tools/Subnet/Subnet.vue'),
+    name: 'subnet',
+    meta: {
+      title: "子网掩码/IP计算器",
+      keywords: '子网掩码计算器,IP计算器,子网划分,CIDR计算,网络地址,广播地址,反掩码,通配符掩码,可用主机数',
+      description: '在线子网掩码/IP计算器，输入IP与掩码（支持CIDR或点分掩码），实时计算网络地址、广播地址、可用主机范围、反掩码与二进制掩码，附CIDR对照表',
+    }
+  },
+  {
     path: '/resume',
     component: () => import('@/components/Tools/Resume/Resume.vue'),
     name: 'resume',

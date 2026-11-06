@@ -364,6 +364,15 @@ export function getToolsCate() {
           cateId: 2,
           cate: '开发运维',
         },
+        {
+          id: 163,
+          title: '子网掩码/IP计算器',
+          logo: '/images/logo/subnet.png',
+          desc: '输入 IP 与掩码（支持 CIDR/点分掩码），实时计算网络地址、广播地址、可用主机范围、反掩码，附 CIDR 对照表',
+          url: '/subnet/',
+          cateId: 2,
+          cate: '开发运维',
+        },
 
       ]
     },

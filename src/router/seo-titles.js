@@ -156,6 +156,7 @@ export default {
   '/base64': 'Base64编码解码 - 在线Base64互转工具',
   '/chmod': 'Chmod权限计算器 - Linux文件权限在线换算',
   '/radix': '数字进制转换 - 2-36进制在线互转工具',
+  '/subnet': '子网掩码计算器 - IP子网划分在线工具',
   '/resume': '在线简历 - 简历制作与管理',
   '/company-compare': '公司对比 - 薪资福利/加班情况对比',
   '/minimum-wage': '最低工资标准 - 各省最低工资查询',
