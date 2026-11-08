@@ -8,6 +8,7 @@
 // 若鉴权失败，必须直接返回 Response，不调用 next()。
 
 import { extractUidFromRequest, isAdmin } from '../_lib/model-resolver.js'
+import { mintAssetTicket, assetTicketCookie } from '../../utils/asset-ticket.js'
 
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
@@ -52,5 +53,24 @@ export async function onRequest(context) {
     context.data = { adminUid: uid }
   }
 
-  return context.next()
+  const response = await context.next()
+
+  // 滑动续期静态资源票据：管理员每次调用后台接口都重新签发 adm_assets cookie，
+  // 保证长时间挂机的后台页签在任何时刻都能下载 admin chunk（TTL 1h，见
+  // utils/asset-ticket.js）。续期失败不影响本次接口响应。
+  try {
+    if (env.JWT_SECRET) {
+      const ticket = await mintAssetTicket(uid, env.JWT_SECRET)
+      const headers = new Headers(response.headers)
+      headers.append('Set-Cookie', assetTicketCookie(ticket))
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+      })
+    }
+  } catch (e) {
+    console.error('[admin-middleware] refresh asset ticket failed:', e)
+  }
+  return response
 }

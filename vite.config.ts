@@ -345,6 +345,14 @@ export default defineConfig(({command, mode}) => {
             Authorization: `Bearer ${env.VITE_POLLINATIONS_API_KEY || ''}`
           }
         },
+        // Supabase 同源代理（functions/sb/[[path]].js）：聊天室/表白墙/五子棋的
+        // REST 与 Realtime WebSocket 都走这里，真实密钥只存在于服务端环境变量。
+        // ws: true 让 WebSocket 升级请求也能转发到本地 wrangler pages dev。
+        '/sb': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+          ws: true,
+        },
         '/api/links': {
           target: 'http://127.0.0.1:8788',
           changeOrigin: true,

@@ -301,32 +301,21 @@ const loadRoomFromUrl = () => {
   return false;
 };
 
-// 检查 Supabase 是否已配置
-const isSupabaseConfigured = computed(() => {
-  const url = import.meta.env.VITE_SUPABASE_URL || '';
-  const key = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-  return url && key && !url.includes('your-project') && !key.includes('your-anon-key');
-});
+// 检查 Supabase 是否已配置：配置已收敛到服务端（functions/sb/[[path]].js 同源代理，
+// 凭据在 Cloudflare Pages 环境变量），前端恒视为已配置；连通性问题由代理请求报错
+// 体现。下方"未配置"提示分支因此不会再渲染。
+const isSupabaseConfigured = computed(() => true);
 
 // 获取配置步骤说明
 const configSteps = [
   '1. 访问 https://supabase.com 创建免费项目',
   '2. 在 SQL Editor 执行：CREATE TABLE chat_messages (id UUID DEFAULT gen_random_uuid() PRIMARY KEY, room_id TEXT NOT NULL, nickname TEXT NOT NULL, content TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW());',
   '3. 启用 Realtime：ALTER PUBLICATION supabase_realtime ADD TABLE chat_messages;',
-  '4. 在 Project Settings > API 复制 URL 和 anon key',
-  '5. 将配置填入项目的 .env.development 文件',
+  '4. 在 Cloudflare Pages 环境变量配置 SUPABASE_URL 与 SUPABASE_SERVICE_KEY',
 ];
 
 // 初始化 Supabase 连接
 const initSupabase = async () => {
-  // 检查 Supabase 配置
-  const url = import.meta.env.VITE_SUPABASE_URL || '';
-  const key = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-  if (!url || !key || url.includes('your-project') || key.includes('your-anon-key')) {
-    ElMessage.error("Supabase 未配置，请联系管理员配置服务");
-    return false;
-  }
-
   try {
     // 添加超时保护
     const timeoutPromise = new Promise((_, reject) =>
@@ -1984,10 +1973,10 @@ onUnmounted(() => {
 
         <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
           <h3 class="font-semibold text-gray-800 mb-2">📝 环境变量配置</h3>
-          <p class="text-body-sm text-gray-600 mb-2">在项目根目录的 <code class="bg-gray-200 px-1 rounded">.env.development</code> 文件中添加：</p>
-          <pre class="bg-gray-800 text-green-400 p-3 rounded text-caption overflow-x-auto"><code>VITE_SUPABASE_URL='https://your-project.supabase.co'
-VITE_SUPABASE_ANON_KEY='your-anon-key'</code></pre>
-          <p class="text-body-sm text-gray-500 mt-3">⚠️ 配置完成后需要重启开发服务器才能生效</p>
+          <p class="text-body-sm text-gray-600 mb-2">Supabase 凭据已收敛到服务端：在 Cloudflare Pages 环境变量（本地开发为 <code class="bg-gray-200 px-1 rounded">.dev.vars</code>）中配置：</p>
+          <pre class="bg-gray-800 text-green-400 p-3 rounded text-caption overflow-x-auto"><code>SUPABASE_URL=（Supabase 项目地址）
+SUPABASE_SERVICE_KEY=（service_role 密钥）</code></pre>
+          <p class="text-body-sm text-gray-500 mt-3">⚠️ 前端经同源 /sb 代理访问（functions/sb/[[path]].js），无需任何前端配置</p>
         </div>
 
         <div class="mt-4 text-center">

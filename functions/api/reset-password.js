@@ -1,5 +1,5 @@
 import { ApiResponse } from '../utils/db.js'
-import { verifyCode } from './send-verification-code.js'
+import { verifyCode, verifyCodeRejection } from './send-verification-code.js'
 import { hashPassword } from '../utils/password.js'
 import { getClientIp, hitLimit, fmtWaitSec } from '../utils/rate-limit.js'
 
@@ -39,9 +39,10 @@ export async function onRequest(context) {
       }
     }
 
-    // 验证验证码
-    if (!(await verifyCode(env, email, 'reset', code))) {
-      return ApiResponse.error('验证码错误或已过期', request.headers.get('Origin'), 401)
+    // 验证验证码（错误尝试计数存 D1 原子自增，达上限作废并返回 429）
+    const verifyResult = await verifyCode(env, email, 'reset', code)
+    if (!verifyResult.ok) {
+      return verifyCodeRejection(verifyResult, request.headers.get('Origin'))
     }
 
     // 检查用户是否存在，并获取盐（NOCASE 兼容历史大小写混用的存量数据）

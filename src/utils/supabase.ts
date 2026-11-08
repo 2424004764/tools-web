@@ -1,13 +1,19 @@
 /**
  * Supabase 客户端配置
- * 用于临时聊天室的实时通信
+ * 用于临时聊天室 / 表白墙 / 五子棋的实时通信
+ *
+ * 安全约定：前端不再持有任何真实 Supabase URL 与密钥（原先 VITE_SUPABASE_URL +
+ * anon key 直连，可被提取后绕过站点直接读写数据库）。client 的 baseURL 指向
+ * 同源 /sb，REST 与 Realtime WebSocket 全部经 Cloudflare Pages Functions 代理
+ * （functions/sb/[[path]].js），真实密钥由代理在服务端注入。
+ * 这里的 key 是占位符（supabase-js 要求非空），代理会直接丢弃。
  */
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseUrl = `${location.origin}/sb`;
+const supabaseProxyKey = 'public-proxy';
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabase = createClient(supabaseUrl, supabaseProxyKey, {
   realtime: {
     params: {
       eventsPerSecond: 10,

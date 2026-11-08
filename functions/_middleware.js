@@ -19,6 +19,7 @@
 import { getCORSHeaders, handleCORSPreflight } from './utils/cors.js'
 import { logApiError, UPSTREAM_ERROR_KEY } from './utils/error-log.js'
 import { isIpBanned } from './utils/ip-ban.js'
+import { verifyAssetTicket, parseCookieHeader, ASSET_TICKET_COOKIE } from './utils/asset-ticket.js'
 import { extractUidFromRequest } from './api/_lib/model-resolver.js'
 import PAGE_META, { siteOrigin, appTitle } from './_page-meta.js'
 
@@ -40,6 +41,16 @@ const OAUTH_PUBLIC_PREFIXES = ['/api/oauth/token', '/api/oauth/userinfo', '/api/
 function needsCORS(path) {
   return CORS_PROTECTED_PREFIXES.some((p) => path === p || path.startsWith(p))
 }
+
+// Admin 后台页面 chunk：路由懒加载按页切出的 js/<releaseId>-AdminXxx-<hash>.js
+// （AdminUsers / AdminCredits 等 20 个，见 src/components/Admin/）。chunk 内含
+// 后台完整 UI 与 /api/admin 请求结构，匿名下载等于公开后台攻击面地图，必须凭
+// adm_assets 票据放行（签发见 /api/admin/asset-ticket，续期见 api/admin/_middleware.js）。
+// 注意：admin 页面间共享的中性命名 chunk（如 api/admin/user.ts → -user-、
+// site-config）不含页面 UI，属既有公开面，本门禁不覆盖。
+// releaseId 生产为 32 位 hex，本地 wrangler dev 构建为 'dev'（一并纳入门禁，
+// 便于本地验证）。
+const ADMIN_CHUNK_RE = /^\/js\/(?:[a-f0-9]{32}|dev)-[^/]*admin[^/]*\.js$/i
 
 function isOAuthPublicPath(path) {
   return OAUTH_PUBLIC_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`))
@@ -384,6 +395,21 @@ export async function onRequest(context) {
 
   // Static assets bypass IP-ban lookups and response wrapping. Missing code assets must never receive HTML.
   if (/\.(js|css|png|jpg|svg|ico|woff2?|ttf|webp|json|xml|txt)$/.test(path)) {
+    // ---- Admin chunk 鉴权门禁：无有效票据一律 403（不返回 HTML，与下方 404 兜底同一原则）----
+    if (ADMIN_CHUNK_RE.test(path)) {
+      const ticket = parseCookieHeader(request.headers.get('Cookie'))[ASSET_TICKET_COOKIE]
+      const ticketUid = await verifyAssetTicket(ticket, env?.JWT_SECRET)
+      if (!ticketUid) {
+        return new Response('Forbidden', {
+          status: 403,
+          headers: {
+            'Content-Type': 'text/plain; charset=utf-8',
+            'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+            'X-Content-Type-Options': 'nosniff',
+          },
+        })
+      }
+    }
     const response = await context.next()
     const contentType = response.headers.get('Content-Type') || ''
     const expectedType = path.startsWith('/js/')
@@ -397,6 +423,17 @@ export async function onRequest(context) {
           'Content-Type': 'text/plain; charset=utf-8',
           'X-Content-Type-Options': 'nosniff',
         },
+      })
+    }
+    // admin chunk 走鉴权下发，缓存属性必须从公共 immutable 收敛为 private：
+    // 不允许被共享缓存层按 URL 留存后泄露给无票据的后续请求
+    if (ADMIN_CHUNK_RE.test(path)) {
+      const headers = new Headers(response.headers)
+      headers.set('Cache-Control', 'private, max-age=31536000, immutable')
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
       })
     }
     return response
@@ -421,6 +458,14 @@ export async function onRequest(context) {
         headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
       })
     }
+  }
+
+  // ---- Supabase Realtime WebSocket 代理（functions/sb/[[path]].js）----
+  // 101 升级响应绝不能被本中间件用 new Response() 重包装（构造 101 状态的
+  // Response 会直接抛异常），必须原样透传；IP 封禁已在上方先行拦截。
+  // /sb/rest/* 无需特判：普通 JSON 响应走下方常规安全头包装即可。
+  if (path.startsWith('/sb/realtime/')) {
+    return await context.next()
   }
 
   const origin = request.headers.get('Origin')

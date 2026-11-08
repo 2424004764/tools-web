@@ -5,6 +5,7 @@ import { constantRoute } from './router'
 import seoTitles from './seo-titles.js'
 import { guardStaleVersion } from '@/utils/version-guard'
 import { useUserStore } from '@/store/modules/user'
+import { ensureAdminAssetTicket } from '@/utils/adminAssets'
 import { matchToolByPath, recordToolUsage } from '@/utils/tool-usage'
 import { recordSiteVisit, shouldTrackSiteVisit } from '@/utils/site-visit'
 
@@ -61,7 +62,7 @@ window.history.scrollRestoration = 'manual'
 const APP_TITLE = import.meta.env.VITE_APP_TITLE as string
 const APP_DESC = import.meta.env.VITE_APP_DESC as string
 
-router.beforeEach((to, _from, next) => {
+router.beforeEach(async (to, _from, next) => {
   // 任何新导航都会使上一条工具页归零任务失效；Home 自身的生命周期任务
   // 也会在路由离开时取消，双层保护共享的 window 滚动状态。
   cancelScrollPin()
@@ -90,6 +91,14 @@ router.beforeEach((to, _from, next) => {
     }
     if (!userStore.getIsAdmin) {
       return next({ path: '/' })
+    }
+    // admin chunk 由边缘网关按 HttpOnly 票据 cookie 鉴权下发，dynamic import
+    // 不带 Authorization 头，必须先换票再放行（详见 src/utils/adminAssets.ts）。
+    // 换票失败（如网络抖动）不阻断导航：chunk 加载失败由 router.onError 兜底硬刷。
+    try {
+      await ensureAdminAssetTicket()
+    } catch {
+      // ignore
     }
   }
 

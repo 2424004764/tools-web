@@ -4,6 +4,8 @@
     "/proxy/*",
     "/js/*",
     "/css/*",
+    "/sb",
+    "/sb/*",
     "/google-auth",
     "/api/notes/*",
     "/api/notes/groups",

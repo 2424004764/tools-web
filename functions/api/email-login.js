@@ -1,5 +1,5 @@
 import { ApiResponse } from '../utils/db.js'
-import { verifyCode } from './send-verification-code.js'
+import { verifyCode, verifyCodeRejection } from './send-verification-code.js'
 import { getClientIp, hitLimit, fmtWaitSec } from '../utils/rate-limit.js'
 import { MAIN_JWT_TTL_SECONDS } from '../config/auth.js'
 
@@ -66,9 +66,10 @@ export async function onRequest(context) {
       }
     }
 
-    // 验证验证码
-    if (!(await verifyCode(env, email, 'login', code))) {
-      return ApiResponse.error('验证码错误或已过期', request.headers.get('Origin'), 401)
+    // 验证验证码（错误尝试计数存 D1 原子自增，达上限作废并返回 429）
+    const verifyResult = await verifyCode(env, email, 'login', code)
+    if (!verifyResult.ok) {
+      return verifyCodeRejection(verifyResult, request.headers.get('Origin'))
     }
 
     // 查询用户（NOCASE 兼容历史大小写混用的存量数据）

@@ -38,6 +38,8 @@ LINUXDO_CLIENT_SECRET=local-dev-only
 QQ_CLIENT_SECRET=local-dev-only
 
 # ---------- Supabase ----------
+# 仅服务端使用：functions/sb/[[path]].js 同源代理（聊天室/表白墙/五子棋）与
+# cron 清理任务。前端不持有任何 Supabase URL/密钥。
 SUPABASE_URL=https://wvdyjqjwkhfvfcmjpaoo.supabase.co
 SUPABASE_SERVICE_KEY=sb_publishable_LOCAL_DEV_ONLY
 

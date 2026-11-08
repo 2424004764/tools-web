@@ -49,8 +49,21 @@ export async function onRequest(context) {
     return json({ ok: false, error: 'capability 和 model_key 必填' }, 400)
   }
 
-  // 解析模型
-  const resolved = await resolveModel(db, model_key, uid)
+  // 鉴权前置（渗透测试发现 #6）：登录门槛放在模型解析之前，
+  // 避免匿名请求用 404（模型不存在）/ 401（未登录）的差异枚举模型白名单。
+  // 游客必须自带 user_api_key 才能继续（厂商开放性在模型解析后校验）。
+  if (!user_api_key && !uid) {
+    return json({ ok: false, error: '请先登录后再使用平台 AI 服务，或在「我的 API Key」中配置自己的厂商 Key' }, 401)
+  }
+
+  // 解析模型（D1 异常也走统一兜底，避免裸 500）
+  let resolved
+  try {
+    resolved = await resolveModel(db, model_key, uid)
+  } catch (error) {
+    console.error('ai-proxy resolveModel error:', error)
+    return json({ ok: false, error: '调用失败，请稍后重试' }, 500)
+  }
   if (!resolved) {
     return json({ ok: false, error: `模型不存在或无权访问: ${model_key}` }, 404)
   }
@@ -84,22 +97,17 @@ export async function onRequest(context) {
     renderParams
   )
 
-  // ============ 鉴权（防匿名消耗平台内置 Key）============
-  // user_api_key 是可选字段：不带或为空时后端会回落到平台内置 Key。
-  // 若不校验登录态，任何人都能匿名刷平台额度（渗透测试发现 #8），
-  // 因此内置 Key 仅限登录用户；游客必须自带 is_open=1 厂商的 Key。
+  // ============ 鉴权收尾（防匿名消耗平台内置 Key）============
+  // 登录门槛已前置到模型解析之前（渗透测试发现 #6），这里只剩
+  // user_api_key 的厂商开放性校验：任何非管理员（含游客）用 user_api_key
+  // 都要求厂商 is_open=1（渗透测试发现 #8）。
   const isAdminUser = await isAdmin(db, uid)
 
-  if (user_api_key) {
-    // 任何非管理员（含游客）用 user_api_key 都要求厂商 is_open=1
-    if (!isAdminUser && !resolved.provider.is_open) {
-      return json({
-        ok: false,
-        error: '该厂商未开放用户自定义 Key（仅管理员可用）'
-      }, 403)
-    }
-  } else if (!uid) {
-    return json({ ok: false, error: '请先登录后再使用平台 AI 服务，或在「我的 API Key」中配置自己的厂商 Key' }, 401)
+  if (user_api_key && !isAdminUser && !resolved.provider.is_open) {
+    return json({
+      ok: false,
+      error: '该厂商未开放用户自定义 Key（仅管理员可用）'
+    }, 403)
   }
 
   // 选 API Key：用户提供的 key 优先；否则使用系统配置的 key（仅登录用户可走到这里）
@@ -213,7 +221,8 @@ export async function onRequest(context) {
     return json({ ok: true, data })
   } catch (error) {
     console.error('ai-proxy error:', error)
-    return json({ ok: false, error: error.message || '调用失败' }, 500)
+    // 内部异常细节只进日志，不透传给客户端（渗透测试发现 #6）
+    return json({ ok: false, error: '调用失败，请稍后重试' }, 500)
   }
 }
 

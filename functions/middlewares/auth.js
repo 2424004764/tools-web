@@ -114,7 +114,10 @@ export class AuthMiddleware {
       // 验证token
       const verifyResult = await this.verifyToken(token, env.JWT_SECRET)
       if (!verifyResult.success) {
-        return { success: false, error: `Token验证失败: ${verifyResult.error}` }
+        // 细节只进服务端日志；对外与 token_version 失效统一口径，
+        // 避免暴露 JWT 校验阶段与实现（渗透测试发现 #6）
+        console.warn(`[auth] token verify failed: ${verifyResult.error}`)
+        return { success: false, error: '登录状态已失效，请重新登录' }
       }
 
       // 实时校验 token_version 与封禁状态：改密/重置/封禁后旧 token 立即失效。
@@ -135,7 +138,8 @@ export class AuthMiddleware {
         }
       }
     } catch (error) {
-      return { success: false, error: `认证失败: ${error.message}` }
+      console.warn(`[auth] extractUserFromRequest error: ${error.message}`)
+      return { success: false, error: '登录状态已失效，请重新登录' }
     }
   }
 
