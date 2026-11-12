@@ -21,6 +21,7 @@ import type {
   ToolCategorySummary,
   ToolFeature,
   ToolModel,
+  ToolModelUpstream,
 } from '@/types/admin'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import Sortable from 'sortablejs'
@@ -336,6 +337,171 @@ const removeModel = async (m: ToolModel) => {
     await loadModels(editDialog.row.url)
   } catch (err: any) {
     ElMessage.error(err?.response?.data?.error || '删除失败')
+  }
+}
+
+// ============ 上游链编辑（tool_models.upstreams：手动切换 + failover） ============
+// 弹窗内的编辑态：_extraJson 是附加参数的 JSON 文本（保存时解析），_showExtra 控制展开
+type UpstreamEntryDraft = ToolModelUpstream & { _extraJson?: string; _showExtra?: boolean }
+
+const upstreamDialog = reactive({
+  visible: false,
+  row: null as ToolModel | null,
+  entries: [] as UpstreamEntryDraft[],
+  providers: [] as { slug: string; name: string; base_url: string }[],
+  providersLoaded: false,
+  submitting: false,
+})
+
+// 下拉框选项来自公开厂商列表（管理员可见 base_url；懒加载一次）
+const loadUpstreamProviders = async () => {
+  if (upstreamDialog.providersLoaded) return
+  try {
+    const res = await fetch('/api/ai-providers')
+    const json = await res.json()
+    upstreamDialog.providers = (json?.data || []).map((p: any) => ({
+      slug: p.slug,
+      name: p.name,
+      base_url: p.base_url || '',
+    }))
+    upstreamDialog.providersLoaded = true
+  } catch (err) {
+    console.error(err)
+    ElMessage.error('加载厂商列表失败')
+  }
+}
+
+const openUpstreamDialog = async (m: ToolModel) => {
+  upstreamDialog.row = m
+  // 深拷贝，编辑过程中不污染表格展示；附加参数转成 JSON 文本便于编辑
+  upstreamDialog.entries = (m.upstreams || []).map((e) => ({
+    ...e,
+    _extraJson: e.extra_body ? JSON.stringify(e.extra_body) : '',
+    _showExtra: false,
+  }))
+  upstreamDialog.visible = true
+  await loadUpstreamProviders()
+}
+
+const addUpstreamEntry = () => {
+  if (upstreamDialog.entries.length >= 5) {
+    ElMessage.warning('最多 5 个上游')
+    return
+  }
+  upstreamDialog.entries.push({
+    provider: upstreamDialog.providers[0]?.slug || '',
+    // 默认带上当前 model_key，多数场景厂商侧模型 ID 与之一致，改一个字符就行
+    model_id: upstreamDialog.row?.model_key || '',
+    style: 'auto',
+    _extraJson: '',
+    _showExtra: false,
+  })
+}
+
+const removeUpstreamEntry = (idx: number) => {
+  upstreamDialog.entries.splice(idx, 1)
+}
+
+const moveUpstreamEntry = (idx: number, dir: -1 | 1) => {
+  const target = idx + dir
+  if (target < 0 || target >= upstreamDialog.entries.length) return
+  const arr = upstreamDialog.entries
+  ;[arr[idx], arr[target]] = [arr[target], arr[idx]]
+}
+
+const submitUpstreamDialog = async () => {
+  if (!upstreamDialog.row) return
+  const payload: ToolModelUpstream[] = []
+  for (const e of upstreamDialog.entries) {
+    if (!e.provider) {
+      ElMessage.warning('每一项都要选择厂商')
+      return
+    }
+    if (!e.model_id.trim()) {
+      ElMessage.warning('model_id 不能为空')
+      return
+    }
+    const item: ToolModelUpstream = { provider: e.provider, model_id: e.model_id.trim(), style: e.style }
+    const text = (e._extraJson || '').trim()
+    if (text) {
+      try {
+        const parsed = JSON.parse(text)
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+          throw new Error('not object')
+        }
+        item.extra_body = parsed
+      } catch {
+        ElMessage.warning(`第 ${payload.length + 1} 项附加参数不是合法的 JSON 对象`)
+        return
+      }
+    }
+    payload.push(item)
+  }
+  upstreamDialog.submitting = true
+  try {
+    await updateAdminToolModel(upstreamDialog.row.id, {
+      // 空链保存为 null = 回退默认（bafang + 环境变量 Key）
+      upstreams: payload.length ? payload : null,
+    })
+    ElMessage.success(payload.length ? '上游链已保存' : '已清除上游链（回退默认）')
+    upstreamDialog.visible = false
+    if (editDialog.row) await loadModels(editDialog.row.url)
+  } catch (err: any) {
+    ElMessage.error(err?.response?.data?.error || '保存失败')
+  } finally {
+    upstreamDialog.submitting = false
+  }
+}
+
+// 表格里上游链的一行摘要：'bafang → xxx'，未配置显示"默认"
+const upstreamSummary = (m: ToolModel) => {
+  if (!m.upstreams || m.upstreams.length === 0) return '默认'
+  return m.upstreams.map((e) => e.provider).join(' → ')
+}
+
+// ============ 编辑 model（改 Key / 名称 / 描述 / 积分） ============
+const editModelDialog = reactive({
+  visible: false,
+  row: null as ToolModel | null,
+  model_key: '',
+  model_label: '',
+  description: '',
+  credit_cost: 0,
+  submitting: false,
+})
+
+const openModelEditDialog = (m: ToolModel) => {
+  editModelDialog.row = m
+  editModelDialog.model_key = m.model_key
+  editModelDialog.model_label = m.model_label
+  editModelDialog.description = m.description || ''
+  editModelDialog.credit_cost = m.credit_cost ?? 0
+  editModelDialog.visible = true
+}
+
+const submitModelEdit = async () => {
+  if (!editModelDialog.row) return
+  const key = editModelDialog.model_key.trim()
+  const label = editModelDialog.model_label.trim()
+  if (!key || !label) {
+    ElMessage.warning('model_key 和显示名称必填')
+    return
+  }
+  editModelDialog.submitting = true
+  try {
+    await updateAdminToolModel(editModelDialog.row.id, {
+      model_key: key,
+      model_label: label,
+      description: editModelDialog.description.trim(),
+      credit_cost: editModelDialog.credit_cost,
+    })
+    ElMessage.success('模型已更新')
+    editModelDialog.visible = false
+    if (editDialog.row) await loadModels(editDialog.row.url)
+  } catch (err: any) {
+    ElMessage.error(err?.response?.data?.error || '更新失败')
+  } finally {
+    editModelDialog.submitting = false
   }
 }
 
@@ -773,7 +939,7 @@ const { isMobile } = useIsMobile()
             :max="9999"
             controls-position="right"
           />
-          <span class="ml-2 text-xs text-ink-500">越小越靠前</span>
+          <span class="ml-2 text-xs text-ink-600">越小越靠前</span>
         </el-form-item>
         <el-form-item label="兜底积分">
           <el-input-number
@@ -783,14 +949,14 @@ const { isMobile } = useIsMobile()
             :step="1"
             controls-position="right"
           />
-          <span class="ml-2 text-xs text-ink-500">model 未配置时按此值；0 = 免费</span>
+          <span class="ml-2 text-xs text-ink-600">model 未配置时按此值；0 = 免费</span>
         </el-form-item>
 
         <!-- 模型列表子表 -->
         <el-form-item label="模型列表">
           <div class="w-full">
             <div class="flex items-center justify-between mb-2">
-              <span class="text-xs text-ink-500">
+              <span class="text-xs text-ink-600">
                 按 model 维度独立配置积分；前端下拉框从这里渲染
               </span>
               <el-button size="small" type="primary" plain @click="openNewModelDialog">
@@ -835,6 +1001,19 @@ const { isMobile } = useIsMobile()
               </el-table-column>
               <el-table-column prop="model_key" label="Key" min-width="140" />
               <el-table-column prop="model_label" label="名称" min-width="160" />
+              <el-table-column label="上游链" min-width="150">
+                <template #default="{ row: m }">
+                  <div class="flex items-center gap-1">
+                    <span
+                      class="text-xs text-ink-600 truncate"
+                      :title="m.upstreams?.map((e) => `${e.provider}/${e.model_id}`).join(' → ')"
+                    >
+                      {{ upstreamSummary(m) }}
+                    </span>
+                    <el-button link size="small" type="primary" @click="openUpstreamDialog(m)">配置</el-button>
+                  </div>
+                </template>
+              </el-table-column>
               <el-table-column label="积分" width="130" align="center">
                 <template #default="{ row: m }">
                   <el-input-number
@@ -855,8 +1034,9 @@ const { isMobile } = useIsMobile()
                   />
                 </template>
               </el-table-column>
-              <el-table-column label="操作" width="80" align="center" fixed="right">
+              <el-table-column label="操作" width="110" align="center" fixed="right">
                 <template #default="{ row: m }">
+                  <el-button link size="small" type="primary" @click="openModelEditDialog(m)">编辑</el-button>
                   <el-button link size="small" type="danger" @click="removeModel(m)">删除</el-button>
                 </template>
               </el-table-column>
@@ -900,12 +1080,128 @@ const { isMobile } = useIsMobile()
         </el-form-item>
         <el-form-item label="设为默认">
           <el-switch v-model="newModel.is_default" />
-          <span class="ml-2 text-xs text-ink-500">开启后会把同工具下其它默认项替换</span>
+          <span class="ml-2 text-xs text-ink-600">开启后会把同工具下其它默认项替换</span>
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="newModel.visible = false">取消</el-button>
         <el-button type="primary" :loading="newModel.submitting" @click="submitNewModel">添加</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 编辑 model 弹窗（Key / 名称 / 描述 / 积分） -->
+    <el-dialog
+      v-model="editModelDialog.visible"
+      :title="`编辑模型 - ${editModelDialog.row?.model_label || ''}`"
+      width="480px"
+      :close-on-click-modal="false"
+      append-to-body
+    >
+      <el-form label-width="100px" class="!mt-2">
+        <el-form-item label="model_key" required>
+          <el-input v-model="editModelDialog.model_key" placeholder="例如 gpt-image-2-1k" maxlength="64" />
+          <span class="text-xs text-ink-600">前端下拉框的值；改名后用户本地缓存的旧选择会回退默认项</span>
+        </el-form-item>
+        <el-form-item label="显示名称" required>
+          <el-input v-model="editModelDialog.model_label" maxlength="200" />
+        </el-form-item>
+        <el-form-item label="描述">
+          <el-input v-model="editModelDialog.description" type="textarea" :rows="2" maxlength="500" />
+        </el-form-item>
+        <el-form-item label="积分">
+          <el-input-number v-model="editModelDialog.credit_cost" :min="0" :max="999999" :step="1" controls-position="right" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="editModelDialog.visible = false">取消</el-button>
+        <el-button type="primary" :loading="editModelDialog.submitting" @click="submitModelEdit">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 上游链编辑弹窗（tool_models.upstreams：手动切换 + failover 容灾） -->
+    <el-dialog
+      v-model="upstreamDialog.visible"
+      :title="`上游链 - ${upstreamDialog.row?.model_label || ''}`"
+      width="680px"
+      :close-on-click-modal="false"
+      append-to-body
+    >
+      <el-alert type="info" :closable="false" class="!mb-3">
+        <p class="text-xs leading-5">
+          按顺序尝试：第 1 家失败（网络 / 超时 / 5xx / 限流 / Key 失效 / 无此模型）自动切换下一家；
+          400 参数错误不切换。清空保存 = 使用默认（bafang + 环境变量 Key）。
+          积分按用户选中的模型扣，不随切换变化。
+        </p>
+      </el-alert>
+
+      <div
+        v-for="(e, idx) in upstreamDialog.entries"
+        :key="idx"
+        class="mb-2"
+      >
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-ink-600 w-8 shrink-0 text-center">#{{ idx + 1 }}</span>
+          <el-select v-model="e.provider" filterable placeholder="厂商" class="!w-40">
+            <el-option
+              v-for="p in upstreamDialog.providers"
+              :key="p.slug"
+              :label="p.name"
+              :value="p.slug"
+            >
+              <span>{{ p.name }}</span>
+              <span class="float-right text-xs text-ink-500">{{ p.slug }}</span>
+            </el-option>
+          </el-select>
+          <el-input v-model="e.model_id" placeholder="厂商侧模型 ID" class="flex-1" maxlength="64" />
+          <el-select v-model="e.style" class="!w-28">
+            <el-option label="自动判断" value="auto" />
+            <el-option label="OpenAI" value="openai" />
+            <el-option label="Gemini" value="gemini" />
+          </el-select>
+          <el-tooltip
+            :content="e._extraJson ? '已配置附加参数' : '附加请求参数（如 gif 动图选项）'"
+            placement="top"
+          >
+            <el-badge :is-dot="!!e._extraJson">
+              <el-button link size="small" @click="e._showExtra = !e._showExtra">参数</el-button>
+            </el-badge>
+          </el-tooltip>
+          <el-button
+            link
+            size="small"
+            :disabled="idx === 0"
+            @click="moveUpstreamEntry(idx, -1)"
+          >↑</el-button>
+          <el-button
+            link
+            size="small"
+            :disabled="idx === upstreamDialog.entries.length - 1"
+            @click="moveUpstreamEntry(idx, 1)"
+          >↓</el-button>
+          <el-button link size="small" type="danger" @click="removeUpstreamEntry(idx)">删</el-button>
+        </div>
+        <!-- 附加参数（JSON，可空）：合并进该上游的请求体，如动图模型 output_format=gif -->
+        <div v-if="e._showExtra" class="pl-10 pr-16 mt-1">
+          <el-input
+            v-model="e._extraJson"
+            type="textarea"
+            :rows="2"
+            placeholder='可选 JSON，如 {"output_format":"gif","frame_count":9,"frame_duration_ms":200,"quality":"high"}'
+            class="font-mono !text-xs"
+          />
+          <span class="text-xs text-ink-600">仅 openai 风格生效；model/prompt/size 不可覆盖</span>
+        </div>
+      </div>
+
+      <el-button size="small" plain @click="addUpstreamEntry">+ 添加上游</el-button>
+
+      <template #footer>
+        <el-button @click="upstreamDialog.visible = false">取消</el-button>
+        <el-button
+          type="primary"
+          :loading="upstreamDialog.submitting"
+          @click="submitUpstreamDialog"
+        >保存</el-button>
       </template>
     </el-dialog>
 
@@ -937,6 +1233,16 @@ const { isMobile } = useIsMobile()
 </template>
 
 <style scoped>
+/* 表头 / 空状态文字：Element 默认走 --el-text-color-secondary（ink-500），
+   浅色模式下 12px 小字对比度不足（约 4:1），加深到 ink-600（约 6.8:1） */
+:deep(.el-table th.el-table__cell) {
+  color: rgb(var(--ink-600));
+  font-weight: 500;
+}
+:deep(.el-table__empty-text) {
+  color: rgb(var(--ink-600));
+}
+
 /* Sortable 拖拽视觉反馈（仅作用于编辑弹窗内的 model 表格）；用 token 底色随暗色主题自适应 */
 :deep(.model-row-ghost) {
   background: rgb(var(--accent-500) / 0.14) !important;

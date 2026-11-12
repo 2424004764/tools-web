@@ -3,18 +3,18 @@
 // Content-Type: multipart/form-data
 // Fields: prompt, model, size, images (file[])  — 最多 16 张，不传则走文生图
 //
-// 路由分支（按 model_key 决定走哪条上游路径）：
-//   - gemini-*（Google Gemini 图片模型）→ bafang.me/v1beta/models/{model}:generateContent
-//     使用 Google 原生 contents/parts/generationConfig 格式，鉴权用 x-goog-api-key
-//   - 其他（gpt-image-2 等）→ bafang.me OpenAI 兼容端点
-//     有 image → POST /v1/images/edits（form-data）
-//     无 image → POST /v1/images/generations（application/json）
+// 上游厂商：走 tool_models.upstreams 配置的有序链（_lib/image-upstream.js），
+// 失败自动切换下一家（仅网络/超时/5xx/429/401/403/404 等"换厂商有意义"的错误）。
+// 未配置时回退 legacy：bafang.me + env.BAFANG_API_KEY（与旧版硬编码行为一致）。
+// 每项的风格分支（在 image-upstream.js 内）：
+//   - gemini（gemini-* 前缀或显式指定）→ /v1beta/models/{model}:generateContent（Google 原生格式）
+//   - openai（gpt-image-2 等）→ 有 image /v1/images/edits（form-data）；无 image /v1/images/generations（JSON）
 //
-// 鉴权：CF 环境变量 BAFANG_API_KEY
+// 鉴权：ai_providers.api_key（bafang 兜底 env.BAFANG_API_KEY）
 //
-// 扣费：按 tool_models.credit_cost（model 维度）。
+// 扣费：按用户选中的 tool_models.credit_cost（model 维度），failover 不改变扣费金额。
 //   - cost == 0：不要求登录，不扣费，向后兼容
-//   - cost > 0：必须登录；上游 4xx/5xx 或网络异常触发 reverse 流水自动回退积分
+//   - cost > 0：必须登录；整链失败或网络异常触发 reverse 流水自动回退积分
 //   - model 查找优先级：tool_models → tool_features.credit_cost（兜底）→ 0
 //
 // 响应兼容：
@@ -22,6 +22,7 @@
 //   - Gemini 路径：candidates[0].content.parts[].inline_data.data（base64）
 
 import { extractUidFromRequest } from './_lib/model-resolver.js'
+import { resolveUpstreamChain, runWithFailover, UPSTREAM_MODEL_ID_PATTERN } from './_lib/image-upstream.js'
 import { startGeneration, finalizeGeneration } from './_lib/record-generation.js'
 import { persistGeneratedImage } from '../services/generatedImageStorage.js'
 
@@ -130,109 +131,6 @@ async function reverseDeduction(env, uid, cost, relatedTxId, reason) {
   }
 }
 
-/**
- * 从 images/edits 或 images/generations 响应里提取图片 URL/dataURL
- * data[0].url → data[0].b64_json → data.url
- */
-function extractImageFromEditsResponse(data) {
-  if (data?.data?.[0]?.url) return data.data[0].url
-  if (data?.data?.[0]?.b64_json) return 'data:image/png;base64,' + data.data[0].b64_json
-  if (data?.url) return data.url
-  if (Array.isArray(data?.data) && data.data[0]?.url) return data.data[0].url
-  return ''
-}
-
-// ============ Gemini 专用 ============
-
-/** 检测是否走 Google Gemini 原生 API 路径（bafang.me 透传到 Google） */
-function isGeminiModel(modelKey) {
-  return typeof modelKey === 'string' && modelKey.toLowerCase().startsWith('gemini-')
-}
-
-/**
- * 前端 size 字符串 → Gemini aspectRatio
- * 1024x1024 → 1:1
- * 1024x1792 → 9:16（竖版）
- * 1792x1024 → 16:9（横版）
- * 其他（含 auto）→ 1:1（最常见，避免上游默认行为不可控）
- */
-function mapSizeToAspectRatio(size) {
-  switch (size) {
-    case '1024x1792':
-    case '1024x1920':
-    case '1080x1920':
-      return '9:16'
-    case '1792x1024':
-    case '1920x1024':
-    case '1920x1080':
-      return '16:9'
-    case '1024x1024':
-    case '1080x1080':
-      return '1:1'
-    default:
-      return '1:1'
-  }
-}
-
-/** 把 File 读成 base64 字符串（不带 data: 前缀） */
-async function fileToBase64(file) {
-  const buf = await file.arrayBuffer()
-  const bytes = new Uint8Array(buf)
-  let binary = ''
-  const chunk = 8192
-  for (let i = 0; i < bytes.length; i += chunk) {
-    binary += String.fromCharCode.apply(
-      null,
-      bytes.subarray(i, Math.min(i + chunk, bytes.length)),
-    )
-  }
-  return btoa(binary)
-}
-
-/**
- * 构造 Gemini generateContent 请求体
- * - 文生图：parts = [{ text: prompt }]
- * - 图生图：parts = [{ text: prompt }, { inline_data }, { inline_data }, ...]
- *   多张图片按用户上传顺序追加，每张一张 inline_data。
- * 固定 responseModalities: ['IMAGE']，imageSize 默认 '1K'（生成速度快、积分低）
- */
-async function buildGeminiRequestBody({ prompt, imageFiles, aspectRatio, imageSize = '1K' }) {
-  const parts = [{ text: prompt }]
-  for (const file of imageFiles) {
-    const b64 = await fileToBase64(file)
-    parts.push({
-      inline_data: {
-        mime_type: file.type || 'image/png',
-        data: b64,
-      },
-    })
-  }
-  return {
-    contents: [{ role: 'user', parts }],
-    generationConfig: {
-      responseModalities: ['IMAGE'],
-      imageConfig: { aspectRatio, imageSize },
-    },
-  }
-}
-
-/**
- * 从 Gemini generateContent 响应里提取图片
- * 遍历 candidates[0].content.parts[]，找到第一个有 inline_data 的部分
- * 返回 data:mime;base64,... 形式
- */
-function extractImageFromGeminiResponse(data) {
-  const parts = data?.candidates?.[0]?.content?.parts
-  if (!Array.isArray(parts)) return ''
-  for (const part of parts) {
-    if (part?.inline_data?.data) {
-      const mime = part.inline_data.mime_type || 'image/png'
-      return `data:${mime};base64,${part.inline_data.data}`
-    }
-  }
-  return ''
-}
-
 export async function onRequest(context) {
   const { request, env } = context
 
@@ -251,11 +149,6 @@ export async function onRequest(context) {
     null
   const userAgent = (request.headers.get('User-Agent') || '').slice(0, 256) || null
 
-  const apiKey = env.BAFANG_API_KEY
-  if (!apiKey) {
-    return json({ ok: false, error: '服务未配置 API Key' }, 500)
-  }
-
   // ============ 1. 解析 formData（在扣费前，避免空请求消耗积分） ============
   let formData
   try {
@@ -266,9 +159,10 @@ export async function onRequest(context) {
 
   const prompt = (formData.get('prompt')?.toString() || '').trim().slice(0, 5000)
   const modelKey = (formData.get('model')?.toString() || '').trim() || 'gpt-image-2-1k'
-  // model 会拼进上游 URL 路径（gemini 分支 /v1beta/models/{model}:generateContent）并落库，
-  // 只放行常规模型名格式（字母数字开头，可含 . _ -，≤64 字符），杜绝 ../、?、# 等注入
-  if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(modelKey)) {
+  // model 是 tool_models.model_key（查链/积分用），legacy 回退时还会直传上游；
+  // 用共享库的格式校验（字母数字开头，可含 . _ - 和中文——存量 key 如 'gpt-image2-超分'），
+  // 杜绝 ../、?、# 等注入
+  if (!UPSTREAM_MODEL_ID_PATTERN.test(modelKey)) {
     return json({ ok: false, error: '不支持的模型名' }, 400)
   }
   const size = formData.get('size')?.toString() || '1024x1024'
@@ -295,13 +189,14 @@ export async function onRequest(context) {
     return await errorJson(db, uid, '请输入提示词', 400)
   }
 
-  // ============ 3. 查 model 维 cost（tool_models 优先，fallback 到 tool_features） ============
+  // ============ 3. 查 model 维 cost（tool_models 优先，fallback 到 tool_features）+ 上游链 ============
   let cost = 0
   let resolvedModelLabel = ''
+  let rawUpstreams
   try {
     const m = await db
       .prepare(
-        `SELECT credit_cost, model_label FROM tool_models
+        `SELECT credit_cost, model_label, upstreams FROM tool_models
          WHERE tool_url = ? AND model_key = ? AND is_enabled = 1`,
       )
       .bind(TOOL_URL, modelKey)
@@ -309,6 +204,7 @@ export async function onRequest(context) {
     if (m) {
       cost = m.credit_cost ?? 0
       resolvedModelLabel = m.model_label || ''
+      rawUpstreams = m.upstreams || null
     } else {
       // fallback：工具维兜底
       const t = await db
@@ -319,6 +215,13 @@ export async function onRequest(context) {
     }
   } catch {
     cost = 0
+  }
+
+  // ============ 3.5 解析上游链（在扣费前：链完全不可用时直接 500，不收积分） ============
+  const { chain, legacy, skipped } = await resolveUpstreamChain(db, TOOL_URL, modelKey, env, { rawUpstreams })
+  if (chain.length === 0) {
+    console.error('[ai-image-edit] 无可用上游: model=' + modelKey + ' skipped=' + JSON.stringify(skipped))
+    return await errorJson(db, uid, '服务未配置上游厂商或 API Key', 500)
   }
 
   // ============ 4. 登录校验 + 扣费 ============
@@ -458,90 +361,36 @@ export async function onRequest(context) {
     }
   }
 
-  // ============ 5. 调上游 ============
-  let upstreamPath, upstreamInit
-
-  if (isGeminiModel(modelKey)) {
-    // Gemini 走 Google 原生 API：POST /v1beta/models/{model}:generateContent
-    // 请求体用 contents/parts/generationConfig 格式，鉴权用 x-goog-api-key
-    const geminiBody = await buildGeminiRequestBody({
-      prompt,
-      imageFiles: hasImage ? imageFiles : [],
-      aspectRatio: mapSizeToAspectRatio(size),
-    })
-    upstreamPath = `/v1beta/models/${modelKey}:generateContent`
-    upstreamInit = {
-      method: 'POST',
-      headers: {
-        'x-goog-api-key': apiKey,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(geminiBody),
-    }
-  } else if (hasImage) {
-    // OpenAI 风格图生图：POST /v1/images/edits（form-data）
-    // 多张图都按 'image' 字段提交，OpenAI 兼容端点会按位置顺序处理
-    const upstreamForm = new FormData()
-    upstreamForm.append('model', modelKey)
-    upstreamForm.append('size', size)
-    upstreamForm.append('prompt', prompt)
-    for (const file of imageFiles) {
-      upstreamForm.append('image', file)
-    }
-    upstreamPath = '/v1/images/edits'
-    upstreamInit = {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}` },
-      body: upstreamForm,
-    }
-  } else {
-    // OpenAI 风格文生图：POST /v1/images/generations（application/json）
-    upstreamPath = '/v1/images/generations'
-    upstreamInit = {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: modelKey,
-        prompt,
-        size,
-      }),
-    }
-  }
-
+  // ============ 5. 调上游（可配置厂商链 + 自动容灾，见 _lib/image-upstream.js） ============
   console.log('[ai-image-edit] 请求:', JSON.stringify({
-    path: upstreamPath,
     model: modelKey,
     size,
     imageCount: imageFiles.length,
     promptLen: prompt.length,
+    chain: chain.map(c => `${c.provider}/${c.modelId}`),
+    legacy,
   }))
 
-  // 客户端断开检测：监听 request.signal，关闭/刷新页面都会触发。
-  // 触发时：取消 upstream fetch（省资源）+ 退还积分 + 日志记 'reversed'。
+  // 客户端断开检测：监听 request.signal（关闭/刷新页面触发）。
+  // fetch 的实时取消由 runWithFailover 的 externalSignal 处理；这里只维护标志，
+  // 供"上游已返回但客户端已走"的结果作废退款判断用。
   let clientAborted = false
   if (request.signal) {
     request.signal.addEventListener('abort', () => {
       if (!clientAborted) {
         clientAborted = true
         console.log('[ai-image-edit] client disconnected, will refund if deducted')
-        // 顺带取消 upstream fetch，避免白跑
-        try { upstreamController.abort() } catch {}
       }
     })
   }
 
   // 上游超时：10 分钟（600s）。生图模型偶尔会跑到 3-5 分钟。
+  // 整条 failover 链共享该预算（runWithFailover），避免多家厂商各跑 600s
+  // 把请求拖过平台限制（付费计划 Unbound 上限 900s，600s 留 300s 余量）。
   // 注意：Cloudflare Workers 免费计划可能出现单次请求 CPU 时间/耗时限制，
   // 若 Worker 被平台强行终止（不是客户端断开），catch 块不会执行，
   // reverseDeduction 不会触发，积分已扣但不会退还——这是平台层面的限制。
-  // 付费计划（Unbound）上限 900s，600s 超时留 300s 余量。
   const UPSTREAM_TIMEOUT_MS = 600000
-  const upstreamController = new AbortController()
-  const upstreamTimer = setTimeout(() => upstreamController.abort(), UPSTREAM_TIMEOUT_MS)
-  upstreamInit.signal = upstreamController.signal
 
   // 已扣费标志：失败时若已扣费，状态记为 'reversed'（表示自动退还过）
   const reversed = cost > 0 && uid && txId
@@ -561,19 +410,20 @@ export async function onRequest(context) {
       has_input_image: hasImage ? imageFiles.length : 0,
       client_ip: clientIp,
       user_agent: userAgent,
-      request: isGeminiModel(modelKey)
-        ? {
-            endpoint: `/v1beta/models/${modelKey}:generateContent`,
-            model: modelKey,
-            aspectRatio: mapSizeToAspectRatio(size),
-            imageSize: '1K',
-            prompt,
-            image_mimes: hasImage ? imageFiles.map(f => f.type) : [],
-            image_sizes: hasImage ? imageFiles.map(f => f.size) : [],
-          }
-        : hasImage
-          ? { endpoint: '/v1/images/edits', model: modelKey, size, prompt, image_count: imageFiles.length, image_sizes: imageFiles.map(f => f.size), image_types: imageFiles.map(f => f.type) }
-          : { endpoint: '/v1/images/generations', model: modelKey, size, prompt },
+      // 发往上游的真实请求参数（只含厂商需要的内容）
+      request: {
+        model: modelKey,
+        prompt,
+        image_mimes: hasImage ? imageFiles.map(f => f.type) : [],
+        image_sizes: hasImage ? imageFiles.map(f => f.size) : [],
+      },
+      // 上游链路配置（仅落库排障用，不会发给厂商）；实际逐次请求见 attempts（含完整 URL）
+      upstream: {
+        legacy,
+        chain: chain.map(c => ({ provider: c.provider, model_id: c.modelId, style: c.style })),
+        ...(skipped.length ? { skipped } : {}),
+        timeout_ms: UPSTREAM_TIMEOUT_MS,
+      },
     },
   }
 
@@ -593,69 +443,61 @@ export async function onRequest(context) {
 
   try {
     upstreamT0 = Date.now()
-    const upstreamResponse = await fetch(`https://bafang.me${upstreamPath}`, upstreamInit)
-    upstreamDurationMs = Date.now() - upstreamT0
-    clearTimeout(upstreamTimer)
+    const result = await runWithFailover(chain, {
+      prompt,
+      imageFiles,
+      size,
+      totalTimeoutMs: UPSTREAM_TIMEOUT_MS,
+      externalSignal: request.signal,
+      onAttempt: (a) => console.log('[ai-image-edit] upstream attempt:', JSON.stringify(a)),
+    })
+    upstreamDurationMs = result.totalDurationMs ?? (Date.now() - upstreamT0)
 
-    // 上游已成功返回但客户端已断开：仍按"退还"处理（用户感知不到结果）
-    if (clientAborted) {
-      console.log('[ai-image-edit] fetch returned but client already gone, refunding')
+    // 客户端已断开：无论上游是否成功，按"退还"处理（用户感知不到结果）
+    if (clientAborted || (!result.ok && result.reason === 'client-aborted')) {
+      console.log('[ai-image-edit] client gone, refunding if deducted')
       if (reversed) {
-        await reverseDeduction(env, uid, cost, txId, 'ai-image-edit:reverse:client-disconnected-after-fetch')
+        await reverseDeduction(env, uid, cost, txId, 'ai-image-edit:reverse:client-disconnected')
       }
       await finalizeRecord({
         status: reversed ? 'reversed' : 'failed',
-        upstreamStatus: upstreamResponse.status,
+        upstreamStatus: result.attempts?.[result.attempts.length - 1]?.status ?? 0,
         upstreamDurationMs,
         errorMessage: '客户端已断开连接',
+        rawData: { ...recordBase.rawData, attempts: result.attempts },
       })
       return await errorJson(db, uid, '客户端已断开连接', 499)
     }
 
-    if (!upstreamResponse.ok) {
-      const errText = await upstreamResponse.text().catch(() => '')
-      console.error('[ai-image-edit] 上游错误:', upstreamResponse.status, errText.slice(0, 500))
+    if (!result.ok) {
+      const isTimeout = result.reason === 'timeout'
+      console.error('[ai-image-edit] 上游链失败:', result.reason, result.error)
       if (reversed) {
-        await reverseDeduction(env, uid, cost, txId, `ai-image-edit:reverse:upstream-${upstreamResponse.status}`)
+        const reason = isTimeout
+          ? 'ai-image-edit:reverse:upstream-timeout'
+          : `ai-image-edit:reverse:upstream-${result.reason}-${result.status || 0}`
+        await reverseDeduction(env, uid, cost, txId, reason)
       }
       await finalizeRecord({
-        status: reversed ? 'reversed' : 'failed',
-        upstreamStatus: upstreamResponse.status,
+        status: reversed ? 'reversed' : (isTimeout ? 'timeout' : 'failed'),
+        upstreamStatus: result.status || 0,
         upstreamDurationMs,
-        errorMessage: `上游错误 ${upstreamResponse.status}: ${errText.slice(0, 300)}`,
+        errorMessage: result.error,
+        rawData: { ...recordBase.rawData, attempts: result.attempts },
       })
-      return await errorJson(db, uid, `上游错误 ${upstreamResponse.status}: ${errText.slice(0, 300)}`, upstreamResponse.status)
-    }
-
-    const data = await upstreamResponse.json()
-
-    // 解析响应：按上游格式分支
-    //   - OpenAI 路径：data[0].url / data[0].b64_json
-    //   - Gemini 路径：candidates[0].content.parts[].inline_data.data
-    const imageUrl = isGeminiModel(modelKey)
-      ? extractImageFromGeminiResponse(data)
-      : extractImageFromEditsResponse(data)
-
-    if (!imageUrl) {
-      console.error('[ai-image-edit] 无法从响应中提取图片:', JSON.stringify(data).slice(0, 500))
-      if (reversed) {
-        await reverseDeduction(env, uid, cost, txId, 'ai-image-edit:reverse:no-image-in-response')
-      }
-      await finalizeRecord({
-        status: reversed ? 'reversed' : 'failed',
-        upstreamStatus: upstreamResponse.status,
-        upstreamDurationMs,
-        errorMessage: '上游返回成功但未找到图片数据',
-        rawData: { ...recordBase.rawData, response: data },
-      })
-      return await errorJson(db, uid, '上游返回成功但未找到图片数据', 502)
+      return await errorJson(
+        db,
+        uid,
+        isTimeout ? '上游调用超时，请稍后重试' : result.error,
+        isTimeout ? 504 : (result.status || 500),
+      )
     }
 
     console.log('[ai-image-edit] 上游图片已提取，开始上传 R2')
     const storedImage = await persistGeneratedImage(env, {
       uid,
       recordId,
-      imageUrl,
+      imageUrl: result.imageUrl,
     })
     const resultUrl = storedImage.publicUrl
     console.log('[ai-image-edit] R2 持久化成功:', resultUrl)
@@ -663,9 +505,16 @@ export async function onRequest(context) {
     await finalizeRecord({
       status: 'success',
       resultUrl,
-      upstreamStatus: upstreamResponse.status,
+      upstreamStatus: result.status,
       upstreamDurationMs,
-      rawData: { ...recordBase.rawData, response: data, r2_key: storedImage.r2Key },
+      rawData: {
+        ...recordBase.rawData,
+        response: result.data,
+        r2_key: storedImage.r2Key,
+        provider_used: result.used.provider,
+        model_id_used: result.used.modelId,
+        attempts: result.attempts,
+      },
     })
 
     return json({
@@ -682,35 +531,16 @@ export async function onRequest(context) {
       },
     })
   } catch (error) {
+    // runWithFailover 自身不抛错（失败都走 result 分支）；这里兜 R2 持久化等未预期异常
     console.error('[ai-image-edit] 请求失败:', error)
-    const isClientAbort = clientAborted
-    const isTimeout = !isClientAbort && (error?.name === 'AbortError' || /abort/i.test(error?.message || ''))
     if (reversed) {
-      const reason = isClientAbort
-        ? 'ai-image-edit:reverse:client-disconnected'
-        : isTimeout
-          ? 'ai-image-edit:reverse:upstream-timeout'
-          : 'ai-image-edit:reverse:network-error'
-      await reverseDeduction(env, uid, cost, txId, reason)
+      await reverseDeduction(env, uid, cost, txId, 'ai-image-edit:reverse:network-error')
     }
     await finalizeRecord({
-      status: reversed ? 'reversed' : (isTimeout ? 'timeout' : 'failed'),
+      status: reversed ? 'reversed' : 'failed',
       upstreamDurationMs,
-      errorMessage: isClientAbort
-        ? '客户端已断开连接'
-        : isTimeout
-          ? '上游调用超时'
-          : (error?.message || '调用失败'),
+      errorMessage: error?.message || '调用失败',
     })
-    return await errorJson(
-      db,
-      uid,
-      isClientAbort
-        ? '客户端已断开连接'
-        : isTimeout
-          ? '上游调用超时，请稍后重试'
-          : (error.message || '调用失败'),
-      isClientAbort ? 499 : (isTimeout ? 504 : 500),
-    )
+    return await errorJson(db, uid, error?.message || '调用失败', 500)
   }
 }

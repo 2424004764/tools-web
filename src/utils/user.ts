@@ -6,6 +6,8 @@ export interface UserInfo {
     is_admin: number; // 0 = 普通用户，1 = 管理员；老 token 解析不到时为 undefined
     iat: number;
     exp: number;
+    /** DPoP（RFC 9449）绑定公钥指纹：有此字段时请求必须携带匹配的 DPoP proof */
+    cnf?: { jkt: string };
 }
 
 /**

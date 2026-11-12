@@ -137,6 +137,10 @@ const elapsedText = computed(() => {
                     class="bg-transparent border-0 p-0 cursor-pointer text-ink-700 hover:text-accent-600 transition-colors"
                     @click="componentStore.setFeedbackDialogVisible(true)"
                 >反馈建议</button>
+                <span class="hidden sm:inline">|</span>
+                <router-link to="/privacy" class="text-ink-700 hover:text-accent-600 transition-colors">隐私政策</router-link>
+                <span class="hidden sm:inline">|</span>
+                <router-link to="/terms" class="text-ink-700 hover:text-accent-600 transition-colors">服务条款</router-link>
             </div>
             <!-- 构建时间（pnpm build:pro 时由 vite.config.ts 注入） -->
             <div class="mt-2 text-caption text-ink-500">

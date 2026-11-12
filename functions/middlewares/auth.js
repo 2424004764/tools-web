@@ -1,4 +1,5 @@
 import { ApiResponse } from '../utils/db.js'
+import { verifyDpopBinding } from '../utils/dpop.js'
 
 // 服务端实时校验用户状态：token_version（撤销）+ is_disabled（封禁）。
 // 一次主键查询；查询失败按失效处理（fail-closed），避免 DB 故障期间旧 token 复活。
@@ -127,6 +128,14 @@ export class AuthMiddleware {
         return { success: false, error: liveCheck.error }
       }
 
+      // DPoP 发送方约束（RFC 9449）：token 绑定了公钥指纹（cnf.jkt）时，
+      // 请求必须携带有效 proof 且公钥指纹一致，截获的 token 单独无法使用；
+      // 未绑定的存量/新签 token 过渡期放行（见 utils/dpop.js 的 DPOP_ENFORCE）
+      const dpopCheck = await verifyDpopBinding(request, env, verifyResult.payload)
+      if (!dpopCheck.ok) {
+        return { success: false, error: dpopCheck.error }
+      }
+
       // 返回用户信息
       return {
         success: true,
@@ -164,6 +173,13 @@ export class AuthMiddleware {
 
       const liveCheck = await checkUserTokenState(env, verifyResult.payload)
       if (!liveCheck.ok) {
+        return { success: true, user: null }
+      }
+
+      // DPoP 校验失败（未带 proof / proof 无效 / 指纹不符）按未登录处理，
+      // 与可选认证语义一致：不阻断公开接口，只是不识别该 token
+      const dpopCheck = await verifyDpopBinding(request, env, verifyResult.payload)
+      if (!dpopCheck.ok) {
         return { success: true, user: null }
       }
 

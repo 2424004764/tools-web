@@ -316,7 +316,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <header class="h-20 w-full flex items-center justify-between gap-4 c-xs:h-16 c-xs:fixed c-xs:top-0 c-xs:left-0 c-xs:right-0 c-xs:z-50 c-xs:bg-surface-1 dark:c-xs:bg-surface-1 c-xs:border-b c-xs:border-border-subtle">
+  <header class="relative h-20 w-full flex items-center justify-between gap-4 c-xs:h-16 c-xs:fixed c-xs:top-0 c-xs:left-0 c-xs:right-0 c-xs:z-50 c-xs:bg-surface-1 dark:c-xs:bg-surface-1 c-xs:border-b c-xs:border-border-subtle">
     <div class="flex items-center flex-1 min-w-0">
       <Transition name="fold" class="hidden c-sm:block c-md:hidden c-xs:block text-ink-700">
         <button v-if="!componentStore.leftComDrawer" type="button" class="icon-btn bg-transparent border-0 p-0 cursor-pointer text-ink-700" aria-label="打开导航菜单" :aria-expanded="componentStore.leftComDrawer" @click="componentStore.setleftComDrawerStatus(true)">
@@ -403,14 +403,14 @@ onUnmounted(() => {
 
     <div class="flex items-center gap-2 shrink-0 c-xs:pr-3">
       <!-- 更多产品：兄弟产品矩阵下拉（后台站点设置可配置；列表为空时整体隐藏） -->
-      <div v-if="products.length" class="relative products-menu-container">
+      <!-- 容器不设 relative：下拉面板锚定到整行 header（见面板注释）；类名保留给点击外部关闭判定用 -->
+      <div v-if="products.length" class="products-menu-container">
         <button
           type="button"
           class="h-10 c-xs:w-10 c-xs:px-0 px-3 rounded-full bg-white dark:bg-surface-0 shadow-sm shadow-ink-950/5 border border-border-subtle flex items-center justify-center gap-1.5 text-ink-500 hover:text-accent-600 hover:border-accent-300 transition-colors cursor-pointer"
           aria-haspopup="menu"
           :aria-expanded="productsMenuVisible"
           aria-label="更多产品"
-          title="更多产品"
           @click="toggleProductsMenu"
           @mouseenter="showProductsMenu"
           @mouseleave="hideProductsMenu"
@@ -423,16 +423,17 @@ onUnmounted(() => {
           </svg>
         </button>
 
-        <!-- 产品下拉面板：PC 两列列表；手机端两列图标磁贴。max-h+滚动兜底，产品再多也不溢出屏幕 -->
+        <!-- 产品下拉面板：锚定整行 header 右缘，宽度 w-full 且 max-w 660px——宽度始终跟随可用空间，任何屏宽都不会溢出视口；
+             手机端（c-xs）为固定全宽浮层。max-h+滚动兜底，产品再多也不溢出屏幕 -->
         <div
           v-show="productsMenuVisible"
           role="menu"
           aria-label="更多产品"
-          class="absolute top-full right-0 mt-1 w-[600px] bg-surface-0 dark:bg-surface-0 border border-border-default rounded-2xl shadow-lg py-1.5 z-50 max-h-[calc(100vh-6rem)] overflow-y-auto overscroll-contain c-xs:fixed c-xs:top-16 c-xs:right-3 c-xs:left-3 c-xs:w-auto c-xs:mt-0"
+          class="absolute top-full right-0 mt-1 w-full max-w-[660px] bg-surface-0 dark:bg-surface-0 border border-border-default rounded-2xl shadow-lg py-1.5 z-50 max-h-[calc(100vh-6rem)] overflow-y-auto overscroll-contain c-xs:fixed c-xs:top-16 c-xs:right-3 c-xs:left-3 c-xs:w-auto c-xs:max-w-none c-xs:mt-0"
           @mouseenter="showProductsMenu"
           @mouseleave="hideProductsMenu"
         >
-          <div class="grid grid-cols-2 gap-x-1 c-xs:grid-cols-3">
+          <div class="grid grid-cols-3 gap-x-1">
             <a
               v-for="p in products"
               :key="p.key"
@@ -450,7 +451,7 @@ onUnmounted(() => {
                 aria-hidden="true"
               >{{ productLogoFallbackChar(p.name) }}</span>
               <span class="min-w-0">
-                <span class="block text-[15px] leading-5 font-semibold text-ink-800 group-hover:text-accent-700 dark:group-hover:text-accent-300 transition-colors">{{ p.name }}</span>
+                <span class="block truncate text-[15px] leading-5 font-semibold text-ink-800 group-hover:text-accent-700 dark:group-hover:text-accent-300 transition-colors" :title="p.name">{{ p.name }}</span>
                 <!-- 手机端磁贴放不下描述，只保留名称 -->
                 <span class="block text-xs leading-4 text-ink-400 truncate mt-0.5 c-xs:hidden">{{ p.desc }}</span>
               </span>

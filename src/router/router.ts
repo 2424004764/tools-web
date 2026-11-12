@@ -794,6 +794,28 @@ export const constantRoute = [
       description: '',
     }
   },
+  // 隐私政策
+  {
+    path: '/privacy',
+    component: () => import('@/components/Home/Privacy.vue'),
+    name: 'privacy',
+    meta: {
+      title: "隐私政策",
+      keywords: '隐私政策,数据收集,数据安全',
+      description: '一方工具箱隐私政策：说明我们收集的信息类别、用途、第三方服务与数据安全措施，以及您对个人数据的权利。',
+    }
+  },
+  // 服务条款
+  {
+    path: '/terms',
+    component: () => import('@/components/Home/Terms.vue'),
+    name: 'terms',
+    meta: {
+      title: "服务条款",
+      keywords: '服务条款,使用规范,免责声明',
+      description: '一方工具箱服务条款：账号与安全、使用规范、用户内容归属、AI 功能说明与免责声明。',
+    }
+  },
   // 登录页面
   {
     path: '/login',

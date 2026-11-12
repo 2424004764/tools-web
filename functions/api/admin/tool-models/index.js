@@ -2,7 +2,12 @@
 // GET  /api/admin/tool-models?toolUrl=/ai-image-edit/  列表
 // POST /api/admin/tool-models                          创建
 //
+// upstreams 字段（可选）：有序上游链 [{provider, model_id, style}]，
+// null / 空数组 = 未配置（端点回退 legacy bafang + env key）。
+//
 // 鉴权已在 _middleware.js 完成。
+
+import { parseUpstreamsJson, validateUpstreamsForSave } from '../../_lib/image-upstream.js'
 
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -41,7 +46,7 @@ export async function onRequest(context) {
       const result = await db
         .prepare(
           `SELECT id, tool_url, model_key, model_label, description, credit_cost,
-                  sort_order, is_enabled, is_default, created_at, updated_at
+                  sort_order, is_enabled, is_default, upstreams, created_at, updated_at
            FROM tool_models
            WHERE tool_url = ?
            ORDER BY sort_order ASC, id ASC`,
@@ -49,7 +54,12 @@ export async function onRequest(context) {
         .bind(toolUrl)
         .all()
 
-      return json({ list: result.results || [] })
+      // upstreams 落库是 JSON 字符串，出参解析成数组（空/非法 → null = 未配置）
+      const list = (result.results || []).map((r) => ({
+        ...r,
+        upstreams: parseUpstreamsJson(r.upstreams),
+      }))
+      return json({ list })
     }
 
     if (request.method === 'POST') {
@@ -72,6 +82,22 @@ export async function onRequest(context) {
       if (modelKey.length > 100) return jsonError('model_key 长度不可超过 100', 400)
       if (modelLabel.length > 200) return jsonError('model_label 长度不可超过 200', 400)
 
+      // 上游链校验（null/未传 = 不配置；数组按链校验 provider 存在、model_id 格式、style 枚举）
+      let upstreamsJson = null
+      if (body.upstreams !== undefined && body.upstreams !== null) {
+        const v = await validateUpstreamsForSave(db, body.upstreams)
+        if (!v.ok) return jsonError(v.error, 400)
+        upstreamsJson = v.value ? JSON.stringify(v.value) : null
+      }
+
+      // 唯一键预检：UNIQUE(tool_url, model_key)。直接让 D1 抛约束错误的话，
+      // 前端只能看到裸的 SQLITE_CONSTRAINT 文案，对管理员不友好
+      const dup = await db
+        .prepare('SELECT id FROM tool_models WHERE tool_url = ? AND model_key = ?')
+        .bind(toolUrl, modelKey)
+        .first()
+      if (dup) return jsonError('该 model_key 在此工具下已存在', 400)
+
       const now = nowSql()
       const stmts = []
 
@@ -92,34 +118,50 @@ export async function onRequest(context) {
           .prepare(
             `INSERT INTO tool_models
              (tool_url, model_key, model_label, description, credit_cost, sort_order,
-              is_enabled, is_default, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              is_enabled, is_default, upstreams, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           )
           .bind(
             toolUrl, modelKey, modelLabel, description, creditCost, sortOrder,
-            isEnabled, makeDefault ? 1 : 0, now, now,
+            isEnabled, makeDefault ? 1 : 0, upstreamsJson, now, now,
           ),
       )
 
       const results = await db.batch(stmts)
       const insertMeta = results[results.length - 1]?.meta || results[results.length - 1] || {}
-      const newId = insertMeta.last_insert_rowid || insertMeta.lastInsertRowid
+      // D1 各运行时自增 ID 属性名不一：生产 meta.last_row_id，旧版 miniflare last_insert_rowid / lastInsertRowid
+      const newId = insertMeta.last_row_id ?? insertMeta.last_insert_rowid ?? insertMeta.lastInsertRowid
 
-      const row = await db
-        .prepare(
-          `SELECT id, tool_url, model_key, model_label, description, credit_cost,
-                  sort_order, is_enabled, is_default, created_at, updated_at
-           FROM tool_models WHERE id = ?`,
-        )
-        .bind(newId)
-        .first()
+      // 读回新行：优先自增 ID；拿不到时按唯一键 (tool_url, model_key) 反查兜底，
+      // 避免把 undefined 传给 bind 触发 D1_TYPE_ERROR
+      const row = newId
+        ? await db
+            .prepare(
+              `SELECT id, tool_url, model_key, model_label, description, credit_cost,
+                      sort_order, is_enabled, is_default, upstreams, created_at, updated_at
+               FROM tool_models WHERE id = ?`,
+            )
+            .bind(newId)
+            .first()
+        : await db
+            .prepare(
+              `SELECT id, tool_url, model_key, model_label, description, credit_cost,
+                      sort_order, is_enabled, is_default, upstreams, created_at, updated_at
+               FROM tool_models WHERE tool_url = ? AND model_key = ?`,
+            )
+            .bind(toolUrl, modelKey)
+            .first()
 
-      return json(row, 201)
+      return json({ ...row, upstreams: parseUpstreamsJson(row?.upstreams) }, 201)
     }
 
     return jsonError('不支持的请求方法', 405)
   } catch (error) {
     console.error('admin/tool-models error:', error)
+    // 预检与 INSERT 之间并发撞唯一键（极小概率）也翻译成人话
+    if (/UNIQUE constraint failed/i.test(String(error?.message || ''))) {
+      return jsonError('该 model_key 在此工具下已存在', 400)
+    }
     return jsonError(error.message || '服务器错误', 500)
   }
 }

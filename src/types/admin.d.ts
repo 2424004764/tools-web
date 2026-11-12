@@ -127,6 +127,18 @@ export interface ToolFeature {
   updated_at: string
 }
 
+/** 上游链单项（tool_models.upstreams JSON 数组的元素） */
+export interface ToolModelUpstream {
+  /** ai_providers.slug，如 'bafang' */
+  provider: string
+  /** 厂商侧真实模型 ID（与 tool_models.model_key 解耦） */
+  model_id: string
+  /** auto = gemini- 前缀走 Google 原生，否则 OpenAI 兼容 */
+  style: 'auto' | 'openai' | 'gemini'
+  /** 附加请求参数（如动图模型 {"output_format":"gif","frame_count":9,...}）；openai 分支合并进请求体，gemini 忽略 */
+  extra_body?: Record<string, string | number | boolean>
+}
+
 /** 工具可用的 model（按 model 维度扣费时用） */
 export interface ToolModel {
   id: number
@@ -138,6 +150,8 @@ export interface ToolModel {
   sort_order: number
   is_enabled: number
   is_default: number
+  /** 有序上游链（failover 按序切换）；null = 未配置（回退 legacy bafang） */
+  upstreams: ToolModelUpstream[] | null
   created_at: string
   updated_at: string
 }

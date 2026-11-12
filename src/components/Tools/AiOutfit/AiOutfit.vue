@@ -7,6 +7,7 @@ import type { UploadProps } from 'element-plus'
 import Sortable from 'sortablejs'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import GenerationHistoryDialog from '@/components/Tools/AiImageEdit/GenerationHistoryDialog.vue'
+import { useCachedRef } from '@/components/Tools/AiImageEdit/composables/useCachedRef'
 import UserPromptLibraryDialog from '@/components/Common/UserPromptLibraryDialog.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import { autoDown, isImageFile } from '@/utils/file'
@@ -24,7 +25,12 @@ const info = reactive({
 // ============ 模型 + 尺寸 ============
 const modelList = ref<PublicToolModel[]>([])
 const modelLoaded = ref(false)
-const selectedModel = ref<string>('')
+// 记住上次选择的模型（localStorage）；列表加载后若缓存项已被下架则回退默认项
+const selectedModel = useCachedRef<string>(
+  'ai-outfit:model',
+  '',
+  (val) => typeof val === 'string' && val.length > 0,
+)
 const currentModelCost = computed(() => {
   const m = modelList.value.find((x) => x.model_key === selectedModel.value)
   return m?.credit_cost ?? 0
@@ -751,7 +757,9 @@ const fetchModelList = async () => {
     const list = await fetchToolModels('/ai-outfit/')
     modelList.value = list
     if (list.length > 0) {
-      const def = list.find((m) => m.is_default) || list[0]
+      // 恢复优先级：上次选择（仍在列表中）> is_default > 第一项
+      const cached = list.find((m) => m.model_key === selectedModel.value)
+      const def = cached || list.find((m) => m.is_default) || list[0]
       selectedModel.value = def.model_key
     }
   } catch (err) {
@@ -1438,9 +1446,10 @@ const modeBadge = computed(() => clothingFiles.value.length > 0
         <p><strong>风格 / 场景：</strong>在文本框里输入场景描述（商务休闲、夏日海边、约会、街头潮流、学院风、晚宴礼服、居家舒适…），AI 会按场景调整整体造型。留空走默认。</p>
         <p><strong>模型说明：</strong></p>
         <ul class="list-disc pl-5 space-y-2">
-          <li><strong>GPT Image 2：</strong>通用图片模型，支持文生图与图生图，速度快、性价比高，适合人物穿搭替换。</li>
-          <li><strong>Gemini 3 Pro Image Preview：</strong>Google 旗舰图片模型，质量高、对多张图的理解力强，搭配建议效果最佳。</li>
-          <li><strong>Gemini 3.1 Flash Image Preview：</strong>Google Flash 预览版，速度快、性价比高，同样支持多图理解。</li>
+          <li v-for="m in modelList" :key="m.model_key">
+            <strong>{{ m.model_label }}</strong>
+            <span class="text-ink-500">（{{ m.credit_cost > 0 ? `${m.credit_cost} 积分/次` : '免费' }}）</span><span v-if="m.description">：{{ m.description }}</span>
+          </li>
         </ul>
         <p class="text-ink-500">提示：人物照请上传清晰正面、面部可见、姿态自然、光线充足的照片，可显著提升效果。</p>
       </div>

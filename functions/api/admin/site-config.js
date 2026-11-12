@@ -44,7 +44,7 @@ const ALLOWED_KEYS = {
   },
   products_matrix: {
     remark:
-      '「更多产品」矩阵，JSON 数组：[{"key":"tiji","name":"题迹","desc":"一句话简介","url":"https://xxx","logo":"/images/logo/product-tiji.svg","enabled":true}]；key 为站内跳转白名单（小写字母/数字/连字符，全局唯一），enabled=false 隐藏该项，全部隐藏时前台不展示「更多产品」入口；logo 选填，留空时前台取名称首字做图标；留空 = 使用内置默认',
+      '「更多产品」矩阵，JSON 数组：[{"key":"tiji","name":"题迹","desc":"一句话简介","url":"https://xxx","logo":"/images/logo/product-tiji.svg","client_id":"tc_xxx","enabled":true}]；key 为站内跳转白名单（小写字母/数字/连字符，全局唯一），enabled=false 隐藏该项，全部隐藏时前台不展示「更多产品」入口；logo 选填，留空时前台取名称首字做图标；client_id 选填，关联 OAuth 应用（仅后台展示用，前台不消费）；留空 = 使用内置默认',
     validate: validateProductsMatrix,
   },
   admin_dashboard_layout: {
@@ -126,9 +126,14 @@ function validateProductsMatrix(v) {
     const logo = String(item.logo ?? '').trim()
     // logo 选填：留空时前台用名称首字做文字图标；填了才校验格式
     if (logo && !/^(https?:\/\/\S+|\/\S+)$/i.test(logo)) return null
+    // client_id 选填：关联 OAuth 应用（如 tc_ab12cd34），仅后台展示用，前台不消费
+    const clientId = String(item.client_id ?? '').trim().toLowerCase()
+    if (clientId && !/^[a-z0-9_]{1,64}$/.test(clientId)) return null
     seen.add(key)
-    // enabled 缺省视为开启，显式 false 才隐藏
-    out.push({ key, name, desc, url, logo, enabled: item.enabled !== false })
+    // enabled 缺省视为开启，显式 false 才隐藏；client_id 为空时不写入，保持 JSON 紧凑
+    const normalized = { key, name, desc, url, logo, enabled: item.enabled !== false }
+    if (clientId) normalized.client_id = clientId
+    out.push(normalized)
   }
   return JSON.stringify(out)
 }

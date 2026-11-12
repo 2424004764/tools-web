@@ -8,8 +8,10 @@ import { functionsRequest } from '@/utils/functionsRequest'
  * @param source 推广来源（utm_source 优先 → referer 指纹 → 'direct'）
  */
 export async function postSiteVisit(path: string, source: string): Promise<void> {
-  await functionsRequest.post('/api/me/site-visit', {
-    path,
-    source,
-  })
+  await functionsRequest.post(
+    '/api/me/site-visit',
+    { path, source },
+    // silent：埋点被广告拦截插件/网络抖动拦掉时不能弹"网络连接失败"惊扰用户
+    { silent: true },
+  )
 }

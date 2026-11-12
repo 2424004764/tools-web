@@ -7,6 +7,7 @@ import IconLink from '~icons/ep/link'
 import IconEdit from '~icons/ep/edit'
 import IconDelete from '~icons/ep/delete'
 import { fetchAdminSiteConfig, updateAdminSiteConfig, type AdminSiteConfig } from '@/api/admin/site-config'
+import { fetchOAuthClients, type OAuthClient } from '@/api/admin/oauth-clients'
 import { clearSiteConfigCache, fetchProductsConfig } from '@/api/site-config'
 import { DEFAULT_PRODUCTS, productLogoFallbackChar } from '@/components/Layout/Header/products'
 
@@ -59,6 +60,8 @@ interface ProductDraft {
   url: string
   logo: string
   enabled: boolean
+  /** 选填：关联的 OAuth 应用 client_id（如 tc_ab12cd34），仅后台展示用，前台不消费 */
+  client_id: string
 }
 
 let productUidSeed = 0
@@ -83,10 +86,82 @@ function draftFrom(p: any): ProductDraft {
     url: String(p?.url ?? ''),
     logo: String(p?.logo ?? ''),
     enabled: p?.enabled !== false,
+    client_id: String(p?.client_id ?? '').trim().toLowerCase(),
   }
 }
 
 const defaultsDrafts = () => DEFAULT_PRODUCTS.map((p) => draftFrom(p))
+
+// ============ 关联 OAuth 应用 ============
+// 添加产品时可直接选择已接入登录的 OAuth 应用，自动带入名称/简介/链接/Logo，无需手动填写。
+// client_id 持久化在 products_matrix 里（后端白名单已放行），仅后台展示用。
+const oauthClients = ref<OAuthClient[]>([])
+const oauthClientsLoading = ref(false)
+const oauthClientsError = ref('')
+
+const loadOAuthClients = async () => {
+  if (oauthClientsLoading.value || (oauthClients.value.length && !oauthClientsError.value)) return
+  oauthClientsLoading.value = true
+  oauthClientsError.value = ''
+  try {
+    // OAuth 应用数量远小于 100，一页拉全；超出的极端情况仍可手动填写字段
+    const data = await fetchOAuthClients({ page: 1, pageSize: 100 })
+    oauthClients.value = data.list
+  } catch (err: any) {
+    oauthClientsError.value = err?.response?.data?.error || err?.message || 'OAuth 应用列表加载失败'
+  } finally {
+    oauthClientsLoading.value = false
+  }
+}
+
+const clientById = (id: string) => oauthClients.value.find((c) => c.client_id === id)
+
+/** 已被产品列表关联的 client_id 集合（排除当前编辑行），用于下拉里禁选与标注 */
+const linkedClientIds = computed(() => {
+  const set = new Set<string>()
+  productsList.value.forEach((p) => {
+    if (p.client_id && p.uid !== productDialog.editUid) set.add(p.client_id)
+  })
+  return set
+})
+
+/** 由应用域名推导跳转 key：取主机名第一段（www 开头取第二段），仅保留小写字母/数字/连字符 */
+function keyFromAppUrl(appUrl: string): string {
+  try {
+    const host = new URL(appUrl).hostname.toLowerCase()
+    let label = host.split('.')[0]
+    if (label === 'www') label = host.split('.')[1] || ''
+    return label.replace(/[^a-z0-9-]/g, '').slice(0, 40)
+  } catch {
+    return ''
+  }
+}
+
+/** 保证 key 在产品列表中唯一（排除自身）：冲突时追加 -2/-3…；上限 40 字符 */
+function uniqueProductKey(base: string, selfUid?: number): string {
+  const used = new Set(productsList.value.filter((x) => x.uid !== selfUid).map((x) => x.key.trim().toLowerCase()))
+  if (!used.has(base)) return base
+  for (let i = 2; ; i++) {
+    const candidate = `${base.slice(0, 38)}-${i}`
+    if (!used.has(candidate)) return candidate
+  }
+}
+
+/** 弹窗里选择/切换 OAuth 应用：带入应用的名称/简介/链接/Logo，key 为空时自动推导并去重；清除选择只解绑不清字段 */
+const onOAuthPick = (clientId: string) => {
+  draft.client_id = (clientId || '').trim().toLowerCase()
+  const client = clientById(draft.client_id)
+  if (!client) return
+  if (client.name) draft.name = client.name
+  if (client.description) draft.desc = client.description.slice(0, 60)
+  if (client.app_url) draft.url = client.app_url
+  if (client.logo_url) draft.logo = client.logo_url
+  if (!draft.key.trim()) {
+    const derived = keyFromAppUrl(client.app_url || '')
+    if (derived) draft.key = uniqueProductKey(derived, productDialog.mode === 'edit' ? productDialog.editUid : undefined)
+  }
+  draftLogoBroken.value = false
+}
 
 /** 后台存储值 → 编辑列表；未配置（空串）时用内置默认产品打底 */
 function parseProductsToList(raw: string): { list: ProductDraft[]; error: string } {
@@ -159,7 +234,7 @@ const saveProductsOnly = async (): Promise<boolean> => {
 
 // ============ 新增 / 编辑弹窗 ============
 const productDialog = reactive({ visible: false, mode: 'add' as 'add' | 'edit', editUid: 0 })
-const draft = reactive({ key: '', name: '', desc: '', url: '', logo: '', enabled: true })
+const draft = reactive({ key: '', name: '', desc: '', url: '', logo: '', enabled: true, client_id: '' })
 const draftError = ref('')
 const draftLogoBroken = ref(false)
 
@@ -173,10 +248,13 @@ const openProductDialog = (mode: 'add' | 'edit', p?: ProductDraft) => {
     url: p?.url ?? '',
     logo: p?.logo ?? '',
     enabled: p?.enabled ?? true,
+    client_id: p?.client_id ?? '',
   })
   draftError.value = ''
   draftLogoBroken.value = false
   productDialog.visible = true
+  // 弹窗打开时确保 OAuth 应用列表可用（已在挂载时预热，这里兜底失败重试）
+  void loadOAuthClients()
 }
 
 /** 弹窗确定：单条校验通过后写回列表并即时保存；保存失败回滚并留在弹窗可重试 */
@@ -193,6 +271,7 @@ const confirmProductDialog = async () => {
     url: draft.url.trim(),
     logo: draft.logo.trim(),
     enabled: draft.enabled,
+    client_id: draft.client_id.trim().toLowerCase(),
   }
   let rollback: () => void
   if (productDialog.mode === 'add') {
@@ -228,7 +307,7 @@ const confirmProductDialog = async () => {
  * 返回错误文案；合法返回空串。key 重复检查在 all 中排除 selfUid（编辑自身时）。
  */
 function validateDraftItem(
-  p: { key: string; name: string; desc: string; url: string; logo: string },
+  p: { key: string; name: string; desc: string; url: string; logo: string; client_id?: string },
   all: ProductDraft[],
   selfUid?: number,
 ): string {
@@ -245,6 +324,11 @@ function validateDraftItem(
   if (p.logo.trim() && !/^(https?:\/\/\S+|\/\S+)$/i.test(p.logo.trim())) {
     return 'Logo 格式不正确：需站内绝对路径或 http(s) 图片地址'
   }
+  // client_id 选填：与后端 admin/site-config 白名单同规则
+  const clientId = (p.client_id || '').trim().toLowerCase()
+  if (clientId && !/^[a-z0-9_]{1,64}$/.test(clientId)) {
+    return '关联的 OAuth 应用 client_id 格式不正确'
+  }
   return ''
 }
 
@@ -259,14 +343,18 @@ function validateProductsList(): string | null {
   productsList.value.forEach((p) => {
     const msg = validateDraftItem(p, productsList.value, p.uid)
     if (msg) errors[p.uid] = msg
-    out.push({
+    const item: Record<string, unknown> = {
       key: p.key.trim().toLowerCase(),
       name: p.name.trim(),
       desc: p.desc.trim(),
       url: p.url.trim(),
       logo: p.logo.trim(),
       enabled: p.enabled,
-    })
+    }
+    // 与后端一致：client_id 为空不写入，保持 JSON 紧凑
+    const clientId = p.client_id.trim().toLowerCase()
+    if (clientId) item.client_id = clientId
+    out.push(item)
   })
 
   productsErrors.value = errors
@@ -327,6 +415,8 @@ const handleSave = async () => {
 
 onMounted(() => {
   load()
+  // 预热 OAuth 应用列表：弹窗下拉与行卡片「已关联」徽标共用，失败不阻塞页面
+  void loadOAuthClients()
   // 预热：主站头部与后台共用同一份产品配置缓存
   void fetchProductsConfig()
   if (productsListEl.value) {
@@ -471,6 +561,13 @@ onBeforeUnmount(() => {
             <div class="flex items-baseline gap-2 min-w-0">
               <div class="text-body-sm font-medium text-ink-900 truncate">{{ p.name || '未命名产品' }}</div>
               <div class="text-caption text-ink-400 truncate shrink-0">{{ p.key || 'key 未设置' }}</div>
+              <span
+                v-if="p.client_id"
+                class="text-caption text-accent-600 bg-accent-50 dark:bg-accent-500/10 rounded px-1.5 py-px shrink-0"
+                :title="'关联 OAuth 应用：' + (clientById(p.client_id)?.name || p.client_id)"
+              >
+                OAuth·{{ clientById(p.client_id)?.name || p.client_id }}
+              </span>
             </div>
             <div class="text-caption text-ink-500 truncate">{{ p.desc || '—' }}</div>
             <a
@@ -545,6 +642,51 @@ onBeforeUnmount(() => {
       :close-on-click-modal="false"
     >
       <div class="flex flex-col gap-4">
+        <!-- 关联 OAuth 应用：选中后自动带入名称/简介/链接/Logo，避免手动填写 -->
+        <div>
+          <div class="text-body-sm font-medium text-ink-700 mb-1.5">关联 OAuth 应用（选填）</div>
+          <el-select
+            v-model="draft.client_id"
+            filterable
+            clearable
+            placeholder="选择已接入登录的应用，自动填入下方字段"
+            :loading="oauthClientsLoading"
+            class="w-full"
+            @change="onOAuthPick"
+          >
+            <el-option
+              v-for="c in oauthClients"
+              :key="c.client_id"
+              :value="c.client_id"
+              :label="c.name"
+              :disabled="linkedClientIds.has(c.client_id)"
+            >
+              <div class="flex items-center gap-2 min-w-0">
+                <img
+                  v-if="c.logo_url"
+                  :src="c.logo_url"
+                  alt=""
+                  class="w-4 h-4 rounded object-cover shrink-0"
+                  @error="($event.target as HTMLImageElement).style.display = 'none'"
+                />
+                <span class="truncate">{{ c.name }}</span>
+                <span
+                  v-if="linkedClientIds.has(c.client_id)"
+                  class="text-caption text-amber-600 shrink-0"
+                >已关联其他产品</span>
+                <span v-else-if="c.is_disabled" class="text-caption text-ink-400 shrink-0">已停用</span>
+                <span class="text-caption text-ink-400 truncate ml-auto shrink-0">{{ c.app_url || c.client_id }}</span>
+              </div>
+            </el-option>
+          </el-select>
+          <p v-if="oauthClientsError" class="text-caption text-amber-600 mt-1 mb-0">
+            {{ oauthClientsError }}，可直接手动填写下方字段
+          </p>
+          <p v-else class="text-caption text-ink-400 mt-1">
+            选择后自动带入该应用的名称 / 简介 / 链接 / Logo 与 key，仍可手动调整
+          </p>
+        </div>
+
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
           <div>
             <div class="text-body-sm font-medium text-ink-700 mb-1.5">名称</div>

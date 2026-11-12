@@ -18,6 +18,7 @@ import { initializeAIProviders } from './spi/init'
 import { injectCloudflareAnalytics } from './utils/analytics'
 import { initTheme } from './composables/useTheme'
 import { installFetch401Handler, registerAuthStateClearer } from './utils/errorHandler'
+import { ensureDpopBound } from './utils/dpop'
 
 const app = createApp(App)
 app.use(pinia)
@@ -53,6 +54,12 @@ app.mount('#app')
 setTimeout(() => {
   initializeAIProviders()
 }, 1000)
+
+// DPoP 惰性升级：存量/新登录的无 cnf token 在启动后自动绑定本机公钥
+// （见 utils/dpop.ts，非阻塞，失败下次启动重试）
+setTimeout(() => {
+  ensureDpopBound()
+}, 2000)
 
 // 仅生产环境注入 Cloudflare Web Analytics（避免 HMR 把开发流量打进去）
 if (import.meta.env.PROD) {

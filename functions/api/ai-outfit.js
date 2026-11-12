@@ -12,15 +12,15 @@
 //   1. 未传 clothingImages（outfit-generate）：仅人物照，让 AI 自动设计一套完整穿搭
 //   2. 上传了 clothingImages（outfit-replace）：人物照 + 衣物照，把人物身上的衣物替换为上传的衣物
 //
-// 鉴权：CF 环境变量 BAFANG_API_KEY
-// 扣费：与 ai-image-edit 一致（按 model 查 tool_models.cost）
+// 鉴权：ai_providers.api_key（bafang 兜底 env.BAFANG_API_KEY）
+// 扣费：与 ai-image-edit 一致（按用户选中的 model 查 tool_models.cost，failover 不改变扣费）
 //
-// 上游分支（按 model_key）：
-//   - gemini-*：POST bafang.me/v1beta/models/{model}:generateContent
-//     parts 顺序：第一段 text 为穿搭场景提示词；之后按上传顺序拼接 personImages → clothingImages，每张一个 inline_data
-//   - 其他：POST bafang.me/v1/images/edits（form-data, image[] 多 file，按相同顺序）
+// 上游厂商：走 tool_models.upstreams 配置的有序链（_lib/image-upstream.js），
+// 失败自动切换下一家。未配置时回退 legacy：bafang.me + env.BAFANG_API_KEY。
+// 图片顺序（两种风格一致）：人物照（≥1）在前，衣物照（0~N）在后
 
 import { extractUidFromRequest } from './_lib/model-resolver.js'
+import { resolveUpstreamChain, runWithFailover, UPSTREAM_MODEL_ID_PATTERN } from './_lib/image-upstream.js'
 import { startGeneration, finalizeGeneration } from './_lib/record-generation.js'
 import { persistGeneratedImage } from '../services/generatedImageStorage.js'
 
@@ -109,50 +109,6 @@ async function reverseDeduction(env, uid, cost, relatedTxId, reason) {
   }
 }
 
-function extractImageFromEditsResponse(data) {
-  if (data?.data?.[0]?.url) return data.data[0].url
-  if (data?.data?.[0]?.b64_json) return 'data:image/png;base64,' + data.data[0].b64_json
-  if (data?.url) return data.url
-  if (Array.isArray(data?.data) && data.data[0]?.url) return data.data[0].url
-  return ''
-}
-
-function isGeminiModel(modelKey) {
-  return typeof modelKey === 'string' && modelKey.toLowerCase().startsWith('gemini-')
-}
-
-function mapSizeToAspectRatio(size) {
-  switch (size) {
-    case '1024x1792':
-    case '1024x1920':
-    case '1080x1920':
-      return '9:16'
-    case '1792x1024':
-    case '1920x1024':
-    case '1920x1080':
-      return '16:9'
-    case '1024x1024':
-    case '1080x1080':
-      return '1:1'
-    default:
-      return '1:1'
-  }
-}
-
-async function fileToBase64(file) {
-  const buf = await file.arrayBuffer()
-  const bytes = new Uint8Array(buf)
-  let binary = ''
-  const chunk = 8192
-  for (let i = 0; i < bytes.length; i += chunk) {
-    binary += String.fromCharCode.apply(
-      null,
-      bytes.subarray(i, Math.min(i + chunk, bytes.length)),
-    )
-  }
-  return btoa(binary)
-}
-
 /**
  * 把「风格 / 场景」用户输入拼到两套 prompt 的对应位置。
  * 空字符串走默认占位（outfit-generate 时填「时髦、得体、百搭」；outfit-replace 时直接省略此行）
@@ -190,52 +146,6 @@ function buildReplacePrompt(styleText) {
   ].join('\n')
 }
 
-/**
- * 构造 Gemini generateContent 请求体。
- * parts 顺序：[{ text: prompt }, ...personImages（按上传顺序）, ...clothingImages（按上传顺序）]
- * 每张图片一段 inline_data。空数组直接跳过对应分组。
- */
-async function buildGeminiRequestBody({ prompt, personFiles, clothingFiles, aspectRatio, imageSize = '1K' }) {
-  const parts = [{ text: prompt }]
-  for (const file of personFiles) {
-    const b64 = await fileToBase64(file)
-    parts.push({
-      inline_data: {
-        mime_type: file.type || 'image/png',
-        data: b64,
-      },
-    })
-  }
-  for (const file of clothingFiles) {
-    const b64 = await fileToBase64(file)
-    parts.push({
-      inline_data: {
-        mime_type: file.type || 'image/png',
-        data: b64,
-      },
-    })
-  }
-  return {
-    contents: [{ role: 'user', parts }],
-    generationConfig: {
-      responseModalities: ['IMAGE'],
-      imageConfig: { aspectRatio, imageSize },
-    },
-  }
-}
-
-function extractImageFromGeminiResponse(data) {
-  const parts = data?.candidates?.[0]?.content?.parts
-  if (!Array.isArray(parts)) return ''
-  for (const part of parts) {
-    if (part?.inline_data?.data) {
-      const mime = part.inline_data.mime_type || 'image/png'
-      return `data:${mime};base64,${part.inline_data.data}`
-    }
-  }
-  return ''
-}
-
 export async function onRequest(context) {
   const { request, env } = context
 
@@ -252,11 +162,6 @@ export async function onRequest(context) {
     request.headers.get('X-Forwarded-For')?.split(',')[0]?.trim() ||
     null
   const userAgent = (request.headers.get('User-Agent') || '').slice(0, 256) || null
-
-  const apiKey = env.BAFANG_API_KEY
-  if (!apiKey) {
-    return json({ ok: false, error: '服务未配置 API Key' }, 500)
-  }
 
   // ============ 1. 解析 formData ============
   let formData
@@ -282,6 +187,11 @@ export async function onRequest(context) {
   const hasClothingImage = clothingFiles.length > 0
   const style = (formData.get('style')?.toString() || '').trim().slice(0, 5000)
   const modelKey = (formData.get('model')?.toString() || '').trim() || 'gpt-image-2-1k'
+  // model 是 tool_models.model_key（查链/积分用），legacy 回退时直传上游；
+  // 与 ai-image-edit 同款格式校验（此前 outfit 没有校验，顺手补上）
+  if (!UPSTREAM_MODEL_ID_PATTERN.test(modelKey)) {
+    return json({ ok: false, error: '不支持的模型名' }, 400)
+  }
   const size = formData.get('size')?.toString() || '1024x1024'
 
   // 上限：人物 + 衣物合计 ≤ 16（与前端 MAX_TOTAL_IMAGES 对齐）；超出截断
@@ -313,13 +223,14 @@ export async function onRequest(context) {
     ? buildReplacePrompt(style)
     : buildGeneratePrompt(style)
 
-  // ============ 4. 查 model 维 cost ============
+  // ============ 4. 查 model 维 cost + 上游链 ============
   let cost = 0
   let resolvedModelLabel = ''
+  let rawUpstreams
   try {
     const m = await db
       .prepare(
-        `SELECT credit_cost, model_label FROM tool_models
+        `SELECT credit_cost, model_label, upstreams FROM tool_models
          WHERE tool_url = ? AND model_key = ? AND is_enabled = 1`,
       )
       .bind(TOOL_URL, modelKey)
@@ -327,6 +238,7 @@ export async function onRequest(context) {
     if (m) {
       cost = m.credit_cost ?? 0
       resolvedModelLabel = m.model_label || ''
+      rawUpstreams = m.upstreams || null
     } else {
       const t = await db
         .prepare('SELECT credit_cost FROM tool_features WHERE url = ? AND is_enabled = 1')
@@ -336,6 +248,13 @@ export async function onRequest(context) {
     }
   } catch {
     cost = 0
+  }
+
+  // ============ 4.5 解析上游链（在扣费前：链完全不可用时直接 500，不收积分） ============
+  const { chain, legacy, skipped } = await resolveUpstreamChain(db, TOOL_URL, modelKey, env, { rawUpstreams })
+  if (chain.length === 0) {
+    console.error('[ai-outfit] 无可用上游: model=' + modelKey + ' skipped=' + JSON.stringify(skipped))
+    return await errorJson(db, uid, '服务未配置上游厂商或 API Key', 500)
   }
 
   // ============ 5. 登录校验 ============
@@ -425,71 +344,37 @@ export async function onRequest(context) {
     }
   }
 
-  // ============ 7. 调上游 ============
-  let upstreamPath, upstreamInit
-
-  if (isGeminiModel(modelKey)) {
-    const geminiBody = await buildGeminiRequestBody({
-      prompt,
-      personFiles,
-      clothingFiles: hasClothingImage ? clothingFiles : [],
-      aspectRatio: mapSizeToAspectRatio(size),
-    })
-    upstreamPath = `/v1beta/models/${modelKey}:generateContent`
-    upstreamInit = {
-      method: 'POST',
-      headers: {
-        'x-goog-api-key': apiKey,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(geminiBody),
-    }
-  } else {
-    // OpenAI 风格图生图：POST /v1/images/edits（form-data, image[]）
-    const upstreamForm = new FormData()
-    upstreamForm.append('model', modelKey)
-    upstreamForm.append('size', size)
-    upstreamForm.append('prompt', prompt)
-    // 多张图都按 'image' 字段提交，OpenAI 兼容端点按位置顺序处理：
-    // 先人物照（≥1），后衣物照（0~N）
-    for (const file of personFiles) {
-      upstreamForm.append('image', file)
-    }
-    for (const file of clothingFiles) {
-      upstreamForm.append('image', file)
-    }
-    upstreamPath = '/v1/images/edits'
-    upstreamInit = {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}` },
-      body: upstreamForm,
-    }
-  }
+  // ============ 7. 调上游（可配置厂商链 + 自动容灾，见 _lib/image-upstream.js） ============
+  // 图片顺序（两种风格一致）：人物照在前、衣物照在后
+  const upstreamImages = [...personFiles, ...clothingFiles]
 
   console.log('[ai-outfit] 请求:', JSON.stringify({
-    path: upstreamPath,
     model: modelKey,
     size,
     mode,
     personCount: personFiles.length,
     clothingCount: clothingFiles.length,
     promptLen: prompt.length,
+    chain: chain.map(c => `${c.provider}/${c.modelId}`),
+    legacy,
   }))
 
   // ============ 8. 客户端断开检测 ============
+  // fetch 的实时取消由 runWithFailover 的 externalSignal 处理；这里只维护标志，
+  // 供"上游已返回但客户端已走"的结果作废退款判断用。
   let clientAborted = false
-  const upstreamController = new AbortController()
-  const upstreamTimer = setTimeout(() => upstreamController.abort(), 600000)
-  upstreamInit.signal = upstreamController.signal
   if (request.signal) {
     request.signal.addEventListener('abort', () => {
       if (!clientAborted) {
         clientAborted = true
         console.log('[ai-outfit] client disconnected, will refund if deducted')
-        try { upstreamController.abort() } catch {}
       }
     })
   }
+
+  // 上游超时：整条 failover 链共享 600s 预算（runWithFailover），
+  // 避免多家厂商各跑 600s 把请求拖过平台限制（付费计划 Unbound 上限 900s）
+  const UPSTREAM_TIMEOUT_MS = 600000
 
   const reversed = cost > 0 && uid && txId
   const recordBase = {
@@ -509,30 +394,22 @@ export async function onRequest(context) {
       style,
       client_ip: clientIp,
       user_agent: userAgent,
-      request: isGeminiModel(modelKey)
-        ? {
-            endpoint: `/v1beta/models/${modelKey}:generateContent`,
-            model: modelKey,
-            aspectRatio: mapSizeToAspectRatio(size),
-            imageSize: '1K',
-            prompt,
-            person_mimes: personFiles.map(f => f.type),
-            person_sizes: personFiles.map(f => f.size),
-            clothing_mimes: hasClothingImage ? clothingFiles.map(f => f.type) : [],
-            clothing_sizes: hasClothingImage ? clothingFiles.map(f => f.size) : [],
-          }
-        : {
-            endpoint: '/v1/images/edits',
-            model: modelKey,
-            size,
-            prompt,
-            person_count: personFiles.length,
-            person_sizes: personFiles.map(f => f.size),
-            person_types: personFiles.map(f => f.type),
-            clothing_count: clothingFiles.length,
-            clothing_sizes: hasClothingImage ? clothingFiles.map(f => f.size) : [],
-            clothing_types: hasClothingImage ? clothingFiles.map(f => f.type) : [],
-          },
+      // 发往上游的真实请求参数（只含厂商需要的内容）
+      request: {
+        model: modelKey,
+        prompt,
+        person_mimes: personFiles.map(f => f.type),
+        person_sizes: personFiles.map(f => f.size),
+        clothing_mimes: hasClothingImage ? clothingFiles.map(f => f.type) : [],
+        clothing_sizes: hasClothingImage ? clothingFiles.map(f => f.size) : [],
+      },
+      // 上游链路配置（仅落库排障用，不会发给厂商）；实际逐次请求见 attempts（含完整 URL）
+      upstream: {
+        legacy,
+        chain: chain.map(c => ({ provider: c.provider, model_id: c.modelId, style: c.style })),
+        ...(skipped.length ? { skipped } : {}),
+        timeout_ms: UPSTREAM_TIMEOUT_MS,
+      },
     },
   }
 
@@ -550,65 +427,61 @@ export async function onRequest(context) {
 
   try {
     upstreamT0 = Date.now()
-    const upstreamResponse = await fetch(`https://bafang.me${upstreamPath}`, upstreamInit)
-    upstreamDurationMs = Date.now() - upstreamT0
-    clearTimeout(upstreamTimer)
+    const result = await runWithFailover(chain, {
+      prompt,
+      imageFiles: upstreamImages,
+      size,
+      totalTimeoutMs: UPSTREAM_TIMEOUT_MS,
+      externalSignal: request.signal,
+      onAttempt: (a) => console.log('[ai-outfit] upstream attempt:', JSON.stringify(a)),
+    })
+    upstreamDurationMs = result.totalDurationMs ?? (Date.now() - upstreamT0)
 
-    if (clientAborted) {
-      console.log('[ai-outfit] fetch returned but client already gone, refunding')
+    // 客户端已断开：无论上游是否成功，按"退还"处理（用户感知不到结果）
+    if (clientAborted || (!result.ok && result.reason === 'client-aborted')) {
+      console.log('[ai-outfit] client gone, refunding if deducted')
       if (reversed) {
-        await reverseDeduction(env, uid, cost, txId, 'ai-outfit:reverse:client-disconnected-after-fetch')
+        await reverseDeduction(env, uid, cost, txId, 'ai-outfit:reverse:client-disconnected')
       }
       await finalizeRecord({
         status: reversed ? 'reversed' : 'failed',
-        upstreamStatus: upstreamResponse.status,
+        upstreamStatus: result.attempts?.[result.attempts.length - 1]?.status ?? 0,
         upstreamDurationMs,
         errorMessage: '客户端已断开连接',
+        rawData: { ...recordBase.rawData, attempts: result.attempts },
       })
       return await errorJson(db, uid, '客户端已断开连接', 499)
     }
 
-    if (!upstreamResponse.ok) {
-      const errText = await upstreamResponse.text().catch(() => '')
-      console.error('[ai-outfit] 上游错误:', upstreamResponse.status, errText.slice(0, 500))
+    if (!result.ok) {
+      const isTimeout = result.reason === 'timeout'
+      console.error('[ai-outfit] 上游链失败:', result.reason, result.error)
       if (reversed) {
-        await reverseDeduction(env, uid, cost, txId, `ai-outfit:reverse:upstream-${upstreamResponse.status}`)
+        const reason = isTimeout
+          ? 'ai-outfit:reverse:upstream-timeout'
+          : `ai-outfit:reverse:upstream-${result.reason}-${result.status || 0}`
+        await reverseDeduction(env, uid, cost, txId, reason)
       }
       await finalizeRecord({
-        status: reversed ? 'reversed' : 'failed',
-        upstreamStatus: upstreamResponse.status,
+        status: reversed ? 'reversed' : (isTimeout ? 'timeout' : 'failed'),
+        upstreamStatus: result.status || 0,
         upstreamDurationMs,
-        errorMessage: `上游错误 ${upstreamResponse.status}: ${errText.slice(0, 300)}`,
+        errorMessage: result.error,
+        rawData: { ...recordBase.rawData, attempts: result.attempts },
       })
-      return await errorJson(db, uid, `上游错误 ${upstreamResponse.status}: ${errText.slice(0, 300)}`, upstreamResponse.status)
-    }
-
-    const data = await upstreamResponse.json()
-
-    const imageUrl = isGeminiModel(modelKey)
-      ? extractImageFromGeminiResponse(data)
-      : extractImageFromEditsResponse(data)
-
-    if (!imageUrl) {
-      console.error('[ai-outfit] 无法从响应中提取图片:', JSON.stringify(data).slice(0, 500))
-      if (reversed) {
-        await reverseDeduction(env, uid, cost, txId, 'ai-outfit:reverse:no-image-in-response')
-      }
-      await finalizeRecord({
-        status: reversed ? 'reversed' : 'failed',
-        upstreamStatus: upstreamResponse.status,
-        upstreamDurationMs,
-        errorMessage: '上游返回成功但未找到图片数据',
-        rawData: { ...recordBase.rawData, response: data },
-      })
-      return await errorJson(db, uid, '上游返回成功但未找到图片数据', 502)
+      return await errorJson(
+        db,
+        uid,
+        isTimeout ? '上游调用超时，请稍后重试' : result.error,
+        isTimeout ? 504 : (result.status || 500),
+      )
     }
 
     console.log('[ai-outfit] 上游图片已提取，开始上传 R2')
     const storedImage = await persistGeneratedImage(env, {
       uid,
       recordId,
-      imageUrl,
+      imageUrl: result.imageUrl,
     })
     const resultUrl = storedImage.publicUrl
     console.log('[ai-outfit] R2 持久化成功:', resultUrl)
@@ -616,9 +489,16 @@ export async function onRequest(context) {
     await finalizeRecord({
       status: 'success',
       resultUrl,
-      upstreamStatus: upstreamResponse.status,
+      upstreamStatus: result.status,
       upstreamDurationMs,
-      rawData: { ...recordBase.rawData, response: data, r2_key: storedImage.r2Key },
+      rawData: {
+        ...recordBase.rawData,
+        response: result.data,
+        r2_key: storedImage.r2Key,
+        provider_used: result.used.provider,
+        model_id_used: result.used.modelId,
+        attempts: result.attempts,
+      },
     })
 
     return json({
@@ -632,35 +512,16 @@ export async function onRequest(context) {
       },
     })
   } catch (error) {
+    // runWithFailover 自身不抛错（失败都走 result 分支）；这里兜 R2 持久化等未预期异常
     console.error('[ai-outfit] 请求失败:', error)
-    const isClientAbort = clientAborted
-    const isTimeout = !isClientAbort && (error?.name === 'AbortError' || /abort/i.test(error?.message || ''))
     if (reversed) {
-      const reason = isClientAbort
-        ? 'ai-outfit:reverse:client-disconnected'
-        : isTimeout
-          ? 'ai-outfit:reverse:upstream-timeout'
-          : 'ai-outfit:reverse:network-error'
-      await reverseDeduction(env, uid, cost, txId, reason)
+      await reverseDeduction(env, uid, cost, txId, 'ai-outfit:reverse:network-error')
     }
     await finalizeRecord({
-      status: reversed ? 'reversed' : (isTimeout ? 'timeout' : 'failed'),
+      status: reversed ? 'reversed' : 'failed',
       upstreamDurationMs,
-      errorMessage: isClientAbort
-        ? '客户端已断开连接'
-        : isTimeout
-          ? '上游调用超时'
-          : (error?.message || '调用失败'),
+      errorMessage: error?.message || '调用失败',
     })
-    return await errorJson(
-      db,
-      uid,
-      isClientAbort
-        ? '客户端已断开连接'
-        : isTimeout
-          ? '上游调用超时，请稍后重试'
-          : (error.message || '调用失败'),
-      isClientAbort ? 499 : (isTimeout ? 504 : 500),
-    )
+    return await errorJson(db, uid, error?.message || '调用失败', 500)
   }
 }

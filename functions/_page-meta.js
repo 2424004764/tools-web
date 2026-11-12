@@ -83,6 +83,8 @@ export default {
   '/ai-outfit/history': { title: 'AI穿搭历史 - 我的搭配生成记录 | 一方工具箱', keywords: '穿搭历史,AI穿搭生成历史,AI搭配记录', description: '查看 AI 穿搭建议的生成历史记录', ogUrl: 'https://tool.fologde.com/ai-outfit/history/' },
   '/flashcards': { title: '闪卡记忆 - 间隔重复复习工具 | 一方工具箱', keywords: '闪卡,间隔重复,SRS,SM-2,记忆,认知,Anki,复习,卡片', description: 'Anki 风格间隔重复闪卡复习系统，自录入卡片、按 SM-2 算法调度到期复习，提升长期记忆效率。', ogUrl: 'https://tool.fologde.com/flashcards/' },
   '/about': { title: '关于本站 - 一方工具箱介绍 | 一方工具箱', keywords: '关于ranblogs,关于工具站', description: '', ogUrl: 'https://tool.fologde.com/about/' },
+  '/privacy': { title: '隐私政策 - 一方工具箱数据收集与安全说明 | 一方工具箱', keywords: '隐私政策,数据收集,数据安全', description: '一方工具箱隐私政策：说明我们收集的信息类别、用途、第三方服务与数据安全措施，以及您对个人数据的权利。', ogUrl: 'https://tool.fologde.com/privacy/' },
+  '/terms': { title: '服务条款 - 一方工具箱使用规范与免责声明 | 一方工具箱', keywords: '服务条款,使用规范,免责声明', description: '一方工具箱服务条款：账号与安全、使用规范、用户内容归属、AI 功能说明与免责声明。', ogUrl: 'https://tool.fologde.com/terms/' },
   '/oauth/authorize': { title: '应用授权 - OAuth授权/统一登录 | 一方工具箱', keywords: 'OAuth授权,应用授权,统一登录', description: '授权第三方应用访问你的工具箱账号', ogUrl: 'https://tool.fologde.com/oauth/authorize/' },
   '/oauth/docs': { title: 'OAuth2 统一登录接入文档 - OAuth2接入文档/子站统一登录 | 一方工具箱', keywords: 'OAuth2接入文档,子站统一登录,单点登录对接', description: '工具站 OAuth2 授权服务器子站接入指南：授权码模式、令牌刷新、PKCE 与用户资料接口', ogUrl: 'https://tool.fologde.com/oauth/docs/' },
   '/flip-clock': { title: '翻页时钟 - 全屏翻页动画桌面时钟 | 一方工具箱', keywords: '翻页时钟,flip clock,在线时钟,桌面时钟,翻页动画,时间显示', description: '精美翻页时钟，经典机械翻页动画效果，纯CSS实现流畅翻转动画，实时显示时间日期，支持移动端和PC端', ogUrl: 'https://tool.fologde.com/flip-clock/' },

@@ -1,10 +1,14 @@
 // Admin 单个 tool_model 更新/删除 API
-// PUT    /api/admin/tool-models/:id  更新（白名单字段：model_label, description, credit_cost, sort_order, is_enabled, is_default）
+// PUT    /api/admin/tool-models/:id  更新（白名单字段：model_key, model_label, description, credit_cost, sort_order, is_enabled, is_default, upstreams）
 // DELETE /api/admin/tool-models/:id  删除
+//
+// upstreams：有序上游链 [{provider, model_id, style}]；传 null / 空数组 = 清除（回退 legacy bafang）。
 //
 // 切 default：用事务把同 tool_url 下其它 default 清掉再 SET 本条。
 //
 // 鉴权已在 _middleware.js 完成。
+
+import { parseUpstreamsJson, validateUpstreamsForSave, UPSTREAM_MODEL_ID_PATTERN } from '../../_lib/image-upstream.js'
 
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'PUT, DELETE, OPTIONS',
@@ -57,6 +61,22 @@ export async function onRequest(context) {
       const wantsDefault = body.is_default === 1 || body.is_default === true
       const unsetDefault = body.is_default === 0 || body.is_default === false
 
+      if (body.model_key !== undefined) {
+        const k = String(body.model_key).trim()
+        if (!k) return jsonError('model_key 不能为空', 400)
+        if (k.length > 100) return jsonError('model_key 长度不可超过 100', 400)
+        // 与端点侧同款格式校验：model_key 在 legacy 回退时会直传上游当模型名
+        if (!UPSTREAM_MODEL_ID_PATTERN.test(k)) {
+          return jsonError('model_key 只能包含字母、数字、点、下划线、连字符（≤64 字符）', 400)
+        }
+        // 同 tool_url 下唯一（UNIQUE(tool_url, model_key)），排除自身
+        const dup = await db
+          .prepare('SELECT id FROM tool_models WHERE tool_url = ? AND model_key = ? AND id != ?')
+          .bind(cur.tool_url, k, modelId)
+          .first()
+        if (dup) return jsonError('该 model_key 在此工具下已存在', 400)
+        sets.push('model_key = ?'); args.push(k)
+      }
       if (body.model_label !== undefined) {
         const s = String(body.model_label).trim().slice(0, 200)
         if (!s) return jsonError('model_label 不能为空', 400)
@@ -84,6 +104,12 @@ export async function onRequest(context) {
         sets.push('is_default = 1')
       } else if (unsetDefault) {
         sets.push('is_default = 0')
+      }
+      if (body.upstreams !== undefined) {
+        const v = await validateUpstreamsForSave(db, body.upstreams)
+        if (!v.ok) return jsonError(v.error, 400)
+        sets.push('upstreams = ?')
+        args.push(v.value ? JSON.stringify(v.value) : null)
       }
 
       if (sets.length === 0) return jsonError('没有要更新的字段', 400)
@@ -115,13 +141,13 @@ export async function onRequest(context) {
       const row = await db
         .prepare(
           `SELECT id, tool_url, model_key, model_label, description, credit_cost,
-                  sort_order, is_enabled, is_default, created_at, updated_at
+                  sort_order, is_enabled, is_default, upstreams, created_at, updated_at
            FROM tool_models WHERE id = ?`,
         )
         .bind(modelId)
         .first()
 
-      return json(row)
+      return json({ ...row, upstreams: parseUpstreamsJson(row?.upstreams) })
     }
 
     if (request.method === 'DELETE') {

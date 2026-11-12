@@ -10,11 +10,16 @@ export type { RecentTool }
  * @param source 推广来源（utm_source 优先 → referer 指纹 → 'direct'）
  */
 export async function postToolUsage(toolUrl: string, toolTitle: string, source: string): Promise<void> {
-  await functionsRequest.post('/api/me/tool-usage', {
-    tool_url: toolUrl,
-    tool_title: toolTitle,
-    source,
-  })
+  await functionsRequest.post(
+    '/api/me/tool-usage',
+    {
+      tool_url: toolUrl,
+      tool_title: toolTitle,
+      source,
+    },
+    // silent：埋点被广告拦截插件/网络抖动拦掉时不能弹"网络连接失败"惊扰用户
+    { silent: true },
+  )
 }
 
 /**

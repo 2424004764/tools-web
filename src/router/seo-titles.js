@@ -90,6 +90,8 @@ export default {
   '/ai-outfit/history': 'AI穿搭历史 - 我的搭配生成记录',
   '/flashcards': '闪卡记忆 - 间隔重复复习工具',
   '/about': '关于本站 - {SITE}介绍',
+  '/privacy': '隐私政策 - {SITE}数据收集与安全说明',
+  '/terms': '服务条款 - {SITE}使用规范与免责声明',
   '/flip-clock': '翻页时钟 - 全屏翻页动画桌面时钟',
   '/led-display': 'LED弹屏 - LED滚动字幕走马灯工具',
   '/snake': '贪吃蛇小游戏 - 经典贪吃蛇在线玩',

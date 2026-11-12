@@ -29,7 +29,12 @@ const info = reactive({
 // 模型列表（从后台 tool_models 拉取）
 const modelList = ref<PublicToolModel[]>([])
 const modelLoaded = ref(false)
-const selectedModel = ref<string>('')
+// 记住上次选择的模型（localStorage）；列表加载后若缓存项已被下架则回退默认项
+const selectedModel = useCachedRef<string>(
+  'ai-image-edit:model',
+  '',
+  (val) => typeof val === 'string' && val.length > 0,
+)
 const currentModelCost = computed(() => {
   const m = modelList.value.find((x) => x.model_key === selectedModel.value)
   return m?.credit_cost ?? 0
@@ -70,8 +75,9 @@ const fetchModelList = async () => {
     const list = await fetchToolModels('/ai-image-edit/')
     modelList.value = list
     if (list.length > 0) {
-      // 优先取 is_default，否则取第一项
-      const def = list.find((m) => m.is_default) || list[0]
+      // 恢复优先级：上次选择（仍在列表中）> is_default > 第一项
+      const cached = list.find((m) => m.model_key === selectedModel.value)
+      const def = cached || list.find((m) => m.is_default) || list[0]
       selectedModel.value = def.model_key
     }
   } catch (err) {
@@ -1267,9 +1273,10 @@ onUnmounted(() => {
         <p><strong>并发数（1-5）：</strong>选择「开始生成」后，浏览器会并行发出 N 个相同请求，每张结果独立显示、独立计时，失败的格子可单独「重试」（仅该次扣费）。适合同一提示词多跑几张变体挑选最佳。</p>
         <p><strong>模型说明：</strong></p>
         <ul class="list-disc pl-5 space-y-2">
-          <li><strong>gpt-image-2：</strong>通用图片编辑/生成模型，适用于文生图和图生图任务。</li>
-          <li><strong>Gemini 3 Pro Image Preview：</strong>Google 旗舰图片模型，质量高、支持文生图与图生图。</li>
-          <li><strong>Gemini 3.1 Flash Image Preview：</strong>Google Flash 图片预览版，速度快、性价比高，支持文生图与图生图。</li>
+          <li v-for="m in modelList" :key="m.model_key">
+            <strong>{{ m.model_label }}</strong>
+            <span class="text-ink-500">（{{ m.credit_cost > 0 ? `${m.credit_cost} 积分/张` : '免费' }}）</span><span v-if="m.description">：{{ m.description }}</span>
+          </li>
         </ul>
         <p class="text-ink-500">提示：生成结果受提示词质量影响，详细的描述通常能得到更好的效果。</p>
       </div>

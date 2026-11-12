@@ -1,10 +1,11 @@
 <script setup lang="ts">
 // Admin 存储空间使用明细页
-// 上：全站汇总卡（总额度 / 已用 / 可用 / 预留中）+ 全站来源构成条
-// 中：按用户用表明细（已用 / 额度进度条 + 来源拆解悬浮），按已用降序分页
+// 两个视图（顶部切换）：
+//   用户存量：全站汇总卡 + 全站来源构成条 + 按用户用表（已用 / 额度进度条 + 来源拆解悬浮）
+//   按天明细（AdminStorageDaily）：某天谁用了多少存储、用在哪些地方（逐文件）
 // 弹窗：单用户明细（来源构成 / 最近文件 / 子站上传记录）
 // 入口：侧栏「存储明细」；用户管理「已用 / 可用存储」列点击深链 /admin/storage?uid=xxx
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
@@ -19,9 +20,16 @@ import {
 import { clearUserStorageReservations } from '@/api/admin/user'
 import { formatStorageBytes } from '@/api/storageQuota'
 import defaultAvatar from '@/assets/default_avatar.png'
+import AdminStorageDaily from './AdminStorageDaily.vue'
 import type { AdminPagination } from '@/types/admin'
 
 const route = useRoute()
+
+// 视图切换：用户存量 / 按天明细（?date= 深链直达按天视图）
+const viewMode = ref<'users' | 'daily'>(
+  /^\d{4}-\d{2}-\d{2}$/.test(String(route.query.date || '')) ? 'daily' : 'users',
+)
+let usersLoaded = false
 
 const loading = ref(false)
 const summary = ref<StorageSummary | null>(null)
@@ -243,12 +251,23 @@ if (deepLinkUid) {
 }
 
 onMounted(() => {
-  load()
+  if (viewMode.value === 'users') {
+    usersLoaded = true
+    load()
+  }
   updateIsMobile()
   window.addEventListener('resize', updateIsMobile)
 })
 onUnmounted(() => {
   window.removeEventListener('resize', updateIsMobile)
+})
+
+// 切到「用户存量」时按需首载（按天视图有自己的加载逻辑）
+watch(viewMode, (mode) => {
+  if (mode === 'users' && !usersLoaded) {
+    usersLoaded = true
+    load()
+  }
 })
 
 // 移动端检测（< 640px）：弹窗宽度自适应
@@ -259,26 +278,34 @@ const updateIsMobile = () => {
 </script>
 
 <template>
-  <div v-loading="loading" class="mx-auto max-w-[1400px]">
+  <div class="mx-auto max-w-[1400px]">
     <div class="flex flex-wrap items-end gap-3 mb-4">
-      <h2 class="text-xl font-semibold text-ink-900 mr-auto">存储空间使用明细</h2>
+      <h2 class="text-xl font-semibold text-ink-900 mr-2">存储空间使用明细</h2>
 
-      <el-input
-        v-model="filter.keyword"
-        placeholder="搜索邮箱 / 用户名 / UID"
-        clearable
-        class="!w-56"
-        @keyup.enter="handleSearch"
-        @clear="handleSearch"
-      >
-        <template #append>
-          <el-button @click="handleSearch">搜索</el-button>
-        </template>
-      </el-input>
+      <el-radio-group v-model="viewMode" size="small">
+        <el-radio-button value="users">用户存量</el-radio-button>
+        <el-radio-button value="daily">按天明细</el-radio-button>
+      </el-radio-group>
 
-      <el-button @click="load">刷新</el-button>
+      <template v-if="viewMode === 'users'">
+        <el-input
+          v-model="filter.keyword"
+          placeholder="搜索邮箱 / 用户名 / UID"
+          clearable
+          class="!w-56 ml-auto"
+          @keyup.enter="handleSearch"
+          @clear="handleSearch"
+        >
+          <template #append>
+            <el-button @click="handleSearch">搜索</el-button>
+          </template>
+        </el-input>
+
+        <el-button @click="load">刷新</el-button>
+      </template>
     </div>
 
+    <div v-if="viewMode === 'users'" v-loading="loading">
     <!-- 全站汇总卡 -->
     <div v-if="summary" class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
       <div class="rounded-xl border border-border-default bg-surface-0 px-4 py-3">
@@ -462,6 +489,10 @@ const updateIsMobile = () => {
         />
       </div>
     </el-card>
+    </div>
+
+    <!-- 按天明细视图：某天谁用了多少存储、用在哪些地方 -->
+    <AdminStorageDaily v-if="viewMode === 'daily'" />
 
     <!-- 单用户存储明细弹窗 -->
     <el-dialog

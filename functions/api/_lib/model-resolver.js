@@ -2,6 +2,7 @@
 // 提供：resolveModel / renderTemplate / extractByPath / parseCapabilities
 
 import { AuthMiddleware, checkUserTokenState } from '../../middlewares/auth.js'
+import { verifyDpopBinding } from '../../utils/dpop.js'
 
 /**
  * 从 D1 查询指定 model_key 的完整模型配置
@@ -260,6 +261,9 @@ export async function extractUidFromRequest(request, env) {
   // 与常规鉴权链一致的服务端实时校验：改密/重置/封禁后的旧 token 一律失效
   const liveCheck = await checkUserTokenState(env, verifyResult.payload)
   if (!liveCheck.ok) return ''
+  // 与常规鉴权链一致的 DPoP 发送方约束（admin 鉴权链同样受 token 公钥绑定约束）
+  const dpopCheck = await verifyDpopBinding(request, env, verifyResult.payload)
+  if (!dpopCheck.ok) return ''
   return verifyResult.payload?.uid || ''
 }
 

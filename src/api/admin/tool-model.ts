@@ -1,6 +1,6 @@
 // Admin 工具 model CRUD API 封装
 import { functionsRequest } from '@/utils/functionsRequest'
-import type { ToolModel } from '@/types/admin'
+import type { ToolModel, ToolModelUpstream } from '@/types/admin'
 
 export async function fetchAdminToolModels(toolUrl: string): Promise<ToolModel[]> {
   const res = await functionsRequest.get('/api/admin/tool-models', { params: { toolUrl } })
@@ -16,6 +16,8 @@ export interface CreateToolModelPayload {
   sort_order?: number
   is_enabled?: 0 | 1 | boolean
   is_default?: 0 | 1 | boolean
+  /** 有序上游链；null/空数组 = 不配置（回退 legacy bafang） */
+  upstreams?: ToolModelUpstream[] | null
 }
 
 export async function createAdminToolModel(payload: CreateToolModelPayload): Promise<ToolModel> {
@@ -24,12 +26,16 @@ export async function createAdminToolModel(payload: CreateToolModelPayload): Pro
 }
 
 export type UpdateToolModelPayload = Partial<{
+  /** 业务唯一键（改名会同步前端下拉框的值；后端校验格式 + 同工具下唯一） */
+  model_key: string
   model_label: string
   description: string
   credit_cost: number
   sort_order: number
   is_enabled: 0 | 1 | boolean
   is_default: 0 | 1 | boolean
+  /** 有序上游链；传 null/空数组 = 清除（回退 legacy bafang） */
+  upstreams: ToolModelUpstream[] | null
 }>
 
 export async function updateAdminToolModel(
