@@ -1,0 +1,242 @@
+# 一方工具箱
+
+> 一个轻量的中文在线工具箱：170+ 个免费在线工具，覆盖开发运维、文本处理、编码加解密、图片处理、PDF/视频、数据图表、AI 工具、教育学习、小游戏与生活记录等场景。
+
+说明：
+
+- 站点地址：https://tool.fologde.com ，界面语言为中文。
+- 大部分工具纯前端本地处理，数据不出浏览器；标注「需登录」的功能依赖账号与积分。
+- AI 类工具由站内代理调用第三方模型，生成结果消耗积分。
+- 站点地图：https://tool.fologde.com/sitemap.xml
+- 本文件随工具上下线手工维护；如某链接 404，说明该工具已临时下线。
+
+## 站点页面
+
+- [首页](https://tool.fologde.com/): 全部工具的分类导航与搜索入口
+- [博客](https://tool.fologde.com/blog): 开发技巧、工具使用教程与效率方法
+- [关于](https://tool.fologde.com/about): 站点介绍
+- [隐私政策](https://tool.fologde.com/privacy): 数据收集类别、用途、第三方服务与数据安全措施
+- [服务条款](https://tool.fologde.com/terms): 账号与安全、使用规范、用户内容归属与免责声明
+- [好物网站导航](https://tool.fologde.com/good-sites): 精选优质网站分类导航
+- [AI工具导航](https://tool.fologde.com/aihub): 精选第三方 AI 工具分类导航
+- [OAuth2 统一登录接入文档](https://tool.fologde.com/oauth/docs): 子站接入指南：授权码模式、令牌刷新、PKCE 与用户资料接口
+
+## 开发运维
+
+- [JSON 在线转换](https://tool.fologde.com/json): JSON 格式化、压缩、转义、去转义与校验
+- [CSV/TSV ↔ JSON 互转](https://tool.fologde.com/csv-json): CSV、TSV 与 JSON 相互转换，支持列头推断与分隔符选择
+- [JSON/YAML 格式化对比](https://tool.fologde.com/json-yaml): JSON 与 YAML 双向转换与对比
+- [XML 格式化](https://tool.fologde.com/xml-format): XML 格式化与压缩，保留注释、CDATA 与 DOCTYPE
+- [SQL 格式化](https://tool.fologde.com/sql-format): 支持 MySQL、PostgreSQL 等 15 种方言的 SQL 美化与压缩
+- [正则表达式测试](https://tool.fologde.com/reg): 在线正则测试与常用正则表达式速查
+- [正则表达式可视化](https://tool.fologde.com/reg-viz): 图形化展示正则匹配过程，逐步播放理解正则
+- [Cron 表达式生成器](https://tool.fologde.com/cron): 秒/分/时/日/月/周/年可视化配置，附常用预设模板
+- [JWT 解析](https://tool.fologde.com/jwt): 解码 JSON Web Token，查看 header/payload/signature
+- [HTTP 状态码](https://tool.fologde.com/httpstatuscode): 全部 HTTP 状态码的含义解释
+- [Cookie 解析/构造](https://tool.fologde.com/cookie): 请求头与 Set-Cookie 双向解析构造，支持 Domain/Expires/HttpOnly/SameSite 等属性
+- [在线请求调试](https://tool.fologde.com/postman): 简化版 Postman：构造 HTTP 请求、查看响应，支持 JSON/表单/Raw
+- [命名风格转换](https://tool.fologde.com/naming-case): snake_case / camelCase / PascalCase / kebab-case 互转，支持逐行批处理
+- [MySQL 转 Go 结构体](https://tool.fologde.com/mysql-to-go): DDL 字段转 Go struct，支持类型映射、标签与命名规范
+- [MongoDB JSON 转 SQLite SQL](https://tool.fologde.com/mongo-to-sqlite): JSON 数组与 NDJSON 转 SQLite 建表与插入语句，自动推断表结构
+- [Mock 数据生成器](https://tool.fologde.com/mock-data): 可视化定义字段 Schema，16 种类型一键生成测试 JSON
+- [短链接生成器](https://tool.fologde.com/short-link): 长链接转短链接，支持自定义后缀
+- [Chmod 权限计算器](https://tool.fologde.com/chmod): 勾选读/写/执行实时生成八进制与符号表示，支持 setuid/粘滞位
+- [子网掩码/IP 计算器](https://tool.fologde.com/subnet): CIDR/点分掩码互转，计算网络地址、广播地址、可用主机范围与反掩码
+- [IP 查询](https://tool.fologde.com/ip): 公网 IP 归属地查询
+- [网站信息获取](https://tool.fologde.com/webinfo): 获取网站的 favicon、icon、标题、关键词与描述
+- [后端技能文档](https://tool.fologde.com/backend-docs): MongoDB、Docker、Go、Redis、Nginx、PostgreSQL 等技术栈的系统化学习资料
+
+## 编码与加密
+
+- [MD5 在线加密](https://tool.fologde.com/md5): 16/32 位 MD5 与双重加密
+- [哈希校验/HMAC](https://tool.fologde.com/hash): SHA-1/256/512、HMAC-SHA256，支持文本与文件摘要
+- [Base64 编码/解码](https://tool.fologde.com/base64): 文本 Base64 双向实时转换，支持中文
+- [URL 编码/解码](https://tool.fologde.com/urlencode): 在线 URL 编码与解码
+- [URL 参数解析/构造](https://tool.fologde.com/urlparams): 一键解析 ?a=1&b=2，编辑后重新拼接
+- [HTML 实体转义](https://tool.fologde.com/htmlentity): HTML 实体与字符双向转义
+- [Unicode 转中文](https://tool.fologde.com/unicode): Unicode 编码与中文互转
+- [字符编码/解码](https://tool.fologde.com/charset): UTF-8/UTF-16/GBK/GB18030/Big5 字符集编码解码，支持十六进制、十进制与自定义分隔符
+- [ASCII 码表](https://tool.fologde.com/ascii): 控制字符、打印字符与扩展码完整对照表
+- [文本加密/解密](https://tool.fologde.com/text-crypto): AES-GCM + 密码派生秘钥加密，Base64 输出，同秘钥解密
+- [摩斯电码](https://tool.fologde.com/morse): 摩斯电码编码与解码
+
+## 文本处理
+
+- [文本对比](https://tool.fologde.com/diff): 中英文与代码差异比对
+- [在线字数统计](https://tool.fologde.com/wordcount): 字数、字符数统计，论文文案必备
+- [字符串去空格](https://tool.fologde.com/stringclean): 去除所有/首尾/多余空格与空行，实时预览与字符统计
+- [文本去重](https://tool.fologde.com/textremoveduplicate): 删除文本中的重复行
+- [文本排序](https://tool.fologde.com/text-sort): 按拼音、数字、长度对行排序，支持去重、倒序与随机打乱
+- [词频统计分析](https://tool.fologde.com/word-frequency): 中英文混合分词，统计高频词并可视化
+- [Markdown 编辑器](https://tool.fologde.com/markdown): 在线编辑与实时预览，导出 Markdown
+- [在线文本编辑/HTML 获取](https://tool.fologde.com/textedit): 富文本编辑，实时预览并获取对应 HTML
+- [公众号排版](https://tool.fologde.com/wechat-format): Markdown 转公众号格式，多主题模板、代码高亮与目录，一键复制到公众号编辑器
+- [假文生成器](https://tool.fologde.com/lorem): 生成中文假文或 Lorem Ipsum 占位文本
+- [简繁体转换](https://tool.fologde.com/chinese-convert): 基于 OpenCC 词库，支持台湾正体、香港繁体的词汇级精准互转
+- [汉字转拼音](https://tool.fologde.com/pinyin): 声调符号/数字/首字母模式，多音字智能识别
+- [数字转金额大写](https://tool.fologde.com/numbertochinese): 数字一键转人民币大写金额
+
+## 转换与计算
+
+- [单位转换](https://tool.fologde.com/unit): 长度、面积、时间、重量、温度、压力、热量、功率换算
+- [文件大小转换](https://tool.fologde.com/filesize): 字节、KB、MB、GB、TB 互转
+- [常用进制转换](https://tool.fologde.com/scaletran): 支持 32 进制以上的高进制转换
+- [数字进制转换](https://tool.fologde.com/radix): 2-36 进制互转，支持小数、负数与大数
+- [在线计算器](https://tool.fologde.com/calculator): 科学计算（三角函数/对数/阶乘/幂）与 2/8/10/16 进制互转
+- [复利计算器](https://tool.fologde.com/compound-interest): 复利终值、定投、单利对照、72 法则与年度明细
+- [房贷计算器](https://tool.fologde.com/mortgage): 等额本息与等额本金月供、利息总额与逐年还款明细
+- [个税计算器](https://tool.fologde.com/income-tax): 累计预扣预缴法计算每月个税与税后工资，含五险一金与专项附加扣除
+- [BMI 计算器](https://tool.fologde.com/bmi): 按中国成人标准评估体重健康并给出健康体重范围
+- [土地亩数计算器](https://tool.fologde.com/land-area): 输入长宽算亩数，平方米/公顷/平方千米换算
+- [辈分称谓计算](https://tool.fologde.com/generation-calculator): 交互式家谱树推导中国式亲戚称谓、辈分高低与反向称呼
+
+## 日期时间
+
+- [时间戳转换](https://tool.fologde.com/timetran): Unix 时间戳与北京时间互转
+- [日期计算器](https://tool.fologde.com/date-calc): 日期间隔、日期加减推算与工作日统计
+- [农历/万年历](https://tool.fologde.com/lunar-calendar): 公农历对照、干支、生肖、节气，农历生日反查
+- [年龄计算器](https://tool.fologde.com/age-calc): 周岁/虚岁、生肖星座、已活天数与生日倒计时
+- [倒计时计时器](https://tool.fologde.com/countdown-timer): 自定义时长的倒计时
+- [番茄工作法](https://tool.fologde.com/pomodoro-timer): 自定义工作/休息周期，自动切换阶段
+- [翻页时钟](https://tool.fologde.com/flip-clock): 经典机械翻页动画时钟，实时显示时间日期
+- [退休倒计时](https://tool.fologde.com/retirement-countdown): 按出生年月与目标退休年龄计算距退休的天时分
+
+## 图片工具
+
+- [在线编辑图片](https://tool.fologde.com/signimage): 裁剪、标注、滤镜、画笔、旋转、文字与尺寸调整
+- [图片压缩](https://tool.fologde.com/image-compress): JPG/PNG/WebP 压缩，可调质量
+- [PNG/JPG 格式互转](https://tool.fologde.com/img-convert): 格式互转与质量调节，纯前端处理
+- [图片切割](https://tool.fologde.com/imgcut): 四宫格/九宫格/十六宫格分割，支持自定义行列
+- [九宫格切图](https://tool.fologde.com/grid-image-cut): 3×3 / 4×4 朋友圈切图，支持间距预览与打包下载
+- [图片拼图](https://tool.fologde.com/img-puzzle): 宫格、长条、阶梯、电影海报、心形/圆形等多模板拼图
+- [图片转 Base64](https://tool.fologde.com/imagetobase64): 图片与 Base64 双向互转，支持 JPG/PNG/GIF/WebP/SVG
+- [图片水印](https://tool.fologde.com/img-watermark): 文字/图片水印，自定义位置、透明度与缩放
+- [SVG 转 JPG/PNG](https://tool.fologde.com/svg-to-image): 上传 SVG 或粘贴代码转高清位图，支持缩放与透明背景
+- [图片转线稿图](https://tool.fologde.com/line-art): 铅笔素描算法一键转黑白线稿，支持批量与强度调节，本地处理
+- [图片 EXIF 查看/清除](https://tool.fologde.com/image-exif): 查看拍摄参数与 GPS，一键剥离元数据保护隐私
+- [图片取色板](https://tool.fologde.com/image-palette): 中位切分算法提取主色调色板，点击复制 HEX
+- [图片颜色数统计](https://tool.fologde.com/image-color-count): 统计图片颜色种类，Top N 调色板，可导出 JSON/CSV
+- [证件照生成](https://tool.fologde.com/id-photo): 一寸/二寸/护照等预设尺寸，支持透视裁剪与 JPG/PNG 导出
+- [老照片加字](https://tool.fologde.com/old-photo-caption): 在图片上下添加题字条带，多款经典预设样式
+- [文本转图片](https://tool.fologde.com/texttoimg): 文本生成长图，多种排版样式
+- [高亮代码生成图片](https://tool.fologde.com/code-image): 190+ 语言代码高亮截图，8 套主题，自定义字体与水印
+- [在线涂鸦画板](https://tool.fologde.com/doodle-pad): 无限画布、压感、撤销重做，导出 PNG
+- [二维码生成](https://tool.fologde.com/qrcode): 支持 logo 与多种样式预设
+- [二维码识别](https://tool.fologde.com/qrcode-scan): 摄像头扫描、图片上传、拖拽识别
+- [Favicon 生成器](https://tool.fologde.com/favicon-generator): 一键生成 16~512px 全尺寸图标与多尺寸 favicon.ico
+- [色板](https://tool.fologde.com/palettes): 好看的颜色组合，一键复制
+- [Color 选择器](https://tool.fologde.com/colorpicker): HEX/RGB/HSL/CSS 多颜色空间转换
+- [CSS 渐变生成器](https://tool.fologde.com/css-gradient): 可视化调节线性/径向/锥形渐变，多色节点，实时复制代码
+
+## PDF 与视频
+
+- [文本转 PDF](https://tool.fologde.com/text-to-pdf): 文本转 A4 PDF，支持中文、长文分页与按页拆分，本地处理
+- [PDF 转图片](https://tool.fologde.com/pdf-to-image): 多页转换高清 PNG/JPG，可调分辨率
+- [PDF 页眉页脚编辑器](https://tool.fologde.com/pdf-editor): 自定义页眉页脚文本、字体、字号与对齐，可应用单页或全部
+- [视频转 GIF 动图](https://tool.fologde.com/video-to-gif): 选择片段、自定义帧率尺寸质量，纯前端处理
+- [VIP 视频解析](https://tool.fologde.com/video-parser): 粘贴链接在线观看腾讯/爱奇艺/优酷/芒果TV等平台视频
+
+## 数据可视化
+
+- [柱状图](https://tool.fologde.com/bar): 像填表格一样制作柱状图，导出静态或动态图表
+- [折线图](https://tool.fologde.com/line): 在线折线图制作与导出
+- [饼图](https://tool.fologde.com/pie): 在线饼图制作与导出
+- [散点图](https://tool.fologde.com/scatter): 在线散点图制作与导出
+- [3D 数学方程式](https://tool.fologde.com/math-equation-3d): 参数方程、隐式方程的三维交互式可视化
+
+## AI 工具
+
+- [AI 对话](https://tool.fologde.com/ai-chat): 多轮对话智能助手
+- [AI 翻译](https://tool.fologde.com/ai-translate): 多语言互译，源语言自动检测
+- [AI 起名](https://tool.fologde.com/ai-name): 输入父母姓氏生成中文姓名并给出命名理由
+- [AI 起变量名](https://tool.fologde.com/ai-variable-name): 按描述生成多种命名风格的变量名
+- [AI 面试](https://tool.fologde.com/ai-interview): 模拟前端/后端/产品等岗位的真实面试场景
+- [AI 提示词仓库](https://tool.fologde.com/ai-prompt): 写作、编程、创意、分析等领域的精选提示词库
+- [AI 小学作文](https://tool.fologde.com/ai-elementary-essay): 按年级、体裁与关键词生成小学生水平作文
+- [AI 每日励志鸡汤文](https://tool.fologde.com/ai-daily-motivation): 多风格励志文生成，定时刷新
+- [AI 文生视频](https://tool.fologde.com/ai-text-to-video): 输入主题自动生成文案与 5s/10s 短视频
+- [AI 图片编辑](https://tool.fologde.com/ai-image-edit): 图片编辑、图生图与超分辨率
+- [AI 穿搭建议](https://tool.fologde.com/ai-outfit): 上传人物照片自动设计穿搭或替换指定衣物
+- [AI 媒体作品](https://tool.fologde.com/ai-media-works): 免费 AI 模型生成的图片与视频画廊，每日更新
+
+## 教育与学习
+
+- [物理公式查询](https://tool.fologde.com/physics): 力学、热学、电学、光学、原子物理公式速查
+- [数学公式查询](https://tool.fologde.com/math): 代数、三角函数、几何、微积分、线性代数、概率统计
+- [小学加减法练习](https://tool.fologde.com/arithmetic-practice): 自动出题在线批改，支持混合题型
+- [闪卡复习](https://tool.fologde.com/flashcards): Anki 风格 SM-2 间隔重复复习系统
+- [算法可视化](https://tool.fologde.com/algorithm-visualization): 排序与查找算法的动态演示
+- [逻辑思维训练](https://tool.fologde.com/logic-training): 真话谎话、逻辑推理、数学思维等多题型练习与解析
+
+## 小游戏
+
+- [贪吃蛇](https://tool.fologde.com/snake): 经典贪吃蛇，键盘控制
+- [俄罗斯方块](https://tool.fologde.com/tetris): 经典俄罗斯方块
+- [2048](https://tool.fologde.com/game2048): 数字合并益智游戏
+- [扫雷](https://tool.fologde.com/minesweeper): 经典扫雷
+- [数字华容道](https://tool.fologde.com/puzzle): 滑块数字排序
+- [数独游戏](https://tool.fologde.com/sudoku): 在线数独
+- [记忆力翻牌](https://tool.fologde.com/memory): 翻牌配对记忆训练
+- [打地鼠](https://tool.fologde.com/whackamole): 30 秒反应挑战
+- [AI 五子棋](https://tool.fologde.com/ai-gomoku): 与 AI 对战五子棋
+- [井字棋](https://tool.fologde.com/tic-tac-toe): 三档 AI 人机对战与双人同屏
+- [双人对战五子棋](https://tool.fologde.com/gomoku-online): 房间匹配、实时对战、悔棋与聊天
+- [点灯小游戏](https://tool.fologde.com/lights-out): 经典 Lights Out，多难度、提示与最佳纪录
+- [24 点](https://tool.fologde.com/make24): 四张牌加减乘除算 24，三档难度与解法提示
+- [猜数字游戏](https://tool.fologde.com/guess-number): 1-100 范围逻辑推理猜数
+- [数字序号记忆](https://tool.fologde.com/number-memory): 瞬时记忆按序点击挑战
+
+## 趣味互动
+
+- [假如你有100亿](https://tool.fologde.com/hundred-billion): 100 亿人民币购物模拟器
+- [手持弹幕](https://tool.fologde.com/barrage): 手机大字弹幕应援
+- [LED 显示屏](https://tool.fologde.com/led-display): 自定义文字颜色速度的 LED 走马灯，可生成分享链接
+- [匿名告白墙](https://tool.fologde.com/confession-wall): 无需登录发布短消息，点赞送抱抱实时飘字
+- [物品辐射量示例](https://tool.fologde.com/radiation-sample): 常见物品辐射量参考数据对比
+- [四季景色](https://tool.fologde.com/season-scenery): 著名景点四季照片对比
+- [世界之最](https://tool.fologde.com/world-records): 自然、地理、动物、科技、文化等八大类世界纪录
+- [毛选名句卡片](https://tool.fologde.com/mao-quotes): 《毛泽东选集》经典名句卡片展示与分享
+
+## 随机与决策
+
+- [生成随机数](https://tool.fologde.com/random): 自定义范围随机数，可用于抽奖点名
+- [随机密码生成](https://tool.fologde.com/randompassword): 在线批量生成随机密码
+- [UUID 生成器](https://tool.fologde.com/uuid): 批量 UUID 生成
+- [随机中文人名生成](https://tool.fologde.com/chinese-name): 单姓复姓、性别筛选与批量生成，适合测试数据与角色命名
+- [帮我决定](https://tool.fologde.com/decision): 自定义选项随机决定
+- [抛硬币](https://tool.fologde.com/coin): 在线抛硬币
+- [投骰子](https://tool.fologde.com/dice): 可自定义骰子数量
+- [抽奖转盘](https://tool.fologde.com/lucky-wheel): 选项转盘抽奖，支持结果记录与中奖自动移除
+- [随机点名器](https://tool.fologde.com/roll-call): 导入名单滚动点名，一次抽多人不重复
+
+## 记录与效率
+
+- [笔记备忘录](https://tool.fologde.com/notes): 在线笔记的创建、编辑与删除，数据安全存储
+- [待办事项](https://tool.fologde.com/userinfo/todos): 优先级、截止日期与任务清单管理
+- [收藏夹/稍后读](https://tool.fologde.com/bookmarks): 网页链接收藏，标签分类、阅读状态与搜索筛选
+- [密码管理器](https://tool.fologde.com/password-manager): AES 加密存储、分组管理与密码生成
+- [简历管理](https://tool.fologde.com/resume): 多模板在线简历制作与信息管理
+- [旅游地图](https://tool.fologde.com/travel-map): 绘制徒步自驾路线、标注营地/水源/观景点与海拔，可公开分享
+- [地图广场](https://tool.fologde.com/travel-map/plaza): 浏览大家公开分享的旅游地图
+- [音乐播放列表](https://tool.fologde.com/music-playlist): 上传音频建歌单，歌曲与歌单均可分享收听（上传需登录）
+- [在线写信工具](https://tool.fologde.com/letter-writer): 多种信纸风格，生成永久分享链接
+- [QA 问答页面制作](https://tool.fologde.com/qa): 自定义头部尾部的问答页，生成公开链接
+- [闲鱼技能海报生成器](https://tool.fologde.com/skill-poster): 多模板技能服务海报一键生成
+- [阿里云 OSS 在线管理器](https://tool.fologde.com/oss-manager): STS 临时凭证、文件管理与多 Tab 在线编辑预览（需登录）
+- [临时聊天室](https://tool.fologde.com/temp-chat): 无需注册的 P2P 聊天室，不存数据关闭即消失
+- [人生轨迹](https://tool.fologde.com/life-trajectory): 一句话 + emoji 记录当下心情，仅自己可见（需登录）
+
+## 生活健康与职场
+
+- [体重记录](https://tool.fologde.com/weight-tracker): 家庭成员体重趋势、BMI 与统计分析
+- [身高记录](https://tool.fologde.com/height-tracker): 身高曲线、年增长速率与里程碑
+- [工资变化记录](https://tool.fologde.com/salary-tracker): 调薪幅度、年化增长率与薪资成长曲线
+- [每月固定开销](https://tool.fologde.com/fixed-expenses): 房租/订阅/贷款/保险等周期开销管理与月度年度统计
+- [物品比价](https://tool.fologde.com/price-comparison): 多平台售价与实付价记录，自动找最低价并统计节省
+- [购物清单](https://tool.fologde.com/shopping-list): 多清单管理，数量、预计与实际花费
+- [今日吃啥](https://tool.fologde.com/food-log): 按三餐记录饮食与卡路里统计
+- [最低工资标准查询](https://tool.fologde.com/minimum-wage): 全国各省市月/小时最低工资标准
+- [号码一览](https://tool.fologde.com/phone-directory): 政府机构、公共服务、紧急救援等常用电话查询
+- [公司对比](https://tool.fologde.com/company-compare): 薪资、福利、工作时间等多维度对比公司待遇
+- [星座运势查询](https://tool.fologde.com/zodiac-fortune): 按出生日期判断星座，今日/本周/本月运势
+- [命理八卦工具](https://tool.fologde.com/bagua-fortune): 生肖、八卦卦象、五行属性与吉位建议
