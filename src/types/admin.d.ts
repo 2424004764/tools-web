@@ -419,6 +419,8 @@ export interface ToolUsageListParams {
   pageSize?: number
   uid?: string
   tool_url?: string
+  /** 记录类型筛选：'tool' 仅站内工具 / 'app_jump' 仅「更多应用」产品跳转；不传 = 全部 */
+  url_kind?: 'tool' | 'app_jump'
   /** 推广来源筛选，如 'google' / 'baidu' / 'direct' */
   source?: string
   /** YYYY-MM-DD（本地 UTC+8 当天 00:00 起算，含当天） */

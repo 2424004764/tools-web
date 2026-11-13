@@ -1065,6 +1065,7 @@ const { isMobile } = useIsMobile()
       <el-form label-width="100px" class="!mt-2">
         <el-form-item label="model_key" required>
           <el-input v-model="newModel.model_key" placeholder="例如 gpt-image-2-1k" maxlength="100" />
+          <span class="text-xs text-ink-600">同工具下允许重复（同一模型可配多个变体，用户端按显示名称区分）</span>
         </el-form-item>
         <el-form-item label="显示名称" required>
           <el-input v-model="newModel.model_label" placeholder="例如 gpt-image-2 1k（标准）" maxlength="200" />
@@ -1100,7 +1101,7 @@ const { isMobile } = useIsMobile()
       <el-form label-width="100px" class="!mt-2">
         <el-form-item label="model_key" required>
           <el-input v-model="editModelDialog.model_key" placeholder="例如 gpt-image-2-1k" maxlength="64" />
-          <span class="text-xs text-ink-600">前端下拉框的值；改名后用户本地缓存的旧选择会回退默认项</span>
+          <span class="text-xs text-ink-600">同工具下允许重复；仅未配置上游链（legacy 回退）时才会直传上游当模型名</span>
         </el-form-item>
         <el-form-item label="显示名称" required>
           <el-input v-model="editModelDialog.model_label" maxlength="200" />

@@ -1,10 +1,13 @@
 // 公开的工具列表 API（前台消费）
 // GET /api/tools
-// 返回启用的工具（is_enabled = 1），按分类 + 排序返回。
+// 返回启用的工具（is_enabled = 1），按分类 + 排序返回；
+// disabled 字段为已停用工具的 url 列表（前台路由守卫拦截直达链接用）。
 //
 // 鉴权：不要求登录；用于替换前端硬编码的 tools.ts。
 // 若 tool_features 表为空（未迁移），返回 { data: [], fallback: true }
 // 前端 store 检测 fallback=true 时回退到 tools.ts。
+
+import { getToolSwitchView } from '../utils/tool-switch.js'
 
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
@@ -54,6 +57,13 @@ export async function onRequest(context) {
       return json({ data: [], categories: [], fallback: true })
     }
 
+    // 已停用工具的 url 列表（工具自身 is_enabled=0，或所属分类停用）。
+    // 前台路由守卫用它拦截直达链接（后台关了，前台也不能打开，跳 404）。
+    // 走 utils/tool-switch.js 的 isolate 级 TTL 缓存，不为本接口增加
+    // 第二条逐请求 SQL（本接口是匿名公开端点，防刷库放大）。
+    const switchView = await getToolSwitchView(db)
+    const disabledUrls = switchView ? switchView.urls : []
+
     // 同时组装按分类折叠的视图，便于前端 Left.vue / Home.vue 渲染
     const catMap = new Map()
     for (const row of rows) {
@@ -87,6 +97,7 @@ export async function onRequest(context) {
         cate: r.category_name,
       })),
       categories: Array.from(catMap.values()),
+      disabled: disabledUrls,
       fallback: false,
     })
   } catch (error) {

@@ -1,10 +1,12 @@
 // 公开的工具 model 列表查询 API（前台消费）
 // GET /api/tools/models?url=/ai-image-edit/
-// 返回 { ok, url, models: [{ model_key, model_label, description, credit_cost, is_default }] }
+// 返回 { ok, url, models: [{ id, model_key, model_label, description, credit_cost, is_default }] }
 //
 // 鉴权：不要求登录；用于前端渲染下拉框 + 显示 cost。
 // 仅返回 is_enabled = 1 的 model，按 sort_order 排序。
 // 始终包含 is_default = 1 的项；若都没有则取 sort_order 最小的项作为默认。
+// id = tool_models 行 id：model_key 允许在同工具下重复（同一模型的多个变体），
+// 前端下拉框以 id 作为取值、生成端点按 id 精确命中变体。
 
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
@@ -42,7 +44,7 @@ export async function onRequest(context) {
   try {
     const result = await db
       .prepare(
-        `SELECT model_key, model_label, description, credit_cost, is_default
+        `SELECT id, model_key, model_label, description, credit_cost, is_default
          FROM tool_models
          WHERE tool_url = ? AND is_enabled = 1
          ORDER BY sort_order ASC, id ASC`,
@@ -51,6 +53,7 @@ export async function onRequest(context) {
       .all()
 
     const models = (result.results || []).map((r) => ({
+      id: r.id,
       model_key: r.model_key,
       model_label: r.model_label,
       description: r.description,

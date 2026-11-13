@@ -80,6 +80,7 @@ const sourceOptions = (() => {
 const filter = reactive({
   uid: '',
   tool_url: '',
+  url_kind: '' as '' | 'tool' | 'app_jump',
   source: '',
   range: 'today' as '' | 'today' | 'week' | 'month' | 'all',
 })
@@ -332,6 +333,7 @@ const loadList = async () => {
       pageSize: pagination.value.pageSize,
       uid: filter.uid || undefined,
       tool_url: filter.tool_url || undefined,
+      url_kind: filter.url_kind || undefined,
       source: filter.source || undefined,
       startDate: dateRange.startDate,
       endDate: dateRange.endDate,
@@ -369,6 +371,7 @@ const handleSearch = () => {
 const handleReset = () => {
   filter.uid = ''
   filter.tool_url = ''
+  filter.url_kind = ''
   filter.source = ''
   filter.range = 'today'
   pagination.value.page = 1
@@ -775,6 +778,17 @@ onMounted(() => {
       </template>
 
       <div class="flex flex-wrap items-end gap-3 mb-4">
+        <el-select
+          v-model="filter.url_kind"
+          placeholder="记录类型（可空）"
+          clearable
+          class="!w-44"
+          @change="handleSearch"
+        >
+          <el-option label="仅站内工具" value="tool" />
+          <el-option label="仅更多应用（产品跳转）" value="app_jump" />
+        </el-select>
+
         <el-select
           v-model="filter.tool_url"
           placeholder="选择工具（可空）"

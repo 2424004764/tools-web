@@ -69,12 +69,8 @@ export async function onRequest(context) {
         if (!UPSTREAM_MODEL_ID_PATTERN.test(k)) {
           return jsonError('model_key 只能包含字母、数字、点、下划线、连字符（≤64 字符）', 400)
         }
-        // 同 tool_url 下唯一（UNIQUE(tool_url, model_key)），排除自身
-        const dup = await db
-          .prepare('SELECT id FROM tool_models WHERE tool_url = ? AND model_key = ? AND id != ?')
-          .bind(cur.tool_url, k, modelId)
-          .first()
-        if (dup) return jsonError('该 model_key 在此工具下已存在', 400)
+        // model_key 允许在同工具下重复（migration 112 起已去掉 UNIQUE 约束），
+        // 前端按行 id 区分变体；改 key 只影响 legacy 回退与日志展示
         sets.push('model_key = ?'); args.push(k)
       }
       if (body.model_label !== undefined) {

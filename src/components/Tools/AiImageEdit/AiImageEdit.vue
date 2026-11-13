@@ -29,16 +29,21 @@ const info = reactive({
 // 模型列表（从后台 tool_models 拉取）
 const modelList = ref<PublicToolModel[]>([])
 const modelLoaded = ref(false)
-// 记住上次选择的模型（localStorage）；列表加载后若缓存项已被下架则回退默认项
+// 记住上次选择的模型（localStorage）；列表加载后若缓存项已被下架则回退默认项。
+// selectedModel 存的是 model 行 id（字符串化）：后台允许同工具下重复 model_key
+// （同一模型的静图 / 动图等变体各自成行），下拉框靠行 id 区分；
+// 老版本缓存的是 model_key，加载后按键回退匹配
 const selectedModel = useCachedRef<string>(
   'ai-image-edit:model',
   '',
   (val) => typeof val === 'string' && val.length > 0,
 )
-const currentModelCost = computed(() => {
-  const m = modelList.value.find((x) => x.model_key === selectedModel.value)
-  return m?.credit_cost ?? 0
-})
+const currentModel = computed(
+  () =>
+    modelList.value.find((x) => String(x.id) === selectedModel.value) ||
+    modelList.value.find((x) => x.model_key === selectedModel.value),
+)
+const currentModelCost = computed(() => currentModel.value?.credit_cost ?? 0)
 // 本次生成总消耗 = 单张积分 × 并发数。
 // 注意：当前只算"成功发起请求"的并发数；实际上传上游后失败的部分会按上游规则
 // 退还（详见后端 generateImage 实现），但下单时按 N 张扣，前端展示按这个数提示。
@@ -75,10 +80,12 @@ const fetchModelList = async () => {
     const list = await fetchToolModels('/ai-image-edit/')
     modelList.value = list
     if (list.length > 0) {
-      // 恢复优先级：上次选择（仍在列表中）> is_default > 第一项
-      const cached = list.find((m) => m.model_key === selectedModel.value)
+      // 恢复优先级：上次选择（仍在列表中，先按行 id 再按老缓存的 model_key）> is_default > 第一项
+      const cached =
+        list.find((m) => String(m.id) === selectedModel.value) ||
+        list.find((m) => m.model_key === selectedModel.value)
       const def = cached || list.find((m) => m.is_default) || list[0]
-      selectedModel.value = def.model_key
+      selectedModel.value = String(def.id)
     }
   } catch (err) {
     console.warn('[ai-image-edit] fetchModelList failed', err)
@@ -287,7 +294,9 @@ const isBatchLoading = ref(false)
 const slotVisuals = useSlotVisuals()
 const viewer = useViewer()
 const upload = useUpload()
-const save = useSaveToCreations({ results, prompt: resolvedPrompt, selectedPromptId, selectedModel })
+// 创作记录展示模型名：用显示名称（selectedModel 存的是行 id，直接存会变成数字）
+const currentModelName = computed(() => currentModel.value?.model_label || selectedModel.value)
+const save = useSaveToCreations({ results, prompt: resolvedPrompt, selectedPromptId, selectedModel: currentModelName })
 const gen = useGenerate({
   results,
   isBatchLoading,
@@ -872,7 +881,7 @@ onUnmounted(() => {
                 v-model="selectedModel"
                 class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
               >
-                <option v-for="m in modelList" :key="m.model_key" :value="m.model_key">
+                <option v-for="m in modelList" :key="m.id" :value="String(m.id)">
                   {{ m.model_label }}{{ m.credit_cost > 0 ? `（${m.credit_cost} 积分）` : '' }}
                 </option>
               </select>
@@ -1273,7 +1282,7 @@ onUnmounted(() => {
         <p><strong>并发数（1-5）：</strong>选择「开始生成」后，浏览器会并行发出 N 个相同请求，每张结果独立显示、独立计时，失败的格子可单独「重试」（仅该次扣费）。适合同一提示词多跑几张变体挑选最佳。</p>
         <p><strong>模型说明：</strong></p>
         <ul class="list-disc pl-5 space-y-2">
-          <li v-for="m in modelList" :key="m.model_key">
+          <li v-for="m in modelList" :key="m.id">
             <strong>{{ m.model_label }}</strong>
             <span class="text-ink-500">（{{ m.credit_cost > 0 ? `${m.credit_cost} 积分/张` : '免费' }}）</span><span v-if="m.description">：{{ m.description }}</span>
           </li>

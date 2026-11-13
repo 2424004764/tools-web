@@ -5,6 +5,10 @@
 //     供前端展示「已封禁」标签与解封按钮，null 表示未封禁）
 //     来源黑名单（tool_usage_source_blacklist）中的来源默认剔除，与统计口径一致；
 //     记录本身保留在库中，解禁即恢复展示。
+//   url_kind（记录类型筛选，可空）：
+//     'tool'     = 仅站内工具（tool_url 不以 /app-jump/ 开头）
+//     'app_jump' = 仅「更多应用」产品跳转（tool_url 以 /app-jump/ 开头，见 AppJump.vue 埋点）
+//     不传 = 全部记录（行为与从前一致）
 //
 // 时间约定：used_at 是秒级时间戳，SQL 内统一用秒比较；
 //   startDate/endDate 是 YYYY-MM-DD（本地 UTC+8），被解析为当天的 00:00:00 与次日 00:00:00（含当天）。
@@ -88,6 +92,14 @@ export async function onRequestGet(context) {
     if (toolUrl) {
       where.push('r.tool_url = ?')
       args.push(toolUrl)
+    }
+    // 记录类型筛选：「更多应用」的产品跳转记录复用本表，tool_url 前缀 /app-jump/。
+    // 取值白名单校验后拼字面量（LIKE 前缀匹配无用户输入，无注入面）
+    const urlKind = (url.searchParams.get('url_kind') || '').trim()
+    if (urlKind === 'tool') {
+      where.push(`r.tool_url NOT LIKE '/app-jump/%'`)
+    } else if (urlKind === 'app_jump') {
+      where.push(`r.tool_url LIKE '/app-jump/%'`)
     }
     if (source) {
       where.push('r.source = ?')

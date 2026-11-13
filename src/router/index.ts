@@ -5,6 +5,7 @@ import { constantRoute } from './router'
 import seoTitles from './seo-titles.js'
 import { guardStaleVersion } from '@/utils/version-guard'
 import { useUserStore } from '@/store/modules/user'
+import { useToolsStore } from '@/store/modules/tools'
 import { ensureAdminAssetTicket } from '@/utils/adminAssets'
 import { matchToolByPath, recordToolUsage } from '@/utils/tool-usage'
 import { recordSiteVisit, shouldTrackSiteVisit } from '@/utils/site-visit'
@@ -111,6 +112,26 @@ router.beforeEach(async (to, _from, next) => {
         path: '/login',
         query: { redirect: to.fullPath },
       })
+    }
+  }
+
+  // ===== 工具开关：后台已关闭的工具，前台直达也跳 404 =====
+  // 仅对 tools.ts 注册过的工具页校验（首页/登录/博客等非工具页零开销放行）；
+  // 开关权威数据来自 /api/tools（未加载时补拉一次，与首页共用在途去重）。
+  // fallback 模式（迁移未跑/接口失败）不知道开关状态 → 放行，
+  // 深链/整页加载由 _middleware.js 在服务端再拦一道。开关在会话中被后台
+  // 修改时，本会话的旧列表要到下次拉取 /api/tools 后才生效，可接受。
+  // 路径先转小写：vue-router 默认大小写不敏感（sensitive:false），
+  // /USERINFO/TODOS 同样能进工具页，而注册表与停用列表都是小写——
+  // 不归一的话大写变体会绕过这里的注册表命中检查
+  const toolPath = to.path.toLowerCase()
+  if (matchToolByPath(toolPath)) {
+    const toolsStore = useToolsStore()
+    if (!toolsStore.authoritative) {
+      await toolsStore.loadToolsFromApi().catch(() => {})
+    }
+    if (toolsStore.authoritative && toolsStore.isToolDisabled(toolPath)) {
+      return next({ path: '/404' })
     }
   }
 

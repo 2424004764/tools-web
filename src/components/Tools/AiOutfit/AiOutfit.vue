@@ -25,16 +25,21 @@ const info = reactive({
 // ============ 模型 + 尺寸 ============
 const modelList = ref<PublicToolModel[]>([])
 const modelLoaded = ref(false)
-// 记住上次选择的模型（localStorage）；列表加载后若缓存项已被下架则回退默认项
+// 记住上次选择的模型（localStorage）；列表加载后若缓存项已被下架则回退默认项。
+// selectedModel 存的是 model 行 id（字符串化）：后台允许同工具下重复 model_key
+// （同一模型的多个变体各自成行），下拉框靠行 id 区分；
+// 老版本缓存的是 model_key，加载后按键回退匹配
 const selectedModel = useCachedRef<string>(
   'ai-outfit:model',
   '',
   (val) => typeof val === 'string' && val.length > 0,
 )
-const currentModelCost = computed(() => {
-  const m = modelList.value.find((x) => x.model_key === selectedModel.value)
-  return m?.credit_cost ?? 0
-})
+const currentModel = computed(
+  () =>
+    modelList.value.find((x) => String(x.id) === selectedModel.value) ||
+    modelList.value.find((x) => x.model_key === selectedModel.value),
+)
+const currentModelCost = computed(() => currentModel.value?.credit_cost ?? 0)
 
 const sizeOptions = [
   { value: 'auto', label: '自动（推荐）' },
@@ -757,10 +762,12 @@ const fetchModelList = async () => {
     const list = await fetchToolModels('/ai-outfit/')
     modelList.value = list
     if (list.length > 0) {
-      // 恢复优先级：上次选择（仍在列表中）> is_default > 第一项
-      const cached = list.find((m) => m.model_key === selectedModel.value)
+      // 恢复优先级：上次选择（仍在列表中，先按行 id 再按老缓存的 model_key）> is_default > 第一项
+      const cached =
+        list.find((m) => String(m.id) === selectedModel.value) ||
+        list.find((m) => m.model_key === selectedModel.value)
       const def = cached || list.find((m) => m.is_default) || list[0]
-      selectedModel.value = def.model_key
+      selectedModel.value = String(def.id)
     }
   } catch (err) {
     console.warn('[ai-outfit] fetchModelList failed', err)
@@ -818,7 +825,9 @@ const generateImage = async () => {
 
   try {
     const fd = new FormData()
-    fd.append('model', selectedModel.value)
+    // 行 id 精确指定变体（后台允许同工具下重复 model_key）；model 传行上的 model_key 兜底
+    fd.append('model', currentModel.value?.model_key || selectedModel.value)
+    if (currentModel.value?.id != null) fd.append('model_id', String(currentModel.value.id))
     fd.append('size', selectedSize.value)
     // 多张人物照
     for (const file of personFiles.value) {
@@ -1262,7 +1271,7 @@ const modeBadge = computed(() => clothingFiles.value.length > 0
                 class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-pink-500"
                 :disabled="isLoading"
               >
-                <option v-for="m in modelList" :key="m.model_key" :value="m.model_key">
+                <option v-for="m in modelList" :key="m.id" :value="String(m.id)">
                   {{ m.model_label }}
                 </option>
               </select>
@@ -1446,7 +1455,7 @@ const modeBadge = computed(() => clothingFiles.value.length > 0
         <p><strong>风格 / 场景：</strong>在文本框里输入场景描述（商务休闲、夏日海边、约会、街头潮流、学院风、晚宴礼服、居家舒适…），AI 会按场景调整整体造型。留空走默认。</p>
         <p><strong>模型说明：</strong></p>
         <ul class="list-disc pl-5 space-y-2">
-          <li v-for="m in modelList" :key="m.model_key">
+          <li v-for="m in modelList" :key="m.id">
             <strong>{{ m.model_label }}</strong>
             <span class="text-ink-500">（{{ m.credit_cost > 0 ? `${m.credit_cost} 积分/次` : '免费' }}）</span><span v-if="m.description">：{{ m.description }}</span>
           </li>

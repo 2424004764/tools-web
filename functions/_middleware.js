@@ -22,6 +22,7 @@ import { isIpBanned } from './utils/ip-ban.js'
 import { verifyAssetTicket, parseCookieHeader, ASSET_TICKET_COOKIE } from './utils/asset-ticket.js'
 import { extractUidFromRequest } from './api/_lib/model-resolver.js'
 import PAGE_META, { siteOrigin, appTitle } from './_page-meta.js'
+import { getToolSwitchView } from './utils/tool-switch.js'
 
 // 需要走 CORS 处理的路径前缀
 const CORS_PROTECTED_PREFIXES = [
@@ -272,6 +273,46 @@ async function getBlogPostMeta(env, path) {
   }
 }
 
+// ---- 工具开关拦截：后台关闭的工具，前台页面直达也一并拦下 ----
+// 后台「工具开关」把某个工具（或其所属分类）关掉后，首页列表虽已不展示，
+// 但 SPA 路由是全量静态注册的，深链 / 收藏夹直达仍能打开页面，构建期
+// 预渲染的 HTML 还会把工具内容喂给爬虫。这里在返回页面前检查停用集合：
+// 命中 → 302 跳 /404。用临时重定向而非 404/301：
+// 工具重新开启后立即恢复访问与收录，不留下永久除名副作用。
+// 精确匹配工具 url，不做前缀匹配：/notes/share/:token 等挂在工具路径下
+// 的公开子页不受影响。开关数据走 utils/tool-switch.js 的 isolate 级
+// TTL 缓存（防逐请求查库的放大面），查询失败放行（fail-open），
+// 前端路由守卫还有一层同样的拦截。
+async function isToolPageDisabled(env, path) {
+  try {
+    const db = env?.DB
+    if (!db) return false
+    // 防编码/重复斜杠变体绕过：Pages 静态层可能把 %75（'u'）、// 等
+    // 规范化后命中预渲染资产，若按原始字符串比对就会漏拦。这里按同样
+    // 口径归一（解码失败如非法 % 序列则保留原样，按原样比对）。
+    let norm = path !== '/' && path.endsWith('/') ? path.slice(0, -1) : path
+    try {
+      norm = decodeURIComponent(norm)
+    } catch {
+      /* 保留原样 */
+    }
+    norm = norm.replace(/\/+/g, '/')
+    // 预渲染资产形态：顶部静态资源分支的扩展名清单不含 .html，而
+    // dist/<route>/index.html 是真实存在的文件，Pages 按字面路径直接
+    // 下发——不剥后缀的话 /<停用工具>/index.html 可原样取回预渲染页面。
+    norm = norm.replace(/(?:\/index)?\.html$/i, '')
+    if (norm === '/404' || norm === '' || norm.startsWith('/admin')) return false
+    const view = await getToolSwitchView(db)
+    if (!view) return false
+    // vue-router 大小写不敏感匹配（/USERINFO/TODOS 也能进工具页），
+    // has() 内部按「去尾斜杠 + 小写」归一比对，堵住大写变体绕过
+    return view.has(norm)
+  } catch (e) {
+    console.error('[middleware] tool switch check failed:', e)
+    return false
+  }
+}
+
 async function maybeRewritePageMeta(request, path, response, env) {
   try {
     if (request.method !== 'GET') return response
@@ -472,6 +513,22 @@ export async function onRequest(context) {
 
   // 非受保护路径直接走原逻辑（页面 HTML 顺带按路径改写 SEO meta）
   if (!needsCORS(path)) {
+    // 后台已关闭的工具页：302 跳 /404。必须在 context.next() 之前拦，
+    // 否则预渲染的页面 HTML（含工具正文）会先漏出去。
+    // Location 用固定相对路径：不反射 request.url 的 Host（哪怕边缘
+    // 层将来放行非常规 Host 头也无从构造跨源跳转），无开放重定向面。
+    if ((request.method === 'GET' || request.method === 'HEAD') && (await isToolPageDisabled(env, path))) {
+      return withSecurityHeaders(
+        new Response(null, {
+          status: 302,
+          headers: {
+            Location: '/404',
+            'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+            'X-Robots-Tag': 'noindex',
+          },
+        }),
+      )
+    }
     const resp = await context.next()
     const rewritten = await maybeRewritePageMeta(request, path, resp, context.env)
     const secured = withSecurityHeaders(rewritten)

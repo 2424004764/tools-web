@@ -2,6 +2,8 @@
 import { functionsRequest } from '@/utils/functionsRequest'
 
 export interface PublicToolModel {
+  /** tool_models 行 id：model_key 允许在同工具下重复（同一模型的多个变体），下拉框按 id 区分 */
+  id: number
   model_key: string
   model_label: string
   description: string | null

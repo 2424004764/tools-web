@@ -172,8 +172,15 @@ export async function resolveUpstreamChain(db, toolUrl, modelKey, env, preloaded
   let raw = preloaded?.rawUpstreams
   if (raw === undefined) {
     try {
+      // model_key 允许在同工具下重复（migration 112）：这里是没有 preloaded 的兜底路径，
+      // 调用方（ai-image-edit / ai-outfit）已按行 id 精确解析并透传 rawUpstreams；
+      // 走到本查询时取 sort_order 最前的一行，保证确定性
       const row = await db
-        .prepare('SELECT upstreams FROM tool_models WHERE tool_url = ? AND model_key = ? AND is_enabled = 1')
+        .prepare(
+          `SELECT upstreams FROM tool_models
+           WHERE tool_url = ? AND model_key = ? AND is_enabled = 1
+           ORDER BY sort_order ASC, id ASC LIMIT 1`,
+        )
         .bind(toolUrl, modelKey)
         .first()
       raw = row?.upstreams || null

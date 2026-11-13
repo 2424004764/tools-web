@@ -90,13 +90,8 @@ export async function onRequest(context) {
         upstreamsJson = v.value ? JSON.stringify(v.value) : null
       }
 
-      // 唯一键预检：UNIQUE(tool_url, model_key)。直接让 D1 抛约束错误的话，
-      // 前端只能看到裸的 SQLITE_CONSTRAINT 文案，对管理员不友好
-      const dup = await db
-        .prepare('SELECT id FROM tool_models WHERE tool_url = ? AND model_key = ?')
-        .bind(toolUrl, modelKey)
-        .first()
-      if (dup) return jsonError('该 model_key 在此工具下已存在', 400)
+      // model_key 允许在同工具下重复（migration 112 起已去掉 UNIQUE 约束）：
+      // 同一模型的多个变体（如静图 / 动图）各自成行，前端按行 id 区分
 
       const now = nowSql()
       const stmts = []
@@ -132,8 +127,8 @@ export async function onRequest(context) {
       // D1 各运行时自增 ID 属性名不一：生产 meta.last_row_id，旧版 miniflare last_insert_rowid / lastInsertRowid
       const newId = insertMeta.last_row_id ?? insertMeta.last_insert_rowid ?? insertMeta.lastInsertRowid
 
-      // 读回新行：优先自增 ID；拿不到时按唯一键 (tool_url, model_key) 反查兜底，
-      // 避免把 undefined 传给 bind 触发 D1_TYPE_ERROR
+      // 读回新行：优先自增 ID；拿不到时按 (tool_url, model_key) 反查兜底
+      // （model_key 可重复，取 id 最大的一行 = 刚插入的），避免把 undefined 传给 bind 触发 D1_TYPE_ERROR
       const row = newId
         ? await db
             .prepare(
@@ -147,7 +142,8 @@ export async function onRequest(context) {
             .prepare(
               `SELECT id, tool_url, model_key, model_label, description, credit_cost,
                       sort_order, is_enabled, is_default, upstreams, created_at, updated_at
-               FROM tool_models WHERE tool_url = ? AND model_key = ?`,
+               FROM tool_models WHERE tool_url = ? AND model_key = ?
+               ORDER BY id DESC LIMIT 1`,
             )
             .bind(toolUrl, modelKey)
             .first()
@@ -158,10 +154,6 @@ export async function onRequest(context) {
     return jsonError('不支持的请求方法', 405)
   } catch (error) {
     console.error('admin/tool-models error:', error)
-    // 预检与 INSERT 之间并发撞唯一键（极小概率）也翻译成人话
-    if (/UNIQUE constraint failed/i.test(String(error?.message || ''))) {
-      return jsonError('该 model_key 在此工具下已存在', 400)
-    }
     return jsonError(error.message || '服务器错误', 500)
   }
 }

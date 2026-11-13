@@ -186,12 +186,17 @@ export async function onRequest(context) {
   const hasPersonImage = personFiles.length > 0
   const hasClothingImage = clothingFiles.length > 0
   const style = (formData.get('style')?.toString() || '').trim().slice(0, 5000)
-  const modelKey = (formData.get('model')?.toString() || '').trim() || 'gpt-image-2-1k'
+  let modelKey = (formData.get('model')?.toString() || '').trim() || 'gpt-image-2-1k'
   // model 是 tool_models.model_key（查链/积分用），legacy 回退时直传上游；
   // 与 ai-image-edit 同款格式校验（此前 outfit 没有校验，顺手补上）
   if (!UPSTREAM_MODEL_ID_PATTERN.test(modelKey)) {
     return json({ ok: false, error: '不支持的模型名' }, 400)
   }
+  // model_id 是 tool_models.id（新版前端下拉框的取值）：同工具下允许重复 model_key
+  // （同一模型的静图 / 动图等多个变体）后，靠行 id 精确命中变体；
+  // 老客户端不传则按 model_key 取排序最前的一行（行为与从前一致）
+  const modelIdRaw = (formData.get('model_id')?.toString() || '').trim()
+  const modelId = /^\d+$/.test(modelIdRaw) ? parseInt(modelIdRaw, 10) : 0
   const size = formData.get('size')?.toString() || '1024x1024'
 
   // 上限：人物 + 衣物合计 ≤ 16（与前端 MAX_TOTAL_IMAGES 对齐）；超出截断
@@ -228,14 +233,30 @@ export async function onRequest(context) {
   let resolvedModelLabel = ''
   let rawUpstreams
   try {
-    const m = await db
-      .prepare(
-        `SELECT credit_cost, model_label, upstreams FROM tool_models
-         WHERE tool_url = ? AND model_key = ? AND is_enabled = 1`,
-      )
-      .bind(TOOL_URL, modelKey)
-      .first()
+    // 行解析优先级：model_id 精确命中（重复 key 的变体区分）> model_key 匹配
+    // （老客户端；key 重复时取 sort_order 最前的一行，保证确定性）
+    let m = null
+    if (modelId > 0) {
+      m = await db
+        .prepare(
+          `SELECT model_key, credit_cost, model_label, upstreams FROM tool_models
+           WHERE id = ? AND tool_url = ? AND is_enabled = 1`,
+        )
+        .bind(modelId, TOOL_URL)
+        .first()
+    }
+    if (!m) {
+      m = await db
+        .prepare(
+          `SELECT model_key, credit_cost, model_label, upstreams FROM tool_models
+           WHERE tool_url = ? AND model_key = ? AND is_enabled = 1
+           ORDER BY sort_order ASC, id ASC LIMIT 1`,
+        )
+        .bind(TOOL_URL, modelKey)
+        .first()
+    }
     if (m) {
+      modelKey = m.model_key || modelKey
       cost = m.credit_cost ?? 0
       resolvedModelLabel = m.model_label || ''
       rawUpstreams = m.upstreams || null
@@ -248,6 +269,11 @@ export async function onRequest(context) {
     }
   } catch {
     cost = 0
+  }
+
+  // 按 model_id 命中的行 model_key 可能与请求传入的不同，覆盖后同样过一遍格式校验
+  if (!UPSTREAM_MODEL_ID_PATTERN.test(modelKey)) {
+    return json({ ok: false, error: '不支持的模型名' }, 400)
   }
 
   // ============ 4.5 解析上游链（在扣费前：链完全不可用时直接 500，不收积分） ============

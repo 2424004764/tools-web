@@ -26,7 +26,7 @@ export async function createAdminToolModel(payload: CreateToolModelPayload): Pro
 }
 
 export type UpdateToolModelPayload = Partial<{
-  /** 业务唯一键（改名会同步前端下拉框的值；后端校验格式 + 同工具下唯一） */
+  /** 模型标识（同工具下允许重复——同一模型可配多个变体；后端校验格式） */
   model_key: string
   model_label: string
   description: string

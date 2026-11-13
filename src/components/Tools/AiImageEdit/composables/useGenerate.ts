@@ -151,7 +151,12 @@ export function useGenerate(opts: {
   // 构建一次请求的 FormData（每次新建避免共享问题）
   const buildFormData = () => {
     const fd = new FormData()
-    fd.append('model', selectedModel.value)
+    // 行 id 精确指定变体（后台允许同工具下重复 model_key）；model 传行上的 model_key 兜底
+    const row =
+      modelList.value.find((x) => String(x.id) === selectedModel.value) ||
+      modelList.value.find((x) => x.model_key === selectedModel.value)
+    fd.append('model', row?.model_key || selectedModel.value)
+    if (row?.id != null) fd.append('model_id', String(row.id))
     fd.append('size', selectedSize.value)
     if (prompt.value.trim()) {
       fd.append('prompt', prompt.value.trim())

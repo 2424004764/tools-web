@@ -1,0 +1,108 @@
+[
+  {
+    "results": [
+      {
+        "id": 5,
+        "tool_url": "/ai-outfit/",
+        "model_key": "gpt-image-2-1k",
+        "model_label": "GPT Image 2（1K）",
+        "description": "通用图片模型，支持文生图与图生图，适合人物穿搭替换",
+        "credit_cost": 2,
+        "sort_order": 0,
+        "is_enabled": 1,
+        "is_default": 1,
+        "upstreams": "[{\"provider\":\"bafang\",\"model_id\":\"gpt-image-2-1k\",\"style\":\"auto\"}]",
+        "created_at": "2026-07-30 12:00:00",
+        "updated_at": "2026-11-10 02:45:45"
+      },
+      {
+        "id": 6,
+        "tool_url": "/ai-outfit/",
+        "model_key": "gemini-3-pro-image-preview",
+        "model_label": "Gemini 3 Pro Image Preview",
+        "description": "Google Gemini 3 Pro 图片预览版，旗舰质量，支持多图理解，搭配建议效果最佳",
+        "credit_cost": 19,
+        "sort_order": 2,
+        "is_enabled": 1,
+        "is_default": 0,
+        "upstreams": "[{\"provider\":\"bafang\",\"model_id\":\"gemini-3-pro-image-preview\",\"style\":\"auto\"}]",
+        "created_at": "2026-07-30 12:00:00",
+        "updated_at": "2026-11-10 02:45:45"
+      },
+      {
+        "id": 7,
+        "tool_url": "/ai-outfit/",
+        "model_key": "gemini-3.1-flash-image-preview",
+        "model_label": "Gemini 3.1 Flash Image Preview",
+        "description": "Google Gemini 3.1 Flash 图片预览版，速度快、性价比高，支持多图理解",
+        "credit_cost": 13,
+        "sort_order": 1,
+        "is_enabled": 1,
+        "is_default": 0,
+        "upstreams": "[{\"provider\":\"bafang\",\"model_id\":\"gemini-3.1-flash-image-preview\",\"style\":\"auto\"}]",
+        "created_at": "2026-07-30 12:00:00",
+        "updated_at": "2026-11-10 02:45:45"
+      },
+      {
+        "id": 11,
+        "tool_url": "/ai-image-edit/",
+        "model_key": "gpt-image-2",
+        "model_label": "gpt-image-2",
+        "description": "天机阁",
+        "credit_cost": 2,
+        "sort_order": 0,
+        "is_enabled": 1,
+        "is_default": 1,
+        "upstreams": "[{\"provider\":\"tjg\",\"model_id\":\"gpt-image-2\",\"style\":\"openai\"},{\"provider\":\"bafang\",\"model_id\":\"gpt-image-2\",\"style\":\"openai\"}]",
+        "created_at": "2026-11-10 03:25:52",
+        "updated_at": "2026-11-10 07:37:28"
+      },
+      {
+        "id": 12,
+        "tool_url": "/ai-image-edit/",
+        "model_key": "gpt-image-2.5",
+        "model_label": "gpt-image-2.5",
+        "description": "",
+        "credit_cost": 2,
+        "sort_order": 1,
+        "is_enabled": 1,
+        "is_default": 0,
+        "upstreams": "[{\"provider\":\"tjg\",\"model_id\":\"gpt-image-2.5\",\"style\":\"openai\"}]",
+        "created_at": "2026-11-10 07:35:37",
+        "updated_at": "2026-11-10 07:37:28"
+      },
+      {
+        "id": 13,
+        "tool_url": "/ai-image-edit/",
+        "model_key": "gpt-image-2.6-sunburst",
+        "model_label": "gpt-image-2.6-sunburst 动图",
+        "description": "",
+        "credit_cost": 2,
+        "sort_order": 2,
+        "is_enabled": 1,
+        "is_default": 0,
+        "upstreams": "[{\"provider\":\"tjg\",\"model_id\":\"gpt-image-2.6-sunburst\",\"style\":\"openai\",\"extra_body\":{\"output_format\":\"gif\",\"frame_count\":5,\"frame_duration_ms\":150}}]",
+        "created_at": "2026-11-10 07:36:40",
+        "updated_at": "2026-11-12 07:00:54"
+      }
+    ],
+    "success": true,
+    "meta": {
+      "served_by": "v3-prod",
+      "served_by_region": "APAC",
+      "served_by_colo": "KIX",
+      "served_by_primary": true,
+      "timings": {
+        "sql_duration_ms": 0.4616
+      },
+      "duration": 0.4616,
+      "changes": 0,
+      "last_row_id": 16525,
+      "changed_db": false,
+      "size_after": 60076032,
+      "rows_read": 6,
+      "rows_written": 0,
+      "total_attempts": 1
+    }
+  }
+]

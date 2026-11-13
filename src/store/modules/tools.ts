@@ -12,7 +12,18 @@ import { functionsRequest } from '@/utils/functionsRequest'
 interface PublicToolsResponse {
   data: ToolsInfo[]
   categories?: ToolCate[]
+  /** 已停用（工具自身或所属分类关闭）的工具 url 列表，供路由守卫拦截直达链接 */
+  disabled?: string[]
   fallback?: boolean
+}
+
+// loadToolsFromApi 的在途去重：路由守卫与首页/博客页可能并发触发加载，
+// 避免同一个 /api/tools 请求发多份
+let _toolsLoading: Promise<void> | null = null
+
+// 工具路径归一（去尾斜杠 + 小写）：DB 里 url 形如 '/xxx/'，路由 to.path 是 '/xxx'
+function normalizeToolPath(p: string): string {
+  return p.replace(/\/+$/, '').toLowerCase()
 }
 
 export const useToolsStore = defineStore('tools', {
@@ -28,6 +39,12 @@ export const useToolsStore = defineStore('tools', {
     webInfo: {} as WebInfo,
     collect: [] as ToolsInfo[],
     collectIds: [] as number[],
+    // 后台「工具开关」已停用的工具 url（工具自身 is_enabled=0 或所属分类停用），
+    // 供路由守卫把直达链接跳 404；仅 authoritative=true 时有效
+    disabledUrls: [] as string[],
+    // list/cates 是否来自 /api/tools 的权威数据。fallback 本地 tools.ts 清单
+    // 不知道后台开关状态，此时守卫放行（fail-open），深链由服务端中间件兜底拦截
+    authoritative: false,
   }),
   //方法
   actions: {
@@ -35,8 +52,19 @@ export const useToolsStore = defineStore('tools', {
      * 从公开 API /api/tools 拉取启用中的工具。
      * 若 API 返回 fallback=true（迁移未跑）或网络失败，回退到本地 tools.ts。
      * 同时把扁平列表写入 state.list（供搜索等场景）。
+     * 并发调用共享在途请求（路由守卫与首页可能同时触发）。
      */
     async loadToolsFromApi(): Promise<void> {
+      if (!_toolsLoading) {
+        _toolsLoading = this._fetchTools().finally(() => {
+          _toolsLoading = null
+        })
+      }
+      return _toolsLoading
+    },
+
+    /** loadToolsFromApi 的实际实现（勿直接调用，走外层的在途去重） */
+    async _fetchTools(): Promise<void> {
       this.catesLoading = true
       try {
         const res = await functionsRequest.get<PublicToolsResponse>('/api/tools')
@@ -52,6 +80,8 @@ export const useToolsStore = defineStore('tools', {
           : this._groupToCates(payload.data)
         this.cates = cates
         this.list = payload.data
+        this.disabledUrls = Array.isArray(payload.disabled) ? payload.disabled : []
+        this.authoritative = true
       } catch (err) {
         console.warn('[useToolsStore] /api/tools 加载失败，回退到 tools.ts:', err)
         await this.loadFromLocal()
@@ -65,6 +95,21 @@ export const useToolsStore = defineStore('tools', {
       const cates = await getToolsCate()
       this.cates = cates as any
       this.list = this._flattenCates(cates as any)
+      // 本地清单不含后台开关状态，重置标记让路由守卫放行（服务端中间件兜底）
+      this.authoritative = false
+      this.disabledUrls = []
+    },
+
+    /**
+     * 该路径是否为后台已停用的工具页（后台关了，前台直达要跳 404）。
+     * 仅在 authoritative=true（数据来自 /api/tools）时判定，其余情况一律放行。
+     * path 传路由的 to.path（'/userinfo/todos' 或 '/userinfo/todos/' 均可）。
+     */
+    isToolDisabled(path: string): boolean {
+      if (!this.authoritative || this.disabledUrls.length === 0) return false
+      const norm = normalizeToolPath(path)
+      if (!norm) return false
+      return this.disabledUrls.some((u) => normalizeToolPath(u) === norm)
     },
 
     /** 把 ToolsInfo[] 按 cateId 折叠为 ToolCate[] */
