@@ -899,6 +899,15 @@ export function getToolsCate() {
           cateId: 4,
           cate: '教育学术',
         },
+        {
+          id: 'gross-margin-2026-11-14',
+          title: '毛利率计算器',
+          logo: '/images/logo/gross-margin.svg',
+          desc: '成本售价实时算毛利率，按目标毛利率反推定价，房租人工等固定费用算盈亏平衡营业额',
+          url: '/gross-margin/',
+          cateId: 4,
+          cate: '教育学术',
+        },
 
       ]
     },

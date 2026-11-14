@@ -425,6 +425,11 @@ export default defineConfig(({command, mode}) => {
           target: 'http://127.0.0.1:8788',
           changeOrigin: true,
         },
+        // 统一 AI 网关（canonical 入口 + OpenAI 原生兼容入口），本地调试走 8788
+        '/api/ai-gateway': {
+          target: 'http://127.0.0.1:8788',
+          changeOrigin: true,
+        },
         '/api/image-proxy': {
           target: 'http://127.0.0.1:8788',
           changeOrigin: true,

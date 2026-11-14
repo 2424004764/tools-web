@@ -474,6 +474,7 @@ wrangler d1 execute tools-web-db --command \
 - 3D数学方程式
 - 逻辑思维训练
 - 毛选名句
+- 毛利率计算器（毛利率 / 目标定价 / 盈亏平衡营业额）
 
 ### 趣味互动
 - 贪吃蛇

@@ -131,6 +131,7 @@ export default {
   '/lunar-calendar': { title: '农历万年历 - 公历农历转换/干支节气查询 | 一方工具箱', keywords: '农历查询,万年历,公历转农历,农历转公历,黄历,干支,节气,生肖', description: '公农历对照万年历，展示干支纪年、生肖与二十四节气，支持农历生日反查公历日期', ogUrl: 'https://tool.fologde.com/lunar-calendar/' },
   '/bmi': { title: 'BMI计算器 - 身高体重健康指数在线计算 | 一方工具箱', keywords: 'BMI计算器,体重指数,身高体重标准,健康体重范围,肥胖计算', description: '在线 BMI 身体质量指数计算器，按中国成人标准评估体重健康状况并给出健康体重范围', ogUrl: 'https://tool.fologde.com/bmi/' },
   '/age-calc': { title: '年龄计算器 - 周岁/虚岁/生肖星座在线查询 | 一方工具箱', keywords: '年龄计算器,周岁计算,虚岁计算,生肖星座,生日倒计时,已活天数', description: '精确计算周岁、虚岁、生肖星座与已活天数，展示下一生日倒计时与人生里程碑日期', ogUrl: 'https://tool.fologde.com/age-calc/' },
+  '/gross-margin': { title: '毛利率计算器 - 毛利率怎么算/加价率 | 一方工具箱', keywords: '毛利率计算器,毛利率,毛利率怎么算,毛利,加价率,定价公式,盈亏平衡,保本点,盈亏平衡营业额', description: '在线毛利率计算器，输入成本与售价实时计算毛利率，按目标毛利率反推定价，并根据房租、人工等固定费用计算盈亏平衡营业额', ogUrl: 'https://tool.fologde.com/gross-margin/' },
   '/chinese-convert': { title: '简繁体转换 - 简体转繁体/繁体转简体在线工具 | 一方工具箱', keywords: '简繁体转换,繁体字转换,简体转繁体,繁体转简体,OpenCC,台湾正体,香港繁体', description: '基于 OpenCC 词库的中文简繁体在线转换，支持台湾正体、香港繁体，词汇级精准互转', ogUrl: 'https://tool.fologde.com/chinese-convert/' },
   '/pinyin': { title: '汉字转拼音 - 在线拼音标注/首字母转换 | 一方工具箱', keywords: '汉字转拼音,拼音转换,拼音标注,多音字,首字母,声调', description: '汉字转拼音在线工具，支持声调符号/数字/无声调与首字母模式，内置多音字智能识别', ogUrl: 'https://tool.fologde.com/pinyin/' },
   '/text-sort': { title: '文本排序 - 按拼音/数字/长度在线排序去重 | 一方工具箱', keywords: '文本排序,文字排序,拼音排序,数字排序,去重,随机打乱', description: '在线文本排序工具，按拼音、数字、长度对行或列表排序，支持去重、倒序与随机打乱', ogUrl: 'https://tool.fologde.com/text-sort/' },

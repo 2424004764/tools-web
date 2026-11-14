@@ -208,4 +208,5 @@ export default {
   '/oauth/authorize': '应用授权 - OAuth授权/统一登录',
   '/oauth/docs': 'OAuth2 统一登录接入文档 - OAuth2接入文档/子站统一登录',
   '/svg-to-image': 'SVG转PNG/JPG - SVG在线转换高清位图',
+  '/gross-margin': '毛利率计算器 - 毛利率怎么算/加价率',
 }

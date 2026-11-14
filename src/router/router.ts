@@ -1320,6 +1320,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/gross-margin',
+    component: () => import('@/components/Tools/GrossMargin/GrossMargin.vue'),
+    name: 'gross-margin',
+    meta: {
+      title: '毛利率计算器',
+      keywords: '毛利率计算器,毛利率,毛利率怎么算,毛利,加价率,定价公式,盈亏平衡,保本点,盈亏平衡营业额',
+      description: '在线毛利率计算器，输入成本与售价实时计算毛利率，按目标毛利率反推定价，并根据房租、人工等固定费用计算盈亏平衡营业额',
+    }
+  },
+  {
     path: '/chinese-convert',
     component: () => import('@/components/Tools/ChineseConvert/ChineseConvert.vue'),
     name: 'chinese-convert',
@@ -2198,6 +2208,16 @@ export const constantRoute = [
           title: '工具使用记录',
           keywords: '后台工具使用记录,用户工具行为',
           description: '查看用户工具使用明细、TOP 工具与 TOP 用户',
+        },
+      },
+      {
+        path: 'gateway',
+        component: () => import('@/components/Admin/AdminAiGateway.vue'),
+        name: 'adminAiGateway',
+        meta: {
+          title: 'AI 网关',
+          keywords: '后台AI网关,统一AI接入,多厂商容灾',
+          description: '统一 AI 网关：厂商接入、模型注册、调度组容灾链管理与调用调试',
         },
       },
       {

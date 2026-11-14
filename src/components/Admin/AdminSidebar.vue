@@ -7,6 +7,7 @@ import IconUser from '~icons/ep/user'
 import IconCoin from '~icons/ep/coin'
 import IconTicket from '~icons/ep/ticket'
 import IconBox from '~icons/ep/box'
+import IconConnection from '~icons/ep/connection'
 import IconSetUp from '~icons/ep/set-up'
 import IconHistogram from '~icons/ep/histogram'
 import IconDocument from '~icons/ep/document'
@@ -66,6 +67,7 @@ const groups: MenuGroup[] = [
     items: [
       { index: '/admin/tools', title: '工具开关', icon: IconSetUp },
       { index: '/admin/tool-usage', title: '工具使用记录', icon: IconHistogram },
+      { index: '/admin/gateway', title: 'AI 网关', icon: IconConnection },
     ],
   },
   {

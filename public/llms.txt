@@ -87,6 +87,7 @@
 - [房贷计算器](https://tool.fologde.com/mortgage): 等额本息与等额本金月供、利息总额与逐年还款明细
 - [个税计算器](https://tool.fologde.com/income-tax): 累计预扣预缴法计算每月个税与税后工资，含五险一金与专项附加扣除
 - [BMI 计算器](https://tool.fologde.com/bmi): 按中国成人标准评估体重健康并给出健康体重范围
+- [毛利率计算器](https://tool.fologde.com/gross-margin): 成本售价算毛利率、目标毛利率反推定价、固定费用算盈亏平衡营业额
 - [土地亩数计算器](https://tool.fologde.com/land-area): 输入长宽算亩数，平方米/公顷/平方千米换算
 - [辈分称谓计算](https://tool.fologde.com/generation-calculator): 交互式家谱树推导中国式亲戚称谓、辈分高低与反向称呼
 
