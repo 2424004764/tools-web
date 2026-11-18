@@ -16,20 +16,27 @@
   text-rendering: optimizeLegibility;
 }
 
-/* 滚动条：细、中性、圆角 */
-.admin-root ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+/* 滚动条：细、中性、圆角。标准属性优先（scrollbar-color/width 可继承），
+   webkit 伪元素仅在老浏览器兜底（@supports 隔离） */
+.admin-root {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--ink-300) / 0.6) transparent;
 }
-.admin-root ::-webkit-scrollbar-track {
-  background: transparent;
-}
-.admin-root ::-webkit-scrollbar-thumb {
-  background: rgb(var(--ink-300) / 0.6);
-  border-radius: 8px;
-}
-.admin-root ::-webkit-scrollbar-thumb:hover {
-  background: rgb(var(--ink-400) / 0.8);
+@supports not (scrollbar-color: auto) {
+  .admin-root ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .admin-root ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .admin-root ::-webkit-scrollbar-thumb {
+    background: rgb(var(--ink-300) / 0.6);
+    border-radius: 8px;
+  }
+  .admin-root ::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--ink-400) / 0.8);
+  }
 }
 
 /* ---------- 卡片 ---------- */

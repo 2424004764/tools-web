@@ -1330,6 +1330,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/screen-recorder',
+    component: () => import('@/components/Tools/ScreenRecorder/ScreenRecorder.vue'),
+    name: 'screen-recorder',
+    meta: {
+      title: '屏幕录制',
+      keywords: '屏幕录制,录屏,在线录屏,屏幕录像,录屏工具,视频录制,getDisplayMedia,webm',
+      description: '在线屏幕录制工具，浏览器直接录制屏幕、窗口或标签页为视频，支持系统声音与麦克风混音、清晰度帧率设置、暂停续录，纯前端本地处理不上传',
+    }
+  },
+  {
     path: '/chinese-convert',
     component: () => import('@/components/Tools/ChineseConvert/ChineseConvert.vue'),
     name: 'chinese-convert',

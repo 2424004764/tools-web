@@ -10,6 +10,8 @@
 
 import { ADAPTERS, PROTOCOLS, normalizeBaseUrl } from './adapters.js'
 import { resolveGatewayChain, runChainWithFailover, isFailoverableStatus } from './scheduler.js'
+import { extractUidFromRequest } from '../model-resolver.js'
+import { lookupAccessToken, isTokenUsable, tokenHasScope } from '../../oauth/_lib.js'
 
 // 入口支持的 capability（注册表可存 image_edit/video，运行时随 adapter 扩充再放开）
 export const GATEWAY_CAPABILITIES = ['chat', 'chat_stream', 'image_gen']
@@ -17,6 +19,43 @@ export const GATEWAY_CAPABILITIES = ['chat', 'chat_stream', 'image_gen']
 const ROLES = ['system', 'user', 'assistant']
 const MAX_MESSAGES = 200
 const MAX_CONTENT_CHARS = 200000
+
+// ============ 网关鉴权：站内登录 JWT 或 OAuth access_token 二选一 ============
+// OAuth（oat_ 前缀）走 RFC 6750 Bearer 校验（与 userinfo 等资源端点同一套表与语义，scope: ai）；
+// 其余按站内登录 JWT 校验（extractUidFromRequest）。两种凭证返回同一形状。
+
+/**
+ * @returns {Promise<{uid:string, source:'jwt'|'oauth', clientId?:string}
+ *   |{uid:'', error:'unauthorized'|'invalid_token'|'insufficient_scope', message:string}>}
+ */
+export async function extractGatewayUid(request, env, db) {
+  const authHeader = request.headers.get('Authorization') || ''
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : ''
+
+  if (token.startsWith('oat_')) {
+    let row
+    try {
+      row = await lookupAccessToken(db, token)
+    } catch {
+      return { uid: '', error: 'server_error', message: '令牌校验失败' }
+    }
+    if (!row || !isTokenUsable(row)) {
+      return { uid: '', error: 'invalid_token', message: 'access_token 无效或已过期' }
+    }
+    if (!tokenHasScope(row, 'ai')) {
+      return { uid: '', error: 'insufficient_scope', message: '该 access_token 未被授予 ai scope（授权时需带 scope=profile ai）' }
+    }
+    return { uid: row.user_id, source: 'oauth', clientId: row.client_id }
+  }
+
+  const uid = await extractUidFromRequest(request, env)
+  return uid ? { uid, source: 'jwt' } : { uid: '', error: 'unauthorized', message: '请先登录后再使用 AI 网关，或使用 OAuth access_token（scope 含 ai）' }
+}
+
+/** oat_ 鉴权失败 → RFC 6750 风格错误体（与 userinfo 一致）；端点据此返回 */
+export function oauthDenyBody(result) {
+  return { error: result.error, error_description: result.message }
+}
 
 // ============ payload 归一化 ============
 

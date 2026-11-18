@@ -206,8 +206,15 @@ const goHome = () => router.push('/')
         </button>
 
         <div class="flex items-start gap-3">
+          <div
+            v-if="!item.logo"
+            class="w-11 h-11 min-h-[2.75rem] min-w-[2.75rem] rounded-xl bg-brand-gradient-soft flex items-center justify-center text-accent-600 text-lg font-semibold shrink-0"
+            aria-hidden="true"
+          >
+            {{ (item.title || '?').charAt(0) }}
+          </div>
           <img
-            v-if="!useSpriteLogo(item, 44).style"
+            v-else-if="!useSpriteLogo(item, 44).style"
             :src="item.logo"
             loading="lazy"
             class="w-11 h-11 min-h-[2.75rem] min-w-[2.75rem] object-contain rounded-xl"

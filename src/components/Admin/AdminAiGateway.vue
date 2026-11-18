@@ -2,7 +2,7 @@
 // 统一 AI 网关管理页
 // 厂商（base_url + key + 出协议）→ 模型注册（厂商侧 model_id + 能力）→ 调度组（候选链容灾）
 // 底部调试台直接调 /api/ai-gateway 验证整条链路（含流式/生图/容灾切换）。
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getLocalToken } from '@/utils/user'
 import {
@@ -32,6 +32,9 @@ import type {
   GatewayCandidate,
   GatewayAttemptDetail,
 } from '@/api/admin/gateway'
+// 服务端协议 adapter 是零依赖纯函数，前端直接复用——保证「直连测试」拼出的请求
+// 与网关后端发出的完全同构（同 URL / 头 / 体），差异只可能来自厂商侧
+import { ADAPTERS, normalizeBaseUrl } from '../../../functions/api/_lib/gateway/adapters.js'
 
 const activeTab = ref('providers')
 
@@ -472,6 +475,8 @@ const openLogDetail = (row: GatewayLog) => {
 // ============ 调试台 ============
 
 const pg = reactive({
+  /** gateway=走网关调度链；direct=浏览器直连厂商（不经后端中转，排障用）；openai=OpenAI 兼容端点（子站同款调用方式） */
+  mode: 'gateway' as 'gateway' | 'direct' | 'openai',
   capability: 'chat_stream' as 'chat' | 'chat_stream' | 'image_gen',
   groupKey: '',
   systemPrompt: '',
@@ -489,6 +494,17 @@ const pg = reactive({
   /** 失败时的原始响应文本（非 JSON 时也能看到 CDN/代理返回了什么） */
   rawResponse: '',
   httpStatus: 0,
+  /** 直连模式：SSE 原始事件行（截取，排障对照协议细节） */
+  sseRaw: '',
+  /** token 用量展示（openai 兼容模式 / 网关 usage） */
+  usageText: '',
+  /** 直连模式参数：Key 只存浏览器内存，不落库、不回传后端 */
+  direct: {
+    protocol: 'openai' as 'openai' | 'anthropic' | 'gemini',
+    baseUrl: '',
+    apiKey: '',
+    modelId: '',
+  },
 })
 
 /** 调试台请求预览：随表单实时变化，发送前就能看到将要发出的完整报文 */
@@ -507,6 +523,333 @@ const copyText = async (text: string) => {
     ElMessage.success('已复制')
   } catch {
     ElMessage.error('复制失败')
+  }
+}
+
+// ============ 直连厂商模式：浏览器直接发 vendor 原生请求，不经后端中转 ============
+
+const SECRET_HEADER = /authorization|x-api-key|x-goog-api-key/i
+const maskSecret = (v: string) => (v.length > 8 ? `${v.slice(0, 4)}****${v.slice(-4)}` : '****')
+
+const directEntry = () => ({
+  providerSlug: 'direct',
+  protocol: pg.direct.protocol,
+  baseUrl: normalizeBaseUrl(pg.direct.baseUrl),
+  apiKey: pg.direct.apiKey.trim() || '<API Key>',
+  modelId: pg.direct.modelId.trim() || '<model_id>',
+  modelRowId: 0,
+  modelName: '',
+})
+
+/** 用与服务端网关同一套 adapter 拼出 vendor 原生请求 */
+const buildDirectRequest = (): { url: string; headers: Record<string, string>; body: unknown } | null => {
+  const adapter = (ADAPTERS as unknown as Record<string, { buildChat?: (e: unknown, c: unknown, o: unknown) => { url: string; headers: Record<string, string>; body: unknown }; buildImageGen?: (e: unknown, p: unknown) => { url: string; headers: Record<string, string>; body: unknown } }>)[pg.direct.protocol]
+  if (!adapter) return null
+  if (pg.capability === 'image_gen') {
+    return adapter.buildImageGen ? adapter.buildImageGen(directEntry(), { prompt: pg.prompt, size: pg.size }) : null
+  }
+  return adapter.buildChat ? adapter.buildChat(directEntry(), pgPayload(), { stream: pg.capability === 'chat_stream' }) : null
+}
+
+/** 完整报文展示（mask=true 时密钥头打码） */
+const formatDirectRequest = (built: { url: string; headers: Record<string, string>; body: unknown }, mask: boolean) => {
+  const headers = Object.entries(built.headers)
+    .map(([k, v]) => `${k}: ${mask && SECRET_HEADER.test(k) ? maskSecret(String(v)) : v}`)
+    .join('\n')
+  return `POST ${built.url}\n${headers}\n\n${JSON.stringify(built.body, null, 2)}`
+}
+
+const directRequestPreview = computed(() => {
+  try {
+    const built = buildDirectRequest()
+    return built ? formatDirectRequest(built, true) : '(该协议不支持当前 capability)'
+  } catch {
+    return '(填写协议 / base_url / model_id 后显示)'
+  }
+})
+
+/** 直连 curl（含真实 Key，复制后注意保密）；curl 不受浏览器 CORS 限制，终端可直接验证 */
+const directCurlPreview = computed(() => {
+  try {
+    const built = buildDirectRequest()
+    if (!built) return ''
+    const h = Object.entries(built.headers)
+      .map(([k, v]) => `  -H '${k}: ${v}'`)
+      .join(' \\\n')
+    return `curl -N -X POST '${built.url}' \\\n${h} \\\n  --data '${JSON.stringify(built.body)}'`
+  } catch {
+    return ''
+  }
+})
+
+/** 快速填充：'p:<id>' 厂商（协议+base_url）｜'m:<id>' 模型（model_id+所属厂商）；Key 一律不回填 */
+const fillDirectFromSaved = (v: string) => {
+  const idx = v.indexOf(':')
+  const kind = v.slice(0, idx)
+  const id = Number(v.slice(idx + 1))
+  if (kind === 'p') {
+    const p = providers.value.find((x) => x.id === id)
+    if (p) {
+      pg.direct.protocol = p.protocol
+      pg.direct.baseUrl = p.base_url
+      ElMessage.success(`已填充 ${p.name} 的协议与 base_url（Key 需手动填）`)
+    }
+  } else if (kind === 'm') {
+    const m = models.value.find((x) => x.id === id)
+    if (m) {
+      pg.direct.modelId = m.model_id
+      const p = providers.value.find((x) => x.id === m.provider_id)
+      if (p) {
+        pg.direct.protocol = p.protocol
+        pg.direct.baseUrl = p.base_url
+      }
+      ElMessage.success(`已填充 ${m.provider_slug}/${m.model_id}（Key 需手动填）`)
+    }
+  }
+}
+
+const resetPgResult = () => {
+  pg.content = ''
+  pg.reasoning = ''
+  pg.imageUrl = ''
+  pg.meta = null
+  pg.error = ''
+  pg.rawResponse = ''
+  pg.httpStatus = 0
+  pg.sseRaw = ''
+  pg.usageText = ''
+}
+
+// ============ OpenAI 兼容端点模式：子站同款调用方式（/v1/chat/completions）============
+
+const pgV1Url = `${window.location.origin}/api/ai-gateway/v1/chat/completions`
+
+const buildChatMessages = () => {
+  const messages: Array<{ role: string; content: string }> = []
+  if (pg.systemPrompt.trim()) messages.push({ role: 'system', content: pg.systemPrompt.trim() })
+  messages.push({ role: 'user', content: pg.prompt })
+  return messages
+}
+
+const openaiBody = () => ({
+  model: pg.groupKey || '(未选择调度组)',
+  stream: pg.capability === 'chat_stream',
+  messages: buildChatMessages(),
+  ...(pg.maxTokens ? { max_tokens: Number(pg.maxTokens) } : {}),
+})
+
+const openaiPreview = computed(() => JSON.stringify(openaiBody(), null, 2))
+
+const openaiCurlPreview = computed(
+  () => `curl -N -X POST '${pgV1Url}' \\\n  -H 'Content-Type: application/json' \\\n  -H 'Authorization: Bearer <登录JWT 或 OAuth access_token>' \\\n  --data '${JSON.stringify(openaiBody())}'`,
+)
+
+const runOpenaiCompat = async () => {
+  if (!pg.groupKey) {
+    ElMessage.warning('请选择调度组（model 字段 = group_key）')
+    return
+  }
+  if (!pg.prompt.trim()) {
+    ElMessage.warning('请输入内容')
+    return
+  }
+  pg.running = true
+  resetPgResult()
+  const body = openaiBody()
+  pg.requestBody = JSON.stringify(body, null, 2)
+
+  const t0 = Date.now()
+  const token = getLocalToken()
+  try {
+    const res = await fetch('/api/ai-gateway/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(body),
+    })
+    pg.httpStatus = res.status
+
+    // 流式：OpenAI chunk 格式（子站 OpenAI SDK 消费的同款）
+    if (body.stream && res.ok && res.body) {
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let sseRaw = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+        for (const line of lines) {
+          if (!line.trim()) continue
+          if (sseRaw.length < 5000) sseRaw += `${line}\n`
+          const s = line.trim()
+          if (!s.startsWith('data:')) continue
+          const data = s.slice(5).trim()
+          if (!data || data === '[DONE]') continue
+          try {
+            const chunk = JSON.parse(data)
+            const delta = chunk.choices?.[0]?.delta
+            if (delta?.content) pg.content += delta.content
+            if (delta?.reasoning_content) pg.reasoning += delta.reasoning_content
+            if (chunk.usage) {
+              pg.usageText = `tokens: ${chunk.usage.prompt_tokens} in / ${chunk.usage.completion_tokens} out`
+            }
+          } catch {
+            /* 非 JSON 行忽略 */
+          }
+        }
+      }
+      pg.sseRaw = sseRaw
+      pg.meta = { provider: 'openai-compat', model: pg.groupKey, duration_ms: Date.now() - t0 }
+      return
+    }
+
+    const raw = await res.text().catch(() => '')
+    pg.rawResponse = raw.slice(0, 3000)
+    if (!res.ok) {
+      try {
+        pg.error = JSON.parse(raw)?.error?.message || `调用失败: ${res.status}`
+      } catch {
+        pg.error = `调用失败: ${res.status}（响应非 JSON，见下方原始响应）`
+      }
+      return
+    }
+    const parsed = JSON.parse(raw)
+    pg.content = parsed.choices?.[0]?.message?.content || ''
+    if (parsed.usage) {
+      pg.usageText = `tokens: ${parsed.usage.prompt_tokens} in / ${parsed.usage.completion_tokens} out / ${parsed.usage.total_tokens} total`
+    }
+    pg.meta = { provider: 'openai-compat', model: pg.groupKey, duration_ms: Date.now() - t0 }
+  } catch (err) {
+    pg.error = err instanceof Error ? err.message : '网络错误'
+  } finally {
+    pg.running = false
+  }
+}
+
+// openai 模式不支持 image_gen，切入时自动纠正
+watch(
+  () => pg.mode,
+  (m) => {
+    if (m === 'openai' && pg.capability === 'image_gen') pg.capability = 'chat_stream'
+  },
+)
+
+const runDirect = async () => {
+  if (!/^https?:\/\//i.test(pg.direct.baseUrl.trim())) {
+    ElMessage.warning('请填写合法的 base_url')
+    return
+  }
+  if (!pg.direct.apiKey.trim()) {
+    ElMessage.warning('请填写 API Key（只存浏览器内存，不会保存）')
+    return
+  }
+  if (!pg.direct.modelId.trim()) {
+    ElMessage.warning('请填写 model_id')
+    return
+  }
+  if (!pg.prompt.trim()) {
+    ElMessage.warning('请输入内容')
+    return
+  }
+
+  const built = buildDirectRequest()
+  if (!built) {
+    ElMessage.warning('该协议不支持当前 capability')
+    return
+  }
+
+  pg.running = true
+  resetPgResult()
+  // 冻结本次实际发出的完整报文（Key 打码展示）
+  pg.requestBody = formatDirectRequest(built, true)
+
+  const t0 = Date.now()
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), pg.capability === 'image_gen' ? 300000 : 120000)
+  try {
+    const res = await fetch(built.url, {
+      method: 'POST',
+      headers: built.headers,
+      body: JSON.stringify(built.body),
+      signal: controller.signal,
+    })
+    pg.httpStatus = res.status
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const adapter = (ADAPTERS as any)[pg.direct.protocol]
+
+    // 流式：SSE 原始行截取 + 按协议解析增量
+    if (pg.capability === 'chat_stream' && res.ok && res.body) {
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let sseRaw = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+        for (const line of lines) {
+          if (!line.trim()) continue
+          if (sseRaw.length < 5000) sseRaw += `${line}\n`
+          const s = line.trim()
+          if (!s.startsWith('data:')) continue
+          const data = s.slice(5).trim()
+          if (!data || data === '[DONE]') continue
+          try {
+            const ev = adapter.extractStreamEvent(JSON.parse(data))
+            if (ev?.delta) pg.content += ev.delta
+            if (ev?.reasoning) pg.reasoning += ev.reasoning
+          } catch {
+            /* 非 JSON 行忽略 */
+          }
+        }
+      }
+      pg.sseRaw = sseRaw
+      pg.meta = { provider: `direct:${pg.direct.protocol}`, model: pg.direct.modelId, duration_ms: Date.now() - t0 }
+      return
+    }
+
+    const raw = await res.text().catch(() => '')
+    pg.rawResponse = raw.slice(0, 3000)
+    if (!res.ok) {
+      pg.error = `厂商返回 HTTP ${res.status}（原始响应见下）`
+      return
+    }
+    if (pg.capability === 'image_gen') {
+      try {
+        pg.imageUrl = adapter.parseImageGen(JSON.parse(raw)) || ''
+      } catch {
+        /* 原文已展示 */
+      }
+      if (!pg.imageUrl) pg.error = 'HTTP 200 但未解析出图片数据（原始响应见下）'
+    } else {
+      try {
+        const parsed = adapter.parseChat(JSON.parse(raw))
+        pg.content = parsed?.content || ''
+        if (!pg.content) pg.error = 'HTTP 200 但内容为空（原始响应见下）'
+      } catch {
+        pg.error = 'HTTP 200 但响应非 JSON（原始响应见下）'
+      }
+    }
+    pg.meta = { provider: `direct:${pg.direct.protocol}`, model: pg.direct.modelId, duration_ms: Date.now() - t0 }
+  } catch (err) {
+    if (err instanceof TypeError) {
+      pg.error =
+        '浏览器直连失败：请求未到达厂商（大概率被 CORS 拦截或网络不通）。OpenAI 等多数厂商禁止浏览器跨域直连，Gemini 原生支持——请用左侧「复制 curl」在终端验证同一请求'
+    } else if (err instanceof Error) {
+      pg.error = err.name === 'AbortError' ? '请求超时（120s / 生图 300s）' : err.message
+    } else {
+      pg.error = '网络错误'
+    }
+  } finally {
+    clearTimeout(timer)
+    pg.running = false
   }
 }
 
@@ -544,6 +887,8 @@ const runPlayground = async () => {
   pg.error = ''
   pg.rawResponse = ''
   pg.httpStatus = 0
+  pg.sseRaw = ''
+  pg.usageText = ''
 
   const token = getLocalToken()
   const bodyToSend = {
@@ -833,18 +1178,58 @@ const onTabChange = (name: string | number) => {
           <el-card shadow="never">
             <template #header><span class="text-sm font-medium">请求</span></template>
             <el-form label-width="90px" label-position="left">
+              <el-form-item label="模式">
+                <el-radio-group v-model="pg.mode">
+                  <el-radio-button value="gateway">走网关</el-radio-button>
+                  <el-radio-button value="direct">直连厂商</el-radio-button>
+                  <el-radio-button value="openai">OpenAI 兼容</el-radio-button>
+                </el-radio-group>
+                <span class="text-xs text-ink-400 ml-2">
+                  {{ pg.mode === 'direct' ? '浏览器直请求厂商，不经后端' : pg.mode === 'openai' ? '/v1/chat/completions，子站同款调用方式' : '调度组容灾链' }}
+                </span>
+              </el-form-item>
               <el-form-item label="capability">
                 <el-radio-group v-model="pg.capability">
                   <el-radio-button value="chat_stream">chat_stream</el-radio-button>
                   <el-radio-button value="chat">chat</el-radio-button>
-                  <el-radio-button value="image_gen">image_gen</el-radio-button>
+                  <el-radio-button v-if="pg.mode !== 'openai'" value="image_gen">image_gen</el-radio-button>
                 </el-radio-group>
+                <span v-if="pg.mode === 'openai'" class="text-xs text-ink-400 ml-2">stream = {{ pg.capability === 'chat_stream' }}</span>
               </el-form-item>
-              <el-form-item label="调度组">
+              <el-form-item v-if="pg.mode !== 'direct'" label="调度组">
                 <el-select v-model="pg.groupKey" placeholder="选择调度组" class="!w-full">
                   <el-option v-for="g in groups.filter((x) => x.status === 1)" :key="g.id" :label="`${g.group_key}（${g.name}）`" :value="g.group_key" />
                 </el-select>
               </el-form-item>
+              <template v-if="pg.mode === 'direct'">
+                <el-form-item label="快速填充">
+                  <el-select :model-value="''" placeholder="从已保存厂商/模型填充（Key 不回填）" class="!w-full" @change="fillDirectFromSaved">
+                    <el-option-group label="厂商（协议 + base_url）">
+                      <el-option v-for="p in providers" :key="'p' + p.id" :label="`${p.name}（${p.protocol}）`" :value="`p:${p.id}`" />
+                    </el-option-group>
+                    <el-option-group label="模型（model_id + 所属厂商）">
+                      <el-option v-for="m in models" :key="'m' + m.id" :label="`${m.provider_slug}/${m.model_id}`" :value="`m:${m.id}`" />
+                    </el-option-group>
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="协议">
+                  <el-select v-model="pg.direct.protocol" class="!w-full">
+                    <el-option v-for="p in GATEWAY_PROTOCOLS" :key="p.value" :label="p.label" :value="p.value" />
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="base_url">
+                  <el-input v-model="pg.direct.baseUrl" placeholder="https://...（带不带 /v1 均可）" />
+                </el-form-item>
+                <el-form-item label="API Key">
+                  <el-input v-model="pg.direct.apiKey" type="password" show-password placeholder="只存浏览器内存，不落库" />
+                </el-form-item>
+                <el-form-item label="model_id">
+                  <el-input v-model="pg.direct.modelId" placeholder="厂商侧真实模型 ID" />
+                </el-form-item>
+                <div class="text-xs text-ink-400 -mt-1 mb-1 leading-5">
+                  注意：OpenAI 等多数厂商禁止浏览器跨域（CORS）直连会失败，Gemini 原生支持；失败时用「复制 curl」在终端验证同一请求
+                </div>
+              </template>
               <el-form-item v-if="pg.capability !== 'image_gen'" label="system">
                 <el-input v-model="pg.systemPrompt" type="textarea" :rows="2" placeholder="可选 system prompt" />
               </el-form-item>
@@ -860,19 +1245,24 @@ const onTabChange = (name: string | number) => {
                 <el-input-number v-model="pg.maxTokens" :min="1" :max="200000" class="!w-44" />
               </el-form-item>
               <el-form-item>
-                <el-button type="primary" :loading="pg.running" @click="runPlayground">发送</el-button>
+                <el-button type="primary" :loading="pg.running" @click="pg.mode === 'gateway' ? runPlayground() : pg.mode === 'direct' ? runDirect() : runOpenaiCompat()">发送</el-button>
               </el-form-item>
             </el-form>
 
             <!-- 请求预览：随表单实时变化，出错时可比对实际发出的完整报文 -->
             <div class="mt-2 pt-3 border-t border-[rgb(var(--border))]">
               <div class="flex items-center gap-2 mb-1.5">
-                <span class="text-xs font-medium text-ink-500">请求预览</span>
-                <el-button size="small" link type="primary" @click="copyText(curlPreview)">复制 curl</el-button>
-                <el-button size="small" link @click="copyText(requestBodyPreview)">复制 body</el-button>
+                <span class="text-xs font-medium text-ink-500">请求预览{{ pg.mode === 'direct' ? '（密钥已打码）' : '' }}</span>
+                <el-button
+                  size="small"
+                  link
+                  type="primary"
+                  @click="copyText(pg.mode === 'gateway' ? curlPreview : pg.mode === 'direct' ? directCurlPreview : openaiCurlPreview)"
+                >复制 curl{{ pg.mode === 'direct' ? '（含真实 Key）' : '' }}</el-button>
+                <el-button v-if="pg.mode !== 'direct'" size="small" link @click="copyText(pg.mode === 'gateway' ? requestBodyPreview : openaiPreview)">复制 body</el-button>
               </div>
-              <div class="text-[11px] text-ink-400 mb-1 font-mono">POST {{ pgRequestUrl }}</div>
-              <pre class="text-xs leading-5 bg-[rgb(var(--surface-2))] rounded-lg p-2.5 overflow-x-auto whitespace-pre-wrap break-all m-0">{{ requestBodyPreview }}</pre>
+              <div v-if="pg.mode !== 'direct'" class="text-[11px] text-ink-400 mb-1 font-mono">POST {{ pg.mode === 'gateway' ? pgRequestUrl : pgV1Url }}</div>
+              <pre class="text-xs leading-5 bg-[rgb(var(--surface-2))] rounded-lg p-2.5 overflow-x-auto whitespace-pre-wrap break-all m-0">{{ pg.mode === 'gateway' ? requestBodyPreview : pg.mode === 'direct' ? directRequestPreview : openaiPreview }}</pre>
             </div>
           </el-card>
 
@@ -881,10 +1271,15 @@ const onTabChange = (name: string | number) => {
             <div v-if="pg.error" class="text-sm text-red-500 mb-2 whitespace-pre-wrap">{{ pg.error }}</div>
             <div v-if="pg.rawResponse" class="mb-2">
               <div class="text-xs text-red-400 mb-1">
-                原始响应<span v-if="pg.httpStatus"> · HTTP {{ pg.httpStatus }}</span>（前 1500 字符）
+                原始响应<span v-if="pg.httpStatus"> · HTTP {{ pg.httpStatus }}</span>（前 {{ pg.mode === 'direct' ? 3000 : 1500 }} 字符）
               </div>
               <pre class="text-xs leading-5 bg-[rgb(var(--surface-2))] rounded-lg p-2.5 overflow-x-auto whitespace-pre-wrap break-all m-0">{{ pg.rawResponse }}</pre>
             </div>
+            <div v-if="pg.sseRaw" class="mb-2">
+              <div class="text-xs text-ink-400 mb-1">SSE 原始事件（{{ pg.mode === 'openai' ? 'OpenAI chunk 格式' : '厂商裸返回' }}，截取前 5000 字符）</div>
+              <pre class="text-xs leading-5 bg-[rgb(var(--surface-2))] rounded-lg p-2.5 overflow-x-auto whitespace-pre-wrap break-all m-0 max-h-56 overflow-y-auto">{{ pg.sseRaw }}</pre>
+            </div>
+            <div v-if="pg.usageText" class="text-xs text-ink-400 mb-2">{{ pg.usageText }}</div>
             <div v-if="pg.requestBody" class="mb-2">
               <div class="text-xs text-ink-400 mb-1">本次实际请求体</div>
               <pre class="text-xs leading-5 bg-[rgb(var(--surface-2))] rounded-lg p-2.5 overflow-x-auto whitespace-pre-wrap break-all m-0">{{ pg.requestBody }}</pre>

@@ -480,8 +480,15 @@ onUnmounted(clearHideTimer)
                   @click="onItemClick"
                 >
                   <template v-if="lookupToolInfo(item.tool_url)">
+                    <div
+                      v-if="!lookupToolInfo(item.tool_url)!.logo"
+                      class="w-9 h-9 min-h-[2.25rem] min-w-[2.25rem] rounded-md bg-accent-50 flex items-center justify-center text-accent-700 text-sm font-semibold shrink-0"
+                      aria-hidden="true"
+                    >
+                      {{ (lookupToolInfo(item.tool_url)!.title || '?').charAt(0) }}
+                    </div>
                     <img
-                      v-if="!useSpriteLogo(lookupToolInfo(item.tool_url)!).style"
+                      v-else-if="!useSpriteLogo(lookupToolInfo(item.tool_url)!).style"
                       :src="lookupToolInfo(item.tool_url)!.logo"
                       loading="lazy"
                       :alt="item.tool_title"
@@ -538,8 +545,15 @@ onUnmounted(clearHideTimer)
                   @click="onItemClick"
                 >
                   <template v-if="lookupToolInfo(toolUrl)">
+                    <div
+                      v-if="!lookupToolInfo(toolUrl)!.logo"
+                      class="w-9 h-9 min-h-[2.25rem] min-w-[2.25rem] rounded-md bg-accent-50 flex items-center justify-center text-accent-700 text-sm font-semibold shrink-0"
+                      aria-hidden="true"
+                    >
+                      {{ (lookupToolInfo(toolUrl)!.title || '?').charAt(0) }}
+                    </div>
                     <img
-                      v-if="!useSpriteLogo(lookupToolInfo(toolUrl)!).style"
+                      v-else-if="!useSpriteLogo(lookupToolInfo(toolUrl)!).style"
                       :src="lookupToolInfo(toolUrl)!.logo"
                       loading="lazy"
                       :alt="lookupToolInfo(toolUrl)!.title"

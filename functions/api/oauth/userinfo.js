@@ -1,6 +1,6 @@
 // OAuth2 用户信息端点
 // GET /api/oauth/userinfo   Authorization: Bearer <access_token>（或 ?access_token=）
-// 返回主站账号资料（scope: profile）
+// 返回主站账号资料 + 积分余额（scope: profile）；无积分行时余额按 0 返回
 import { oauthJson, oauthError, openCorsPreflight, lookupAccessToken, isTokenUsable, tokenHasScope } from './_lib.js'
 
 export async function onRequest(context) {
@@ -28,8 +28,17 @@ export async function onRequest(context) {
       return oauthError('insufficient_scope', '该 access_token 未被授予 profile scope', 403)
     }
 
+    // LEFT JOIN 积分表：无积分行的用户余额按 0 返回（与 /api/me/credits 策略一致）
     const user = await db
-      .prepare(`SELECT id, username, email, avatar, created_at FROM user WHERE id = ?`)
+      .prepare(
+        `SELECT u.id, u.username, u.email, u.avatar, u.created_at,
+                COALESCE(c.balance, 0) AS credits_balance,
+                COALESCE(c.total_earned, 0) AS credits_earned,
+                COALESCE(c.total_spent, 0) AS credits_spent
+         FROM user u
+         LEFT JOIN user_credits c ON c.uid = u.id
+         WHERE u.id = ?`,
+      )
       .bind(tokenRow.user_id)
       .first()
     if (!user) return oauthError('invalid_token', '用户不存在', 401)
@@ -41,6 +50,11 @@ export async function onRequest(context) {
       email: user.email,
       avatar: user.avatar,
       created_at: user.created_at,
+      credits: {
+        balance: user.credits_balance, // 当前可用积分
+        total_earned: user.credits_earned, // 累计获得
+        total_spent: user.credits_spent, // 累计消耗
+      },
     })
   } catch (error) {
     console.error('[oauth/userinfo] error:', error)

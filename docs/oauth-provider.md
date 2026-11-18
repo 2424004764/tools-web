@@ -18,10 +18,14 @@
 | --- | --- |
 | `GET https://tool.fologde.com/oauth/authorize` | 授权页（浏览器跳转） |
 | `POST https://tool.fologde.com/api/oauth/token` | 授权码/刷新令牌 换取令牌（服务端调用） |
-| `GET https://tool.fologde.com/api/oauth/userinfo` | 获取用户资料（需 access_token，scope: profile） |
+| `GET https://tool.fologde.com/api/oauth/userinfo` | 获取用户资料与积分余额（需 access_token，scope: profile） |
 | `GET https://tool.fologde.com/api/oauth/storage-quota` | 获取用户存储额度（需 access_token，scope: storage） |
 | `POST https://tool.fologde.com/api/oauth/storage-upload-credential` | 下发子站直传上传凭证（需 access_token，scope: storage） |
 | `POST https://tool.fologde.com/api/oauth/storage-refund` | 删除文件后退还存储额度（需 access_token，scope: storage） |
+| `POST https://tool.fologde.com/api/oauth/credits/consume` | 消费积分（需 access_token，scope: credits；幂等，返回扣分凭证 receipt） |
+| `POST https://tool.fologde.com/api/oauth/credits/refund` | 按消费流水退款（需 access_token，scope: credits；一笔只能退一次） |
+| `POST https://tool.fologde.com/api/ai-gateway` | 统一 AI 网关（需 Bearer，scope: ai；生文/生图，多厂商容灾） |
+| `POST https://tool.fologde.com/api/ai-gateway/v1/chat/completions` | 网关的 OpenAI 兼容端点（同上；任意 OpenAI SDK 可直连） |
 | `POST https://tool.fologde.com/api/oauth/revoke` | 撤销令牌（可选） |
 
 ## 接入步骤（标准授权码流程）
@@ -41,8 +45,10 @@ https://tool.fologde.com/oauth/authorize
 
 | scope | 说明 |
 | --- | --- |
-| `profile` | 用户资料（用户名、邮箱、头像） |
+| `profile` | 用户资料（用户名、邮箱、头像）与积分余额 |
 | `storage` | 存储额度查询 + 子站直传上传（额度统一由主站预扣与实扣） |
+| `credits` | 代表用户消费积分（付费功能从用户积分余额扣除，支持退款） |
+| `ai` | 调用主站统一 AI 网关（生文/生图，多厂商自动容灾，消耗由主站承担） |
 
 ### 2. 用户在工具站完成登录 + 授权
 
@@ -94,7 +100,7 @@ grant_type=refresh_token
 &client_secret=tcs_xxxx
 ```
 
-### 5. 获取用户资料
+### 5. 获取用户资料与积分
 
 ```http
 GET https://tool.fologde.com/api/oauth/userinfo
@@ -110,9 +116,25 @@ Authorization: Bearer oat_xxxx
   "username": "用户名",
   "email": "邮箱",
   "avatar": "头像地址",
-  "created_at": "注册时间"
+  "created_at": "注册时间",
+  "credits": {
+    "balance": 100,
+    "total_earned": 150,
+    "total_spent": 50
+  }
 }
 ```
+
+`credits` 为用户在工具站的积分余额（与主站「个人中心-我的积分」同一数据源）：
+
+| 字段 | 说明 |
+| --- | --- |
+| `credits.balance` | 当前可用积分 |
+| `credits.total_earned` | 累计获得积分 |
+| `credits.total_spent` | 累计消耗积分 |
+
+- 用户从未产生过积分记录时 `credits` 各字段返回 `0`（不会缺失字段）；
+- 积分只读：子站可据此展示余额、做本地预检（如余额不足引导用户去主站充值），扣减/充值只能发生在主站。
 
 子站据此完成自家注册/登录（以 `sub` 为准建立本地账号映射），签发子站自己的会话。
 
@@ -158,6 +180,115 @@ token=oat_xxxx&client_id=tc_xxxx&client_secret=tcs_xxxx
 ```
 
 撤销 access_token 或 refresh_token 均可，无论 token 是否有效都返回 200。
+
+## 积分消费（scope: credits）
+
+子站的付费功能可以消费用户在主站的积分余额。核心原则——**先扣后用**：
+
+- 子站**服务端**在放行付费功能前，先同步调 `consume` 扣分；返回 200 才执行功能；
+- 余额不足、超时、任何失败都**不执行功能**（宁可拒绝服务，不可先用后补，否则用户可断线逃单）；
+- 扣分绝不能放在浏览器/前端做（access_token 不下发前端，前端传的"已扣分"标志可伪造）；
+- 功能执行失败（如上游生成报错）时调 `refund` 把积分退还给用户。
+
+### 1. 消费积分
+
+```http
+POST https://tool.fologde.com/api/oauth/credits/consume
+Authorization: Bearer oat_xxxx
+Content-Type: application/json
+
+{
+  "amount": 10,
+  "reason": "AI 讲解一道题",
+  "order_id": "tiji-explain-q123"
+}
+```
+
+| 参数 | 说明 |
+| --- | --- |
+| `amount` | 必填。1~1000000 的整数（积分） |
+| `reason` | 必填。≤100 字，展示给用户的消费说明（主站会自动带上应用名前缀） |
+| `order_id` | 强烈建议。子站业务单号（1~64 位字母/数字/`_`/`-`/`:`）。同一单号重复请求只扣一次，网络超时重试不会双扣 |
+
+响应：
+
+```json
+{
+  "tx_id": "消费流水ID（退款时用）",
+  "amount": 10,
+  "balance_after": 90,
+  "reason": "题迹消费：AI 讲解一道题",
+  "receipt": "eyJ1aWQiOiJ1...（扣分凭证，见下文）",
+  "receipt_ttl_seconds": 600
+}
+```
+
+错误码：`401 invalid_token` / `403 insufficient_scope`（需引导用户带 `scope=profile credits` 重新授权）/ `400 insufficient_credits`（余额不足）/ `400 invalid_request`。
+
+### 2. 退款
+
+```http
+POST https://tool.fologde.com/api/oauth/credits/refund
+Authorization: Bearer oat_xxxx
+Content-Type: application/json
+
+{ "tx_id": "consume 返回的 tx_id", "reason": "生成失败" }
+```
+
+- 只能退**本应用对该用户**的消费流水，全额退；一笔消费只能退一次，重复调用返回首次结果（`deduplicated: true`）；
+- 退款流水在用户积分明细中显示为「退还」，可追溯到原消费。
+
+### 3. 扣分凭证（receipt）
+
+`consume` 成功时返回 `receipt`：主站用**你的 client_secret** 做 HMAC-SHA256 签名的「已扣分发票」，10 分钟有效。
+
+用途：子站的付费功能入口可要求**出示 receipt 才干活**（验签 + 过期检查），防止某个接口漏写扣分逻辑、或前端绕过子站后端直接打功能接口白嫖。payload 含 `uid / client_id / tx_id / amount / order_id / iat / exp`，可与业务单号比对实现一次性（防重放）。
+
+Node 验签示例（与主站 `functions/api/oauth/_lib.js` 算法一致）：
+
+```js
+import crypto from 'node:crypto'
+
+function verifyReceipt(receipt, clientSecret, expectClientId) {
+  const [payload, sig] = String(receipt).split('.')
+  if (!payload || !sig) return null
+  const expect = Buffer.from(crypto.createHmac('sha256', clientSecret).update(payload).digest('hex'))
+  const got = Buffer.from(sig)
+  // 恒时比较（长度不同直接失败）
+  if (expect.length !== got.length || !crypto.timingSafeEqual(expect, got)) return null
+  const data = JSON.parse(Buffer.from(payload.replace(/-/g, '+').replace(/_/g, '/'), 'base64url').toString())
+  if (data.client_id !== expectClientId) return null
+  if (!data.exp || data.exp < Math.floor(Date.now() / 1000)) return null
+  return data // 校验通过，可再比对 order_id / 一次性记录 tx_id
+}
+```
+
+### 4. 推荐的子站接入模式（伪代码）
+
+```js
+// 子站后端：付费功能统一入口
+app.post('/api/explain', auth, async (req, res) => {
+  // ① 先扣分（带业务单号，天然幂等）
+  const r = await mainSite.consume({
+    amount: 10,
+    reason: 'AI 讲解一道题',
+    order_id: `explain-${req.body.questionId}-${req.user.sub}`,
+  })
+  if (r.status !== 200) return res.status(402).send('积分不足或扣分失败')
+
+  try {
+    // ② 扣分成功才执行功能
+    const result = await runExplain(req.body)
+    res.json({ result, balance: r.balance_after })
+  } catch (e) {
+    // ③ 功能失败 → 退款
+    await mainSite.refund({ tx_id: r.tx_id, reason: '生成失败' })
+    res.status(500).send('生成失败，积分已退')
+  }
+})
+```
+
+对账：所有消费/退款写入主站积分流水（来源「子站应用」，含应用名与业务单号），用户在主站「积分明细」可见，主站后台可按来源筛选。
 
 ## 子站直传上传（scope: storage）
 
@@ -262,7 +393,98 @@ Content-Type: application/json
 | `quota_exceeded` | 402 | 剩余额度不足（附 `remaining_bytes` / `need_bytes`） |
 | `invalid_request` | 400 | 缺 `bytes` / 超单文件上限 / `content_type` 不合法 |
 
+## AI 网关调用（scope: ai）
+
+主站提供**统一 AI 网关**：后台接入的各家厂商（OpenAI 兼容中转 / Anthropic / Gemini 等）组成调度组，一次调用按优先级自动容灾切换（某家 5xx/限流/超时自动换下一家）。子站用 OAuth `access_token` 即可调用，鉴权方式与 `userinfo` 完全一致（RFC 6750 Bearer），**无需任何厂商 API Key**。
+
+- 授权时请带 `scope=profile ai`（令牌缺 `ai` 时调网关返回 `403 insufficient_scope`）；
+- 所有调用记入主站网关日志（含出入参与 token 用量），消耗由主站承担；
+- 生视频（video）暂未开放，当前支持 `chat` / `chat_stream`（生文）与 `image_gen`（生图）。
+
+### 方式一：OpenAI 兼容端点（推荐）
+
+任意 OpenAI SDK / 兼容客户端改两个参数即可接入——`apiKey` 传 access_token，`model` 传主站的**调度组 key**（不是厂商模型名）：
+
+```js
+import OpenAI from 'openai'
+
+const client = new OpenAI({
+  baseURL: 'https://tool.fologde.com/api/ai-gateway/v1',
+  apiKey: oat_xxxx, // OAuth access_token（scope 含 ai）
+})
+
+// 流式
+const stream = await client.chat.completions.create({
+  model: 'text-default',        // 调度组 group_key（主站后台配置）
+  stream: true,
+  messages: [{ role: 'user', content: '你好' }],
+})
+for await (const chunk of stream) {
+  process.stdout.write(chunk.choices[0]?.delta?.content || '')
+}
+
+// 非流式：const res = await client.chat.completions.create({ model: 'text-default', messages: [...] })
+```
+
+请求/响应格式与 OpenAI API 完全一致（SSE chunk、`usage`、`finish_reason`）；上游即使是 Claude / Gemini 也已由网关在服务端完成协议转换。
+
+### 方式二：网关原生端点
+
+功能更全（生图、直连指定模型、超时预算），报文更省：
+
+```http
+POST https://tool.fologde.com/api/ai-gateway
+Authorization: Bearer oat_xxxx
+Content-Type: application/json
+
+{
+  "capability": "chat_stream",        // chat | chat_stream | image_gen
+  "group": "text-default",            // 调度组 group_key；或 "model": <模型ID> 直连指定模型
+  "payload": {
+    "messages": [{ "role": "user", "content": "你好" }],
+    "max_tokens": 1024
+  },
+  "timeout_ms": 120000                // 可选：整条容灾链共享的总预算（5000~600000）
+}
+```
+
+**生文非流式**响应：
+
+```json
+{
+  "ok": true,
+  "data": { "content": "……", "finish_reason": "stop", "usage": { "input_tokens": 5, "output_tokens": 7 } },
+  "meta": { "provider": "命中的厂商slug", "model": "厂商侧模型ID", "group": "text-default", "attempts": [], "duration_ms": 812 }
+}
+```
+
+**生文流式**（`capability: "chat_stream"`）为 SSE，每事件一行 JSON，结束发 `data: [DONE]`：
+
+```
+data: {"delta":"你"}
+data: {"delta":"好"}
+data: {"reasoning":"……"}          ← 部分模型的思维链（可选出现）
+data: {"usage":{"input_tokens":3,"output_tokens":5}}
+data: {"finish":"stop"}
+data: [DONE]
+```
+
+**生图**（`capability: "image_gen"`）：`payload` 为 `{ "prompt": "...", "size": "1024x1024" }`，响应 `data.image_url` 为图片 URL 或 data URL。响应头 `X-Gateway-Provider` / `X-Gateway-Model` 标记实际命中的厂商。
+
+### 错误码
+
+| error / 情形 | HTTP | 说明 |
+| --- | --- | --- |
+| `invalid_token` | 401 | access_token 无效或已过期（oat_ 凭证，RFC 6750 风格响应） |
+| `insufficient_scope` | 403 | 令牌未授予 `ai` scope，需带 `scope=profile ai` 重新授权 |
+| —（`ok:false` + 文案） | 400 | 请求参数错误（payload 缺 messages、capability 非法等） |
+| —（`ok:false` + 文案） | 503 | 调度组不存在或无可上游可用（文末附原因明细） |
+| —（`ok:false` + 文案） | 429/5xx | 容灾链全部失败，状态码取最后一次尝试 |
+
+OpenAI 兼容端点的错误为 OpenAI 格式 `{ "error": { "message", "type" } }`，状态码语义相同。
+
 ## 错误处理
+
 
 回跳时若带 `error` 参数表示用户拒绝或其他失败：
 
@@ -302,9 +524,15 @@ curl -X POST https://tool.fologde.com/api/oauth/token \
   -d "client_id=tc_xxx" \
   -d "client_secret=tcs_xxx"
 
-# 4. 用 access_token 拉用户信息：
+# 4. 用 access_token 拉用户信息（响应含 credits 积分余额）：
 curl https://tool.fologde.com/api/oauth/userinfo -H "Authorization: Bearer oat_xxx"
 
 # 5. 拉存储额度（授权时需带 scope=profile storage）：
 curl https://tool.fologde.com/api/oauth/storage-quota -H "Authorization: Bearer oat_xxx"
+
+# 6. 调 AI 网关（授权时需带 scope=profile ai），OpenAI 兼容端点：
+curl -N -X POST https://tool.fologde.com/api/ai-gateway/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer oat_xxx" \
+  -d '{"model":"text-default","stream":true,"messages":[{"role":"user","content":"你好"}]}'
 ```

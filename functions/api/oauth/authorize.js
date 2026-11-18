@@ -35,8 +35,10 @@ function jsonError(message, status = 400) {
 }
 
 export const SCOPE_DESCRIPTIONS = {
-  profile: '读取你的账号资料（用户名、邮箱、头像）',
+  profile: '读取你的账号资料（用户名、邮箱、头像）与积分余额',
   storage: '读取你的存储额度（总容量、已用、剩余可上传空间）',
+  ai: '调用主站 AI 网关（统一接入的各家大模型，消耗由主站承担）',
+  credits: '代表你消费积分（使用该应用的付费功能时，从你的积分余额按标示价格扣除；支持退款）',
 }
 
 // 把 code/state 拼到回调地址上（兼容已有 query 和 hash）

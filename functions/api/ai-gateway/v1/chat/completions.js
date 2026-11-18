@@ -10,8 +10,7 @@
 //   非流式 chat.completion；流式 chat.completion.chunk + data: [DONE]
 //   上游 anthropic / gemini 的流事件已在网关内转换为 OpenAI chunk 格式
 
-import { extractUidFromRequest } from '../../../_lib/model-resolver.js'
-import { runGatewayChat, logGatewayCall, instrumentedEvents, sanitizeJsonForLog } from '../../../_lib/gateway/index.js'
+import { runGatewayChat, logGatewayCall, instrumentedEvents, sanitizeJsonForLog, extractGatewayUid } from '../../../_lib/gateway/index.js'
 
 const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -36,8 +35,13 @@ export async function onRequest(context) {
 
   const t0 = Date.now()
 
-  const uid = await extractUidFromRequest(request, env)
-  if (!uid) return openaiError('请先登录（apiKey 传站内 JWT）', 401, 'authentication_error')
+  // 鉴权：站内登录 JWT 或 OAuth access_token（scope 含 ai），apiKey 字段传其一
+  const auth = await extractGatewayUid(request, env, env.DB)
+  if (!auth.uid) {
+    const type = auth.error === 'insufficient_scope' ? 'insufficient_scope' : 'authentication_error'
+    return openaiError(auth.message, auth.error === 'insufficient_scope' ? 403 : 401, type)
+  }
+  const uid = auth.uid
 
   let body
   try {

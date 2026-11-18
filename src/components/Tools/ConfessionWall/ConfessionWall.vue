@@ -1189,8 +1189,15 @@ SUPABASE_SERVICE_KEY=（service_role 密钥）</code></pre>
   100% { background-position: -200% 0; }
 }
 
-.group-tabs-wrapper::-webkit-scrollbar {
-  height: 4px;
+/* 标准属性优先，webkit 伪元素仅在老浏览器兜底 */
+.group-tabs-wrapper {
+  scrollbar-width: thin;
+}
+
+@supports not (scrollbar-color: auto) {
+  .group-tabs-wrapper::-webkit-scrollbar {
+    height: 4px;
+  }
 }
 
 .group-tabs {

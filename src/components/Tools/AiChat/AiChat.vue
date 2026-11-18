@@ -90,23 +90,31 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* 自定义滚动条样式 */
-.overflow-y-auto::-webkit-scrollbar {
-  width: 6px;
+/* 自定义滚动条样式：标准属性优先（Chrome 121+/Firefox/Safari 18.2+ 生效），
+   webkit 伪元素仅在老浏览器兜底（@supports 隔离，避免两套规则叠加） */
+.overflow-y-auto {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--border-default)) rgb(var(--surface-2));
 }
 
-.overflow-y-auto::-webkit-scrollbar-track {
-  background: rgb(var(--surface-2));
-  border-radius: 3px;
-}
+@supports not (scrollbar-color: auto) {
+  .overflow-y-auto::-webkit-scrollbar {
+    width: 6px;
+  }
 
-.overflow-y-auto::-webkit-scrollbar-thumb {
-  background: rgb(var(--border-default));
-  border-radius: 3px;
-}
+  .overflow-y-auto::-webkit-scrollbar-track {
+    background: rgb(var(--surface-2));
+    border-radius: 3px;
+  }
 
-.overflow-y-auto::-webkit-scrollbar-thumb:hover {
-  background: rgb(var(--ink-300));
+  .overflow-y-auto::-webkit-scrollbar-thumb {
+    background: rgb(var(--border-default));
+    border-radius: 3px;
+  }
+
+  .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--ink-300));
+  }
 }
 
 /* 自定义旋转动画 */

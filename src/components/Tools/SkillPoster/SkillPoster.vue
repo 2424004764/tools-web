@@ -946,24 +946,31 @@ const generatePoster = async () => {
 </template>
 
 <style scoped>
-/* 自定义滚动条样式 */
-.overflow-auto::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+/* 自定义滚动条样式：标准属性优先，webkit 伪元素仅在老浏览器兜底 */
+.overflow-auto {
+  scrollbar-width: thin;
+  scrollbar-color: #888 #f1f1f1;
 }
 
-.overflow-auto::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 4px;
-}
+@supports not (scrollbar-color: auto) {
+  .overflow-auto::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
 
-.overflow-auto::-webkit-scrollbar-thumb {
-  background: #888;
-  border-radius: 4px;
-}
+  .overflow-auto::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+  }
 
-.overflow-auto::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  .overflow-auto::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+  }
+
+  .overflow-auto::-webkit-scrollbar-thumb:hover {
+    background: #555;
+  }
 }
 
 /* 模板按钮点击波纹效果 */

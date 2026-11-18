@@ -11,12 +11,12 @@ export interface MyCredits {
 
 export interface CreditTransaction {
   id: string
-  type: 'grant' | 'deduct' | 'reverse'
+  type: 'grant' | 'deduct' | 'reverse' | 'refund'
   amount: number
   balance_after: number
   reason: string | null
-  /** 流水来源：迁移前的老数据为 null（前端展示为"未知"） */
-  source: 'system' | 'admin' | 'tool' | 'recharge' | null
+  /** 流水来源：迁移前的老数据为 null（前端展示为"未知"）；oauth = 子站应用消费/退款 */
+  source: 'system' | 'admin' | 'tool' | 'recharge' | 'oauth' | null
   related_tx_id: string | null
   created_at: string
   /** 后端通过 reason 前缀推断 + LEFT JOIN tool_features 得出 */

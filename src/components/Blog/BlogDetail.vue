@@ -303,6 +303,13 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
               loading="lazy"
               class="w-9 h-9 rounded-lg object-contain shrink-0"
             />
+            <div
+              v-else
+              class="w-9 h-9 rounded-lg bg-brand-gradient-soft text-accent-600 flex items-center justify-center text-sm font-semibold shrink-0"
+              aria-hidden="true"
+            >
+              {{ (tool.title || '?').charAt(0) }}
+            </div>
             <div class="min-w-0">
               <div class="text-sm font-medium text-ink-900 dark:text-ink-100 truncate">
                 {{ tool.title }}

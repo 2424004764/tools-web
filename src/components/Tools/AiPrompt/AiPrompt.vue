@@ -921,23 +921,31 @@ html.dark .prompt-preview::after {
   }
 }
 
-/* 滚动条样式 */
-::-webkit-scrollbar {
-  width: 6px;
+/* 滚动条样式：标准属性优先（scrollbar-color/width 可继承，Chrome 121+/Firefox/Safari 18.2+），
+   webkit 伪元素仅在老浏览器兜底（@supports 隔离） */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--border-strong)) rgb(var(--surface-1));
 }
 
-::-webkit-scrollbar-track {
-  background: rgb(var(--surface-1));
-  border-radius: 3px;
-}
+@supports not (scrollbar-color: auto) {
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
 
-::-webkit-scrollbar-thumb {
-  background: rgb(var(--border-strong));
-  border-radius: 3px;
-}
+  ::-webkit-scrollbar-track {
+    background: rgb(var(--surface-1));
+    border-radius: 3px;
+  }
 
-::-webkit-scrollbar-thumb:hover {
-  background: rgb(var(--ink-400));
+  ::-webkit-scrollbar-thumb {
+    background: rgb(var(--border-strong));
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--ink-400));
+  }
 }
 
 /* 对话框样式优化 */

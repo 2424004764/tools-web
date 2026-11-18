@@ -2745,23 +2745,30 @@ SUPABASE_SERVICE_KEY=（service_role 密钥）</code></pre>
 </template>
 
 <style scoped>
-/* 自定义滚动条样式 */
-.overflow-y-auto::-webkit-scrollbar {
-  width: 6px;
+/* 自定义滚动条样式：标准属性优先，webkit 伪元素仅在老浏览器兜底 */
+.overflow-y-auto {
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 #f1f1f1;
 }
 
-.overflow-y-auto::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 3px;
-}
+@supports not (scrollbar-color: auto) {
+  .overflow-y-auto::-webkit-scrollbar {
+    width: 6px;
+  }
 
-.overflow-y-auto::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 3px;
-}
+  .overflow-y-auto::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+  }
 
-.overflow-y-auto::-webkit-scrollbar-thumb:hover {
-  background: #a1a1a1;
+  .overflow-y-auto::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+  }
+
+  .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+    background: #a1a1a1;
+  }
 }
 
 .text-primary {

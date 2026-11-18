@@ -108,12 +108,13 @@ const typeMeta = (t: string) => {
   }
 }
 
-const sourceMeta = (s: 'system' | 'admin' | 'tool' | 'recharge' | null | undefined) => {
+const sourceMeta = (s: 'system' | 'admin' | 'tool' | 'recharge' | 'oauth' | null | undefined) => {
   switch (s) {
     case 'system':   return { label: '系统',   bg: 'bg-slate-100',   text: 'text-slate-700' }
     case 'admin':    return { label: '管理员', bg: 'bg-indigo-100',  text: 'text-indigo-700' }
     case 'tool':     return { label: '工具',   bg: 'bg-emerald-100', text: 'text-emerald-700' }
     case 'recharge': return { label: '兑换码', bg: 'bg-amber-100',   text: 'text-amber-700' }
+    case 'oauth':    return { label: '子站应用', bg: 'bg-sky-100',   text: 'text-sky-700' }
     default:         return { label: '未知',   bg: 'bg-gray-50',     text: 'text-gray-400' }
   }
 }

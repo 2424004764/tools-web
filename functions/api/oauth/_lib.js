@@ -45,7 +45,7 @@ export function formatNow() {
 }
 
 // ---------- scope ----------
-export const SUPPORTED_SCOPES = ['profile', 'storage']
+export const SUPPORTED_SCOPES = ['profile', 'storage', 'ai', 'credits']
 
 export function normalizeScope(raw) {
   const requested = String(raw || '').split(/[\s+,]/).filter(Boolean)
@@ -186,4 +186,72 @@ export function isTokenUsable(row) {
 // access_token 是否被授予了某个 scope
 export function tokenHasScope(row, scope) {
   return Boolean(row && String(row.scope || '').split(' ').includes(scope))
+}
+
+// ---------- 积分消费凭证（receipt）----------
+// 子站消费积分成功后，主站签发一张「已扣分发票」：payload.base64url(HMAC-SHA256(client_secret, payload))。
+// - 签名密钥用该应用自己的 client_secret（子站天然持有，可在本地验票，无需回调主站）
+// - 子站付费功能入口可要求出示 receipt（验签 + 过期检查），防止接口漏写扣费或前端绕过后端白嫖
+// - 主站自己的资源型接口（如 AI 网关）也可用同一算法验票
+// 一次性防重放由使用方自行将 receipt 与业务单号绑定（payload 内含 tx_id / order_id 可比对）。
+export const RECEIPT_TTL_SECONDS = 10 * 60 // 10 分钟
+
+function base64UrlEncode(text) {
+  return btoa(String.fromCharCode(...new TextEncoder().encode(text)))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '')
+}
+
+function base64UrlDecode(text) {
+  const b64 = text.replace(/-/g, '+').replace(/_/g, '/')
+  const bin = atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4))
+  return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)))
+}
+
+async function hmacSha256(keyStr, message) {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(keyStr),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  )
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(message))
+  return Array.from(new Uint8Array(sig))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+}
+
+/**
+ * 签发 receipt。payload：{ uid, client_id, tx_id, amount, order_id, iat, exp }（秒级时间戳）。
+ * 返回字符串凭证；子站用同 client_secret 调 verifyReceipt 校验。
+ */
+export async function signReceipt(clientSecret, payload) {
+  const body = { ...payload, iat: Math.floor(Date.now() / 1000) }
+  body.exp = body.exp ?? body.iat + RECEIPT_TTL_SECONDS
+  const encoded = base64UrlEncode(JSON.stringify(body))
+  const sig = await hmacSha256(clientSecret, encoded)
+  return `${encoded}.${sig}`
+}
+
+/**
+ * 校验 receipt：验签 + 过期检查 + client_id 归属检查。
+ * 返回 payload 对象；不合法返回 null（不抛错，调用方自行决定响应）。
+ */
+export async function verifyReceipt(clientSecret, receipt, expectClientId) {
+  try {
+    const parts = String(receipt || '').split('.')
+    if (parts.length !== 2) return null
+    const sig = await hmacSha256(clientSecret, parts[0])
+    // 恒时比较签名
+    if (!secureCompare(sig, parts[1])) return null
+    const payload = JSON.parse(base64UrlDecode(parts[0]))
+    if (!payload || typeof payload !== 'object') return null
+    if (expectClientId && payload.client_id !== expectClientId) return null
+    if (!payload.exp || payload.exp < Math.floor(Date.now() / 1000)) return null
+    return payload
+  } catch {
+    return null
+  }
 }

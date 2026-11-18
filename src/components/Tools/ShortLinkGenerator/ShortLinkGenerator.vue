@@ -233,8 +233,8 @@ const clearRecent = () => {
       <div v-if="state.resultSlug" class="bg-green-50 border border-green-200 rounded-lg p-4">
         <div class="text-body-sm font-medium text-green-700 mb-2">生成成功！</div>
         <div class="flex items-center gap-2">
-          <span class="text-body-lg font-mono font-bold text-green-600 select-all">{{ state.resultSlug }}</span>
-          <el-button type="success" size="small" @click="copySlug(state.resultSlug)">复制短链接</el-button>
+          <span class="text-body-lg font-mono font-bold text-green-600 select-all break-all">{{ siteBase }}{{ state.resultSlug }}</span>
+          <el-button type="success" size="small" class="shrink-0" @click="copySlug(state.resultSlug)">复制短链接</el-button>
         </div>
       </div>
     </div>

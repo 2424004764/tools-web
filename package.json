@@ -118,6 +118,6 @@
     "vite-plugin-pwa": "^0.17.5",
     "vite-plugin-svg-icons": "^2.0.1",
     "vue-tsc": "^3.0.4",
-    "wrangler": "^4.59.2"
+    "wrangler": "^4.162.0"
   }
 }

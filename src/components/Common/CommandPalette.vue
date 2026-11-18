@@ -361,8 +361,15 @@ onUnmounted(() => {
                     @click="runRow(row)"
                   >
                     <template v-if="row.tool">
+                      <div
+                        v-if="!row.tool.logo"
+                        class="w-9 h-9 min-h-[2.25rem] min-w-[2.25rem] rounded-lg bg-brand-gradient-soft text-accent-600 flex items-center justify-center text-sm font-semibold shrink-0"
+                        aria-hidden="true"
+                      >
+                        {{ (row.tool.title || '?').charAt(0) }}
+                      </div>
                       <img
-                        v-if="!useSpriteLogo(row.tool, 36).style"
+                        v-else-if="!useSpriteLogo(row.tool, 36).style"
                         :src="row.tool.logo"
                         loading="lazy"
                         class="w-9 h-9 min-h-[2.25rem] min-w-[2.25rem] object-contain rounded-lg shrink-0"
@@ -558,13 +565,16 @@ onUnmounted(() => {
 
 .cmdk-scroll {
   scrollbar-width: thin;
+  scrollbar-color: rgb(var(--border-default)) transparent;
   overscroll-behavior: contain;
 }
-.cmdk-scroll::-webkit-scrollbar {
-  width: 5px;
-}
-.cmdk-scroll::-webkit-scrollbar-thumb {
-  background: rgb(var(--border-default));
-  border-radius: 999px;
+@supports not (scrollbar-color: auto) {
+  .cmdk-scroll::-webkit-scrollbar {
+    width: 5px;
+  }
+  .cmdk-scroll::-webkit-scrollbar-thumb {
+    background: rgb(var(--border-default));
+    border-radius: 999px;
+  }
 }
 </style>

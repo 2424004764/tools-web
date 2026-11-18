@@ -649,8 +649,15 @@ watch(() => toolsStore.cates.length, (newLen, oldLen) => {
         >
           <div class="flex items-center gap-2.5 min-h-[2.5rem]">
             <template v-if="lookupToolInfo(item.tool_url)">
+              <div
+                v-if="!lookupToolInfo(item.tool_url)!.logo"
+                class="w-9 h-9 min-h-[2.25rem] min-w-[2.25rem] rounded-lg bg-brand-gradient-soft flex items-center justify-center text-accent-600 text-sm font-semibold"
+                aria-hidden="true"
+              >
+                {{ (lookupToolInfo(item.tool_url)!.title || '?').charAt(0) }}
+              </div>
               <img
-                v-if="!useSpriteLogo(lookupToolInfo(item.tool_url)!, 36).style"
+                v-else-if="!useSpriteLogo(lookupToolInfo(item.tool_url)!, 36).style"
                 :src="lookupToolInfo(item.tool_url)!.logo"
                 loading="lazy"
                 class="w-9 h-9 min-h-[2.25rem] min-w-[2.25rem] object-contain"
@@ -724,8 +731,15 @@ watch(() => toolsStore.cates.length, (newLen, oldLen) => {
           </button>
           <div class="flex items-center gap-2.5 min-h-[2.5rem]">
             <template v-if="lookupToolInfo(toolUrl)">
+              <div
+                v-if="!lookupToolInfo(toolUrl)!.logo"
+                class="w-9 h-9 min-h-[2.25rem] min-w-[2.25rem] rounded-lg bg-brand-gradient-soft flex items-center justify-center text-accent-600 text-sm font-semibold"
+                aria-hidden="true"
+              >
+                {{ (lookupToolInfo(toolUrl)!.title || '?').charAt(0) }}
+              </div>
               <img
-                v-if="!useSpriteLogo(lookupToolInfo(toolUrl)!, 36).style"
+                v-else-if="!useSpriteLogo(lookupToolInfo(toolUrl)!, 36).style"
                 :src="lookupToolInfo(toolUrl)!.logo"
                 loading="lazy"
                 class="w-9 h-9 min-h-[2.25rem] min-w-[2.25rem] object-contain"
@@ -864,8 +878,15 @@ watch(() => toolsStore.cates.length, (newLen, oldLen) => {
           </button>
 
           <div class="flex items-start gap-3">
+            <div
+              v-if="!item.logo"
+              class="w-11 h-11 min-h-[2.75rem] min-w-[2.75rem] rounded-xl bg-brand-gradient-soft flex items-center justify-center text-accent-600 text-lg font-semibold shrink-0"
+              aria-hidden="true"
+            >
+              {{ (item.title || '?').charAt(0) }}
+            </div>
             <img
-              v-if="!useSpriteLogo(item, 44).style"
+              v-else-if="!useSpriteLogo(item, 44).style"
               :src="item.logo"
               loading="lazy"
               class="w-11 h-11 min-h-[2.75rem] min-w-[2.75rem] object-contain rounded-xl"
@@ -918,16 +939,19 @@ watch(() => toolsStore.cates.length, (newLen, oldLen) => {
 .fade-leave-to {
   opacity: 0;
 }
-/* 「最近使用 / 我的收藏」横滑条：隐藏滚动条但保留滚动能力 */
+/* 「最近使用 / 我的收藏」横滑条：细滚动条；标准属性优先，webkit 伪元素老浏览器兜底 */
 .recent-scroll {
   scrollbar-width: thin;
+  scrollbar-color: rgb(var(--border-default)) transparent;
 }
-.recent-scroll::-webkit-scrollbar {
-  height: 4px;
-}
-.recent-scroll::-webkit-scrollbar-thumb {
-  background: rgb(var(--border-default));
-  border-radius: 4px;
+@supports not (scrollbar-color: auto) {
+  .recent-scroll::-webkit-scrollbar {
+    height: 4px;
+  }
+  .recent-scroll::-webkit-scrollbar-thumb {
+    background: rgb(var(--border-default));
+    border-radius: 4px;
+  }
 }
 /* 工具网格骨架块：与 LayoutSkeleton / HotList 同款 shimmer。
    用主题令牌做高对比扫光（旧版两端颜色几乎一致，动画在跑但肉眼看不出），深浅色主题自适应 */

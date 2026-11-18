@@ -19,7 +19,16 @@ export interface AdminSiteConfig {
   registration_credits: string
   /** 每积分可兑换存储空间，保存为字节；设置页输入/显示 MiB */
   storage_bytes_per_credit: string
+  /** 充值页展示方式：faka = 发卡网，contact = 联系站长 */
+  recharge_mode: RechargeMode | ''
+  /** 联系站长充值的 QQ 号（contact 模式展示） */
+  recharge_contact_qq: string
+  /** 发卡网充值套餐 JSON 串；'' = 未配置（前台用内置默认） */
+  recharge_packages: string
 }
+
+/** 充值页展示方式 */
+export type RechargeMode = 'faka' | 'contact'
 
 /** GET/PUT 返回：values 为配置值，remarks 为各项含义说明（代码元数据，随保存同步写库） */
 export interface AdminSiteConfigData {

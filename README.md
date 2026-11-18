@@ -442,6 +442,7 @@ wrangler d1 execute tools-web-db --command \
 - PNG/JPG格式互转
 - 老照片加字
 - 图片转线稿图
+- 屏幕录制（浏览器录屏，支持系统声音/麦克风混音与暂停续录）
 
 ### 数据图表
 - 柱状图

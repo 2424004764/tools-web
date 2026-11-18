@@ -1007,6 +1007,15 @@ export function getToolsCate() {
           cate: '图片处理'
         },
         {
+          id: 'screen-recorder-2026-11-18',
+          title: '屏幕录制',
+          logo: '/images/logo/screen-recorder.png',
+          desc: '浏览器直接录制屏幕/窗口/标签页为视频，支持系统声音与麦克风混音、清晰度帧率设置、暂停续录，纯本地处理不上传',
+          url: '/screen-recorder/',
+          cateId: 5,
+          cate: '图片处理',
+        },
+        {
           id: 73,
           title: '证件照生成',
           logo: '/images/logo/id_photo.png',

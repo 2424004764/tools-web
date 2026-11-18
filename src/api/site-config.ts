@@ -3,6 +3,40 @@ import { DEFAULT_PRODUCTS, type ProductInfo } from '@/components/Layout/Header/p
 
 export type CommentSystemType = 'giscus' | 'custom' | 'disabled'
 
+/** 充值页展示方式：faka = 发卡网在线充值，contact = 联系站长充值 */
+export type RechargeMode = 'faka' | 'contact'
+
+/** 充值套餐（发卡网商品），price 单位为元 */
+export interface RechargePackageInfo {
+  id: string
+  name: string
+  price: number
+  credits: number
+  url: string
+  tag?: string
+}
+
+/** 内置默认套餐（后台未配置时的兜底，与历史硬编码保持一致） */
+export const DEFAULT_RECHARGE_PACKAGES: RechargePackageInfo[] = [
+  {
+    id: 'pkg-1yuan',
+    name: '基础体验包',
+    price: 1,
+    credits: 100,
+    url: 'https://9wa.br3.cn/vw',
+    tag: '入门',
+  },
+]
+
+/** 充值页配置（/api/site-config?config_key=recharge 的归一化结果） */
+export interface RechargeConfig {
+  mode: RechargeMode
+  /** 仅 contact 模式返回，其余为空串 */
+  qq: string
+  /** 仅 faka 模式返回；未配置/脏数据回退内置默认 */
+  packages: RechargePackageInfo[]
+}
+
 export interface GiscusConfig {
   /** owner/repo；为空时前端回退到 VITE_GIT_URL 解析 */
   repo: string
@@ -27,6 +61,8 @@ let cachedGiscus: GiscusConfig | null = null
 let giscusPromise: Promise<GiscusConfig> | null = null
 let cachedProducts: ProductInfo[] | null = null
 let productsPromise: Promise<ProductInfo[]> | null = null
+let cachedRecharge: RechargeConfig | null = null
+let rechargePromise: Promise<RechargeConfig> | null = null
 
 /**
  * 拉取评论系统类型（GET /api/site-config?config_key=comment_system），带模块级缓存。
@@ -122,6 +158,60 @@ function normalizeProducts(list: unknown[]): ProductInfo[] {
     }))
 }
 
+/**
+ * 拉取充值页配置（GET /api/site-config?config_key=recharge），带模块级缓存。
+ * faka 模式下套餐未配置/脏数据回退内置默认；请求失败回退默认发卡网模式，不阻塞页面。
+ */
+export async function fetchRechargeConfig(force = false): Promise<RechargeConfig> {
+  if (!force && cachedRecharge) return cachedRecharge
+  if (!force && rechargePromise) return rechargePromise
+
+  rechargePromise = functionsRequest
+    .get('/api/site-config?config_key=recharge')
+    .then((res) => {
+      const data = res.data.data || {}
+      const mode: RechargeMode = data.mode === 'contact' ? 'contact' : 'faka'
+      cachedRecharge = {
+        mode,
+        qq: mode === 'contact' ? String(data.qq || '') : '',
+        packages:
+          mode === 'faka' && Array.isArray(data.packages)
+            ? normalizeRechargePackages(data.packages)
+            : DEFAULT_RECHARGE_PACKAGES,
+      }
+      return cachedRecharge
+    })
+    .catch((err) => {
+      console.warn('[site-config] 充值配置拉取失败，使用内置默认', err)
+      return { mode: 'faka' as RechargeMode, qq: '', packages: [...DEFAULT_RECHARGE_PACKAGES] }
+    })
+    .finally(() => {
+      rechargePromise = null
+    })
+
+  return rechargePromise
+}
+
+// 防御性归一化：脏数据字段兜底，缺关键字段的条目直接丢弃；全空回退内置默认
+function normalizeRechargePackages(list: unknown[]): RechargePackageInfo[] {
+  const normalized = list
+    .filter(
+      (p): p is Record<string, unknown> =>
+        !!p && typeof p === 'object' && typeof (p as any).name === 'string' && !!(p as any).name &&
+        typeof (p as any).url === 'string' && /^https?:\/\//i.test((p as any).url) &&
+        Number((p as any).price) > 0 && Number.isSafeInteger(Number((p as any).credits)) && Number((p as any).credits) > 0,
+    )
+    .map((p) => ({
+      id: String(p.id ?? p.url),
+      name: String(p.name),
+      price: Number(p.price),
+      credits: Number(p.credits),
+      url: String(p.url),
+      ...(typeof p.tag === 'string' && p.tag ? { tag: p.tag } : {}),
+    }))
+  return normalized.length ? normalized : [...DEFAULT_RECHARGE_PACKAGES]
+}
+
 /** 供设置保存成功后刷新缓存 */
 export function clearSiteConfigCache() {
   cachedSystem = null
@@ -130,4 +220,6 @@ export function clearSiteConfigCache() {
   giscusPromise = null
   cachedProducts = null
   productsPromise = null
+  cachedRecharge = null
+  rechargePromise = null
 }

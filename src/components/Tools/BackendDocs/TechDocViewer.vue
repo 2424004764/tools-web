@@ -446,22 +446,30 @@ table {
   box-shadow: none !important;
 }
 
-/* 左侧目录滚动条样式 */
-::-webkit-scrollbar {
-  width: 6px;
+/* 左侧目录滚动条样式：标准属性优先（scrollbar-color/width 可继承），
+   webkit 伪元素仅在老浏览器兜底（@supports 隔离） */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 #f1f1f1;
 }
 
-::-webkit-scrollbar-track {
-  background: #f1f1f1;
-}
+@supports not (scrollbar-color: auto) {
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
 
-::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 3px;
-}
+  ::-webkit-scrollbar-track {
+    background: #f1f1f1;
+  }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+  ::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+  }
 }
 
 /* 返回顶部按钮动画 */

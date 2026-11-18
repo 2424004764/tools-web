@@ -6,9 +6,9 @@ import IconRank from '~icons/ep/rank'
 import IconLink from '~icons/ep/link'
 import IconEdit from '~icons/ep/edit'
 import IconDelete from '~icons/ep/delete'
-import { fetchAdminSiteConfig, updateAdminSiteConfig, type AdminSiteConfig } from '@/api/admin/site-config'
+import { fetchAdminSiteConfig, updateAdminSiteConfig, type AdminSiteConfig, type RechargeMode } from '@/api/admin/site-config'
 import { fetchOAuthClients, type OAuthClient } from '@/api/admin/oauth-clients'
-import { clearSiteConfigCache, fetchProductsConfig } from '@/api/site-config'
+import { clearSiteConfigCache, fetchProductsConfig, DEFAULT_RECHARGE_PACKAGES } from '@/api/site-config'
 import { DEFAULT_PRODUCTS, productLogoFallbackChar } from '@/components/Layout/Header/products'
 
 const loading = ref(false)
@@ -28,6 +28,9 @@ const form = reactive<AdminSiteConfig>({
   registration_storage_bytes: '0',
   registration_credits: '0',
   storage_bytes_per_credit: String(100 * 1024 * 1024),
+  recharge_mode: 'faka',
+  recharge_contact_qq: '',
+  recharge_packages: '',
 })
 
 const MIB_BYTES = 1024 * 1024
@@ -365,6 +368,140 @@ function validateProductsList(): string | null {
 const productsListEl = ref<HTMLElement | null>(null)
 let productsSortable: Sortable | null = null
 
+// ============ 积分充值方式编辑 ============
+// 充值方式（recharge_mode / recharge_contact_qq）随底部「保存设置」提交；
+// 套餐规格（recharge_packages）通过「保存规格」单独即时保存，两者互不影响——
+// 可在「联系站长充值」模式下提前备好发卡网规格，切回发卡网模式时前台即刻可用。
+interface RechargePackageDraft {
+  uid: number
+  name: string
+  /** 价格（元），支持两位小数 */
+  price: number | undefined
+  /** 到账积分，按 1 元 = 100 积分填写 */
+  credits: number | undefined
+  url: string
+  /** 左上角小角标（选填），如「入门」「热门」 */
+  tag: string
+}
+
+let rechargeUidSeed = 0
+const nextRechargeUid = () => ++rechargeUidSeed
+
+const rechargeList = ref<RechargePackageDraft[]>([])
+/** 行级校验错误：uid → 错误文案 */
+const rechargeErrors = ref<Record<number, string>>({})
+/** 已存储的配置解析失败时的提示（此时列表回退内置默认，保存将覆盖） */
+const rechargeParseError = ref('')
+
+function rechargeDraftFrom(p: any): RechargePackageDraft {
+  return {
+    uid: nextRechargeUid(),
+    name: String(p?.name ?? ''),
+    price: p?.price != null && Number(p.price) > 0 ? Number(p.price) : undefined,
+    credits: p?.credits != null && Number(p.credits) > 0 ? Number(p.credits) : undefined,
+    url: String(p?.url ?? ''),
+    tag: String(p?.tag ?? ''),
+  }
+}
+
+const defaultRechargeDrafts = () => DEFAULT_RECHARGE_PACKAGES.map((p) => rechargeDraftFrom(p))
+
+/** 后台存储值 → 编辑列表；未配置（空串）时用内置默认套餐打底 */
+function parseRechargeToList(raw: string): { list: RechargePackageDraft[]; error: string } {
+  const s = (raw || '').trim()
+  if (!s) return { list: defaultRechargeDrafts(), error: '' }
+  try {
+    const arr = JSON.parse(s)
+    if (!Array.isArray(arr)) {
+      return { list: defaultRechargeDrafts(), error: '已存储的充值套餐不是 JSON 数组，当前显示内置默认；保存后将覆盖旧配置' }
+    }
+    return { list: arr.map((p: any) => rechargeDraftFrom(p)), error: '' }
+  } catch {
+    return { list: defaultRechargeDrafts(), error: '已存储的充值套餐解析失败，当前显示内置默认；保存后将覆盖旧配置' }
+  }
+}
+
+const addRechargePackage = () => {
+  rechargeList.value.push({ uid: nextRechargeUid(), name: '', price: 1, credits: 100, url: '', tag: '' })
+}
+
+const removeRechargePackage = (uid: number) => {
+  rechargeList.value = rechargeList.value.filter((p) => p.uid !== uid)
+  delete rechargeErrors.value[uid]
+}
+
+/**
+ * 单条套餐校验（与后端 admin/site-config 同规则）。
+ * 返回错误文案；合法返回空串。
+ */
+function validateRechargeItem(p: RechargePackageDraft): string {
+  if (!p.name.trim() || p.name.trim().length > 30) return '名称必填且不超过 30 字'
+  const price = Number(p.price)
+  if (!(price > 0) || price > 100000 || Math.round(price * 100) !== price * 100) {
+    return '价格需大于 0 且最多两位小数'
+  }
+  const credits = Number(p.credits)
+  if (!Number.isSafeInteger(credits) || credits <= 0) return '积分需为正整数'
+  if (!/^https?:\/\/\S+$/i.test(p.url.trim())) return '链接必须是 http(s):// 开头的完整地址'
+  if (p.tag.trim().length > 10) return '角标不超过 10 字'
+  return ''
+}
+
+/**
+ * 校验全部行：全部合法返回紧凑 JSON 串（id 按顺序自动编号），否则按 uid 填充行错误并返回 null。
+ * 空列表合法（保存后前台回退内置默认套餐）。
+ */
+function validateRechargeList(): string | null {
+  const errors: Record<number, string> = {}
+  const out: Record<string, unknown>[] = []
+  rechargeList.value.forEach((p, i) => {
+    const msg = validateRechargeItem(p)
+    if (msg) errors[p.uid] = msg
+    const item: Record<string, unknown> = {
+      // id 仅作前台渲染 key 使用，按顺序生成即可保证唯一
+      id: `pkg-${i + 1}`,
+      name: p.name.trim(),
+      price: Number(p.price),
+      credits: Number(p.credits),
+      url: p.url.trim(),
+    }
+    const tag = p.tag.trim()
+    if (tag) item.tag = tag
+    out.push(item)
+  })
+  rechargeErrors.value = errors
+  return Object.keys(errors).length ? null : JSON.stringify(out)
+}
+
+// ============ 充值规格即时保存 ============
+// 只提交 recharge_packages，不带动 recharge_mode / recharge_contact_qq；
+// 后端 PUT 按白名单键逐个 upsert，同页其他未保存草稿不受影响。
+const savingRecharge = ref(false)
+
+const saveRechargePackages = async () => {
+  const compact = validateRechargeList()
+  if (compact === null) {
+    ElMessage.error('充值规格还有不合法的项，请按红色提示修正后再保存')
+    return
+  }
+  savingRecharge.value = true
+  try {
+    const data = await updateAdminSiteConfig({ recharge_packages: compact })
+    // 只同步存储串与备注，不重建列表（保持行 uid 稳定，正在编辑的行不闪烁）
+    form.recharge_packages = data.values.recharge_packages
+    remarks.value = data.remarks || remarks.value
+    rechargeParseError.value = ''
+    rechargeErrors.value = {}
+    // 失效前台缓存，让充值页立刻读到新规格
+    clearSiteConfigCache()
+    ElMessage.success('充值规格已保存并生效')
+  } catch (err: any) {
+    ElMessage.error(err?.response?.data?.error || err?.message || '充值规格保存失败')
+  } finally {
+    savingRecharge.value = false
+  }
+}
+
 const load = async () => {
   loading.value = true
   try {
@@ -373,10 +510,16 @@ const load = async () => {
     form.registration_storage_bytes = String(Number(data.values.registration_storage_bytes) || 0)
     form.registration_credits = String(Number(data.values.registration_credits) || 0)
     form.storage_bytes_per_credit = String(Number(data.values.storage_bytes_per_credit) || 100 * MIB_BYTES)
+    // 未配置（空串）时按默认发卡网模式处理，保证单选有选中项
+    form.recharge_mode = (data.values.recharge_mode === 'contact' ? 'contact' : 'faka') as RechargeMode
+    form.recharge_contact_qq = data.values.recharge_contact_qq || ''
     remarks.value = data.remarks || {}
     const parsed = parseProductsToList(data.values.products_matrix)
     productsList.value = parsed.list
     productsParseError.value = parsed.error
+    const parsedRecharge = parseRechargeToList(data.values.recharge_packages)
+    rechargeList.value = parsedRecharge.list
+    rechargeParseError.value = parsedRecharge.error
   } catch (err) {
     console.error(err)
   } finally {
@@ -391,18 +534,34 @@ const handleSave = async () => {
     ElMessage.error('「更多产品」还有未填好的项，请按红色提示修正后再保存')
     return
   }
+  // 充值规格由「保存规格」单独提交，这里不校验也不回写，避免覆盖未保存的规格草稿
+  const qq = form.recharge_contact_qq.trim()
+  if (form.recharge_mode === 'contact' && qq && !/^\d{5,12}$/.test(qq)) {
+    ElMessage.error('站长 QQ 号需为 5-12 位数字')
+    return
+  }
   saving.value = true
   try {
     // 仪表盘卡片布局由仪表盘页面维护，设置页保存时不回写，避免覆盖别处的最新调整
-    const { admin_dashboard_layout: _dashboardLayout, ...settingsForm } = form
-    const data = await updateAdminSiteConfig({ ...settingsForm, products_matrix: compactProducts })
+    const {
+      admin_dashboard_layout: _dashboardLayout,
+      recharge_packages: _rechargePackages,
+      ...settingsForm
+    } = form
+    const data = await updateAdminSiteConfig({
+      ...settingsForm,
+      products_matrix: compactProducts,
+      recharge_contact_qq: qq,
+    })
     Object.assign(form, data.values)
+    form.recharge_mode = (data.values.recharge_mode === 'contact' ? 'contact' : 'faka') as RechargeMode
     remarks.value = data.remarks || {}
     // 用后端归一化后的返回值重建编辑列表（key 统一小写等）
     const parsed = parseProductsToList(data.values.products_matrix)
     productsList.value = parsed.list
     productsParseError.value = parsed.error
     productsErrors.value = {}
+    // rechargeList 不在此重建：规格编辑草稿由「保存规格」独立管理
     // 立即失效前台缓存，让新配置生效（含「更多产品」矩阵缓存）
     clearSiteConfigCache()
     ElMessage.success('设置已保存')
@@ -756,6 +915,118 @@ onBeforeUnmount(() => {
         <el-button type="primary" :loading="savingProducts" @click="confirmProductDialog">确定并生效</el-button>
       </template>
     </el-dialog>
+
+    <!-- 积分充值方式 -->
+    <div class="rounded-xl border border-border-subtle bg-white dark:bg-surface-1 p-5 mb-4">
+      <h3 class="text-body-lg font-semibold text-ink-900 mb-1">积分充值方式</h3>
+      <p class="text-body-sm text-ink-500 mb-4">
+        控制「积分充值」页在线充值区域的展示方式：充值方式与站长 QQ 随底部「保存设置」生效，套餐规格点「保存规格」单独生效、互不影响。
+      </p>
+
+      <el-radio-group v-model="form.recharge_mode" class="!items-stretch flex-wrap gap-3 mb-1">
+        <el-radio-button value="faka">发卡网在线充值</el-radio-button>
+        <el-radio-button value="contact">联系站长充值</el-radio-button>
+      </el-radio-group>
+
+      <div class="mt-3 text-body-sm text-ink-500">
+        <template v-if="form.recharge_mode === 'faka'">
+          用户在充值页选择套餐后跳转发卡网付款，获得兑换码回站内兑换积分；发卡网故障时可临时切到「联系站长充值」。
+        </template>
+        <template v-else>
+          充值页不再展示发卡网套餐，改为展示站长 QQ，用户直接联系站长购买兑换码（按 1 元 = 100 积分）。
+        </template>
+      </div>
+
+      <!-- 联系站长：QQ（随「保存设置」提交） -->
+      <template v-if="form.recharge_mode === 'contact'">
+        <el-divider class="!my-4" />
+        <div>
+          <div class="text-body-sm font-medium text-ink-700 mb-1.5">站长 QQ 号</div>
+          <el-input v-model="form.recharge_contact_qq" placeholder="5-12 位数字，前台展示给用户" clearable />
+          <p v-if="remarks.recharge_contact_qq" class="text-caption text-ink-400 mt-1">{{ remarks.recharge_contact_qq }}</p>
+        </div>
+      </template>
+
+      <!-- 套餐规格：独立保存，任何模式下都可提前配置；仅前台为发卡网模式时展示给用户 -->
+      <el-divider class="!my-4" />
+      <div class="flex items-start justify-between gap-4 flex-wrap mb-3">
+        <p class="text-body-sm text-ink-500 min-w-0">
+          每项规格对应一个发卡网商品的下单页链接，积分按 <b class="text-ink-700">1 元 = 100 积分</b> 填写；
+          点「保存规格」<b class="text-ink-700">单独保存并立即生效，不改变上方充值方式</b>（联系站长模式下也可提前备好规格）；
+          清空全部规格后保存，前台将使用内置默认套餐。
+        </p>
+        <div class="flex gap-2 shrink-0">
+          <el-button size="small" @click="addRechargePackage">添加规格</el-button>
+          <el-button size="small" type="primary" :loading="savingRecharge" @click="saveRechargePackages">保存规格</el-button>
+        </div>
+      </div>
+
+      <p v-if="rechargeParseError" class="text-body-sm text-amber-600 mt-0 mb-2">{{ rechargeParseError }}</p>
+
+        <div class="flex flex-col gap-2">
+          <div
+            v-for="p in rechargeList"
+            :key="p.uid"
+            class="rounded-xl border border-border-subtle flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5"
+            :class="rechargeErrors[p.uid] ? 'bg-rose-50/70 dark:bg-rose-500/10' : ''"
+          >
+            <div class="flex flex-col w-[150px] flex-none">
+              <span class="text-caption text-ink-400 mb-1">名称</span>
+              <el-input v-model="p.name" placeholder="如：基础体验包" maxlength="30" />
+            </div>
+            <div class="flex flex-col w-[110px] flex-none">
+              <span class="text-caption text-ink-400 mb-1">价格（元）</span>
+              <el-input-number
+                v-model="p.price"
+                :min="0.01"
+                :max="100000"
+                :precision="2"
+                :controls="false"
+                class="!w-full"
+                placeholder="1"
+              />
+            </div>
+            <div class="flex flex-col w-[130px] flex-none">
+              <span class="text-caption text-ink-400 mb-1">到账积分</span>
+              <el-input-number
+                v-model="p.credits"
+                :min="1"
+                :max="1000000000"
+                :controls="false"
+                class="!w-full"
+                placeholder="100"
+              />
+            </div>
+            <div class="flex flex-col flex-1 min-w-[220px]">
+              <span class="text-caption text-ink-400 mb-1">发卡网商品链接</span>
+              <el-input v-model="p.url" placeholder="https://…（该商品在发卡网的下单页地址）" clearable />
+            </div>
+            <div class="flex flex-col w-[110px] flex-none">
+              <span class="text-caption text-ink-400 mb-1">角标（选填）</span>
+              <el-input v-model="p.tag" placeholder="如：入门" maxlength="10" />
+            </div>
+            <button
+              type="button"
+              class="w-7 h-7 rounded-lg bg-surface-2 dark:bg-surface-3 text-ink-400 hover:text-rose-500 hover:bg-surface-3 flex items-center justify-center shrink-0 transition-colors self-end mb-1"
+              title="删除该规格"
+              @click="removeRechargePackage(p.uid)"
+            >
+              <IconDelete class="w-3.5 h-3.5" aria-hidden="true" />
+            </button>
+
+            <p v-if="rechargeErrors[p.uid]" class="order-last lg:order-none w-full text-caption text-rose-600 !mt-1 mb-0">
+              {{ rechargeErrors[p.uid] }}
+            </p>
+          </div>
+        </div>
+
+        <div
+          v-if="!rechargeList.length"
+          class="rounded-xl border border-dashed border-border-subtle py-8 text-center text-body-sm text-ink-400"
+        >
+          暂无规格。点右上角「添加规格」新增；保存空列表时前台使用内置默认套餐。
+        </div>
+    </div>
 
     <!-- 新注册用户奖励 -->
     <div class="rounded-xl border border-border-subtle bg-white dark:bg-surface-1 p-5 mb-4">

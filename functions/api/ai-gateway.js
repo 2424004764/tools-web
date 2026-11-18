@@ -18,13 +18,14 @@
 //
 // 鉴权：需登录（Bearer JWT）。平台 Key 消耗的是后台配置的厂商额度，不对匿名开放。
 
-import { extractUidFromRequest } from './_lib/model-resolver.js'
 import {
   runGatewayChat,
   runGatewayImageGen,
   logGatewayCall,
   instrumentedEvents,
   sanitizeJsonForLog,
+  extractGatewayUid,
+  oauthDenyBody,
   GATEWAY_CAPABILITIES,
 } from './_lib/gateway/index.js'
 
@@ -33,10 +34,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 }
 
-function json(data, status = 200) {
+function json(data, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { 'Content-Type': 'application/json', ...corsHeaders },
+    headers: { 'Content-Type': 'application/json', ...corsHeaders, ...extraHeaders },
   })
 }
 
@@ -84,11 +85,20 @@ export async function onRequest(context) {
 
   const t0 = Date.now()
 
-  // 登录门槛前置（与 /api/ai-proxy 同策略：防匿名枚举/消耗平台 Key）
-  const uid = await extractUidFromRequest(request, env)
-  if (!uid) {
-    return json({ ok: false, error: '请先登录后再使用 AI 网关' }, 401)
+  // 鉴权前置（与 /api/ai-proxy 同策略：防匿名枚举/消耗平台 Key）：
+  // 支持两种凭证 —— 站内登录 JWT（浏览器同源调用）或 OAuth access_token（子站接入，scope 含 ai）
+  const auth = await extractGatewayUid(request, env, env.DB)
+  if (!auth.uid) {
+    if (auth.error === 'unauthorized') {
+      return json({ ok: false, error: auth.message }, 401)
+    }
+    // oat_ 凭证失败按 RFC 6750 风格返回（与 userinfo 等资源端点一致）
+    const status = auth.error === 'insufficient_scope' ? 403 : auth.error === 'server_error' ? 500 : 401
+    return json({ ok: false, ...oauthDenyBody(auth) }, status, {
+      'WWW-Authenticate': `Bearer error="${auth.error}"`,
+    })
   }
+  const uid = auth.uid
 
   let body
   try {

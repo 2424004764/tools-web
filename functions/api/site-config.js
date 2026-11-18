@@ -1,6 +1,7 @@
 // 站点配置公开接口（只读，只暴露前台需要的键）
 // GET /api/site-config?config_key=comment_system  → { data: { comment_system } }
 // GET /api/site-config?config_key=giscus          → { data: { repo, repo_id, category, category_id, mapping } }
+// GET /api/site-config?config_key=recharge        → { data: { mode, qq, packages } }
 // GET /api/site-config（不带 config_key）          → { data: {} }（不做全量返回，需要哪个传哪个）
 // 前端按需两段式请求：先拿 comment_system，等于 giscus 时再拉 giscus 配置。
 import { ApiResponse, initDatabase } from '../utils/db.js'
@@ -13,6 +14,9 @@ const PUBLIC_KEYS = [
   'giscus_category',
   'giscus_category_id',
   'giscus_mapping',
+  'recharge_mode',
+  'recharge_contact_qq',
+  'recharge_packages',
 ]
 
 const DEFAULTS = {
@@ -22,6 +26,9 @@ const DEFAULTS = {
   giscus_category: 'General',
   giscus_category_id: '',
   giscus_mapping: 'title',
+  recharge_mode: 'faka',
+  recharge_contact_qq: '',
+  recharge_packages: '',
 }
 
 // 归一化评论系统类型（白名单外一律视为默认 giscus）
@@ -73,7 +80,12 @@ export async function onRequest(context) {
   if (!configKey) {
     return ApiResponse.success({ data: {} }, origin)
   }
-  if (configKey !== 'comment_system' && configKey !== 'giscus' && configKey !== 'products') {
+  if (
+    configKey !== 'comment_system' &&
+    configKey !== 'giscus' &&
+    configKey !== 'products' &&
+    configKey !== 'recharge'
+  ) {
     return ApiResponse.error(`不支持的 config_key: ${configKey}`, origin, 400)
   }
 
@@ -84,6 +96,12 @@ export async function onRequest(context) {
         .prepare(`SELECT value FROM site_config WHERE key = 'products_matrix'`)
         .first()
       return ApiResponse.success({ data: { products: parseEnabledProducts(row?.value) } }, origin)
+    }
+
+    if (configKey === 'recharge') {
+      // 充值页展示方式：mode = faka 展示套餐并跳发卡网，contact = 联系站长（仅此模式返回 QQ）
+      const map = await loadMap(db)
+      return ApiResponse.success({ data: buildRechargePayload(map) }, origin)
     }
 
     const map = await loadMap(db)
@@ -102,6 +120,10 @@ export async function onRequest(context) {
       // 配置表缺失等异常时回退 null，前端按内置默认展示，不影响前台
       return ApiResponse.success({ data: { products: null } }, origin)
     }
+    if (configKey === 'recharge') {
+      // 配置表缺失等异常时按默认发卡网模式兜底（套餐 null = 前端用内置默认）
+      return ApiResponse.success({ data: buildRechargePayload(DEFAULTS) }, origin)
+    }
     // 配置表缺失等异常时按默认 giscus 行为兜底，不影响前台
     if (configKey === 'comment_system') {
       return ApiResponse.success({ data: { comment_system: 'giscus' } }, origin)
@@ -117,6 +139,44 @@ function parseEnabledProducts(raw) {
     const arr = JSON.parse(raw)
     if (!Array.isArray(arr)) return null
     return arr.filter((p) => p && typeof p === 'object' && p.enabled !== false)
+  } catch {
+    return null
+  }
+}
+
+// 充值配置：数据最小化 —— contact 模式只返回 QQ（packages 置 null），
+// faka 模式只返回套餐（qq 置空）；套餐未配置/脏数据返回 null（= 前端用内置默认）
+function buildRechargePayload(map) {
+  const mode = map.recharge_mode === 'contact' ? 'contact' : 'faka'
+  if (mode === 'contact') {
+    return { mode, qq: map.recharge_contact_qq || '', packages: null }
+  }
+  return { mode, qq: '', packages: parseRechargePackages(map.recharge_packages) }
+}
+
+// 防御性解析充值套餐：只保留字段齐全的合法条目，全部不合法则视为未配置
+function parseRechargePackages(raw) {
+  if (!raw) return null
+  try {
+    const arr = JSON.parse(raw)
+    if (!Array.isArray(arr)) return null
+    const list = arr
+      .filter(
+        (p) =>
+          p && typeof p === 'object' &&
+          typeof p.name === 'string' && p.name &&
+          typeof p.url === 'string' && /^https?:\/\//i.test(p.url) &&
+          Number(p.price) > 0 && Number.isSafeInteger(Number(p.credits)) && Number(p.credits) > 0,
+      )
+      .map((p) => ({
+        id: String(p.id ?? p.url),
+        name: String(p.name),
+        price: Number(p.price),
+        credits: Number(p.credits),
+        url: String(p.url),
+        tag: typeof p.tag === 'string' && p.tag ? p.tag : undefined,
+      }))
+    return list.length ? list : null
   } catch {
     return null
   }

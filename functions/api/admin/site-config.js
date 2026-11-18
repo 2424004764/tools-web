@@ -60,6 +60,19 @@ const ALLOWED_KEYS = {
     remark: '新注册用户赠送的积分；0 表示不赠送',
     validate: validateNonNegativeInteger,
   },
+  recharge_mode: {
+    remark: '充值页展示方式：faka = 发卡网在线充值（默认，展示套餐并跳转发卡网），contact = 联系站长充值（展示站长 QQ）',
+    validate: (v) => (['faka', 'contact'].includes(v) ? v : null),
+  },
+  recharge_contact_qq: {
+    remark: '联系站长充值的 QQ 号（5-12 位数字），仅 recharge_mode = contact 时前台展示；留空则前台提示联系站长但不显示 QQ',
+    validate: (v) => (String(v).trim() === '' || /^\d{5,12}$/.test(String(v).trim()) ? String(v).trim() : null),
+  },
+  recharge_packages: {
+    remark:
+      '发卡网充值套餐，JSON 数组：[{"id":"pkg-1yuan","name":"基础体验包","price":1,"credits":100,"url":"https://…/vw","tag":"入门"}]；id 为小写字母/数字/连字符且唯一，name ≤30 字，price 为元（>0，最多两位小数），credits 为对应积分，url 为该商品在发卡网的下单页链接，tag 选填 ≤10 字；留空 = 前台使用内置默认套餐',
+    validate: validateRechargePackages,
+  },
   storage_bytes_per_credit: {
     remark: '每 1 积分可兑换的存储空间，后台按 MiB 输入，配置按字节保存',
     validate: validatePositiveInteger,
@@ -74,6 +87,46 @@ function validateNonNegativeInteger(v) {
 function validatePositiveInteger(v) {
   const n = typeof v === 'number' ? v : Number(v)
   return Number.isSafeInteger(n) && n > 0 ? String(n) : null
+}
+
+// 校验并归一化发卡网充值套餐 JSON 配置
+// 入参为任意值，返回归一化后的紧凑 JSON 字符串；'' = 未配置（前台用内置默认），null = 不合法
+function validateRechargePackages(v) {
+  const raw = String(v ?? '').trim()
+  if (raw === '') return ''
+
+  let arr
+  try {
+    arr = JSON.parse(raw)
+  } catch {
+    return null
+  }
+  if (!Array.isArray(arr) || arr.length > 20) return null
+
+  const seen = new Set()
+  const out = []
+  for (const item of arr) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return null
+    const id = String(item.id ?? '').trim().toLowerCase()
+    if (!/^[a-z0-9-]{1,40}$/.test(id) || seen.has(id)) return null
+    const name = String(item.name ?? '').trim()
+    if (!name || name.length > 30) return null
+    // 价格单位为元：正数、最多两位小数、上限 10 万
+    const price = Number(item.price)
+    if (!(price > 0) || price > 100000 || Math.round(price * 100) !== price * 100) return null
+    const credits = Number(item.credits)
+    if (!Number.isSafeInteger(credits) || credits <= 0 || credits > 1e9) return null
+    const url = String(item.url ?? '').trim()
+    if (!/^https?:\/\/\S+$/i.test(url)) return null
+    const tag = String(item.tag ?? '').trim()
+    if (tag.length > 10) return null
+    seen.add(id)
+    // tag 为空时不写入，保持 JSON 紧凑
+    const normalized = { id, name, price, credits, url }
+    if (tag) normalized.tag = tag
+    out.push(normalized)
+  }
+  return JSON.stringify(out)
 }
 
 // 校验仪表盘卡片顺序：JSON 字符串数组（id 去重、单个 ≤40 字符、总数 ≤50）；'' = 恢复默认顺序

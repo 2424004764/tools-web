@@ -15,6 +15,7 @@ import {
   normalizeChatPayload,
   instrumentedEvents,
   sanitizeJsonForLog,
+  extractGatewayUid,
 } from '../functions/api/_lib/gateway/index.js'
 
 let passed = 0
@@ -404,6 +405,42 @@ console.log('\n[15] instrumentedEvents（首字/token/全文统计）')
     out.push(ev)
   }
   t('iterable-only 源（无 .next）正常透传', out.length === 3 && stats && stats.text === 'xy' && stats.finishReason === 'stop')
+}
+
+// ---------- [16] 网关鉴权（站内 JWT / OAuth oat_ 双通道） ----------
+console.log('\n[16] extractGatewayUid')
+{
+  const now = Math.floor(Date.now() / 1000)
+  const makeOatDb = (row) => ({
+    prepare: (sql) => ({
+      bind: () => ({ first: async () => (sql.includes('FROM oauth_access_tokens') ? row : null) }),
+    }),
+  })
+  const mkReq = (token) => ({ headers: { get: (k) => (k === 'Authorization' ? (token ? `Bearer ${token}` : '') : null) } })
+
+  // 无凭证
+  const r0 = await extractGatewayUid(mkReq(''), {}, makeOatDb(null))
+  t('无凭证 → unauthorized', r0.uid === '' && r0.error === 'unauthorized')
+
+  // oat_ 无效（查不到）
+  const r1 = await extractGatewayUid(mkReq('oat_notexist'), {}, makeOatDb(null))
+  t('oat_ 无效 → invalid_token', r1.uid === '' && r1.error === 'invalid_token')
+
+  // oat_ 有效但缺 ai scope
+  const r2 = await extractGatewayUid(mkReq('oat_x'), {}, makeOatDb({ user_id: 'u1', client_id: 'tc_1', scope: 'profile', expires_at: now + 3600, revoked: 0, client_disabled: 0, user_exists: 'u1', user_disabled: 0 }))
+  t('oat_ 缺 ai scope → insufficient_scope', r2.uid === '' && r2.error === 'insufficient_scope')
+
+  // oat_ 有效且有 ai scope
+  const r3 = await extractGatewayUid(mkReq('oat_x'), {}, makeOatDb({ user_id: 'u1', client_id: 'tc_1', scope: 'profile ai', expires_at: now + 3600, revoked: 0, client_disabled: 0, user_exists: 'u1', user_disabled: 0 }))
+  t('oat_ 带 ai scope → 通过并带 clientId', r3.uid === 'u1' && r3.source === 'oauth' && r3.clientId === 'tc_1')
+
+  // oat_ 已过期
+  const r4 = await extractGatewayUid(mkReq('oat_x'), {}, makeOatDb({ user_id: 'u1', client_id: 'tc_1', scope: 'profile ai', expires_at: now - 10, revoked: 0, client_disabled: 0, user_exists: 'u1', user_disabled: 0 }))
+  t('oat_ 过期 → invalid_token', r4.uid === '' && r4.error === 'invalid_token')
+
+  // 非 oat_ 且非合法 JWT（env 无 JWT_SECRET → uid 空 → unauthorized）
+  const r5 = await extractGatewayUid(mkReq('some-random-jwt'), {}, makeOatDb(null))
+  t('非 oat_ 且 JWT 无效 → unauthorized', r5.uid === '' && r5.error === 'unauthorized')
 }
 
 console.log(`\n结果: ${passed} 通过, ${failed} 失败`)
