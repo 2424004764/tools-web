@@ -484,10 +484,10 @@ export interface GenerationRecord {
   upstream_status: number | null
   idempotency_key: string | null
   tx_id: string | null
-  /** 原始 JSON 字符串 */
-  raw_data: string
-  /** 后端预解析后的对象（解析失败为 null） */
-  raw_data_parsed: Record<string, unknown> | null
+  /** 原始 JSON 字符串；列表接口不返回（体积大），详情接口才有 */
+  raw_data?: string
+  /** 后端预解析后的对象（解析失败为 null）；仅详情接口返回 */
+  raw_data_parsed?: Record<string, unknown> | null
   created_at: string
 }
 

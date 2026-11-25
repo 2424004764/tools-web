@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, reactive, ref, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { fetchGenerationRecords, cleanupStuckGenerationRecords } from '@/api/admin/generation-record'
+import { fetchGenerationRecords, fetchGenerationRecordDetail, cleanupStuckGenerationRecords } from '@/api/admin/generation-record'
 import { useIsMobile } from '@/composables/useIsMobile'
 import type { GenerationRecord, AdminPagination } from '@/types/admin'
 
@@ -163,12 +163,12 @@ const handlePageChange = (p: number) => {
   load()
 }
 
-// 清理卡住的 in_progress 记录（默认 15 分钟阈值）
+// 清理卡住的 in_progress 记录（默认 15 分钟阈值；有扣费的自动退还积分）
 const cleaning = ref(false)
 const handleCleanup = async () => {
   try {
     await ElMessageBox.confirm(
-      '将把所有超过 15 分钟仍处于"处理中"状态的记录标记为"失败"。这些通常是历史 bug 或 Worker 被强制终止留下的卡死记录。确定清理？',
+      '将把所有超过 15 分钟仍处于"处理中"状态的记录标记为终态：有扣费流水的会自动退还积分并标记"已退还"，无扣费的标记"失败"。这些通常是 Worker 被强制终止留下的卡死记录。确定清理？',
       '清理卡住记录',
       {
         confirmButtonText: '清理',
@@ -185,7 +185,8 @@ const handleCleanup = async () => {
     if (result.cleaned === 0) {
       ElMessage.info('没有需要清理的卡住记录')
     } else {
-      ElMessage.success(`已清理 ${result.cleaned} 条卡住记录`)
+      const refundPart = result.refunded > 0 ? `，其中 ${result.refunded} 条已退还积分` : ''
+      ElMessage.success(`已清理 ${result.cleaned} 条卡住记录${refundPart}`)
       load()
     }
   } catch (err: any) {
@@ -198,10 +199,26 @@ const handleCleanup = async () => {
 // ============ 详情抽屉 ============
 const drawerVisible = ref(false)
 const selected = ref<GenerationRecord | null>(null)
+// raw_data 由详情接口按需加载（列表接口不返回，避免响应膨胀）
+const detailLoading = ref(false)
 
-const openDetail = (rec: GenerationRecord) => {
+const openDetail = async (rec: GenerationRecord) => {
   selected.value = rec
   drawerVisible.value = true
+  if (rec.raw_data) return // 已有详情数据，无需再取
+  detailLoading.value = true
+  try {
+    const full = await fetchGenerationRecordDetail(rec.id)
+    // 请求期间用户可能已切换到其它行，仅在同一条记录时合并
+    if (selected.value?.id === rec.id) {
+      selected.value = full
+    }
+  } catch (err) {
+    console.error(err)
+    ElMessage.error('加载详情失败')
+  } finally {
+    detailLoading.value = false
+  }
 }
 
 const prettyRawData = computed(() => {
@@ -429,15 +446,17 @@ onUnmounted(() => {
           </el-descriptions-item>
         </el-descriptions>
 
-        <div>
+        <div v-loading="detailLoading" element-loading-text="加载 raw_data 中…">
           <div class="flex items-center justify-between mb-2">
             <h4 class="text-sm font-medium text-ink-900">请求参数 (raw_data)</h4>
             <div class="flex gap-2">
               <el-button v-if="selected.uid" size="small" @click="copyUid(selected.uid)">复制 UID</el-button>
-              <el-button size="small" @click="copyText(selected.raw_data)">复制 JSON</el-button>
+              <el-button size="small" :disabled="!selected.raw_data" @click="selected.raw_data && copyText(selected.raw_data)">复制 JSON</el-button>
             </div>
           </div>
-          <pre class="bg-gray-50 rounded p-3 text-xs overflow-auto max-h-96"><code>{{ prettyRawData }}</code></pre>
+          <pre v-if="selected.raw_data" class="bg-gray-50 rounded p-3 text-xs overflow-auto max-h-96"><code>{{ prettyRawData }}</code></pre>
+          <div v-else-if="!detailLoading" class="bg-gray-50 rounded p-3 text-xs text-ink-400">无 raw_data</div>
+          <div v-else class="bg-gray-50 rounded p-3 h-24"></div>
         </div>
       </div>
     </el-drawer>

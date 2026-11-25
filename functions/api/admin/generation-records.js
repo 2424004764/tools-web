@@ -79,7 +79,7 @@ export async function onRequest(context) {
       .prepare(
         `SELECT r.id, r.uid, r.source, r.mode, r.model, r.status, r.cost,
                 r.result_url, r.error_message, r.duration_ms, r.upstream_duration_ms,
-                r.upstream_status, r.idempotency_key, r.tx_id, r.raw_data, r.created_at,
+                r.upstream_status, r.idempotency_key, r.tx_id, r.created_at,
                 u.email AS user_email, u.username AS user_name
          FROM generation_records r
          LEFT JOIN user u ON u.id = r.uid
@@ -92,15 +92,10 @@ export async function onRequest(context) {
 
     const totalPages = Math.ceil(total / pageSize)
 
-    // raw_data 是字符串，前端按需 JSON.parse；这里直接返回
-    const items = (list.results || []).map((row) => ({
-      ...row,
-      // 预解析 raw_data 方便前端用 computed 取字段；解析失败回退为字符串
-      raw_data_parsed: safeParse(row.raw_data),
-    }))
-
+    // 注意：列表不返回 raw_data（内含 upstream_response / base64 图片数据，单条可达数百 KB，
+    // 是整页响应膨胀到十几 MB、接口耗时数十秒的元凶）。详情按钮走 [id].js 按需取单条。
     return json({
-      list: items,
+      list: list.results || [],
       pagination: {
         total,
         page,
@@ -113,14 +108,5 @@ export async function onRequest(context) {
   } catch (error) {
     console.error('admin generation-records error:', error)
     return jsonError(error.message || '服务器错误', 500)
-  }
-}
-
-function safeParse(str) {
-  if (!str) return null
-  try {
-    return JSON.parse(str)
-  } catch {
-    return null
   }
 }
