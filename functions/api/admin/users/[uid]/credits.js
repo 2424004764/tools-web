@@ -50,6 +50,9 @@ export async function onRequest(context) {
     return jsonError('amount 必须是 1~1000000 的正整数', 400)
   }
 
+  // 扣费 UPDATE 已落库的标记：后续流水写入失败时需补偿回滚，避免"扣了钱没流水"。
+  // 声明在 try 外，catch 里才能读到。
+  let deductDone = false
   try {
     // 用户存在性
     const user = await db.prepare('SELECT id FROM user WHERE id = ?').bind(uid).first()
@@ -119,6 +122,7 @@ export async function onRequest(context) {
       if ((deduct?.meta?.changes ?? deduct?.changes ?? 0) === 0) {
         return jsonError(`扣减失败：余额不足（当前 ${currentBalance}，需扣减 ${amount}）`, 400)
       }
+      deductDone = true
       // 流水单独写：balance_after 用子查询取扣减后的真实余额（不依赖预读快照）
       stmts = [
         db
@@ -132,6 +136,7 @@ export async function onRequest(context) {
     }
 
     await db.batch(stmts)
+    deductDone = false // 流水已落库，无需补偿
 
     // 并发场景下预读的 newBalance 可能已过期，回读真实余额
     const after = await db
@@ -149,6 +154,24 @@ export async function onRequest(context) {
       created_at: now,
     })
   } catch (error) {
+    // 扣费已执行但流水写入失败：补偿回滚，避免"扣了钱没流水"
+    if (deductDone) {
+      try {
+        await db
+          .prepare(
+            `UPDATE user_credits
+             SET balance = balance + ?,
+                 total_spent = MAX(0, total_spent - ?),
+                 updated_at = ?
+             WHERE uid = ?`,
+          )
+          .bind(amount, amount, new Date().toISOString().slice(0, 19).replace('T', ' '), uid)
+          .run()
+        console.error('admin/credits deduct rolled back (tx insert failed):', error?.message || error)
+      } catch (e2) {
+        console.error('admin/credits compensate error:', e2)
+      }
+    }
     console.error('admin/credits error:', error)
     return jsonError(error.message || '服务器错误', 500)
   }

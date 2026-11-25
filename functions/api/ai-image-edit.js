@@ -64,9 +64,12 @@ function nowSql() {
 
 /**
  * 反向事务：上游失败时退积分。
- * UPDATE 同步 total_spent，INSERT 一条 type='reverse' 的流水关联原 txId。
- * 重试 3 次（指数退避）防 D1 瞬时故障；UNIQUE 约束 (related_tx_id) 自动防重复 reverse。
- * 失败属于严重事件（扣了但没退），必须告警。
+ * 先查是否已存在 reverse 流水（覆盖"reverse 成功但 finalize 被吞"的记录，防重复退款），
+ * 再用 db.batch（D1 事务，任一失败整体回滚）原子执行：
+ *   UPDATE 原子加回积分 → INSERT type='reverse' 流水关联原 txId
+ *   （balance_after 用 INSERT...SELECT 子查询取批内 UPDATE 后的真实余额）。
+ * UNIQUE 约束 (related_tx_id) 自动防重复 reverse；重试 3 次（指数退避）防 D1 瞬时故障，
+ * batch 原子性保证重试不会重复加钱。失败属于严重事件（扣了但没退），必须告警。
  *
  * 注意：idempotency_key 固定传 null，因为 reverse 用 related_tx_id 去重，
  * 且扣费流水已经用了同个 idempotency_key，UNIQUE(uid, idempotency_key) 会冲突。
@@ -76,58 +79,67 @@ async function reverseDeduction(env, uid, cost, relatedTxId, reason) {
   const now = nowSql()
   const reverseTxId = crypto.randomUUID()
 
-  const tryOnce = async () => {
-    // 先 UPDATE 原子加回积分（balance = balance + cost 无视并发），
-    // 再用 RETURNING 拿到更新后的真实余额写入流水，避免 SELECT + UPDATE 之间并发差。
-    const updateResult = await db
+  try {
+    // 已有 reverse 流水 → 积分已退过，直接幂等返回
+    const existed = await db
       .prepare(
-        `UPDATE user_credits
-         SET balance = balance + ?,
-             total_spent = CASE WHEN total_spent >= ? THEN total_spent - ? ELSE 0 END,
-             updated_at = ?
-         WHERE uid = ?
-         RETURNING balance`,
+        `SELECT 1 FROM credit_transactions
+         WHERE uid = ? AND related_tx_id = ? AND type = 'reverse' LIMIT 1`,
       )
-      .bind(cost, cost, cost, now, uid)
+      .bind(uid, relatedTxId)
       .first()
-    const actualBalance = updateResult?.balance ?? 0
-
-    // 再插入 reverse 流水（balance_after 用原子 UPDATE 后的真实值）
-    await db
-      .prepare(
-        `INSERT INTO credit_transactions
-         (id, uid, type, amount, balance_after, reason, operator_uid, source, related_tx_id, idempotency_key, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .bind(
-        reverseTxId, uid, 'reverse', cost, actualBalance,
-        reason, 'SYSTEM', 'tool', relatedTxId, null, now,
-      )
-      .run()
-  }
-
-  // 3 次重试，指数退避：200ms → 600ms → 1800ms
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    try {
-      await tryOnce()
-      console.log(`[ai-image-edit] reverse OK uid=${uid.slice(0, 8)} cost=${cost} reverseTxId=${reverseTxId} attempt=${attempt}`)
+    if (existed) {
+      console.log(`[ai-image-edit] reverse already exists (idempotent) uid=${uid.slice(0, 8)} relatedTxId=${relatedTxId}`)
       return
-    } catch (err) {
-      const msg = err?.message || ''
-      // UNIQUE 冲突：同 related_tx_id 已有 reverse（防重入）
-      if (/UNIQUE.*related_tx_id/i.test(msg)) {
-        console.log(`[ai-image-edit] reverse already exists (idempotent) uid=${uid.slice(0, 8)} relatedTxId=${relatedTxId}`)
+    }
+
+    // batch = 隐式事务：INSERT 撞 UNIQUE 时 UPDATE 一并回滚，重试不会双倍退款
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        await db.batch([
+          db
+            .prepare(
+              `UPDATE user_credits
+               SET balance = balance + ?,
+                   total_spent = CASE WHEN total_spent >= ? THEN total_spent - ? ELSE 0 END,
+                   updated_at = ?
+               WHERE uid = ?`,
+            )
+            .bind(cost, cost, cost, now, uid),
+          db
+            .prepare(
+              `INSERT INTO credit_transactions
+               (id, uid, type, amount, balance_after, reason, operator_uid, source, related_tx_id, idempotency_key, created_at)
+               SELECT ?, ?, ?, ?, (SELECT balance FROM user_credits WHERE uid = ?), ?, ?, ?, ?, ?, ?`,
+            )
+            .bind(
+              reverseTxId, uid, 'reverse', cost, uid,
+              reason, 'SYSTEM', 'tool', relatedTxId, null, now,
+            ),
+        ])
+        console.log(`[ai-image-edit] reverse OK uid=${uid.slice(0, 8)} cost=${cost} reverseTxId=${reverseTxId} attempt=${attempt}`)
         return
-      }
-      console.error(`[ai-image-edit] reverse attempt ${attempt} failed uid=${uid.slice(0, 8)} cost=${cost}`, msg)
-      if (attempt < 3) {
-        await new Promise((r) => setTimeout(r, 200 * 3 ** (attempt - 1)))
-      } else {
-        console.error('[ai-image-edit] REVERSE FAILED — MANUAL INTERVENTION REQUIRED', {
-          uid, cost, relatedTxId, reason, err: msg,
-        })
+      } catch (err) {
+        const msg = err?.message || ''
+        // UNIQUE 冲突：同 related_tx_id 已有 reverse（并发防重入，整批已回滚）
+        if (/UNIQUE.*related_tx_id/i.test(msg)) {
+          console.log(`[ai-image-edit] reverse already exists (idempotent) uid=${uid.slice(0, 8)} relatedTxId=${relatedTxId}`)
+          return
+        }
+        console.error(`[ai-image-edit] reverse attempt ${attempt} failed uid=${uid.slice(0, 8)} cost=${cost}`, msg)
+        if (attempt < 3) {
+          await new Promise((r) => setTimeout(r, 200 * 3 ** (attempt - 1)))
+        }
       }
     }
+    console.error('[ai-image-edit] REVERSE FAILED — MANUAL INTERVENTION REQUIRED', {
+      uid, cost, relatedTxId, reason,
+    })
+  } catch (err) {
+    console.error(`[ai-image-edit] reverse precheck failed uid=${uid.slice(0, 8)} relatedTxId=${relatedTxId}`, err?.message || err)
+    console.error('[ai-image-edit] REVERSE FAILED — MANUAL INTERVENTION REQUIRED', {
+      uid, cost, relatedTxId, reason,
+    })
   }
 }
 
@@ -314,6 +326,9 @@ export async function onRequest(context) {
       // "余额没扣、流水却记了 -cost"的幻影流水。
       txId = crypto.randomUUID()
       const now = nowSql()
+      // 扣费 UPDATE 是否已落库：仅当异常来自其后的流水 INSERT 时才允许补偿回滚，
+      // 防止"UPDATE 本身失败 → catch 里补偿凭空加钱"
+      let deducted = false
       try {
         const deduct = await db
           .prepare(
@@ -329,6 +344,7 @@ export async function onRequest(context) {
           const bal = await queryBalance(db, uid)
           return json({ ok: false, error: `积分余额不足：当前 ${bal}，本次需 ${cost}`, balance: bal }, 400)
         }
+        deducted = true
 
         // 流水的 balance_after 用子查询取扣费后的真实余额（不依赖预读快照）
         const logResult = await db
@@ -345,8 +361,28 @@ export async function onRequest(context) {
           typeof returned === 'number' ? returned : await queryBalance(db, uid)
         console.log(`[ai-image-edit] deduct OK uid=${uid.slice(0, 8)} model=${modelKey} cost=${cost} txId=${txId.slice(0, 8)} key=${idempotencyKey.slice(0, 8)}`)
       } catch (err) {
+        // 仅当扣费已落库才补偿/回滚；UPDATE 本身失败时钱没动，直接报错即可
+        if (!deducted) {
+          console.error('[ai-image-edit] deduct update failed (no money moved):', err)
+          return await errorJson(db, uid, '积分扣费失败，请稍后重试', 500)
+        }
         if (!String(err?.message || '').includes('UNIQUE constraint failed')) {
           console.error('[ai-image-edit] deduct error:', err)
+          // 流水写入失败但扣费已发生：补偿回滚本次扣减，避免"扣了钱没流水"
+          try {
+            await db
+              .prepare(
+                `UPDATE user_credits
+                 SET balance = balance + ?,
+                     total_spent = MAX(0, total_spent - ?),
+                     updated_at = ?
+                 WHERE uid = ?`,
+              )
+              .bind(cost, cost, now, uid)
+              .run()
+          } catch (e2) {
+            console.error('[ai-image-edit] deduct compensate error:', e2)
+          }
           return await errorJson(db, uid, '积分扣费失败，请稍后重试', 500)
         }
         // 同 Idempotency-Key 并发重试：另一请求已抢先完成扣费入库。

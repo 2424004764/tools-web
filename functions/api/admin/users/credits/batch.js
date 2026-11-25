@@ -143,6 +143,10 @@ export async function onRequest(context) {
     let balanceChangeTotal = 0 // |变动| 绝对值之和（审计用）
 
     for (const uid of targetUids) {
+      // 补偿状态声明在 try 外，catch 里才能读到：
+      // 扣费 UPDATE 已落库但流水写入失败时，回滚本 uid 的扣减，避免"扣了钱没流水"
+      let deductDone = false
+      let deductAmount = 0
       try {
         if (type === 'grant') {
           // grant: 增量语义 UPSERT（INSERT 值即增量，冲突路径累加），
@@ -192,6 +196,7 @@ export async function onRequest(context) {
             actual < amount
               ? (reasonText ? `${reasonText}（申请 ${amount}，实际 ${actual}）` : `批量扣减（申请 ${amount}，实际 ${actual}）`)
               : reasonText
+          deductAmount = actual
 
           // 扣费单独执行并检查 changes；命中 0 行直接记 failed，不留任何写入
           const deduct = await db
@@ -209,6 +214,7 @@ export async function onRequest(context) {
             failed.push({ uid, error: '余额不足或积分记录不存在（并发更新）' })
             continue
           }
+          deductDone = true
 
           // 流水单独写：balance_after 用子查询取扣减后的真实余额（不依赖预读快照）
           await db
@@ -219,12 +225,31 @@ export async function onRequest(context) {
             )
             .bind(txId, uid, -actual, uid, finalReason, operatorUid, now)
             .run()
+          deductDone = false
 
           succeeded++
           totalDelta -= actual
           balanceChangeTotal += actual
         }
       } catch (err) {
+        // 扣费已执行但流水写入失败：补偿回滚本 uid 的扣减
+        if (deductDone) {
+          try {
+            await db
+              .prepare(
+                `UPDATE user_credits
+                 SET balance = balance + ?,
+                     total_spent = MAX(0, total_spent - ?),
+                     updated_at = ?
+                 WHERE uid = ?`,
+              )
+              .bind(deductAmount, deductAmount, now, uid)
+              .run()
+            console.error('admin/credits/batch deduct rolled back (tx insert failed):', { uid, actual: deductAmount, err: err?.message || err })
+          } catch (e2) {
+            console.error('admin/credits/batch compensate error:', { uid, actual: deductAmount, e2: e2?.message || e2 })
+          }
+        }
         failed.push({ uid, error: err?.message || '未知错误' })
       }
     }

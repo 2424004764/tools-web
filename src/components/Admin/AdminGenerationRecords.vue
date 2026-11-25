@@ -206,18 +206,22 @@ const openDetail = async (rec: GenerationRecord) => {
   selected.value = rec
   drawerVisible.value = true
   if (rec.raw_data) return // 已有详情数据，无需再取
+  const rid = rec.id
   detailLoading.value = true
   try {
     const full = await fetchGenerationRecordDetail(rec.id)
     // 请求期间用户可能已切换到其它行，仅在同一条记录时合并
-    if (selected.value?.id === rec.id) {
+    if (selected.value?.id === rid) {
       selected.value = full
     }
   } catch (err) {
     console.error(err)
     ElMessage.error('加载详情失败')
   } finally {
-    detailLoading.value = false
+    // 仅当用户仍停留在本条记录时才收 loading，避免被切换前的旧请求提前关闭
+    if (selected.value?.id === rid) {
+      detailLoading.value = false
+    }
   }
 }
 

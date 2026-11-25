@@ -61,51 +61,68 @@ async function reverseDeduction(env, uid, cost, relatedTxId, reason) {
   const db = env.DB
   const now = nowSql()
   const reverseTxId = crypto.randomUUID()
-  const tryOnce = async () => {
-    const updateResult = await db
+
+  try {
+    // 已有 reverse 流水 → 积分已退过，直接幂等返回
+    const existed = await db
       .prepare(
-        `UPDATE user_credits
-         SET balance = balance + ?,
-             total_spent = CASE WHEN total_spent >= ? THEN total_spent - ? ELSE 0 END,
-             updated_at = ?
-         WHERE uid = ?
-         RETURNING balance`,
+        `SELECT 1 FROM credit_transactions
+         WHERE uid = ? AND related_tx_id = ? AND type = 'reverse' LIMIT 1`,
       )
-      .bind(cost, cost, cost, now, uid)
+      .bind(uid, relatedTxId)
       .first()
-    const actualBalance = updateResult?.balance ?? 0
-    await db
-      .prepare(
-        `INSERT INTO credit_transactions
-         (id, uid, type, amount, balance_after, reason, operator_uid, source, related_tx_id, idempotency_key, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .bind(
-        reverseTxId, uid, 'reverse', cost, actualBalance,
-        reason, 'SYSTEM', 'tool', relatedTxId, null, now,
-      )
-      .run()
-  }
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    try {
-      await tryOnce()
-      console.log(`[ai-outfit] reverse OK uid=${uid.slice(0, 8)} cost=${cost} reverseTxId=${reverseTxId}`)
+    if (existed) {
+      console.log(`[ai-outfit] reverse already exists uid=${uid.slice(0, 8)} relatedTxId=${relatedTxId}`)
       return
-    } catch (err) {
-      const msg = err?.message || ''
-      if (/UNIQUE.*related_tx_id/i.test(msg)) {
-        console.log(`[ai-outfit] reverse already exists uid=${uid.slice(0, 8)} relatedTxId=${relatedTxId}`)
+    }
+
+    // batch = 隐式事务：INSERT 撞 UNIQUE 时 UPDATE 一并回滚，重试不会双倍退款
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        await db.batch([
+          db
+            .prepare(
+              `UPDATE user_credits
+               SET balance = balance + ?,
+                   total_spent = CASE WHEN total_spent >= ? THEN total_spent - ? ELSE 0 END,
+                   updated_at = ?
+               WHERE uid = ?`,
+            )
+            .bind(cost, cost, cost, now, uid),
+          db
+            .prepare(
+              `INSERT INTO credit_transactions
+               (id, uid, type, amount, balance_after, reason, operator_uid, source, related_tx_id, idempotency_key, created_at)
+               SELECT ?, ?, ?, ?, (SELECT balance FROM user_credits WHERE uid = ?), ?, ?, ?, ?, ?, ?`,
+            )
+            .bind(
+              reverseTxId, uid, 'reverse', cost, uid,
+              reason, 'SYSTEM', 'tool', relatedTxId, null, now,
+            ),
+        ])
+        console.log(`[ai-outfit] reverse OK uid=${uid.slice(0, 8)} cost=${cost} reverseTxId=${reverseTxId}`)
         return
-      }
-      console.error(`[ai-outfit] reverse attempt ${attempt} failed uid=${uid.slice(0, 8)} cost=${cost}`, msg)
-      if (attempt < 3) {
-        await new Promise((r) => setTimeout(r, 200 * 3 ** (attempt - 1)))
-      } else {
-        console.error('[ai-outfit] REVERSE FAILED — MANUAL INTERVENTION REQUIRED', {
-          uid, cost, relatedTxId, reason, err: msg,
-        })
+      } catch (err) {
+        const msg = err?.message || ''
+        // UNIQUE 冲突：同 related_tx_id 已有 reverse（并发防重入，整批已回滚）
+        if (/UNIQUE.*related_tx_id/i.test(msg)) {
+          console.log(`[ai-outfit] reverse already exists uid=${uid.slice(0, 8)} relatedTxId=${relatedTxId}`)
+          return
+        }
+        console.error(`[ai-outfit] reverse attempt ${attempt} failed uid=${uid.slice(0, 8)} cost=${cost}`, msg)
+        if (attempt < 3) {
+          await new Promise((r) => setTimeout(r, 200 * 3 ** (attempt - 1)))
+        }
       }
     }
+    console.error('[ai-outfit] REVERSE FAILED — MANUAL INTERVENTION REQUIRED', {
+      uid, cost, relatedTxId, reason,
+    })
+  } catch (err) {
+    console.error(`[ai-outfit] reverse precheck failed uid=${uid.slice(0, 8)} relatedTxId=${relatedTxId}`, err?.message || err)
+    console.error('[ai-outfit] REVERSE FAILED — MANUAL INTERVENTION REQUIRED', {
+      uid, cost, relatedTxId, reason,
+    })
   }
 }
 
@@ -342,9 +359,14 @@ export async function onRequest(context) {
 
       txId = crypto.randomUUID()
       const now = nowSql()
-      balanceAfter = currentBalance - cost
-      const deductResults = await db.batch([
-        db
+      // 扣费 UPDATE 是否已落库：仅当异常来自其后的流水 INSERT 时才允许补偿回滚，
+      // 防止"UPDATE 本身失败 → catch 里补偿凭空加钱"
+      let deducted = false
+      try {
+        // 条件 UPDATE 单独执行并检查 changes，不能放进 batch：
+        // D1 batch 只在语句 SQL 报错时回滚，"UPDATE 命中 0 行"不报错，
+        // 并发下扣到 0 行时会出现"余额没扣、流水却记了 -cost"的幻影流水。
+        const deduct = await db
           .prepare(
             `UPDATE user_credits
              SET balance = balance - ?,
@@ -352,21 +374,87 @@ export async function onRequest(context) {
                  updated_at = ?
              WHERE uid = ? AND balance >= ?`,
           )
-          .bind(cost, cost, now, uid, cost),
-        db
+          .bind(cost, cost, now, uid, cost)
+          .run()
+        if ((deduct?.meta?.changes ?? deduct?.changes ?? 0) === 0) {
+          return await errorJson(db, uid, '积分余额不足', 400)
+        }
+        deducted = true
+
+        // 流水的 balance_after 用子查询取扣费后的真实余额（不依赖预读快照）
+        const logResult = await db
           .prepare(
             `INSERT INTO credit_transactions
              (id, uid, type, amount, balance_after, reason, operator_uid, source, idempotency_key, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             VALUES (?, ?, 'deduct', ?, (SELECT balance FROM user_credits WHERE uid = ?), ?, ?, 'tool', ?, ?)
+             RETURNING balance_after`,
           )
-          .bind(txId, uid, 'deduct', -cost, balanceAfter, `ai-outfit:${modelKey}:${mode}`, uid, 'tool', idempotencyKey, now),
-      ])
-
-      const changes = deductResults[0]?.meta?.changes ?? deductResults[0]?.changes ?? 0
-      if (changes === 0) {
-        return await errorJson(db, uid, '积分余额不足', 400)
+          .bind(txId, uid, -cost, uid, `ai-outfit:${modelKey}:${mode}`, uid, idempotencyKey, now)
+          .run()
+        const returned = logResult?.results?.[0]?.balance_after
+        balanceAfter =
+          typeof returned === 'number' ? returned : await queryBalance(db, uid)
+        console.log(`[ai-outfit] deduct OK uid=${uid.slice(0, 8)} model=${modelKey} cost=${cost} txId=${txId.slice(0, 8)} key=${idempotencyKey.slice(0, 8)}`)
+      } catch (err) {
+        // 仅当扣费已落库才补偿/回滚；UPDATE 本身失败时钱没动，直接报错即可
+        if (!deducted) {
+          console.error('[ai-outfit] deduct update failed (no money moved):', err)
+          return await errorJson(db, uid, '积分扣费失败，请稍后重试', 500)
+        }
+        if (!String(err?.message || '').includes('UNIQUE constraint failed')) {
+          // 流水写入失败但扣费已发生：补偿回滚本次扣减，避免"扣了钱没流水"
+          console.error('[ai-outfit] deduct error:', err)
+          try {
+            await db
+              .prepare(
+                `UPDATE user_credits
+                 SET balance = balance + ?,
+                     total_spent = MAX(0, total_spent - ?),
+                     updated_at = ?
+                 WHERE uid = ?`,
+              )
+              .bind(cost, cost, now, uid)
+              .run()
+          } catch (e2) {
+            console.error('[ai-outfit] deduct compensate error:', e2)
+          }
+          return await errorJson(db, uid, '积分扣费失败，请稍后重试', 500)
+        }
+        // 同 Idempotency-Key 并发重试：另一请求已抢先完成扣费入库。
+        // 回退本次已扣的费，复用已入库的那条 deduct 流水。
+        try {
+          await db
+            .prepare(
+              `UPDATE user_credits
+               SET balance = balance + ?,
+                   total_spent = MAX(0, total_spent - ?),
+                   updated_at = ?
+               WHERE uid = ?`,
+            )
+            .bind(cost, cost, now, uid)
+            .run()
+          const winner = await db
+            .prepare(
+              `SELECT id, balance_after FROM credit_transactions
+               WHERE uid = ? AND idempotency_key = ? AND type = 'deduct'
+               ORDER BY created_at DESC LIMIT 1`,
+            )
+            .bind(uid, idempotencyKey)
+            .first()
+          if (!winner) {
+            console.error('[ai-outfit] idempotent race but no prior deduct found:', err)
+            return await errorJson(db, uid, '积分扣费失败，请稍后重试', 500)
+          }
+          txId = winner.id
+          balanceAfter = winner.balance_after
+          reusedDeduct = true
+          console.log(`[ai-outfit] idempotent-race-reuse uid=${uid.slice(0, 8)} key=${idempotencyKey.slice(0, 8)}`)
+        } catch (e2) {
+          // 回退失败属异常路径：记日志供人工对账（可能双扣），保证返回 JSON
+          console.error('[ai-outfit] idempotent-race refund error:', e2)
+          return await errorJson(db, uid, '积分扣费异常，请联系管理员核对流水', 500)
+        }
       }
-      console.log(`[ai-outfit] deduct OK uid=${uid.slice(0, 8)} model=${modelKey} cost=${cost} txId=${txId.slice(0, 8)} key=${idempotencyKey.slice(0, 8)}`)
     }
   }
 
