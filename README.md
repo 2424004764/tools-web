@@ -517,6 +517,7 @@ wrangler d1 execute tools-web-db --command \
 - 短链接生成器
 - 退休倒计时
 - 辈分称谓计算
+- 音频剪辑器（波形裁剪、淡入淡出，导出 MP3/OGG/WAV）
 
 ### AI 工具
 - AI对话

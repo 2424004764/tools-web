@@ -65,6 +65,8 @@ interface Template {
   shape?: 'rectangle' | 'circle'
   /** 聊天头像模板：绘制左右聊天气泡 */
   chat?: boolean
+  /** 自由拼贴模板：空画布，图片数量不限，自由拖动/旋转/缩放/调层级 */
+  free?: boolean
 }
 
 // ========== 模板生成器 ==========
@@ -279,6 +281,16 @@ const buildTemplates = (): Template[] => {
   // === 拼贴卡片（旋转/叠加/边框/阴影）===
   idCounter = 0
   result.push(
+    // 自由拼贴：空画布入口，图片数量不限，上传后自由拖动/旋转/缩放
+    {
+      key: 'collage-free',
+      type: 'collage',
+      free: true,
+      gridCols: 1,
+      gridRows: 1,
+      slots: [],
+      elements: [],
+    },
     // 2 张卡片对角叠加（左上 + 右下，重心居中）
     {
       key: 'collage-2-overlap',
@@ -596,10 +608,319 @@ const resetPosition = (slotId: string) => {
 
 const resetAll = () => {
   slotImages.value = {}
+  freeItems.value = []
+  selectedFreeId.value = null
+}
+
+// ========== 自由拼贴模式：图片数量不限，自由拖动/旋转/缩放 ==========
+interface FreeItem {
+  id: string
+  /** 图片 dataURL */
+  src: string
+  /** 画布 X 位置百分比 0-100（元素中心点 x） */
+  x: number
+  /** 画布 Y 位置百分比 0-100（元素中心点 y） */
+  y: number
+  /** 元素宽度百分比（相对画布宽） */
+  width: number
+  /** 元素高度百分比（相对画布高） */
+  height: number
+  /** 旋转角度（度，-180 ~ 180） */
+  rotation: number
+  /** 层级，数字越大越上层 */
+  zIndex: number
+  /** 拍立得白边宽度（导出画布 px） */
+  borderWidth: number
+  borderColor: string
+  shadow: boolean
+}
+
+const freeItems = ref<FreeItem[]>([])
+const selectedFreeId = ref<string | null>(null)
+const freeCanvasEl = ref<HTMLElement | null>(null)
+const freeFileInput = ref<HTMLInputElement | null>(null)
+/** 非空时表示正在替换某张图片而非新增 */
+const freeReplaceTarget = ref<string | null>(null)
+let freeIdCounter = 0
+
+const isFreeMode = computed(() => !!currentTemplate.value.free)
+const selectedFreeItem = computed(() => freeItems.value.find((i) => i.id === selectedFreeId.value) || null)
+const sortedFreeItems = computed(() => [...freeItems.value].sort((a, b) => a.zIndex - b.zIndex))
+
+const clampNum = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v))
+const normalizeDeg = (deg: number) => (((deg + 180) % 360) + 360) % 360 - 180
+
+// 旋转后包围盒：rw 占画布宽 %、rh 占画布高 %（ratio 为画布宽/高，非正方形时百分比单位需换算）
+const freeBoxOf = (item: FreeItem, ratio: number) => {
+  const rad = (item.rotation * Math.PI) / 180
+  const cos = Math.abs(Math.cos(rad))
+  const sin = Math.abs(Math.sin(rad))
+  const wU = item.width
+  const hU = item.height / ratio
+  return {
+    rw: wU * cos + hU * sin,
+    rh: (wU * sin + hU * cos) * ratio,
+  }
+}
+
+// 限制元素中心点，使旋转后的包围盒完整保留在画布内（导出时不被裁切）
+const clampFreeCenter = (item: FreeItem, ratio = 1) => {
+  const { rw, rh } = freeBoxOf(item, ratio)
+  item.x = clampNum(item.x, Math.min(rw / 2, 50), Math.max(100 - rw / 2, 50))
+  item.y = clampNum(item.y, Math.min(rh / 2, 50), Math.max(100 - rh / 2, 50))
+}
+
+// 包围盒超出画布时等比缩小，保证任意旋转角度下都完整可见
+const fitFreeItemInside = (item: FreeItem, ratio: number) => {
+  const { rw, rh } = freeBoxOf(item, ratio)
+  const f = Math.min(rw > 0 ? 100 / rw : 1, rh > 0 ? 100 / rh : 1, 1)
+  if (f < 1) {
+    item.width *= f
+    item.height *= f
+  }
+}
+
+const freeCanvasRatio = () => {
+  const rect = freeCanvasEl.value?.getBoundingClientRect()
+  return rect && rect.width > 0 && rect.height > 0 ? rect.width / rect.height : 1
+}
+
+// 窗口尺寸变化后画幅随之改变，重新收紧所有图片
+const refitAllFreeItems = () => {
+  if (!isFreeMode.value || freeItems.value.length === 0) return
+  const ratio = freeCanvasRatio()
+  freeItems.value.forEach((item) => {
+    fitFreeItemInside(item, ratio)
+    clampFreeCenter(item, ratio)
+  })
+}
+
+// 新图默认居中偏移 + 轻微随机旋转，按原图比例适配到画布（非正方形画幅不变形）
+const addFreeImage = (src: string) => {
+  const img = new Image()
+  img.onload = () => {
+    const imgRatio = img.width / img.height || 1
+    const rect = freeCanvasEl.value?.getBoundingClientRect()
+    const cW = rect?.width || 1000
+    const cH = rect?.height || 1000
+    // 先按画布宽 42% 定宽，超高则按画布高 52% 定高
+    let pxW = 0.42 * cW
+    let pxH = pxW / imgRatio
+    if (pxH > 0.52 * cH) {
+      pxH = 0.52 * cH
+      pxW = pxH * imgRatio
+    }
+    const maxZ = freeItems.value.reduce((m, i) => Math.max(m, i.zIndex), 0)
+    freeIdCounter += 1
+    const id = `f${freeIdCounter}`
+    const it: FreeItem = {
+      id,
+      src,
+      x: 50 + (Math.random() * 16 - 8),
+      y: 50 + (Math.random() * 16 - 8),
+      width: (pxW / cW) * 100,
+      height: (pxH / cH) * 100,
+      rotation: Math.round(Math.random() * 16 - 8),
+      zIndex: maxZ + 1,
+      borderWidth: 10,
+      borderColor: '#ffffff',
+      shadow: true,
+    }
+    clampFreeCenter(it, freeCanvasRatio())
+    freeItems.value.push(it)
+    selectedFreeId.value = id
+  }
+  img.src = src
+}
+
+const replaceFreeImage = (id: string, src: string) => {
+  const item = freeItems.value.find((i) => i.id === id)
+  if (item) item.src = src
+}
+
+const removeFreeItem = (id: string) => {
+  freeItems.value = freeItems.value.filter((i) => i.id !== id)
+  if (selectedFreeId.value === id) selectedFreeId.value = null
+}
+
+const removeSelectedFreeItem = () => {
+  if (selectedFreeId.value) removeFreeItem(selectedFreeId.value)
+}
+
+const triggerFreeUpload = () => freeFileInput.value?.click()
+
+const triggerFreeReplace = (id: string) => {
+  freeReplaceTarget.value = id
+  freeFileInput.value?.click()
+}
+
+const handleFreeFiles = (files: FileList | File[] | null) => {
+  if (!files || !files.length) return
+  const target = freeReplaceTarget.value
+  freeReplaceTarget.value = null
+  Array.from(files).forEach((file, i) => {
+    if (!file.type.startsWith('image/')) {
+      ElMessage.warning('请上传图片文件')
+      return
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      ElMessage.warning('图片不能超过 20MB')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => {
+      // 替换模式：第一张塞进目标图片，其余照常新增
+      if (i === 0 && target) replaceFreeImage(target, reader.result as string)
+      else addFreeImage(reader.result as string)
+    }
+    reader.readAsDataURL(file)
+  })
+}
+
+const onFreeInputChange = (e: Event) => {
+  const input = e.target as HTMLInputElement
+  handleFreeFiles(input.files)
+  input.value = ''
+}
+
+const onFreeDrop = (e: DragEvent) => {
+  handleFreeFiles(e.dataTransfer?.files ?? null)
+}
+
+// === 画布内拖动 / 旋转 / 缩放（mouse + touch 统一处理）===
+const freeDrag = reactive({
+  mode: '' as '' | 'move' | 'rotate' | 'scale',
+  id: '',
+  startX: 0,
+  startY: 0,
+  startItemX: 0,
+  startItemY: 0,
+  startWidth: 0,
+  startHeight: 0,
+  /** 元素中心点屏幕坐标（旋转/缩放基准） */
+  centerClientX: 0,
+  centerClientY: 0,
+  startPointerAngle: 0,
+  startRotation: 0,
+  startDist: 1,
+})
+
+const getCanvasRect = () => freeCanvasEl.value?.getBoundingClientRect() || null
+
+const onFreeItemPointerDown = (item: FreeItem, e: MouseEvent | TouchEvent) => {
+  e.preventDefault()
+  const point = 'touches' in e ? e.touches[0] : (e as MouseEvent)
+  if (!point) return
+  selectedFreeId.value = item.id
+  freeDrag.mode = 'move'
+  freeDrag.id = item.id
+  freeDrag.startX = point.clientX
+  freeDrag.startY = point.clientY
+  freeDrag.startItemX = item.x
+  freeDrag.startItemY = item.y
+}
+
+const onFreeRotateDown = (e: MouseEvent | TouchEvent) => {
+  const item = selectedFreeItem.value
+  const point = 'touches' in e ? e.touches[0] : (e as MouseEvent)
+  const rect = getCanvasRect()
+  if (!item || !point || !rect) return
+  e.preventDefault()
+  const cx = rect.left + (item.x / 100) * rect.width
+  const cy = rect.top + (item.y / 100) * rect.height
+  freeDrag.mode = 'rotate'
+  freeDrag.id = item.id
+  freeDrag.centerClientX = cx
+  freeDrag.centerClientY = cy
+  freeDrag.startPointerAngle = Math.atan2(point.clientY - cy, point.clientX - cx)
+  freeDrag.startRotation = item.rotation
+}
+
+const onFreeScaleDown = (e: MouseEvent | TouchEvent) => {
+  const item = selectedFreeItem.value
+  const point = 'touches' in e ? e.touches[0] : (e as MouseEvent)
+  const rect = getCanvasRect()
+  if (!item || !point || !rect) return
+  e.preventDefault()
+  const cx = rect.left + (item.x / 100) * rect.width
+  const cy = rect.top + (item.y / 100) * rect.height
+  freeDrag.mode = 'scale'
+  freeDrag.id = item.id
+  freeDrag.centerClientX = cx
+  freeDrag.centerClientY = cy
+  freeDrag.startDist = Math.max(1, Math.hypot(point.clientX - cx, point.clientY - cy))
+  freeDrag.startWidth = item.width
+  freeDrag.startHeight = item.height
+}
+
+const onFreeDragMove = (e: MouseEvent | TouchEvent) => {
+  if (!freeDrag.mode) return
+  const item = freeItems.value.find((i) => i.id === freeDrag.id)
+  const rect = getCanvasRect()
+  if (!item || !rect) return
+  const point = 'touches' in e ? e.touches[0] : (e as MouseEvent)
+  if (!point) return
+  if ('touches' in e) e.preventDefault()
+  const ratio = rect.width / rect.height
+  if (freeDrag.mode === 'move') {
+    const dxPct = ((point.clientX - freeDrag.startX) / rect.width) * 100
+    const dyPct = ((point.clientY - freeDrag.startY) / rect.height) * 100
+    item.x = freeDrag.startItemX + dxPct
+    item.y = freeDrag.startItemY + dyPct
+    clampFreeCenter(item, ratio)
+  } else if (freeDrag.mode === 'rotate') {
+    const angle = Math.atan2(point.clientY - freeDrag.centerClientY, point.clientX - freeDrag.centerClientX)
+    let deg = freeDrag.startRotation + (angle - freeDrag.startPointerAngle) * (180 / Math.PI)
+    // 就近吸附到 45° 整数倍，方便摆正；其余角度自由
+    const snap = Math.round(deg / 45) * 45
+    if (Math.abs(deg - snap) < 4) deg = snap
+    item.rotation = Math.round(normalizeDeg(deg) * 10) / 10
+    fitFreeItemInside(item, ratio)
+    clampFreeCenter(item, ratio)
+  } else if (freeDrag.mode === 'scale') {
+    const dist = Math.hypot(point.clientX - freeDrag.centerClientX, point.clientY - freeDrag.centerClientY)
+    const factor = dist / freeDrag.startDist
+    const aspect = freeDrag.startWidth / freeDrag.startHeight || 1
+    const w = clampNum(freeDrag.startWidth * factor, 8, 160)
+    item.width = w
+    item.height = w / aspect
+    fitFreeItemInside(item, ratio)
+    clampFreeCenter(item, ratio)
+  }
+}
+
+const onFreeDragEnd = () => {
+  freeDrag.mode = ''
+  freeDrag.id = ''
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('mousemove', onFreeDragMove)
+  window.addEventListener('mouseup', onFreeDragEnd)
+  window.addEventListener('touchmove', onFreeDragMove, { passive: false })
+  window.addEventListener('touchend', onFreeDragEnd)
+  window.addEventListener('resize', refitAllFreeItems)
+}
+
+// === 层级调整：重排顺序后按 1..n 重编号 ===
+const freeLayerOp = (id: string, op: 'top' | 'up' | 'down' | 'bottom') => {
+  const list = sortedFreeItems.value
+  const idx = list.findIndex((i) => i.id === id)
+  if (idx < 0) return
+  const next = [...list]
+  const [it] = next.splice(idx, 1)
+  if (op === 'top') next.push(it)
+  else if (op === 'bottom') next.unshift(it)
+  else if (op === 'up') next.splice(Math.min(next.length, idx + 1), 0, it)
+  else next.splice(Math.max(0, idx - 1), 0, it)
+  next.forEach((item, i) => {
+    item.zIndex = i + 1
+  })
 }
 
 // === 切模板时清理超出槽位 ===
 watch(currentTemplate, () => {
+  if (currentTemplate.value.free) return
   const validIds = new Set(currentTemplate.value.slots.map((s) => s.id))
   const next: Record<string, string> = {}
   Object.keys(slotImages.value).forEach((k) => {
@@ -621,24 +942,77 @@ watch(selectedCategory, (cat) => {
 
 // === 实时合成画布到 dataURL（不依赖 previewSrc） ===
 const renderToDataURL = async (): Promise<string> => {
-  if (filledCount.value === 0) return ''
+  const hasContent = isFreeMode.value ? freeItems.value.length > 0 : filledCount.value > 0
+  if (!hasContent) return ''
   const tpl = currentTemplate.value
-  // 普通拼图保持正方形；聊天模板使用横向画布，避免下载后被固定成正方形
+  // 普通拼图保持正方形；聊天模板横向；自由拼贴画幅与预览画布一致（长边 1200），所见即所得
   const L = 1200
-  const canvasHeight = tpl.chat ? 900 : L
+  let W = L
+  let H = tpl.chat ? 900 : L
+  if (isFreeMode.value) {
+    const rect = freeCanvasEl.value?.getBoundingClientRect()
+    if (rect && rect.width > 0 && rect.height > 0) {
+      const s = L / Math.max(rect.width, rect.height)
+      W = Math.max(1, Math.round(rect.width * s))
+      H = Math.max(1, Math.round(rect.height * s))
+    }
+  }
   const canvas = document.createElement('canvas')
-  canvas.width = L
-  canvas.height = canvasHeight
+  canvas.width = W
+  canvas.height = H
   const ctx = canvas.getContext('2d')!
   ctx.fillStyle = bgColor.value
-  ctx.fillRect(0, 0, L, canvasHeight)
+  ctx.fillRect(0, 0, W, H)
 
-  if (tpl.type === 'collage' && tpl.elements) {
-    await renderCollage(ctx, tpl.elements, L, canvasHeight)
+  if (isFreeMode.value) {
+    await renderFreeCollage(ctx, W, H)
+  } else if (tpl.type === 'collage' && tpl.elements) {
+    await renderCollage(ctx, tpl.elements, W, H)
   } else {
     await renderGrid(ctx, tpl, L)
   }
   return canvas.toDataURL('image/png')
+}
+
+// === 自由拼贴渲染：按层级绘制每张图片（旋转/白边/阴影） ===
+const renderFreeCollage = async (ctx: CanvasRenderingContext2D, W: number, H: number) => {
+  for (const item of sortedFreeItems.value) {
+    await new Promise<void>((resolve) => {
+      const img = new Image()
+      img.onload = () => {
+        const cx = (item.x / 100) * W
+        const cy = (item.y / 100) * H
+        const w = (item.width / 100) * W
+        const h = (item.height / 100) * H
+        ctx.save()
+        ctx.translate(cx, cy)
+        if (item.rotation) {
+          ctx.rotate((item.rotation * Math.PI) / 180)
+        }
+        if (item.shadow) {
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.25)'
+          ctx.shadowBlur = 24
+          ctx.shadowOffsetX = 6
+          ctx.shadowOffsetY = 8
+        }
+        // 拍立得白边
+        if (item.borderWidth && item.borderColor) {
+          const bw = item.borderWidth
+          ctx.fillStyle = item.borderColor
+          ctx.fillRect(-w / 2 - bw, -h / 2 - bw, w + 2 * bw, h + 2 * bw)
+        }
+        ctx.shadowColor = 'transparent'
+        ctx.shadowBlur = 0
+        ctx.shadowOffsetX = 0
+        ctx.shadowOffsetY = 0
+        ctx.drawImage(img, -w / 2, -h / 2, w, h)
+        ctx.restore()
+        resolve()
+      }
+      img.onerror = () => resolve()
+      img.src = item.src
+    })
+  }
 }
 
 // === 网格模板渲染：按 gridCols/gridRows 等分 cell ===
@@ -829,7 +1203,8 @@ const downloadMerged = async () => {
 
 // === 打包下载每张 ===
 const downloadZip = async () => {
-  if (filledCount.value === 0) {
+  const hasContent = isFreeMode.value ? freeItems.value.length > 0 : filledCount.value > 0
+  if (!hasContent) {
     ElMessage.warning('请先上传图片')
     return
   }
@@ -843,10 +1218,16 @@ const downloadZip = async () => {
   // 单图
   const folder = zip.folder('images')
   if (folder) {
-    Object.keys(slotImages.value).forEach((slotId, idx) => {
-      const data = slotImages.value[slotId].split(',')[1]
-      folder.file(`slot_${idx + 1}_${slotId}.png`, data, { base64: true })
-    })
+    if (isFreeMode.value) {
+      freeItems.value.forEach((item, idx) => {
+        folder.file(`image_${idx + 1}_${item.id}.png`, item.src.split(',')[1], { base64: true })
+      })
+    } else {
+      Object.keys(slotImages.value).forEach((slotId, idx) => {
+        const data = slotImages.value[slotId].split(',')[1]
+        folder.file(`slot_${idx + 1}_${slotId}.png`, data, { base64: true })
+      })
+    }
   }
   const content = await zip.generateAsync({ type: 'blob' })
   const link = document.createElement('a')
@@ -902,7 +1283,7 @@ const groupedTemplates = computed(() => {
     <div class="p-4 rounded-2xl bg-white">
       <!-- 顶部工具条 -->
       <div class="flex flex-wrap items-center gap-3 mb-4">
-        <el-button type="warning" plain size="small" @click="resetAll" :disabled="filledCount === 0">
+        <el-button type="warning" plain size="small" @click="resetAll" :disabled="isFreeMode ? freeItems.length === 0 : filledCount === 0">
           <el-icon class="mr-1"><RefreshIcon /></el-icon>
           清空全部
         </el-button>
@@ -980,6 +1361,18 @@ const groupedTemplates = computed(() => {
                       }"
                     ></div>
                   </div>
+                  <!-- 自由拼贴：入口卡片 -->
+                  <div
+                    v-else-if="t.free"
+                    class="w-full rounded border-2 border-dashed flex flex-col items-center justify-center gap-1 transition"
+                    :class="currentTemplate.key === t.key
+                      ? 'border-blue-400 bg-blue-100/70'
+                      : 'border-blue-300 bg-blue-50/50'"
+                    style="aspect-ratio: 1 / 1;"
+                  >
+                    <el-icon class="text-2xl text-blue-400"><PlusIcon /></el-icon>
+                    <span class="text-[10px] font-medium text-blue-400">自由拼贴</span>
+                  </div>
                   <!-- 拼贴模板：按 elements 绝对定位，旋转/边框/阴影，允许溢出 -->
                   <div
                     v-else
@@ -1022,15 +1415,17 @@ const groupedTemplates = computed(() => {
         <!-- 右侧：模板对应的上传区 + 预览 -->
         <div class="flex-1 min-w-0">
           <div class="text-sm font-medium mb-2 text-gray-700 flex items-center justify-between gap-2 flex-wrap">
-            <div class="flex items-center gap-3">
-              <span>
-                当前模板（{{ currentTemplate.slots.length }} 个槽位）
-              </span>
-              <span class="text-xs text-gray-500">
-                已上传 {{ filledCount }} / {{ currentTemplate.slots.length }}
-              </span>
+            <div class="flex items-center gap-3 flex-wrap">
+              <template v-if="isFreeMode">
+                <span>自由拼贴（{{ freeItems.length }} 张图片）</span>
+                <span class="text-xs text-gray-500 font-normal">拖动移动 · 顶部手柄旋转 · 右下角手柄缩放</span>
+              </template>
+              <template v-else>
+                <span>当前模板（{{ currentTemplate.slots.length }} 个槽位）</span>
+                <span class="text-xs text-gray-500">已上传 {{ filledCount }} / {{ currentTemplate.slots.length }}</span>
+              </template>
             </div>
-            <div v-if="filledCount > 0" class="flex gap-2">
+            <div v-if="isFreeMode ? freeItems.length > 0 : filledCount > 0" class="flex gap-2">
               <el-button type="primary" size="small" @click="downloadMerged">
                 <el-icon class="mr-1"><DownloadIcon /></el-icon>
                 下载合并图
@@ -1047,9 +1442,125 @@ const groupedTemplates = computed(() => {
             class="rounded-xl p-3 flex justify-center items-center self-stretch transition-colors"
             :style="{ backgroundColor: bgColor }"
           >
+            <!-- 自由拼贴：空画布 + 自由拖动/旋转/缩放 -->
+            <div v-if="isFreeMode" class="w-full flex flex-col items-center gap-2">
+              <div class="w-full flex items-center gap-3 flex-wrap">
+                <el-button type="primary" size="small" @click="triggerFreeUpload">
+                  <el-icon class="mr-1"><PlusIcon /></el-icon>
+                  添加图片
+                </el-button>
+                <span class="text-xs text-gray-500">支持多选 / 把图片拖进画布；点击图片选中后可编辑</span>
+              </div>
+              <div
+                ref="freeCanvasEl"
+                class="relative select-none"
+                :style="{
+                  width: '100%',
+                  height: 'max(calc(100vh - 360px), 320px)',
+                }"
+                @dragover.prevent
+                @drop.prevent="onFreeDrop"
+                @mousedown.self="selectedFreeId = null"
+                @touchstart.self="selectedFreeId = null"
+              >
+                <!-- 空画布提示 -->
+                <div
+                  v-if="freeItems.length === 0"
+                  class="absolute inset-0 flex flex-col items-center justify-center gap-1 text-gray-400 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:text-blue-500 hover:border-blue-300 transition"
+                  @click="triggerFreeUpload"
+                >
+                  <el-icon class="text-4xl mb-1"><PlusIcon /></el-icon>
+                  <div class="text-sm">点击上传图片</div>
+                  <div class="text-xs text-gray-400">支持多选，也可把图片拖进画布</div>
+                </div>
+
+                <!-- 图片元素：中心点定位 + 平移 + 旋转 -->
+                <div
+                  v-for="item in sortedFreeItems"
+                  :key="item.id"
+                  class="absolute"
+                  :style="{
+                    left: item.x + '%',
+                    top: item.y + '%',
+                    width: item.width + '%',
+                    height: item.height + '%',
+                    transform: `translate(-50%, -50%) rotate(${item.rotation}deg)`,
+                    zIndex: item.zIndex,
+                    cursor: freeDrag.mode === 'move' && freeDrag.id === item.id ? 'grabbing' : 'move',
+                  }"
+                  @mousedown="onFreeItemPointerDown(item, $event)"
+                  @touchstart="onFreeItemPointerDown(item, $event)"
+                >
+                  <!-- 拍立得白边 + 阴影 -->
+                  <div
+                    class="absolute rounded-sm"
+                    :style="{
+                      inset: `-${Math.max(2, item.borderWidth / 12)}%`,
+                      backgroundColor: item.borderColor,
+                      boxShadow: item.shadow ? '0 4px 12px rgba(0, 0, 0, 0.25)' : 'none',
+                    }"
+                  ></div>
+                  <img
+                    :src="item.src"
+                    :alt="`图片 ${item.id}`"
+                    class="relative w-full h-full object-cover pointer-events-none select-none rounded-sm"
+                    draggable="false"
+                  />
+                </div>
+
+                <!-- 选中态：虚线框 + 旋转/缩放/删除手柄（跟随旋转） -->
+                <div
+                  v-if="selectedFreeItem"
+                  class="absolute pointer-events-none"
+                  :style="{
+                    left: selectedFreeItem.x + '%',
+                    top: selectedFreeItem.y + '%',
+                    width: selectedFreeItem.width + '%',
+                    height: selectedFreeItem.height + '%',
+                    transform: `translate(-50%, -50%) rotate(${selectedFreeItem.rotation}deg)`,
+                    zIndex: 999,
+                  }"
+                >
+                  <div class="absolute inset-0 border-2 border-dashed border-blue-400 rounded-sm"></div>
+                  <!-- 连接线 -->
+                  <div class="absolute left-1/2 -translate-x-1/2 w-0.5 bg-blue-400" :style="{ top: '-22px', height: '22px' }"></div>
+                  <!-- 旋转手柄 -->
+                  <div
+                    class="absolute left-1/2 -translate-x-1/2 -top-8 w-5 h-5 rounded-full bg-blue-500 border-2 border-white shadow pointer-events-auto cursor-grab flex items-center justify-center"
+                    @mousedown.stop.prevent="onFreeRotateDown($event)"
+                    @touchstart.stop.prevent="onFreeRotateDown($event)"
+                  >
+                    <el-icon class="text-white" :size="10"><RefreshIcon /></el-icon>
+                  </div>
+                  <!-- 缩放手柄 -->
+                  <div
+                    class="absolute -right-2.5 -bottom-2.5 w-5 h-5 rounded-full bg-white border-2 border-blue-500 shadow pointer-events-auto cursor-nwse-resize"
+                    @mousedown.stop.prevent="onFreeScaleDown($event)"
+                    @touchstart.stop.prevent="onFreeScaleDown($event)"
+                  ></div>
+                  <!-- 删除 -->
+                  <div
+                    class="absolute -right-2.5 -top-2.5 w-5 h-5 rounded-full bg-red-500 text-white shadow pointer-events-auto cursor-pointer flex items-center justify-center"
+                    @mousedown.stop.prevent="removeSelectedFreeItem"
+                    @touchstart.stop.prevent="removeSelectedFreeItem"
+                  >
+                    <el-icon :size="10"><DeleteIcon /></el-icon>
+                  </div>
+                </div>
+
+                <input
+                  ref="freeFileInput"
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  class="hidden"
+                  @change="onFreeInputChange"
+                />
+              </div>
+            </div>
             <!-- 网格模板：按 grid 等分排版 -->
             <div
-              v-if="currentTemplate.type !== 'collage'"
+              v-else-if="currentTemplate.type !== 'collage'"
               class="slot-grid grid gap-2"
               :style="{
                 gridTemplateColumns: currentTemplate.colRatio || `repeat(${currentTemplate.gridCols}, minmax(0, 1fr))`,
@@ -1232,7 +1743,7 @@ const groupedTemplates = computed(() => {
             <el-input v-model="chatRightText" placeholder="右侧消息" maxlength="30" show-word-limit />
           </div>
           <div
-            v-if="currentTemplate.type === 'collage' && currentTemplate.elements"
+            v-if="!isFreeMode && currentTemplate.type === 'collage' && currentTemplate.elements && currentTemplate.elements.length"
             class="mt-3 bg-white border rounded-xl p-3"
           >
             <div class="text-xs text-gray-500 mb-2">各槽位操作（画布外的独立面板，不受叠加影响）</div>
@@ -1288,6 +1799,63 @@ const groupedTemplates = computed(() => {
               </div>
             </div>
           </div>
+
+          <!-- 自由拼贴：图片列表面板（微调旋转/层级/替换/删除） -->
+          <div v-if="isFreeMode && freeItems.length > 0" class="mt-3 bg-white border rounded-xl p-3">
+            <div class="text-xs text-gray-500 mb-2">图片列表（点击选中画布中的图片，可微调旋转角度与层级）</div>
+            <div class="flex flex-col gap-2">
+              <div
+                v-for="(item, idx) in sortedFreeItems"
+                :key="item.id"
+                class="flex items-center gap-2 px-2 py-1.5 border rounded-lg bg-gray-50 flex-wrap cursor-pointer"
+                :class="selectedFreeId === item.id ? 'border-blue-300 ring-1 ring-blue-400' : ''"
+                @click="selectedFreeId = item.id"
+              >
+                <img
+                  :src="item.src"
+                  :alt="`图片 ${idx + 1}`"
+                  class="w-8 h-8 object-cover rounded border"
+                />
+                <span class="text-xs font-medium text-gray-700 w-10">图{{ idx + 1 }}</span>
+                <span class="text-xs text-gray-400">旋转</span>
+                <div class="flex items-center gap-2" @click.stop>
+                  <el-slider
+                    v-model="item.rotation"
+                    :min="-180"
+                    :max="180"
+                    :step="1"
+                    size="small"
+                    class="w-28"
+                  />
+                  <span class="text-xs text-gray-500 w-11 text-right">{{ Math.round(item.rotation) }}°</span>
+                </div>
+                <div class="flex items-center gap-1 ml-auto flex-wrap" @click.stop>
+                  <el-tooltip content="置顶" placement="top">
+                    <el-button size="small" text @click="freeLayerOp(item.id, 'top')">置顶</el-button>
+                  </el-tooltip>
+                  <el-tooltip content="上移一层" placement="top">
+                    <el-button size="small" text @click="freeLayerOp(item.id, 'up')">上移</el-button>
+                  </el-tooltip>
+                  <el-tooltip content="下移一层" placement="top">
+                    <el-button size="small" text @click="freeLayerOp(item.id, 'down')">下移</el-button>
+                  </el-tooltip>
+                  <el-tooltip content="置底" placement="top">
+                    <el-button size="small" text @click="freeLayerOp(item.id, 'bottom')">置底</el-button>
+                  </el-tooltip>
+                  <el-tooltip content="替换图片" placement="top">
+                    <el-button size="small" type="primary" circle @click="triggerFreeReplace(item.id)">
+                      <el-icon><PlusIcon /></el-icon>
+                    </el-button>
+                  </el-tooltip>
+                  <el-tooltip content="删除" placement="top">
+                    <el-button size="small" type="danger" circle @click="removeFreeItem(item.id)">
+                      <el-icon><DeleteIcon /></el-icon>
+                    </el-button>
+                  </el-tooltip>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1296,12 +1864,14 @@ const groupedTemplates = computed(() => {
       <el-text>
         <strong>图片拼图工具</strong>采用左右分栏设计：左侧选择模板，右侧给每个槽位独立上传图片，最终合成一张大图。<br /><br />
         <strong>使用方法：</strong><br />
-        1. 在左侧选择一种拼图模板（如四宫格、朋友圈九宫格、电影海报等）<br />
+        1. 在左侧选择一种拼图模板（如四宫格、朋友圈九宫格、电影海报等），或选「拼贴」分类下的<b>自由拼贴</b><br />
         2. 在右侧的每个槽位依次上传对应的图片（每张图片会被自动 cover 填充到槽位，<b>所见即所得</b>）<br />
         3. 上传后<b>可拖动图片调整显示位置</b>；拼贴模式下用下方独立的槽位操作面板进行替换/删除/重置<br />
         4. 点击「下载合并图」一键下载大图，或「打包 ZIP 下载」包含原图<br /><br />
+        <strong>自由拼贴：</strong><br />
+        图片数量不限，画布自动铺满右侧可用区域（随窗口大小变化，导出图片画幅与画布所见一致），支持多选上传 / 拖拽图片进画布 / 替换已有图片。点击图片选中后：<b>拖动</b>自由移动（图片始终完整保留在画布内，不会被拖出边界）、<b>顶部圆形手柄</b>任意旋转（靠近 45° 整数倍自动吸附摆正）、<b>右下角手柄</b>等比缩放、<b>右上角</b>快速删除；也可以在下方图片列表中微调旋转角度、调整层级（置顶/上移/下移/置底）。<br /><br />
         <strong>模板说明：</strong><br />
-        提供两种风格：<b>网格模板</b>（整齐的等分排版，槽位数从 2 到 16 全覆盖，包含双图/三图/四图横竖排、方形网格、大图+小图、电影海报、朋友圈长图等数十种布局）和<b>拼贴卡片</b>（错位叠加、旋转角度、拍立得白边、阴影，部分元素可溢出画布边缘，类似参考图的「不规则排版」效果）。<br /><br />
+        提供两种风格：<b>网格模板</b>（整齐的等分排版，槽位数从 2 到 16 全覆盖，包含双图/三图/四图横竖排、方形网格、大图+小图、电影海报、朋友圈长图等数十种布局）和<b>拼贴卡片</b>（错位叠加、旋转角度、拍立得白边、阴影，部分元素可溢出画布边缘，类似参考图的「不规则排版」效果；第一个「自由拼贴」卡片可完全自定义排版）。<br /><br />
         <strong>纯前端处理：</strong>所有图片处理在浏览器本地完成，不会上传到服务器，保护你的隐私。<br /><br />
         <strong>完全免费：</strong>本工具完全免费使用，导出图片不会带任何水印。
       </el-text>

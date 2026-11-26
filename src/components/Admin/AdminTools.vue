@@ -5,6 +5,7 @@ import {
   fetchAdminTools,
   updateAdminTool,
   batchToggleTools,
+  batchReorderTools,
   createAdminToolCategory,
   updateAdminToolCategory,
   batchReorderToolCategories,
@@ -70,6 +71,8 @@ const load = async () => {
     console.error(err)
   } finally {
     loading.value = false
+    // 数据就位后为各分类表格挂 Sortable（组数可能随筛选变化，重建最稳）
+    initToolSortables()
   }
 }
 
@@ -620,9 +623,90 @@ watch(
   },
 )
 
+// ============ 拖拽重排工具（右侧各分类表格，tool_features 表） ============
+// 每个分类一张 el-table，各自在 tbody 上挂一个 Sortable；顺序只在分类内调整。
+const toolTableRefs = new Map<number, any>()
+const toolSortableMap = new Map<number, Sortable>()
+const toolReordering = ref(false)  // 保存中：禁用所有表格拖拽
+
+// el-table 的动态 ref 回调（卸载/重建时以 null 触发）
+const setToolTableRef = (groupId: number, el: any) => {
+  if (el) toolTableRefs.set(groupId, el)
+  else toolTableRefs.delete(groupId)
+}
+
+const destroyToolSortables = () => {
+  toolSortableMap.forEach((s) => s.destroy())
+  toolSortableMap.clear()
+}
+
+const setToolSortablesDisabled = (disabled: boolean) => {
+  toolSortableMap.forEach((s) => s.option('disabled', disabled))
+}
+
+// 数据加载完成后重建所有 Sortable（先销毁旧的，防止重复挂载）
+const initToolSortables = async () => {
+  await nextTick()
+  destroyToolSortables()
+  for (const [groupId, table] of toolTableRefs) {
+    const tbody = table?.$el?.querySelector('.el-table__body-wrapper tbody') as HTMLElement | null
+    if (!tbody) continue
+    toolSortableMap.set(
+      groupId,
+      Sortable.create(tbody, {
+        handle: '.tool-drag-handle',
+        animation: 150,
+        ghostClass: 'tool-row-ghost',
+        chosenClass: 'tool-row-chosen',
+        onEnd: (evt) => handleToolSortEnd(groupId, evt),
+      }),
+    )
+  }
+}
+
+// 拖拽结束：本地重排 list + 批量保存 sort_order（= 分类内下标）
+const handleToolSortEnd = async (groupId: number, evt: Sortable.SortableEvent) => {
+  const { oldIndex, newIndex } = evt
+  if (oldIndex === newIndex || oldIndex == null || newIndex == null) return
+  if (toolReordering.value) return
+
+  // 服务端按分类排序，同分类工具在 list 中占据连续下标
+  const groupIdxs: number[] = []
+  list.value.forEach((t, i) => {
+    if (t.category_id === groupId) groupIdxs.push(i)
+  })
+  if (oldIndex >= groupIdxs.length || newIndex >= groupIdxs.length) return
+
+  // 本地重排：把该分类的工具按新顺序写回原占位下标，并重编 sort_order = 组内下标
+  const reordered = groupIdxs.map((i) => list.value[i])
+  const moved = reordered.splice(oldIndex, 1)[0]
+  if (!moved) return
+  reordered.splice(newIndex, 0, moved)
+  groupIdxs.forEach((listIdx, k) => {
+    list.value[listIdx] = reordered[k]
+    reordered[k].sort_order = k
+  })
+
+  const items = reordered.map((t) => ({ id: t.id, sort_order: t.sort_order }))
+  toolReordering.value = true
+  setToolSortablesDisabled(true)
+  try {
+    await batchReorderTools(items)
+    ElMessage.success('排序已保存')
+  } catch (err: any) {
+    ElMessage.error(err?.response?.data?.error || '保存排序失败，正在恢复…')
+    // 失败时从服务端拉回权威顺序（load 内部会重建 Sortable）
+    load()
+  } finally {
+    toolReordering.value = false
+    setToolSortablesDisabled(false)
+  }
+}
+
 onBeforeUnmount(() => {
   destroySortable()
   destroyCategorySortable()
+  destroyToolSortables()
 })
 
 // ============ 按分类批量启停 ============
@@ -832,7 +916,27 @@ const { isMobile } = useIsMobile()
           </div>
         </template>
 
-        <el-table :data="group.tools" stripe size="small">
+        <el-table
+          :ref="(el) => setToolTableRef(group.id, el)"
+          :data="group.tools"
+          row-key="id"
+          stripe
+          size="small"
+        >
+          <el-table-column width="44" align="center">
+            <template #default>
+              <span
+                class="tool-drag-handle inline-flex items-center justify-center w-6 h-6 text-ink-400 hover:text-ink-700 cursor-grab active:cursor-grabbing select-none"
+                title="拖动调整顺序（仅分类内生效）"
+              >
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+                  <circle cx="7" cy="5" r="1.4" /><circle cx="13" cy="5" r="1.4" />
+                  <circle cx="7" cy="10" r="1.4" /><circle cx="13" cy="10" r="1.4" />
+                  <circle cx="7" cy="15" r="1.4" /><circle cx="13" cy="15" r="1.4" />
+                </svg>
+              </span>
+            </template>
+          </el-table-column>
           <el-table-column label="状态" width="70" align="center">
             <template #default="{ row }">
               <el-switch
@@ -1253,6 +1357,18 @@ const { isMobile } = useIsMobile()
   background: rgb(var(--accent-500) / 0.08) !important;
 }
 :deep(.model-drag-handle:hover) {
+  background: rgb(var(--surface-2));
+  border-radius: 4px;
+}
+/* 右侧分类表格工具行拖拽视觉反馈 */
+:deep(.tool-row-ghost) {
+  background: rgb(var(--accent-500) / 0.14) !important;
+  opacity: 0.5;
+}
+:deep(.tool-row-chosen) {
+  background: rgb(var(--accent-500) / 0.08) !important;
+}
+:deep(.tool-drag-handle:hover) {
   background: rgb(var(--surface-2));
   border-radius: 4px;
 }

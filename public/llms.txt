@@ -136,6 +136,7 @@
 - [PDF 页眉页脚编辑器](https://tool.fologde.com/pdf-editor): 自定义页眉页脚文本、字体、字号与对齐，可应用单页或全部
 - [视频转 GIF 动图](https://tool.fologde.com/video-to-gif): 选择片段、自定义帧率尺寸质量，纯前端处理
 - [屏幕录制](https://tool.fologde.com/screen-recorder): 浏览器直接录制屏幕/窗口/标签页，支持系统声音与麦克风混音、暂停续录，本地处理不上传
+- [音频剪辑器](https://tool.fologde.com/audio-clipper): Web Audio 波形裁剪、淡入淡出，导出 MP3/OGG/WAV，本地处理
 - [VIP 视频解析](https://tool.fologde.com/video-parser): 粘贴链接在线观看腾讯/爱奇艺/优酷/芒果TV等平台视频
 
 ## 数据可视化

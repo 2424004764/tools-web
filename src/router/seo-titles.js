@@ -210,4 +210,5 @@ export default {
   '/svg-to-image': 'SVG转PNG/JPG - SVG在线转换高清位图',
   '/gross-margin': '毛利率计算器 - 毛利率怎么算/加价率',
   '/screen-recorder': '屏幕录制 - 录屏/在线录屏',
+  '/audio-clipper': '音频剪辑器 - 音频裁剪/mp3剪辑',
 }

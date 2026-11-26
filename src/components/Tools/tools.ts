@@ -1571,6 +1571,15 @@ export function getToolsCate() {
           cateId: 7,
           cate: '其他工具',
         },
+        {
+          id: 'audio-clipper-2026-11-18',
+          title: '音频剪辑器',
+          logo: '/images/logo/audio-clipper.png',
+          desc: 'Web Audio 波形可视化裁剪音频，支持选区播放循环、淡入淡出，导出 MP3 / OGG / WAV，纯前端本地处理不上传',
+          url: '/audio-clipper/',
+          cateId: 7,
+          cate: '其他工具',
+        },
       ]
     },
     {

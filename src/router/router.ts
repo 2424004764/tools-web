@@ -1340,6 +1340,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/audio-clipper',
+    component: () => import('@/components/Tools/AudioClipper/AudioClipper.vue'),
+    name: 'audio-clipper',
+    meta: {
+      title: '音频剪辑器',
+      keywords: '音频剪辑器,音频裁剪,音频剪辑,mp3剪辑,铃声制作,淡入淡出,音频转换,mp3转换,ogg转换,wav,Web Audio',
+      description: '在线音频剪辑工具，Web Audio API 波形可视化裁剪，支持选区播放循环与淡入淡出，导出 MP3 / OGG / WAV，纯前端本地处理不上传',
+    }
+  },
+  {
     path: '/chinese-convert',
     component: () => import('@/components/Tools/ChineseConvert/ChineseConvert.vue'),
     name: 'chinese-convert',

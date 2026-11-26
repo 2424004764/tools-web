@@ -82,6 +82,14 @@ export async function batchReorderToolCategories(
   return res.data.data
 }
 
+// 拖拽重排工具（右侧分类表格）：按分类内新顺序提交 id+sort_order
+export async function batchReorderTools(
+  items: { id: string; sort_order: number }[],
+): Promise<{ updated: number }> {
+  const res = await functionsRequest.post('/api/admin/tools/batch-reorder', { items })
+  return res.data.data
+}
+
 export async function batchToggleTools(
   ids: string[],
   isEnabled: boolean,

@@ -89,6 +89,7 @@
     "vue-codemirror": "^6.1.1",
     "vue-router": "^4.2.5",
     "vue3-danmaku": "^1.6.0",
+    "wasm-media-encoders": "^0.7.0",
     "x-data-spreadsheet": "^1.1.9",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
